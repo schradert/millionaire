@@ -1,6 +1,10 @@
 {
   canivete.pkgs.allowUnfree = ["beeper" "discord" "slack" "spotify"];
-  system = {flake, lib, ...}: {
+  system = {
+    flake,
+    lib,
+    ...
+  }: {
     nix.settings.trusted-users = ["root"];
     nixpkgs.config.allowUnfreePredicate = pkg: lib.elem (lib.getName pkg) flake.config.canivete.pkgs.allowUnfree;
     time.timeZone = "America/Los_Angeles";

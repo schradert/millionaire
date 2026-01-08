@@ -1,5 +1,9 @@
 {
-  system = {config, flake, ...}: let
+  system = {
+    config,
+    flake,
+    ...
+  }: let
     inherit (flake.config.canivete.meta) people;
   in {
     nix.settings.trusted-users = [people.me];
