@@ -1,4 +1,8 @@
-{can, config, ...}: {
+{
+  can,
+  config,
+  ...
+}: {
   options = {
     shared = can.module "shared modules for every deploy-rs profile" {};
     system = can.module "shared system modules for every deploy-rs profile" {};

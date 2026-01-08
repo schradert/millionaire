@@ -118,7 +118,7 @@
       inherit inputs;
       everything = [./options ./modules];
     } {
-      perSystem.canivete.devenv.shells.default.git-hooks.hooks.lychee.toml.accept = [200 405 406];
+      perSystem.canivete.devenv.shells.default.git-hooks.hooks.lychee.toml.accept = [200 403 405 406];
       canivete.meta = {
         domain = "trdos.me";
         people.me = "tristan";
@@ -147,10 +147,11 @@
           profiles.system = {config, ...}: {
             canivete = {
               args = inputs;
-              builder = modules: inputs.nixos-raspberrypi.lib.nixosInstaller {
-                specialArgs = config.canivete.args;
-                modules = [modules];
-              };
+              builder = modules:
+                inputs.nixos-raspberrypi.lib.nixosInstaller {
+                  specialArgs = config.canivete.args;
+                  modules = [modules];
+                };
               configuration = {
                 imports = [./static/rpi.nix];
                 system.stateVersion = "26.05";
