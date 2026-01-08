@@ -1,7 +1,6 @@
 {
   config,
   flake,
-  lib,
   ...
 }: {
   imports = with flake.inputs.nixos-raspberrypi.nixosModules.raspberry-pi-5; [

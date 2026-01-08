@@ -1,5 +1,9 @@
 {
-  nixos = {flake, lib, ...}: {
+  nixos = {
+    flake,
+    lib,
+    ...
+  }: {
     imports = [flake.inputs.disko.nixosModules.default];
     boot.supportedFilesystems = ["zfs"];
     services.zfs.autoScrub.enable = true;
