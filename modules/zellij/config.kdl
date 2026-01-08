@@ -1,0 +1,43 @@
+keybinds {
+    shared_except "locked" {
+        bind "Ctrl y" {
+            LaunchOrFocusPlugin "room" {
+                floating true
+                ignore_case true
+                quick_jump true
+            }
+        }
+        bind "Ctrl f" {
+            LaunchOrFocusPlugin "monocle" {
+                floating true
+            }
+            SwitchToMode "Normal"
+        }
+        bind "Ctrl F" {
+            LaunchOrFocusPlugin "monocle" {
+                in_place true
+                kiosk true
+            }
+            SwitchToMode "Normal"
+        }
+        bind "Ctrl H" {
+            LaunchOrFocusPlugin "zellij_forgot" {
+                floating true
+            }
+        }
+        bind "Ctrl q" {
+            LaunchOrFocusPlugin "zj-quit" {
+                floating true
+            }
+        }
+    }
+    tmux {
+        bind "s" {
+            LaunchOrFocusPlugin "zellij-choose-tree" {
+                floating true
+                move_to_focused_tab true
+                show_plugins true
+            }
+        }
+    }
+}
