@@ -116,7 +116,7 @@
   outputs = inputs:
     inputs.canivete.lib.mkFlake {
       inherit inputs;
-      everything = [./options ./modules];
+      everything = [./options ./modules ./pulumi];
     } {
       perSystem.canivete.devenv.shells.default.git-hooks.hooks.lychee.toml.accept = [200 403 405 406];
       canivete.meta = {
@@ -157,6 +157,7 @@
                 system.stateVersion = "26.05";
                 home-manager.sharedModules = [{home.stateVersion = "26.05";}];
                 networking.hostId = "919e7a2c";
+                disko.devices.disk.root.device = "/dev/mmcblk0";
               };
             };
           };

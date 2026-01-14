@@ -1,5 +1,7 @@
 /.devenv*
 /.direnv/
 /.pre-commit-config.yaml
+/secrets/
+__pycache__/
 devenv.local.nix
 result
