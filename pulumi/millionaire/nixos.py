@@ -84,7 +84,9 @@ class Nix:
         cmd = shlex.join(
             ["nix", "build", "--no-link", "--print-out-paths", f"{Nix.root}#{_attr}"]
         )
-        return subprocess.run(cmd, shell=True, capture_output=True).stdout.decode().strip()
+        return (
+            subprocess.run(cmd, shell=True, capture_output=True).stdout.decode().strip()
+        )
 
     @staticmethod
     def bin(_attr: str) -> str:
@@ -102,6 +104,7 @@ class Nix:
     def system() -> str:
         return Nix.expr("builtins.currentSystem").impure().value()
 
+
 class NixOS:
     """Deploy NixOS using nixos-anywhere."""
 
@@ -112,7 +115,9 @@ class NixOS:
         *flags: str,
         depends_on: list[pulumi.Resource] | None = None,
     ):
-        nixos_anywhere = Nix.bin(f"canivete.inputs.nixos-anywhere.packages.{Nix.system()}.default")
+        nixos_anywhere = Nix.bin(
+            f"canivete.inputs.nixos-anywhere.packages.{Nix.system()}.default"
+        )
         self.command = command.local.Command(
             f"nixos-{name}-install",
             create=f"{nixos_anywhere} --flake {Nix.root}#{name}{' '.join(flags)} {target}",
