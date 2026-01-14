@@ -35,34 +35,31 @@
       value = "3";
     };
   };
-  disko.devices.disk.root = {
-    device = "/dev/nvme0n1";
-    content.partitions = {
-      FIRMWARE = {
-        priority = 1;
-        label = "FIRMWARE";
-        type = "0700";
-        attributes = [0];
-        size = "1024M";
-        content = {
-          type = "filesystem";
-          format = "vfat";
-          mountpoint = "/boot/firmware";
-          mountOptions = [
-            "nofail"
-            "noatime"
-            "noauto"
-            "x-systemd.automount"
-            "x-systemd.idle-timeout=1min"
-          ];
-        };
+  disko.devices.disk.root.content.partitions = {
+    FIRMWARE = {
+      priority = 1;
+      label = "FIRMWARE";
+      type = "0700";
+      attributes = [0];
+      size = "1024M";
+      content = {
+        type = "filesystem";
+        format = "vfat";
+        mountpoint = "/boot/firmware";
+        mountOptions = [
+          "nofail"
+          "noatime"
+          "noauto"
+          "x-systemd.automount"
+          "x-systemd.idle-timeout=1min"
+        ];
       };
-      ESP = {
-        label = "ESP";
-        # BIOS bootable, for U-Boot to find extlinux config
-        attributes = [2];
-        size = "1024M";
-      };
+    };
+    ESP = {
+      label = "ESP";
+      # BIOS bootable, for U-Boot to find extlinux config
+      attributes = [2];
+      size = "1024M";
     };
   };
 }
