@@ -1,0 +1,17 @@
+[project]
+name = "millionaire"
+version = "0.0.1"
+description = "Millionaire deployments"
+readme = "../README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "pulumi>=3.206.0",
+  "pulumi-command>=1.1.3",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18.2",
+    "ruff>=0.14.6",
+    "taplo>=0.9.3",
+]
