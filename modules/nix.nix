@@ -1,5 +1,7 @@
 {
   system = {flake, ...}: {
+    nix.gc.automatic = true;
+    nix.gc.options = "--delete-older-than 14d";
     nix.settings.experimental-features = "nix-command flakes";
     nixpkgs.overlays = [flake.inputs.nix-index-database.overlays.nix-index];
   };

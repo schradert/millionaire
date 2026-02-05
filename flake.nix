@@ -140,6 +140,8 @@
             profiles.workstation.enable = true;
             system.stateVersion = 6;
             home-manager.sharedModules = [{home.stateVersion = "25.11";}];
+            nix.linux-builder.enable = true;
+            nix.settings.trusted-users = ["@admin"];
           };
         };
         piper = {

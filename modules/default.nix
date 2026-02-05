@@ -69,7 +69,6 @@
               bitwarden-desktop
               brave
               discord
-              slack
               (spotify.overrideAttrs (_: {
                 src = pkgs.fetchurl {
                   url = "https://web.archive.org/web/20250912003756/https://download.scdn.co/SpotifyARM64.dmg";

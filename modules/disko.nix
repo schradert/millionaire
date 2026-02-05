@@ -54,8 +54,6 @@
           normalization = "formD";
           xattr = "sa";
           "com.sun:auto-snapshot" = "true";
-          # TODO do I need a postCreateHook to snapshot?
-          # postCreateHook = "zfs list -t snapshot -H -o name | grep -E '^${poolName}@blank$' || zfs snapshot ${poolName}@blank";
         };
         datasets = {
           # recomputed easily
@@ -67,6 +65,7 @@
             type = "zfs_fs";
             options.reservation = "128M";
             options.mountpoint = "legacy";
+            options."com.sun:auto-snapshot" = "false";
             mountpoint = "/nix";
           };
 
@@ -78,6 +77,10 @@
             type = "zfs_fs";
             options.mountpoint = "legacy";
             mountpoint = "/";
+            postCreateHook = ''
+              zfs list -H -t snapshot -o name root/system/root@blank >/dev/null 2>&1 || \
+                zfs snapshot root/system/root@blank
+            '';
           };
           "system/var" = {
             type = "zfs_fs";
@@ -111,6 +114,7 @@
           "temp/tmp" = {
             type = "zfs_fs";
             options.mountpoint = "legacy";
+            options."com.sun:auto-snapshot" = "false";
             mountpoint = "/tmp";
           };
         };

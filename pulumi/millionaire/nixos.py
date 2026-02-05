@@ -120,6 +120,6 @@ class NixOS:
         )
         self.command = command.local.Command(
             f"nixos-{name}-install",
-            create=f"{nixos_anywhere} --flake {Nix.root}#{name}{' '.join(flags)} {target}",
+            create=f"{nixos_anywhere} --flake {Nix.root}#{name} {' '.join(flags)} {target}",
             opts=pulumi.ResourceOptions(depends_on=depends_on or []),
         )
