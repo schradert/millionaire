@@ -1,0 +1,29 @@
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# ESP32
+build/
+sdkconfig
+sdkconfig.old
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# direnv
+.direnv/
+.envrc.local
+
+# Nix
+result
+result-*
+
+# OS
+.DS_Store
+Thumbs.db

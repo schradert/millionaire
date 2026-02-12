@@ -116,7 +116,7 @@
   outputs = inputs:
     inputs.canivete.lib.mkFlake {
       inherit inputs;
-      everything = [./options ./modules ./pulumi];
+      everything = [./options ./modules ./pulumi ./esp32-s3];
     } {
       perSystem.canivete.devenv.shells.default.git-hooks.hooks.lychee.toml.accept = [200 403 405 406];
       canivete.meta = {
