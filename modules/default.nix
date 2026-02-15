@@ -84,6 +84,8 @@
           rbw.enable = true;
           spotify-player.enable = true;
           wezterm.enable = true;
+          # FIXME why do I keep having to rebuild this?!
+          # zed-editor.enable = true;
         };
       })
     ]);
