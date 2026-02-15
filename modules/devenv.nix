@@ -18,11 +18,11 @@
   home = {
     config,
     lib,
-    perSystem,
+    pkgs,
     ...
   }: {
     config = lib.mkIf config.profiles.workstation.enable {
-      home.packages = [perSystem.inputs'.devenv.packages.default];
+      home.packages = [pkgs.devenv];
       programs.direnv.enable = true;
       programs.elvish.initExtra = "eval (${lib.getExe config.programs.direnv.package} hook elvish)";
     };
