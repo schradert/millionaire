@@ -19,6 +19,10 @@
       root ALL=(ALL) NOPASSWD: ALL
       %admin ALL=(ALL) NOPASSWD: ALL
     '';
+    services.openssh.enable = true;
+    system.activationScripts.extraActivation.text = ''
+      sudo dseditgroup -o edit -a ${me} -t user com.apple.access_ssh 2>/dev/null || true
+    '';
     system.configurationRevision = flake.inputs.self.rev or flake.inputs.self.dirtyRev or null;
     system.defaults.dock = {
       autohide = true;
