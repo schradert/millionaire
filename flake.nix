@@ -118,7 +118,10 @@
       inherit inputs;
       everything = [./options ./modules ./pulumi ./esp32-s3];
     } {
-      perSystem.canivete.devenv.shells.default.git-hooks.hooks.lychee.toml.accept = [200 403 405 406];
+      perSystem.canivete.devenv.shells.default = {lib, ...}: {
+        git-hooks.hooks.lychee.toml.accept = [200 403 405 406];
+        git-hooks.hooks.no-commit-to-branch.enable = lib.mkForce false;
+      };
       canivete.meta = {
         domain = "trdos.me";
         people.me = "tristan";
