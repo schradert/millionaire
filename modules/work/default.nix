@@ -21,6 +21,9 @@
           [lazydocker ngrok]
           (lib.mkIf pkgs.stdenv.hostPlatform.isLinux [snowsql])
         ];
+      home.sessionPath = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin [
+        "/Applications/SnowSQL.app/Contents/MacOS"
+      ];
     };
   };
   nixos = {
