@@ -26,7 +26,6 @@
               branch.sort = "-committerdate";
               column.ui = "auto";
               core.fsmonitor = true;
-              core.hooksPath = "${config.xdg.stateHome}/git/hooks";
               core.untrackedCache = true;
               diff.noprefix = true;
               fetch.writeCommitGraph = true;
