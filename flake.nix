@@ -68,7 +68,6 @@
       flake-utils.follows = "flake-utils";
       rust-overlay.follows = "rust-overlay";
     };
-    zed.url = "github:zed-industries/zed";
     zjstatus.url = "github:dj95/zjstatus";
     zjstatus.inputs = {
       nixpkgs.follows = "nixpkgs";
