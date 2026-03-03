@@ -4,6 +4,7 @@
     ./network/cilium.nix
     ./network/coredns.nix
     ./security/cert-manager.nix
+    ./security/external-secrets
     ./storage/dragonflydb.nix
   ];
   nixidy.applications.namespaces = {

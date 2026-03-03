@@ -12,8 +12,8 @@ spec:
       - dns01:
           cloudflare:
             apiTokenSecretRef:
-              key: cloudflare
-              name: bootstrap-cert-manager
+              key: cloudflare-pat
+              name: cert-manager
         selector:
           dnsZones:
             - trdos.me
