@@ -4,7 +4,6 @@
 in {
   devenv.git-hooks.hooks.lychee.toml.exclude = ["^.+/dns-query$"];
   nixidy = {
-    can,
     charts,
     lib,
     pkgs,
@@ -19,13 +18,8 @@ in {
         hash = "sha256-meWu8R33djzvszlj8H8++CHwDYtQh1optWgmiR/Gmk8=";
       };
     };
-    applications.__bootstrap.resources.secrets.bootstrap-cert-manager = {
-      metadata.namespace = "security";
-      data.cloudflare = can.toBase64 (can.vals.sops.default config "passwords/cloudflare");
-    };
     applications.cert-manager = {
       namespace = "security";
-      canivete.bootstrap.enable = true;
       helm.releases.cert-manager = {
         chart = charts.jetstack.cert-manager;
         values = {
@@ -49,13 +43,21 @@ in {
             solvers = lib.toList {
               selector.dnsZones = [domain];
               dns01.cloudflare.apiTokenSecretRef = {
-                name = "bootstrap-cert-manager";
-                key = "cloudflare";
+                name = "cert-manager";
+                key = "cloudflare-pat";
               };
             };
           };
         };
       in {
+        externalSecrets.cert-manager.spec = {
+          secretStoreRef.name = "bitwarden";
+          secretStoreRef.kind = "ClusterSecretStore";
+          data = lib.toList {
+            secretKey = "cloudflare-pat";
+            remoteRef.key = "cloudflare/account/token";
+          };
+        };
         clusterIssuers.letsencrypt-production = mkClusterIssuer "letsencrypt-production" "https://acme-v02.api.letsencrypt.org/directory";
         clusterIssuers.letsencrypt-staging = mkClusterIssuer "letsencrypt-staging" "https://acme-staging-v02.api.letsencrypt.org/directory";
         certificates.${domainName}.spec = {
