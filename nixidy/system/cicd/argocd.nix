@@ -3,7 +3,6 @@
     applications.argo = {
       canivete.bootstrap.enable = true;
       namespace = "cicd";
-      createNamespace = true;
       helm.releases.argod = {
         chart = charts.argoproj.argo-cd;
         values.global.domain = "argocd.${config.canivete.meta.domain}";
