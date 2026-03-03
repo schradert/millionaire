@@ -184,11 +184,11 @@
         "treefmt-nix": "treefmt-nix"
       },
       "locked": {
-        "lastModified": 1772441177,
-        "narHash": "sha256-EZI9yDadftKtQPvzLwKjGIfChj6455655HUs/Er3f80=",
+        "lastModified": 1772519425,
+        "narHash": "sha256-ysjnpmI13UtJMqNusN9I3Z12rTaaGEvhGZ/zYEcbGio=",
         "owner": "schradert",
         "repo": "canivete",
-        "rev": "f750cd006cb7a8d1147a2fb6bc11e4e0760f0909",
+        "rev": "d55d1cf4ca620fb056c0e36ea6e6ad37d11a1d62",
         "type": "github"
       },
       "original": {

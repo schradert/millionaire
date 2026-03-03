@@ -1,5 +1,5 @@
 {lib, ...}: {
-  perSystem.canivete.devenv.shells.default = {pkgs, ...}: {packages = [pkgs.cilium-cli];};
+  devenv = {pkgs, ...}: {packages = [pkgs.cilium-cli];};
   nixos = {
     config,
     pkgs,
