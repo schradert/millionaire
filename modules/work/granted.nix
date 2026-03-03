@@ -4,7 +4,7 @@
     lib,
     ...
   }: {
-    config = lib.mkIf (config.profile == "work") {
+    config = lib.mkIf (config.profile == "work" && config.profiles.workstation.enable) {
       nixpkgs.overlays = [
         (_: prev: {
           # TODO why is it hanging on tests/customizations/test_waiters.py?
@@ -22,7 +22,7 @@
     pkgs,
     ...
   }: {
-    config = lib.mkIf (config.profile == "work") {
+    config = lib.mkIf (config.profile == "work" && config.profiles.workstation.enable) {
       home = {
         packages = with pkgs; [awscli2 granted];
         sessionVariables = {

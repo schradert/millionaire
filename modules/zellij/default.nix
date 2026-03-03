@@ -11,14 +11,9 @@
     flake,
     lib,
     perSystem,
-    pkgs,
     ...
   }: let
-    kdl' = pkgs.fetchurl {
-      url = "https://raw.githubusercontent.com/jrobsonchase/nixos-config/8ea380ad196e630044846f06945131602ec7056f/lib/kdl.nix";
-      hash = "sha256-TEguiZPHkSCpGpycZWqMqAsjf4Woz5WmK9TsEUXNx5o=";
-    };
-    inherit (import kdl' {inherit lib;}) kdlNode toKDL;
+    inherit (import flake.inputs.kdl {inherit lib;}) kdlNode toKDL;
     pluginSettings = {};
   in {
     imports = [flake.inputs.mynur.homeManagerModules.zellij-plugins];
