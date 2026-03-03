@@ -13,5 +13,7 @@
       daemon.enable = true;
       settings.keymap_mode = "vim-normal";
     };
+    # Ensures a broken socket doesn't cripple the service
+    launchd.agents.atuin-daemon.config.RunAtLoad = true;
   };
 }

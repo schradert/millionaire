@@ -1,7 +1,11 @@
 /.devenv*
 /.direnv/
+/.helix/
+/.zed/
 /.pre-commit-config.yaml
-/secrets/
+/secrets/*
 __pycache__/
 devenv.local.nix
 result
+
+!/secrets/sops/

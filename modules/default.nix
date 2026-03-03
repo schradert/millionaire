@@ -1,5 +1,5 @@
 {
-  canivete.pkgs.allowUnfree = ["beeper" "discord" "slack" "spotify"];
+  canivete.pkgs.allowUnfree = ["beeper" "slack" "spotify"];
   system = {
     flake,
     lib,
@@ -16,7 +16,11 @@
     ...
   }: {
     config = lib.mkIf config.profiles.workstation.enable {
-      homebrew.casks = ["beeper"];
+      homebrew.casks = [
+        "beeper"
+        "brave-browser"
+        # "discord"
+      ];
     };
   };
   home = {
@@ -67,16 +71,13 @@
           lib.mkMerge [
             [
               bitwarden-desktop
-              brave
-              discord
-              (spotify.overrideAttrs (_: {
-                src = pkgs.fetchurl {
-                  url = "https://web.archive.org/web/20250912003756/https://download.scdn.co/SpotifyARM64.dmg";
-                  hash = "sha256-fTyACxbyIgg7EwIgnNvNerJGUwAVLP2bg0TMnOegWeQ=";
-                };
-              }))
+              spotify
             ]
-            (lib.mkIf stdenv.hostPlatform.isLinux [beeper])
+            (lib.mkIf stdenv.hostPlatform.isLinux [
+              beeper
+              discord
+              brave
+            ])
           ];
         programs = {
           elvish.enable = true;

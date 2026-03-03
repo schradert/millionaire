@@ -4,7 +4,10 @@
     lib,
     ...
   }: {
-    imports = [flake.inputs.disko.nixosModules.default];
+    imports = [
+      flake.inputs.disko.nixosModules.default
+      flake.inputs.srvos.nixosModules.mixins-latest-zfs-kernel
+    ];
     boot.supportedFilesystems = ["zfs"];
     services.zfs.autoScrub.enable = true;
     services.zfs.trim.enable = true;

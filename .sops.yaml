@@ -1,0 +1,9 @@
+keys:
+  - &server age15g8wd8rqnz4rxdxcz7jlrm3yqlfj6jqeru5m3xrjhzp0fn2r4v8sd5ehh3
+  - &tristan age1kr4my68wnc3en2ajhcwj26ffk3tgdlrx9uknjxrlvjf76lw5h4kqyslt62
+creation_rules:
+  - path_regex: secrets/sops/default\.yaml
+    key_groups:
+      - age:
+          - *server
+          - *tristan

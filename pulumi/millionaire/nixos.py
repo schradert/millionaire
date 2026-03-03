@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 import shlex
-import subprocess
+import time
 import typing
 
 import pulumi
@@ -61,7 +61,8 @@ class Nix:
                 cmd_parts.append("--impure")
             cmd_parts.extend(self._args)
             cmd = shlex.join(cmd_parts)
-            return subprocess.run(cmd, shell=True, capture_output=True).stdout.decode()
+            result = command.local.run(command=cmd)
+            return result.stdout
 
         def __str__(self) -> str:
             return self.value()
@@ -84,9 +85,8 @@ class Nix:
         cmd = shlex.join(
             ["nix", "build", "--no-link", "--print-out-paths", f"{Nix.root}#{_attr}"]
         )
-        return (
-            subprocess.run(cmd, shell=True, capture_output=True).stdout.decode().strip()
-        )
+        result = command.local.run(command=cmd)
+        return result.stdout.strip()
 
     @staticmethod
     def bin(_attr: str) -> str:
@@ -118,8 +118,45 @@ class NixOS:
         nixos_anywhere = Nix.bin(
             f"canivete.inputs.nixos-anywhere.packages.{Nix.system()}.default"
         )
+        sops_dir = Nix.attr("canivete.sops.directory").value().strip()
         self.command = command.local.Command(
             f"nixos-{name}-install",
-            create=f"{nixos_anywhere} --flake {Nix.root}#{name} {' '.join(flags)} {target}",
+            create=f"""
+                set -euo pipefail
+                ulimit -n 1048576
+
+                EXTRA_DIR=$(mktemp -d)
+                ENCRYPTED="{Nix.root}/{sops_dir}/default.yaml"
+                DECRYPTED="$EXTRA_DIR/root/.config/sops/age/keys.txt"
+
+                trap 'rm -rf "$EXTRA_DIR"' EXIT
+                mkdir -p "$(dirname "$DECRYPTED")"
+                sops --decrypt --extract '["passwords"]["age"]' "$ENCRYPTED" > "$DECRYPTED"
+                chmod 600 "$DECRYPTED"
+
+                NA="{nixos_anywhere}"
+                NA_ARGS=(--extra-files "$EXTRA_DIR" --flake "{Nix.root}#{name}" {" ".join(flags)})
+
+                # Phase 1: kexec into the NixOS installer
+                "$NA" "${{NA_ARGS[@]}}" --phases kexec {target}
+
+                # Raise file descriptor limits on the remote NixOS installer.
+                # After kexec the default ulimit is 1024 which is too low for
+                # large NixOS builds (2000+ derivations).
+                ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {target} \
+                    'for pid in 1 $(pgrep -x sshd) $(pgrep -x nix-daemon); do prlimit --nofile=1048576:1048576 --pid "$pid" 2>/dev/null; done'
+
+                # Phase 2: partition, install, and reboot
+                "$NA" "${{NA_ARGS[@]}}" --phases disko,install,reboot {target}
+            """,
             opts=pulumi.ResourceOptions(depends_on=depends_on or []),
+        )
+
+        self.refresh = command.local.Command(
+            f"nixos-{name}-deploy",
+            # FIXME avoid IFD in Zellij module preventing eval of outPath on different system
+            # triggers=[Nix.attr(f"nixosConfigurations.{name}.config.system.build.toplevel.outPath").value()],
+            triggers=[str(time.time())],
+            create=f"{Nix.bin(f'canivete.inputs.deploy-rs.packages.{Nix.system()}.default')} .#{name}.system",
+            opts=pulumi.ResourceOptions(depends_on=[self.command]),
         )
