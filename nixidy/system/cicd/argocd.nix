@@ -1,4 +1,5 @@
 {config, ...}: {
+  devenv = {pkgs, ...}: {packages = [pkgs.argocd];};
   nixidy = {charts, ...}: {
     applications.argo = {
       canivete.bootstrap.enable = true;
