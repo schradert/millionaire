@@ -1,5 +1,5 @@
 {
-  perSystem.canivete.devenv.shells.default = {
+  devenv = {
     config,
     pkgs,
     ...
