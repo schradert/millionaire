@@ -5,6 +5,7 @@
     nixidy.target = {
       repository = "https://github.com/schradert/millionaire.git";
       rootPath = "./nixidy/generated/${config.nixidy.env}";
+      branch = "main";
     };
   };
 }
