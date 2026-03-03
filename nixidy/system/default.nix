@@ -4,6 +4,7 @@
     ./network/cilium.nix
     ./network/coredns.nix
     ./security/cert-manager.nix
+    ./storage/dragonflydb.nix
   ];
   nixidy.applications.namespaces = {
     namespace = "kube-system";
