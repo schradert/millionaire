@@ -1,0 +1,33 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/created-by: dragonfly-operator
+    app.kubernetes.io/instance: dragonflydb
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: dragonfly-operator
+    app.kubernetes.io/part-of: dragonfly-operator
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+  name: dragonflydb-dragonfly-operator-aggregate-to-admin
+rules:
+  - apiGroups:
+      - dragonflydb.io
+    resources:
+      - dragonflies
+    verbs:
+      - create
+      - delete
+      - deletecollection
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - dragonflydb.io
+    resources:
+      - dragonflies/status
+    verbs:
+      - get
+      - list
+      - watch
