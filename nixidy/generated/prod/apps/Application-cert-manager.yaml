@@ -11,7 +11,7 @@ spec:
   source:
     path: ./nixidy/generated/prod/cert-manager
     repoURL: https://github.com/schradert/millionaire.git
-    targetRevision: trunk
+    targetRevision: main
   syncPolicy:
     automated:
       prune: true
