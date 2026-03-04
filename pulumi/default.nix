@@ -6,6 +6,7 @@
   }: {
     enterShell = ''
       export PULUMI_ACCESS_TOKEN="$(cat "${config.devenv.root}/secrets/pulumi_token.txt")"
+      export CLOUDFLARE_API_TOKEN="$(cat "${config.devenv.root}/secrets/cloudflare_token.txt")"
       pulumi stack select prod
     '';
     languages.python.enable = true;

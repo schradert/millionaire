@@ -3,6 +3,8 @@
     ./cicd/argocd.nix
     ./network/cilium.nix
     ./network/coredns.nix
+    ./network/external-dns.nix
+    ./network/cloudflared.nix
     ./security/cert-manager.nix
     ./security/external-secrets
     ./storage/dragonflydb.nix
