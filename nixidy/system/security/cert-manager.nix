@@ -20,6 +20,7 @@ in {
     };
     applications.cert-manager = {
       namespace = "security";
+      annotations."argocd.argoproj.io/sync-wave" = "5";
       helm.releases.cert-manager = {
         chart = charts.jetstack.cert-manager;
         values = {
@@ -34,6 +35,10 @@ in {
           # prometheus.servicemonitor.enabled = true;
         };
       };
+    };
+    applications.cert-manager-certificates = {
+      namespace = "security";
+      annotations."argocd.argoproj.io/sync-wave" = "7";
       resources = let
         domainName = builtins.replaceStrings ["."] ["-"] domain;
         mkClusterIssuer = name: server: {

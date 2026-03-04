@@ -3,6 +3,7 @@
 in {
   nixidy = {
     charts,
+    config,
     lib,
     pulumi,
     ...
@@ -28,6 +29,7 @@ in {
   in {
     applications.cloudflared = {
       namespace = "kube-system";
+      annotations."argocd.argoproj.io/sync-wave" = "8";
       resources.externalSecrets.cloudflared.spec = {
         secretStoreRef.name = "bitwarden";
         secretStoreRef.kind = "ClusterSecretStore";

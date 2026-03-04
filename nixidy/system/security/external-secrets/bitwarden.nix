@@ -25,6 +25,7 @@ in {
     data.token = can.toBase64 (can.vals.sops.default config "bitwarden");
   };
   nixidy.applications.external-secrets = {
+    annotations."argocd.argoproj.io/sync-wave" = "6";
     helm.releases.external-secrets.values.bitwarden-sdk-server.enabled = true;
     resources = {
       clusterIssuers.bitwarden-bootstrap-issuer.spec.selfSigned = {};
