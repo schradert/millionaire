@@ -1,4 +1,5 @@
 {lib, ...}: {
+  imports = [./gateway.nix];
   devenv = {pkgs, ...}: {packages = [pkgs.cilium-cli];};
   nixos = {
     config,
@@ -21,6 +22,7 @@
     ...
   }: let
     chart = charts.cilium.cilium;
+    devices = ["br0"];
   in {
     canivete.crds.cilium = {
       install = true;
@@ -67,8 +69,9 @@
         values = {
           autoDirectNodeRoutes = true;
           dashboards.enabled = true;
-          devices = ["br0"];
+          inherit devices;
           envoy.rollOutPods = true;
+          externalIPs.enabled = true;
           hubble = {
             metrics.dashboards.enabled = true;
             relay.enabled = true;
@@ -83,6 +86,7 @@
           kubeProxyReplacement = true;
           k8sServiceHost = "127.0.0.1";
           k8sServicePort = 6443;
+          l2announcements.enabled = true;
           operator = {
             dashboards.enabled = true;
             prometheus.enabled = true;
@@ -92,6 +96,17 @@
           prometheus.enabled = true;
           rollOutCiliumPods = true;
           routingMode = "native";
+        };
+      };
+      resources.ciliumL2AnnouncementPolicies.default.spec = {
+        externalIPs = true;
+        loadBalancerIPs = true;
+        interfaces = devices;
+      };
+      resources.ciliumLoadBalancerIPPools.home-pool.spec = {
+        blocks = lib.toList {
+          start = "192.168.50.240";
+          stop = "192.168.50.254";
         };
       };
     };
