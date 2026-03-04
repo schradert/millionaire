@@ -1,13 +1,16 @@
-{config, ...}: {
+{config, ...}: let
+  inherit (config.canivete.meta) domain;
+in {
   devenv = {pkgs, ...}: {packages = [pkgs.argocd];};
   nixidy = {charts, ...}: {
     applications.argo = {
       canivete.bootstrap.enable = true;
       namespace = "cicd";
+      annotations."argocd.argoproj.io/sync-wave" = "5";
       helm.releases.argod = {
         chart = charts.argoproj.argo-cd;
         values = {
-          global.domain = "argocd.${config.canivete.meta.domain}";
+          global.domain = "argocd.${domain}";
           # TODO activate HA mode with autoscaling (after multi-node)
           # redis-ha.enabled = true;
           # controller.replicas = 1;
