@@ -12,6 +12,7 @@
     };
     applications.external-dns = {
       namespace = "kube-system";
+      annotations."argocd.argoproj.io/sync-wave" = "7";
       resources.externalSecrets.external-dns.spec = {
         secretStoreRef.name = "bitwarden";
         secretStoreRef.kind = "ClusterSecretStore";
@@ -44,7 +45,7 @@
           txtPrefix = "k8s.";
           logFormat = "json";
           domainFilters = [config.canivete.meta.domain];
-          serviceMonitor.enabled = true;
+          # serviceMonitor.enabled = true;
           # podAnnotations."reloader.stakater.com/auto" = "true";
         };
       };
