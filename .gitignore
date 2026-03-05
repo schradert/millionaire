@@ -3,6 +3,8 @@
 /.helix/
 /.zed/
 /.pre-commit-config.yaml
+/pulumi/sdks/*/build/
+/pulumi/sdks/*/*.egg-info
 /secrets/*
 __pycache__/
 devenv.local.nix
