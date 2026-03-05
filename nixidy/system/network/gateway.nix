@@ -7,9 +7,9 @@
 in {
   nixidy = {pkgs, ...}: {
     canivete.crds.gateway = {
+      application = "crds";
       install = true;
       prefix = "config/crd/standard";
-      application = "cilium";
       src = pkgs.fetchFromGitHub {
         owner = "kubernetes-sigs";
         repo = "gateway-api";

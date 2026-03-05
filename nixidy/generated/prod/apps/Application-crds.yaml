@@ -1,7 +1,9 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: cloudflared
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  name: crds
   namespace: cicd
 spec:
   destination:
@@ -9,7 +11,7 @@ spec:
     server: https://kubernetes.default.svc
   project: default
   source:
-    path: ./nixidy/generated/prod/cloudflared
+    path: ./nixidy/generated/prod/crds
     repoURL: https://github.com/schradert/millionaire.git
     targetRevision: main
   syncPolicy:
