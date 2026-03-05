@@ -30,9 +30,8 @@ in {
             "https://1.0.0.1:443/dns-query"
           ];
           dns01RecursiveNameserversOnly = true;
-          # FIXME activate with prometheus
-          # prometheus.enabled = true;
-          # prometheus.servicemonitor.enabled = true;
+          prometheus.enabled = true;
+          prometheus.servicemonitor.enabled = true;
         };
       };
     };

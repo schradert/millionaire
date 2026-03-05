@@ -2,11 +2,15 @@
   inherit (config.canivete.meta) domain;
 in {
   devenv = {pkgs, ...}: {packages = [pkgs.argocd];};
-  nixidy = {charts, ...}: {
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: {
     applications.argo = {
       canivete.bootstrap.enable = true;
       namespace = "cicd";
-      annotations."argocd.argoproj.io/sync-wave" = "5";
+      annotations."argocd.argoproj.io/sync-wave" = "6";
       helm.releases.argod = {
         chart = charts.argoproj.argo-cd;
         values = {
@@ -19,14 +23,12 @@ in {
           # repoServer.autoscaling.enabled = true;
           # repoServer.autoscaling.minReplicas = 2;
           # applicationSet.replicas = 2;
-          # TODO gateway
-          # FIXME replace with real values
-          # server.httproute.enabled = true;
-          # server.httproute.parentRefs = lib.toList {
-          #   name = "example-gateway";
-          #   namespace = "gateway-system";
-          #   sectionName = "https";
-          # };
+          server.httproute.enabled = true;
+          server.httproute.parentRefs = lib.toList {
+            name = "internal";
+            namespace = "kube-system";
+            sectionName = "https";
+          };
         };
       };
       resources.secrets.argocd-in-cluster = {

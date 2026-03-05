@@ -3,7 +3,6 @@
 in {
   nixidy = {
     charts,
-    config,
     lib,
     pulumi,
     ...
@@ -97,15 +96,14 @@ in {
               readOnly = true;
             };
           };
-          # FIXME install prometheus
-          # serviceMonitor.cloudflared.serviceName = "cloudflared";
-          # serviceMonitor.cloudflared.endpoints = lib.toList {
-          #   port = "http";
-          #   scheme = "http";
-          #   path = "/metrics";
-          #   interval = "1m";
-          #   scrapeTimeout = "30s";
-          # };
+          serviceMonitor.cloudflared.serviceName = "cloudflared";
+          serviceMonitor.cloudflared.endpoints = lib.toList {
+            port = "http";
+            scheme = "http";
+            path = "/metrics";
+            interval = "1m";
+            scrapeTimeout = "30s";
+          };
         };
       };
     };

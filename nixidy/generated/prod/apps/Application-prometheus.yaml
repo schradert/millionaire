@@ -2,16 +2,16 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: "6"
-  name: argo
+    argocd.argoproj.io/sync-wave: "4"
+  name: prometheus
   namespace: cicd
 spec:
   destination:
-    namespace: cicd
+    namespace: observability
     server: https://kubernetes.default.svc
   project: default
   source:
-    path: ./nixidy/generated/prod/argo
+    path: ./nixidy/generated/prod/prometheus
     repoURL: https://github.com/schradert/millionaire.git
     targetRevision: main
   syncPolicy:

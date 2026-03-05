@@ -17,8 +17,7 @@
       helm.releases.dragonflydb = {
         chart = pkgs.runCommand "dragonfly-operator" {} "cp -aL ${repo}/charts/dragonfly-operator $out";
         values = {
-          # FIXME activate with prometheus
-          # serviceMonitor.enabled = true;
+          serviceMonitor.enabled = true;
           # FIXME activate with grafana
           # grafanaDashboard.enabled = true;
           # grafanaDashboard.grafanaOperator.enabled = true;
