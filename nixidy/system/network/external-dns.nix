@@ -7,12 +7,13 @@
     chart = charts.external-dns.external-dns;
   in {
     canivete.crds.external-dns = {
+      application = "crds";
+      install = true;
       src = chart;
       prefix = "crds";
     };
     applications.external-dns = {
       namespace = "kube-system";
-      annotations."argocd.argoproj.io/sync-wave" = "7";
       resources.externalSecrets.external-dns.spec = {
         secretStoreRef.name = "bitwarden";
         secretStoreRef.kind = "ClusterSecretStore";

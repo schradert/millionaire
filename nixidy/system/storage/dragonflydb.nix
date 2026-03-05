@@ -8,6 +8,8 @@
     };
   in {
     canivete.crds.dragonflydb = {
+      application = "crds";
+      install = true;
       src = repo;
       prefix = "manifests";
       match = "^crd\.yaml$";

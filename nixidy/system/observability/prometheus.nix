@@ -7,6 +7,7 @@
     chart = charts.prometheus-community.kube-prometheus-stack;
   in {
     canivete.crds.prometheus = {
+      application = "crds";
       prefix = "charts/crds/crds";
       install = true;
       src = chart;
@@ -14,7 +15,6 @@
     applications.prometheus = {
       namespace = "observability";
       canivete.bootstrap.enable = true;
-      annotations."argocd.argoproj.io/sync-wave" = "4";
       # volsync.pvcs.prometheus = {
       #   title = "prometheus-prometheus-kube-prometheus-prometheus-db-prometheus-prometheus-kube-prometheus-prometheus-0";
       #   # TODO what happens with multiple deployments???
