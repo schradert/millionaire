@@ -11,7 +11,10 @@
     name = "external-secrets-kubernetes";
   in {
     canivete.crds.external-secrets = {
+      application = "crds";
+      install = true;
       prefix = "config/crds/bases";
+      match = ".*_.*\\.yaml$";  # CRD files contain underscores, kustomization.yaml doesn't
       src = pkgs.fetchFromGitHub {
         owner = "external-secrets";
         repo = "external-secrets";
@@ -23,7 +26,10 @@
       namespace = "security";
       helm.releases.external-secrets = {
         chart = charts.external-secrets.external-secrets;
-        values.serviceMonitor.enabled = true;
+        values = {
+          installCRDs = false;
+          serviceMonitor.enabled = true;
+        };
       };
       resources = {
         clusterSecretStores = lib.flip lib.mapAttrs' config.applications.namespaces.resources.namespaces (ns: _:

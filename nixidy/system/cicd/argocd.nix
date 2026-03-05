@@ -10,7 +10,6 @@ in {
     applications.argo = {
       canivete.bootstrap.enable = true;
       namespace = "cicd";
-      annotations."argocd.argoproj.io/sync-wave" = "6";
       helm.releases.argod = {
         chart = charts.argoproj.argo-cd;
         values = {

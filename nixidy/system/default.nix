@@ -10,6 +10,10 @@
     ./security/external-secrets
     ./storage/dragonflydb.nix
   ];
+  nixidy.applications.crds = {
+    namespace = "kube-system";
+    annotations."argocd.argoproj.io/sync-wave" = "0";
+  };
   nixidy.applications.namespaces = {
     namespace = "kube-system";
     annotations."argocd.argoproj.io/sync-wave" = "3";

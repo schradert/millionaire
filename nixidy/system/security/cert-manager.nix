@@ -10,6 +10,8 @@ in {
     ...
   }: {
     canivete.crds.cert-manager = {
+      application = "crds";
+      install = true;
       prefix = "deploy/crds";
       src = pkgs.fetchFromGitHub {
         owner = "cert-manager";
@@ -20,11 +22,10 @@ in {
     };
     applications.cert-manager = {
       namespace = "security";
-      annotations."argocd.argoproj.io/sync-wave" = "5";
       helm.releases.cert-manager = {
         chart = charts.jetstack.cert-manager;
         values = {
-          crds.enabled = true;
+          crds.enabled = false;
           dns01RecursiveNameservers = builtins.concatStringsSep "," [
             "https://1.1.1.1:443/dns-query"
             "https://1.0.0.1:443/dns-query"
@@ -37,7 +38,6 @@ in {
     };
     applications.cert-manager-certificates = {
       namespace = "security";
-      annotations."argocd.argoproj.io/sync-wave" = "7";
       resources = let
         domainName = builtins.replaceStrings ["."] ["-"] domain;
         mkClusterIssuer = name: server: {
