@@ -6,4 +6,5 @@ spec:
   externalIPs: true
   interfaces:
     - br0
+    - eno1
   loadBalancerIPs: true

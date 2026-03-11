@@ -22,7 +22,7 @@
     ...
   }: let
     chart = charts.cilium.cilium;
-    devices = ["br0"];
+    devices = ["br0" "eno1"];
   in {
     applications.cilium-crds.namespace = "kube-system";
     canivete.crds.cilium = {
