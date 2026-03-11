@@ -1,9 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
-  name: namespaces
+  name: cilium-crds
   namespace: cicd
 spec:
   destination:
@@ -11,7 +9,7 @@ spec:
     server: https://kubernetes.default.svc
   project: default
   source:
-    path: ./nixidy/generated/prod/namespaces
+    path: ./nixidy/generated/prod/cilium-crds
     repoURL: https://github.com/schradert/millionaire.git
     targetRevision: main
   syncPolicy:
