@@ -8,4 +8,4 @@ spec:
     - dnsName: external.trdos.me
       recordType: CNAME
       targets:
-        - 5e99ff76-16a5-436a-aa5e-e8dbeb53bda4.cfargotunnel.com
+        - ref+pulumistateapi://cloudflare_index__zeroTrustTunnelCloudflared_ZeroTrustTunnelCloudflared/main/outputs/id?organization=pulumbus&project=millionaire&stack=prod+.cfargotunnel.com

@@ -11,7 +11,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
     app.kubernetes.io/part-of: kube-prometheus-stack
-    chart: kube-prometheus-stack-82.2.0
+    chart: kube-prometheus-stack-82.10.2
     heritage: Helm
     release: prometheus
   name: prometheus-kube-prometheus-admission

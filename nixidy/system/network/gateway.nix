@@ -9,7 +9,10 @@ in {
     canivete.crds.gateway = {
       application = "crds";
       install = true;
-      prefix = "config/crd/standard";
+      # TODO ensure TLSRoutev1 compatibility with Cilium
+      # NOTE currently TLSRoutev1alpha2 only available in 1.5.0 experimental
+      prefix = "config/crd/experimental";
+      match = ".*_.*\\.yaml$";  # CRD files contain underscores, kustomization.yaml doesn't
       src = pkgs.fetchFromGitHub {
         owner = "kubernetes-sigs";
         repo = "gateway-api";

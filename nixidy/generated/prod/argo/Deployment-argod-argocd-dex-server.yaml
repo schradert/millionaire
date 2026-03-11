@@ -19,7 +19,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/cmd-params: f439a2277ff9a678996df7640266f043d509b702f23659e6b4615f08563396b6
+        checksum/cmd-params: e017dce7c41f34c38abdcb8e7c8628becf14c2b48d72b2359f9b506bdd7a1adf
       labels:
         app.kubernetes.io/component: dex-server
         app.kubernetes.io/instance: argod
@@ -67,7 +67,7 @@ spec:
                   key: dexserver.disable.tls
                   name: argocd-cmd-params-cm
                   optional: true
-          image: ghcr.io/dexidp/dex:v2.44.0
+          image: ghcr.io/dexidp/dex:v2.45.1
           imagePullPolicy: IfNotPresent
           name: dex-server
           ports:
@@ -88,6 +88,7 @@ spec:
                 - ALL
             readOnlyRootFilesystem: true
             runAsNonRoot: true
+            runAsUser: 1001
             seccompProfile:
               type: RuntimeDefault
           volumeMounts:
@@ -104,7 +105,7 @@ spec:
             - -n
             - /usr/local/bin/argocd
             - /shared/argocd-dex
-          image: quay.io/argoproj/argocd:v3.3.1
+          image: quay.io/argoproj/argocd:v3.3.2
           imagePullPolicy: IfNotPresent
           name: copyutil
           resources: {}
@@ -115,6 +116,7 @@ spec:
                 - ALL
             readOnlyRootFilesystem: true
             runAsNonRoot: true
+            runAsUser: 1001
             seccompProfile:
               type: RuntimeDefault
           volumeMounts:
