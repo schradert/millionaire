@@ -9,8 +9,9 @@ in {
     pkgs,
     ...
   }: {
+    applications.cert-manager-crds.namespace = "kube-system";
     canivete.crds.cert-manager = {
-      application = "crds";
+      application = "cert-manager-crds";
       install = true;
       prefix = "deploy/crds";
       src = pkgs.fetchFromGitHub {

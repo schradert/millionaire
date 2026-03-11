@@ -6,8 +6,9 @@
   }: let
     chart = charts.external-dns.external-dns;
   in {
+    applications.external-dns-crds.namespace = "kube-system";
     canivete.crds.external-dns = {
-      application = "crds";
+      application = "external-dns-crds";
       install = true;
       src = chart;
       prefix = "crds";

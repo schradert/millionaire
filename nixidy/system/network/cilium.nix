@@ -24,8 +24,9 @@
     chart = charts.cilium.cilium;
     devices = ["br0"];
   in {
+    applications.cilium-crds.namespace = "kube-system";
     canivete.crds.cilium = {
-      application = "crds";
+      application = "cilium-crds";
       install = true;
       prefix = "pkg/k8s/apis/cilium.io/client/crds";
       src = pkgs.fetchFromGitHub {

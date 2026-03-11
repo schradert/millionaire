@@ -6,8 +6,9 @@
   inherit (config.canivete.meta) domain;
 in {
   nixidy = {pkgs, ...}: {
+    applications.gateway-crds.namespace = "kube-system";
     canivete.crds.gateway = {
-      application = "crds";
+      application = "gateway-crds";
       install = true;
       # TODO ensure TLSRoutev1 compatibility with Cilium
       # NOTE currently TLSRoutev1alpha2 only available in 1.5.0 experimental
