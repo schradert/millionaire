@@ -154,9 +154,7 @@ class NixOS:
 
         self.refresh = command.local.Command(
             f"nixos-{name}-deploy",
-            # FIXME avoid IFD in Zellij module preventing eval of outPath on different system
-            # triggers=[Nix.attr(f"nixosConfigurations.{name}.config.system.build.toplevel.outPath").value()],
-            triggers=[str(time.time())],
+            triggers=[Nix.attr(f"nixosConfigurations.{name}.config.system.build.toplevel.outPath").value()],
             create=f"{Nix.bin(f'canivete.inputs.deploy-rs.packages.{Nix.system()}.default')} .#{name}.system",
             opts=pulumi.ResourceOptions(depends_on=[self.command]),
         )

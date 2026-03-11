@@ -7,6 +7,7 @@ import pulumi_bitwarden as bw
 class Millionaire:
     def __init__(self) -> None:
         millionaire.NixOS("sirver", "root@nixos")
+        millionaire.NixOS("octopus", "root@nixos")
         # RPI doesn't support kexec
         # millionaire.NixOS("piper", "piper", "--phases disko,install,reboot")
 
