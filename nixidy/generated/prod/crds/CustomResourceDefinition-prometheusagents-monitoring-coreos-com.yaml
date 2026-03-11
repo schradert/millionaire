@@ -10630,6 +10630,20 @@ spec:
                           items:
                             type: string
                           type: array
+                        clientAuthType:
+                          description: |-
+                            clientAuthType defines the server policy for client TLS authentication.
+
+                            For more detail on clientAuth options:
+                            https://golang.org/pkg/crypto/tls/#ClientAuthType
+                          type: string
+                        clientCAFile:
+                          description: |-
+                            clientCAFile defines the path to the CA certificate file for client certificate authentication to
+                            the server.
+
+                            It is mutually exclusive with `client_ca`.
+                          type: string
                         client_ca:
                           description: |-
                             client_ca defines the Secret or ConfigMap containing the CA certificate for client certificate
@@ -10682,20 +10696,6 @@ spec:
                               type: object
                               x-kubernetes-map-type: atomic
                           type: object
-                        clientAuthType:
-                          description: |-
-                            clientAuthType defines the server policy for client TLS authentication.
-
-                            For more detail on clientAuth options:
-                            https://golang.org/pkg/crypto/tls/#ClientAuthType
-                          type: string
-                        clientCAFile:
-                          description: |-
-                            clientCAFile defines the path to the CA certificate file for client certificate authentication to
-                            the server.
-
-                            It is mutually exclusive with `client_ca`.
-                          type: string
                         curvePreferences:
                           description: |-
                             curvePreferences defines elliptic curves that will be used in an ECDHE handshake, in preference
