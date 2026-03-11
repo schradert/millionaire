@@ -1,18 +1,12 @@
 {
   system = {
     config,
+    flake,
     lib,
     ...
   }: {
     config = lib.mkIf config.profiles.workstation.enable {
-      nixpkgs.overlays = [
-        (_: prev: {
-          # TODO why isn't pexpect module being picked up?
-          fish = prev.fish.overrideAttrs (_: {
-            doCheck = false;
-          });
-        })
-      ];
+      nixpkgs.overlays = [flake.inputs.devenv.overlays.default];
     };
   };
   home = {
