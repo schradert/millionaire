@@ -10,8 +10,9 @@
     namespace = "security";
     name = "external-secrets-kubernetes";
   in {
+    applications.external-secrets-crds.namespace = "kube-system";
     canivete.crds.external-secrets = {
-      application = "crds";
+      application = "external-secrets-crds";
       install = true;
       prefix = "config/crds/bases";
       match = ".*_.*\\.yaml$";  # CRD files contain underscores, kustomization.yaml doesn't

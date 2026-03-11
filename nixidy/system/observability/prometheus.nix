@@ -6,8 +6,9 @@
   }: let
     chart = charts.prometheus-community.kube-prometheus-stack;
   in {
+    applications.prometheus-crds.namespace = "kube-system";
     canivete.crds.prometheus = {
-      application = "crds";
+      application = "prometheus-crds";
       prefix = "charts/crds/crds";
       install = true;
       src = chart;

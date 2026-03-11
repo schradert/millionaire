@@ -7,8 +7,9 @@
       hash = "sha256-QBylTbY+8HcD0Z2VyqtwUYm+MeXCP7IwVtJpCCMswXs=";
     };
   in {
+    applications.dragonflydb-crds.namespace = "kube-system";
     canivete.crds.dragonflydb = {
-      application = "crds";
+      application = "dragonflydb-crds";
       install = true;
       src = repo;
       prefix = "manifests";
