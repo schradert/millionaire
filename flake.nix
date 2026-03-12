@@ -215,8 +215,6 @@
             # Mini switch on spare LAN to connect another system (dingo)
             networking.bridges.br0.interfaces = ["eno3" "eno4"];
             networking.interfaces.br0.useDHCP = true;
-            # TODO move over old dotfiles modules
-            # dotfiles.profiles.server.enable = true;
           };
         };
         octopus = {
@@ -225,14 +223,31 @@
             imports = [./static/facter ./static/server.nix];
             boot.initrd.availableKernelModules = ["sr_mod"];
             disko.devices.disk.root.device = "/dev/disk/by-id/scsi-36b82a720cf60ce002fd94d2e2991b17e";
-            # TODO use 9345 supervisor port upstream for RKE2
-            canivete.kubernetes.yaml.server = lib.mkForce "https://sirver:9345";
             services.rke2.role = "server";
-            # TODO should this be a default?
-            # Allows nodes to reach others on the same network by names like `sirver`, etc.
-            services.resolved.settings.Resolve.ResolveUnicastSingleLabel = true;
-            # TODO move over old dotfiles modules
-            # dotfiles.profiles.server.enable = true;
+          };
+        };
+        dingo = {
+          remoteBuild = true;
+          profiles.system.canivete.configuration = {lib, ...}: {
+            imports = [./static/facter ./static/server.nix];
+            disko.devices.disk.root.device = "/dev/disk/by-id/ata-LITEON_IT_LCS-256L9S_SD0E97900L2TH61100DL";
+            services.rke2.role = "server";
+          };
+        };
+
+        # Agents
+        bonobo = {
+          remoteBuild = true;
+          profiles.system.canivete.configuration = {lib, ...}: {
+            imports = [./static/facter ./static/server.nix];
+            disko.devices.disk.root.device = "/dev/disk/by-id/ata-Micron_1100_SATA_256GB_165015496CBD";
+          };
+        };
+        chinchilla = {
+          remoteBuild = true;
+          profiles.system.canivete.configuration = {lib, ...}: {
+            imports = [./static/facter ./static/server.nix];
+            disko.devices.disk.root.device = "/dev/disk/by-id/ata-MTFDDAK256TBN-1AR1ZABHA_UGXVK01J7BDCER";
           };
         };
       };
