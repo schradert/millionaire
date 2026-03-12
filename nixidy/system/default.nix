@@ -9,6 +9,7 @@
     ./security/cert-manager.nix
     ./security/external-secrets
     ./storage/dragonflydb.nix
+    ./storage/rook-ceph.nix
   ];
   nixidy.applications.namespaces = {
     namespace = "kube-system";
