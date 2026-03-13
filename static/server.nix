@@ -6,6 +6,8 @@
 }: {
   imports = with flake.inputs.srvos.nixosModules; [server roles-nix-remote-builder];
   canivete.kubernetes.enable = true;
+  # TODO how should I handle the scheduler from scratch?
+  canivete.kubernetes.yaml.disable-scheduler = lib.mkForce false;
   environment.systemPackages = [pkgs.kubectl];
   roles.nix-remote-builder.schedulerPublicKeys = [flake.config.canivete.meta.people.my.profiles.personal.sshPubKey];
   # TODO use 9345 supervisor port upstream for RKE2
