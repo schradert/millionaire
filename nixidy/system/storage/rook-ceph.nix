@@ -92,7 +92,32 @@ in {
             network.connections.requireMsgr2 = true;
             storage.useAllNodes = false;
             storage.useAllDevices = false;
-            storage.nodes = lib.mkDefault [];
+            storage.nodes = [
+              {
+                name = "sirver";
+                devices = [
+                  {name = "/dev/disk/by-id/scsi-35000c50067fb404b";}
+                  {name = "/dev/disk/by-id/scsi-35000c50067fc5df3";}
+                  {name = "/dev/disk/by-id/scsi-35000c50067fc640b";}
+                  {name = "/dev/disk/by-id/scsi-35000c50067fcc0d3";}
+                  {name = "/dev/disk/by-id/scsi-35000c50067fcc2fb";}
+                  {name = "/dev/disk/by-id/scsi-35000c50067fcd9af";}
+                  {name = "/dev/disk/by-id/scsi-35000c50067fe560f";}
+                ];
+              }
+              {
+                name = "octopus";
+                devices = [
+                  {name = "/dev/disk/by-id/scsi-36b82a720cf60ce002fd94d462aff700b";}
+                  {name = "/dev/disk/by-id/scsi-36b82a720cf60ce002fd94d552bdede19";}
+                  {name = "/dev/disk/by-id/scsi-36b82a720cf60ce002fd94d622ca764e8";}
+                  {name = "/dev/disk/by-id/scsi-36b82a720cf60ce002fd94d6f2d66f068";}
+                  {name = "/dev/disk/by-id/scsi-36b82a720cf60ce002fd94d7c2e2ed82e";}
+                  {name = "/dev/disk/by-id/scsi-36b82a720cf60ce002fd94d8a2f011f94";}
+                  {name = "/dev/disk/by-id/scsi-36b82a720cf60ce002fd94d962fc2bcad";}
+                ];
+              }
+            ];
           };
           cephFileSystems = [];
           cephBlockPoolsVolumeSnapshotClass.enabled = true;
