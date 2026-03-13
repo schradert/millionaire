@@ -121,6 +121,7 @@ class NixOS:
         sops_dir = Nix.attr("canivete.sops.directory").value().strip()
         self.command = command.local.Command(
             f"nixos-{name}-install",
+            # FIXME prevent retriggering!
             create=f"""
                 set -euo pipefail
                 ulimit -n 1048576
@@ -154,7 +155,7 @@ class NixOS:
 
         self.refresh = command.local.Command(
             f"nixos-{name}-deploy",
-            triggers=[Nix.attr(f"nixosConfigurations.{name}.config.system.build.toplevel.outPath").value()],
-            create=f"{Nix.bin(f'canivete.inputs.deploy-rs.packages.{Nix.system()}.default')} .#{name}.system",
+            triggers=[Nix.attr(f"nixosConfigurations.{name}.config.system.build.toplevel.outPath").impure().value()],
+            create=f"{Nix.bin(f'canivete.inputs.deploy-rs.packages.{Nix.system()}.default')} .#{name}.system --skip-checks",
             opts=pulumi.ResourceOptions(depends_on=[self.command]),
         )
