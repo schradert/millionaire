@@ -16,12 +16,11 @@
     applications.prometheus = {
       namespace = "observability";
       canivete.bootstrap.enable = true;
-      # volsync.pvcs.prometheus = {
-      #   title = "prometheus-prometheus-kube-prometheus-prometheus-db-prometheus-prometheus-kube-prometheus-prometheus-0";
-      #   # TODO what happens with multiple deployments???
-      #   # TODO resurrect this injection when StorageClass changes
-      #   # path = ["prometheuses" "prometheus-kube-prometheus-prometheus" "spec" "storage" "volumeClaimTemplate"];
-      # };
+      # TODO what happens with multiple deployments???
+      volsync.pvcs.prometheus = {
+        title = "prometheus-prometheus-kube-prometheus-prometheus-db-prometheus-prometheus-kube-prometheus-prometheus-0";
+        path = ["prometheuses" "prometheus-kube-prometheus-prometheus" "spec" "storage" "volumeClaimTemplate"];
+      };
       helm.releases.prometheus = {
         chart = charts.prometheus-community.kube-prometheus-stack;
         values = {
