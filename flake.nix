@@ -133,8 +133,7 @@
       everything = [./options ./modules ./pulumi ./esp32-s3];
     } {
       imports = [./nixidy];
-      devenv = {lib, pkgs, ...}: {
-        packages = with pkgs; [backblaze-b2 (writeShellScriptBin "b2" ''exec b2v4 "$@"'')];
+      devenv = {lib, ...}: {
         git-hooks.hooks = {
           lychee.toml.accept = [200 403 405 406];
           no-commit-to-branch.enable = lib.mkForce false;

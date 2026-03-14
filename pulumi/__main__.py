@@ -38,7 +38,7 @@ class Millionaire:
         ceph_dashboard_password = rand.RandomPassword("ceph_dashboard_password", length=24, special=False)
         Secret("ceph/dashboard/password", ceph_dashboard_password.result, "Rook Ceph builtin dashboard password")
 
-        bucket_name = "trdos-me--volsync"
+        bucket_name = f"{millionaire.Nix.attr('canivete.meta.domain').value().replace('.', '-')}--volsync"
         bucket = command.local.Command(
             "b2-bucket",
             create=f"b2 bucket create {bucket_name} allPrivate",
