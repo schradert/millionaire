@@ -18,6 +18,6 @@
       inherit (config) shared system darwin nixos;
       home-manager = config.home;
     };
-    perSystem.canivete.devenv.shells.default = config.devenv;
+    perSystem.canivete.devenv.modules = [config.devenv];
   };
 }
