@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/controller: actual
+    app.kubernetes.io/instance: actual
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: actual
+  name: actual
+  namespace: finance
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: actual
+      app.kubernetes.io/instance: actual
+      app.kubernetes.io/name: actual
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: actual
+        app.kubernetes.io/instance: actual
+        app.kubernetes.io/name: actual
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - image: actualbudget/actual-server:latest-alpine@sha256:f6614336ab80cb143e817f90409013332493207a0cdd5a78b22ab361bea60bd5
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 5006
+            timeoutSeconds: 1
+          name: actual
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 5006
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 5006
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /data
+              name: data
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: default
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: actual
