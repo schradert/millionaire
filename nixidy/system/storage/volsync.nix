@@ -7,6 +7,7 @@ in {
     pkgs,
     ...
   }: {
+    applications.volsync-crds.namespace = "kube-system";
     canivete.crds.volsync = {
       application = "volsync-crds";
       install = true;
