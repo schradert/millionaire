@@ -1,0 +1,29 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/instance: postgres
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: cloudnative-pg
+  name: postgres-cloudnative-pg-edit
+rules:
+  - apiGroups:
+      - postgresql.cnpg.io
+    resources:
+      - backups
+      - clusters
+      - clusters/status
+      - databases
+      - failoverquorums
+      - poolers
+      - publications
+      - scheduledbackups
+      - imagecatalogs
+      - clusterimagecatalogs
+      - subscriptions
+    verbs:
+      - create
+      - delete
+      - deletecollection
+      - patch
+      - update

@@ -9,6 +9,7 @@
     ./security/cert-manager.nix
     ./security/external-secrets
     ./storage/dragonflydb.nix
+    ./storage/postgres.nix
     ./storage/rook-ceph.nix
     ./storage/volsync.nix
   ];
