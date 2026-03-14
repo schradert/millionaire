@@ -1,5 +1,5 @@
 {config, ...}: let
-  inherit (config.canivete.meta) domain;
+  bucketName = "${builtins.replaceStrings ["."] ["-"] config.canivete.meta.domain}--volsync";
 in {
   nixidy = {
     can,
@@ -82,7 +82,7 @@ in {
                     }
                   ];
                   target.template.data = {
-                    RESTIC_REPOSITORY = "s3:https://s3.${region}.backblazeb2.com/${domain}--volsync/${repository}";
+                    RESTIC_REPOSITORY = "s3:https://s3.${region}.backblazeb2.com/${bucketName}/${repository}";
                     RESTIC_PASSWORD = "{{ .restic }}";
                     AWS_ACCESS_KEY_ID = "{{ .id }}";
                     AWS_SECRET_ACCESS_KEY = "{{ .password }}";
