@@ -1,0 +1,33 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: firefly
+  namespace: finance
+spec:
+  backup:
+    barmanObjectStore:
+      destinationPath: s3://trdos-me--volsync/cnpg/firefly/
+      endpointURL: https://s3.us-west-1.backblazeb2.com
+      s3Credentials:
+        accessKeyId:
+          key: ACCESS_KEY_ID
+          name: firefly-b2-postgres
+        secretAccessKey:
+          key: ACCESS_SECRET_KEY
+          name: firefly-b2-postgres
+    retentionPolicy: 30d
+  bootstrap:
+    initdb:
+      database: firefly
+      owner: firefly
+      postInitApplicationSQL: []
+      postInitSQL: []
+  imageName: ghcr.io/cloudnative-pg/postgresql:17
+  instances: 1
+  monitoring:
+    enablePodMonitor: true
+  postgresql:
+    shared_preload_libraries: []
+  storage:
+    size: 5Gi
+    storageClass: ceph-block

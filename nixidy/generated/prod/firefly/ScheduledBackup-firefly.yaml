@@ -1,0 +1,10 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: firefly
+  namespace: finance
+spec:
+  backupOwnerReference: self
+  cluster:
+    name: firefly
+  schedule: 0 0 * * *

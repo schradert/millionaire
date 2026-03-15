@@ -64,6 +64,8 @@ class Millionaire:
         restic_password = rand.RandomPassword("restic_password", length=24, special=False)
         Secret("volsync/restic/password", restic_password.result, "VolSync Restic password")
 
+        firefly_admin_password = rand.RandomPassword("firefly_admin_password", length=24, special=False)
+        Secret("firefly/admin/password", restic_password.result, "Firefly-III admin password")
 
 if __name__ == "__main__":
     Millionaire()
