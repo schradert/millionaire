@@ -37,7 +37,7 @@
           lib.nameValuePair "kubernetes-${ns}" {
             spec.provider.kubernetes = {
               auth.serviceAccount = {inherit name namespace;};
-              remoteNamespace = "default";
+              remoteNamespace = ns;
               server.caProvider = {
                 type = "ConfigMap";
                 name = "kube-root-ca.crt";
