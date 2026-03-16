@@ -1,6 +1,6 @@
 {config, ...}: let
   bucketName = "${builtins.replaceStrings ["."] ["-"] config.canivete.meta.domain}--volsync";
-  region = "us-west-1";
+  region = "us-west-004";
 in {
   nixidy = {
     can,

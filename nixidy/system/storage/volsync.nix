@@ -51,7 +51,7 @@ in {
         config = lib.mkIf config.volsync.enable {
           resources = lib.mkMerge (lib.flip lib.mapAttrsToList config.volsync.pvcs (pvcName: pvc: let
             inherit (pvc) title inject path uid gid;
-            region = "us-west-1";
+            region = "us-west-004";
             repository = "volsync--${name}--${pvcName}";
           in
             lib.mkMerge [
