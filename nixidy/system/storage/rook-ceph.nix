@@ -9,7 +9,11 @@ in {
   nixos = {config, ...}: {
     boot.kernelModules = lib.mkIf config.canivete.kubernetes.enable ["nbd" "rbd"];
   };
-  nixidy = {charts, lib, ...}: {
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: {
     applications.rook-ceph = {
       namespace = "storage";
       helm.releases.rook-ceph-operator = {
@@ -126,7 +130,7 @@ in {
         };
       };
       resources = {
-        storageClasses.ceph-bucket.parameters.region = lib.mkForce "us-west-1";
+        storageClasses.ceph-bucket.parameters.region = lib.mkForce "us-west-004";
         storageClasses.ceph-block = {
           # TODO should I prevent this from being the default storageclass?
           mountOptions = ["discard"];
