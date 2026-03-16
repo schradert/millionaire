@@ -5,7 +5,7 @@ metadata:
 parameters:
   objectStoreName: ceph-objectstore
   objectStoreNamespace: storage
-  region: us-west-1
+  region: us-west-004
 provisioner: storage.ceph.rook.io/bucket
 reclaimPolicy: Delete
 volumeBindingMode: Immediate
