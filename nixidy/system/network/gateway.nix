@@ -34,6 +34,7 @@ in {
     };
     applications.cilium = {
       helm.releases.cilium.values.gatewayAPI.enabled = true;
+      helm.releases.cilium.values.gatewayAPI.gatewayClass.create = "true";
       resources.gateways = let
         gateway = name: {
           metadata.annotations = {
