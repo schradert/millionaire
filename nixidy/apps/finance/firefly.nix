@@ -36,18 +36,18 @@
             };
           };
           service.firefly.ports.http.port = 8080;
-          configMaps.firefly.data = {
-            AUTHENTICATION_GUARD = "remote_user_guard";
-            AUTHENTICATION_GUARD_HEADER = "HTTP_X_AUTH_REQUEST_PREFERRED_USERNAME";
-            AUTHENTICATION_GUARD_EMAIL = "HTTP_X_AUTH_REQUEST_EMAIL";
-            APP_KEY_FILE = "/secrets/app_key.txt";
-            DB_CONNECTION = "pgsql";
-            DB_HOST = "firefly-rw";
-            DB_PORT = "5432";
-            DB_DATABASE = "firefly";
-            DB_USERNAME = "firefly";
-            DB_PASSWORD_FILE = "/secrets/db_password.txt";
-          };
+          configMaps.firefly.data.".env" = lib.concatStringsSep "\n" [
+            "AUTHENTICATION_GUARD=remote_user_guard"
+            "AUTHENTICATION_GUARD_HEADER=HTTP_X_AUTH_REQUEST_PREFERRED_USERNAME"
+            "AUTHENTICATION_GUARD_EMAIL=HTTP_X_AUTH_REQUEST_EMAIL"
+            "APP_KEY_FILE=/secrets/app_key.txt"
+            "DB_CONNECTION=pgsql"
+            "DB_HOST=firefly-rw"
+            "DB_PORT=5432"
+            "DB_DATABASE=firefly"
+            "DB_USERNAME=firefly"
+            "DB_PASSWORD_FILE=/secrets/db_password.txt"
+          ];
           persistence = {
             secrets = {
               type = "secret";
@@ -64,6 +64,7 @@
               name = "firefly";
               globalMounts = lib.toList {
                 path = "/.env";
+                subPath = ".env";
                 readOnly = true;
               };
             };
@@ -93,11 +94,11 @@
             };
           };
           service.firefly-importer.ports.http.port = 8080;
-          configMaps.firefly-importer.data = {
-            IGNORE_DUPLICATE_ERRORS = "false";
-            FIREFLY_III_URL = "http" + "://firefly.dotfiles.svc.cluster.local";
-            VANITY_URL = "https" + "://${hostname}";
-          };
+          configMaps.firefly-importer.data.".env" = lib.concatStringsSep "\n" [
+            "IGNORE_DUPLICATE_ERRORS=false"
+            "FIREFLY_III_URL=http://firefly.finance.svc.cluster.local:8080"
+            "VANITY_URL=https://${hostname}"
+          ];
           persistence = {
             secrets = {
               type = "secret";
@@ -108,6 +109,7 @@
               name = "firefly-importer";
               globalMounts = lib.toList {
                 path = "/.env";
+                subPath = ".env";
                 readOnly = true;
               };
             };
