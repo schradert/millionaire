@@ -1,0 +1,10 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: sure
+  namespace: finance
+spec:
+  backupOwnerReference: self
+  cluster:
+    name: sure
+  schedule: 0 0 * * *

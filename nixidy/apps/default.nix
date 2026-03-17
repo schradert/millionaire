@@ -2,6 +2,7 @@
   imports = [
     ./finance/actual.nix
     ./finance/firefly.nix
+    ./finance/sure.nix
     ./health/mealie.nix
     ./identity/hydra.nix
     ./identity/keto.nix

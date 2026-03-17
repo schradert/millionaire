@@ -1,0 +1,15 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--sure--sure-dst
+  namespace: finance
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: sure
+    moverSecurityContext:
+      runAsGroup: 101
+      runAsUser: 101
+    repository: volsync--sure--sure
+  trigger:
+    manual: "1"
