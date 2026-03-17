@@ -1,6 +1,7 @@
 {
   imports = [
     ./cicd/argocd.nix
+    ./cicd/descheduler.nix
     ./network/cilium.nix
     ./network/coredns.nix
     ./network/external-dns.nix
