@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: mealie
+    app.kubernetes.io/instance: mealie
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mealie
+  name: mealie
+  namespace: health
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: mealie
+      app.kubernetes.io/instance: mealie
+      app.kubernetes.io/name: mealie
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 0fa6b09ca62d78c00b276fdfd80b711ff0322872719c11d340b8fcf00b82e995
+      labels:
+        app.kubernetes.io/controller: mealie
+        app.kubernetes.io/instance: mealie
+        app.kubernetes.io/name: mealie
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - envFrom:
+            - configMapRef:
+                name: mealie
+          image: ghcr.io/mealie-recipes/mealie:v3.0.1@sha256:4d7542becc4f5a2a87c13f1073c974430006f56207278ade541bd93450b8fb5f
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 9000
+            timeoutSeconds: 1
+          name: mealie
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 9000
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 9000
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /secrets
+              name: secrets
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: default
+      volumes:
+        - name: secrets
+          secret:
+            secretName: mealie

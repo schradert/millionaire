@@ -1,0 +1,10 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: mealie
+  namespace: health
+spec:
+  backupOwnerReference: self
+  cluster:
+    name: mealie
+  schedule: 0 0 * * *
