@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: write
+    app.kubernetes.io/instance: keto
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: keto
+    service.ory.sh/type: headless
+  name: keto-write-headless
+  namespace: identity
+spec:
+  clusterIP: None
+  ports:
+    - appProtocol: grpc
+      name: grpc-write
+      port: 4467
+      protocol: TCP
+      targetPort: grpc-write
+  selector:
+    app.kubernetes.io/instance: keto
+    app.kubernetes.io/name: keto
+  type: ClusterIP

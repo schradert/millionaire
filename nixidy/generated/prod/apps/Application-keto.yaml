@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: keto
+  namespace: cicd
+spec:
+  destination:
+    namespace: identity
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    path: ./nixidy/generated/prod/keto
+    repoURL: https://github.com/schradert/millionaire.git
+    targetRevision: main
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+      - FailOnSharedResource=true
+      - PruneLast=true
+      - ServerSideApply=true

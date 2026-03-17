@@ -1,0 +1,47 @@
+apiVersion: v1
+data:
+  hydra.yaml: |
+    oauth2:
+      expose_internal_errors: false
+      hashers:
+        bcrypt:
+          cost: 12
+    oidc:
+      subject_identifiers:
+        pairwise:
+          salt: $(OIDC_SUBJECT_SALT)
+        supported_types:
+        - public
+        - pairwise
+    serve:
+      admin:
+        port: 4445
+      cookies:
+        domain: trdos.me
+        same_site_mode: Lax
+      public:
+        cors:
+          enabled: true
+        port: 4444
+      tls:
+        allow_termination_from:
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+    urls:
+      consent: https://login.trdos.me/consent
+      error: https://login.trdos.me/error
+      login: https://login.trdos.me/login
+      logout: https://login.trdos.me/logout
+      post_logout_redirect: https://login.trdos.me/login
+      self:
+        issuer: https://hydra.trdos.me
+        public: https://hydra.trdos.me
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: hydra
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: hydra
+  name: hydra
+  namespace: identity

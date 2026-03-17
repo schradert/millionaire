@@ -1,0 +1,204 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: kratos
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kratos
+  name: kratos
+  namespace: identity
+spec:
+  progressDeadlineSeconds: 3600
+  replicas: 1
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: kratos
+      app.kubernetes.io/name: kratos
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/kratos-config: 83a2574f07acfbbafd4bd90fa54dd776e5251c5c26e19f05de7a5cccf7095eb4
+        checksum/kratos-templates: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+      labels:
+        app.kubernetes.io/instance: kratos
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: kratos
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - serve
+            - all
+            - --config
+            - /etc/config/kratos.yaml
+          command:
+            - kratos
+          env:
+            - name: DSN
+              valueFrom:
+                secretKeyRef:
+                  key: dsn
+                  name: kratos
+            - name: SECRETS_DEFAULT
+              valueFrom:
+                secretKeyRef:
+                  key: secretsDefault
+                  name: kratos
+                  optional: true
+            - name: SECRETS_COOKIE
+              valueFrom:
+                secretKeyRef:
+                  key: secretsCookie
+                  name: kratos
+                  optional: true
+            - name: SECRETS_CIPHER
+              valueFrom:
+                secretKeyRef:
+                  key: secretsCipher
+                  name: kratos
+                  optional: true
+            - name: COURIER_SMTP_CONNECTION_URI
+              valueFrom:
+                secretKeyRef:
+                  key: smtpConnectionURI
+                  name: kratos
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: db_password
+                  name: kratos
+          image: oryd/kratos:v25.4.0
+          imagePullPolicy: IfNotPresent
+          lifecycle: {}
+          name: kratos
+          ports:
+            - containerPort: 4434
+              name: http-admin
+              protocol: TCP
+            - containerPort: 4433
+              name: http-public
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 5
+            httpGet:
+              httpHeaders:
+                - name: Host
+                  value: 127.0.0.1
+              path: /admin/health/alive
+              port: 4434
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources: {}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+            seLinuxOptions:
+              level: s0:c123,c456
+            seccompProfile:
+              type: RuntimeDefault
+          startupProbe:
+            failureThreshold: 5
+            httpGet:
+              httpHeaders:
+                - name: Host
+                  value: 127.0.0.1
+              path: /admin/health/ready
+              port: 4434
+            initialDelaySeconds: 1
+            periodSeconds: 1
+            successThreshold: 1
+            timeoutSeconds: 2
+          volumeMounts:
+            - mountPath: /etc/kratos/identity.schema.json
+              name: identity-schema
+              readOnly: true
+              subPath: identity.schema.json
+            - mountPath: /etc/config
+              name: kratos-config-volume
+              readOnly: true
+      initContainers:
+        - args:
+            - migrate
+            - sql
+            - -e
+            - --yes
+            - --config
+            - /etc/config/kratos.yaml
+          command:
+            - kratos
+          env:
+            - name: DSN
+              valueFrom:
+                secretKeyRef:
+                  key: dsn
+                  name: kratos
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: db_password
+                  name: kratos
+            - name: SECRETS_COOKIE
+              valueFrom:
+                secretKeyRef:
+                  key: cookie_secret
+                  name: kratos
+            - name: SECRETS_CIPHER
+              valueFrom:
+                secretKeyRef:
+                  key: cipher_secret
+                  name: kratos
+          image: oryd/kratos:v25.4.0
+          imagePullPolicy: IfNotPresent
+          name: kratos-automigrate
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+            seLinuxOptions:
+              level: s0:c123,c456
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /etc/config
+              name: kratos-config-volume
+              readOnly: true
+            - mountPath: /etc/kratos/identity.schema.json
+              name: identity-schema
+              readOnly: true
+              subPath: identity.schema.json
+      securityContext:
+        fsGroup: 65534
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: kratos
+      terminationGracePeriodSeconds: 60
+      volumes:
+        - configMap:
+            name: kratos-identity-schema
+          name: identity-schema
+        - configMap:
+            name: kratos-config
+          name: kratos-config-volume

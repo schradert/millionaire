@@ -70,5 +70,36 @@ class Millionaire:
         grafana_admin_password = rand.RandomPassword("grafana_admin_password", length=21, special=False)
         Secret("grafana", grafana_admin_password.result, "Grafana admin password")
 
+        # --- Ory Identity Platform ---
+        domain = millionaire.Nix.attr("canivete.meta.domain").value()
+
+        # Kratos secrets
+        kratos_cookie = rand.RandomPassword("ory_kratos_cookie", length=32, special=False)
+        Secret("ory/kratos/secret", kratos_cookie.result, "Ory Kratos cookie/session secret")
+
+        kratos_cipher = rand.RandomPassword("ory_kratos_cipher", length=32, special=False)
+        Secret("ory/kratos/cipher", kratos_cipher.result, "Ory Kratos cipher secret")
+
+        # Hydra secrets
+        hydra_system = rand.RandomPassword("ory_hydra_system", length=32, special=False)
+        Secret("ory/hydra/system-secret", hydra_system.result, "Ory Hydra system secret")
+
+        hydra_salt = rand.RandomPassword("ory_hydra_salt", length=32, special=False)
+        Secret("ory/hydra/oidc-subject-salt", hydra_salt.result, "Ory Hydra OIDC subject salt")
+
+        # UI secrets
+        ui_cookie = rand.RandomPassword("ory_ui_cookie", length=32, special=False)
+        Secret("ory/ui/cookie-secret", ui_cookie.result, "Ory Kratos UI cookie secret")
+
+        ui_csrf = rand.RandomPassword("ory_ui_csrf", length=32, special=False)
+        Secret("ory/ui/csrf-secret", ui_csrf.result, "Ory Kratos UI CSRF secret")
+
+        # Oathkeeper JWKS (RSA key pair for ID token signing)
+        jwks = millionaire.OryJwks("ory_oathkeeper_jwks")
+        Secret("ory/oathkeeper/mutator-id-token-jwks", jwks.jwks_json, "Oathkeeper JWKS for ID token signing")
+
+        # Hydra OAuth2 clients (requires running Hydra — set ory:hydra-admin-url after deploy)
+        hydra_admin_url = pulumi.Config("ory").get("hydra-admin-url") or ""
+
 if __name__ == "__main__":
     Millionaire()
