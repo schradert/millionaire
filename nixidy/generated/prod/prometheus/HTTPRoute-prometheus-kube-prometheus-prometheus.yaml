@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/instance: prometheus
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: kube-prometheus-stack
-    chart: kube-prometheus-stack-82.10.2
+    chart: kube-prometheus-stack-82.10.5
     heritage: Helm
     release: prometheus
   name: prometheus-kube-prometheus-prometheus
@@ -20,8 +20,11 @@ spec:
       sectionName: https
   rules:
     - backendRefs:
-        - name: prometheus-kube-prometheus-prometheus
+        - group: ""
+          kind: Service
+          name: prometheus-kube-prometheus-prometheus
           port: 9090
+          weight: 1
       matches:
         - path:
             type: PathPrefix
