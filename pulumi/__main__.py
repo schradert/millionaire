@@ -67,5 +67,8 @@ class Millionaire:
         firefly_admin_password = rand.RandomPassword("firefly_admin_password", length=24, special=False)
         Secret("firefly/admin/password", restic_password.result, "Firefly-III admin password")
 
+        grafana_admin_password = rand.RandomPassword("grafana_admin_password", length=21, special=False)
+        Secret("grafana", grafana_admin_password.result, "Grafana admin password")
+
 if __name__ == "__main__":
     Millionaire()
