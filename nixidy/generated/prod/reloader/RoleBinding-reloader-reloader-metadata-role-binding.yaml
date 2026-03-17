@@ -1,0 +1,24 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  annotations:
+    meta.helm.sh/release-name: reloader
+    meta.helm.sh/release-namespace: cicd
+  labels:
+    app: reloader-reloader
+    app.kubernetes.io/instance: reloader
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: reloader
+    chart: reloader-2.2.9
+    heritage: Helm
+    release: reloader
+  name: reloader-reloader-metadata-role-binding
+  namespace: cicd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: reloader-reloader-metadata-role
+subjects:
+  - kind: ServiceAccount
+    name: reloader-reloader
+    namespace: cicd

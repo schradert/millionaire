@@ -46,8 +46,7 @@ in {
         values = {
           controllers.cloudflared = {
             strategy = "RollingUpdate";
-            # FIXME install reloader
-            # annotations."reloader.stakater.com/auto" = "true";
+            annotations."reloader.stakater.com/auto" = "true";
             containers.cloudflared = {
               image.repository = "cloudflare/cloudflared";
               image.tag = "2026.2.0@sha256:d4d2bf56c792ab207fa557c2431c250bfc8e4114d7e28c98eda1896bf65f10f6";
