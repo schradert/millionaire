@@ -46,7 +46,10 @@ class Millionaire:
         )
         b2_app_key = command.local.Command(
             "b2-app-key",
-            create=f"b2 key create --bucket {bucket_name} {bucket_name} listFiles,readFiles,writeFiles,deleteFiles",
+            create=f"b2 key create --bucket {bucket_name} {bucket_name} listBuckets,listFiles,readFiles,writeFiles,deleteFiles",
+            # FIXME how to get this to delete with the generated key id?
+            # FIXME how to store key as a secret so as to avoid dumping raw in logs
+            # delete=f"b2 key delete {bucket_name}",
             opts=pulumi.ResourceOptions(depends_on=[bucket]),
         )
         # key create outputs: "keyId applicationKey" on one line
