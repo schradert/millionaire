@@ -1,0 +1,176 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: hydra
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: hydra
+  name: hydra
+  namespace: identity
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: hydra
+      app.kubernetes.io/name: hydra
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/hydra-config: da7d955da7183954052396b983d6a2c9fca506c9b531728bd3f2f7870000148d
+      labels:
+        app.kubernetes.io/instance: hydra
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: hydra
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - serve
+            - all
+            - --config
+            - /etc/config/hydra.yaml
+          command:
+            - hydra
+          env:
+            - name: URLS_SELF_ISSUER
+              value: https://hydra.trdos.me
+            - name: DSN
+              valueFrom:
+                secretKeyRef:
+                  key: dsn
+                  name: hydra
+            - name: SECRETS_SYSTEM
+              valueFrom:
+                secretKeyRef:
+                  key: secretsSystem
+                  name: hydra
+            - name: SECRETS_COOKIE
+              valueFrom:
+                secretKeyRef:
+                  key: secretsCookie
+                  name: hydra
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: db_password
+                  name: hydra
+            - name: SYSTEM_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: system_secret
+                  name: hydra
+            - name: OIDC_SUBJECT_SALT
+              valueFrom:
+                secretKeyRef:
+                  key: oidc_salt
+                  name: hydra
+          image: oryd/hydra:v25.4.0
+          imagePullPolicy: IfNotPresent
+          lifecycle: {}
+          name: hydra
+          ports:
+            - containerPort: 4444
+              name: http-public
+              protocol: TCP
+            - containerPort: 4445
+              name: http-admin
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 5
+            httpGet:
+              httpHeaders:
+                - name: Host
+                  value: 127.0.0.1
+              path: /health/alive
+              port: 4445
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources: {}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+            seLinuxOptions:
+              level: s0:c123,c456
+            seccompProfile:
+              type: RuntimeDefault
+          startupProbe:
+            failureThreshold: 5
+            httpGet:
+              httpHeaders:
+                - name: Host
+                  value: 127.0.0.1
+              path: /health/ready
+              port: 4445
+            initialDelaySeconds: 1
+            periodSeconds: 1
+            successThreshold: 1
+            timeoutSeconds: 2
+          volumeMounts:
+            - mountPath: /etc/config
+              name: hydra-config-volume
+              readOnly: true
+      initContainers:
+        - args:
+            - migrate
+            - sql
+            - -e
+            - --yes
+            - --config
+            - /etc/config/hydra.yaml
+          command:
+            - hydra
+          env:
+            - name: DSN
+              valueFrom:
+                secretKeyRef:
+                  key: dsn
+                  name: hydra
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: db_password
+                  name: hydra
+            - name: SYSTEM_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: system_secret
+                  name: hydra
+            - name: OIDC_SUBJECT_SALT
+              valueFrom:
+                secretKeyRef:
+                  key: oidc_salt
+                  name: hydra
+          image: oryd/hydra:v25.4.0
+          imagePullPolicy: IfNotPresent
+          name: hydra-automigrate
+          volumeMounts:
+            - mountPath: /etc/config
+              name: hydra-config-volume
+              readOnly: true
+      securityContext:
+        fsGroup: 65534
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: hydra
+      terminationGracePeriodSeconds: 60
+      volumes:
+        - configMap:
+            name: hydra
+          name: hydra-config-volume

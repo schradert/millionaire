@@ -1,0 +1,10 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: hydra
+  namespace: identity
+spec:
+  backupOwnerReference: self
+  cluster:
+    name: hydra
+  schedule: 0 0 * * *

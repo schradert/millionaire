@@ -1,0 +1,10 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: keto
+  namespace: identity
+spec:
+  backupOwnerReference: self
+  cluster:
+    name: keto
+  schedule: 0 0 * * *

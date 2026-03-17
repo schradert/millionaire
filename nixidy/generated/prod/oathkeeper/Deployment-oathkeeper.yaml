@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: oathkeeper
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: oathkeeper
+  name: oathkeeper
+  namespace: identity
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: oathkeeper
+      app.kubernetes.io/name: oathkeeper
+  strategy:
+    rollingUpdate: {}
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/oathkeeper-config: 9731314fe59d866039ad1f05c11213ca25a2fc4702104ae883f6f1f788a366dc
+        checksum/oathkeeper-rules: 70b4e33165ecaa2e68d4d7ed320e57921e3e54879f06fd02dca3a55c3ab503c2
+      labels:
+        app.kubernetes.io/instance: oathkeeper
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: oathkeeper
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - args:
+            - serve
+            - --config
+            - /etc/config/config.yaml
+          command:
+            - oathkeeper
+          image: oryd/oathkeeper:v25.4.0
+          imagePullPolicy: IfNotPresent
+          lifecycle: {}
+          name: oathkeeper
+          ports:
+            - containerPort: 4456
+              name: http-api
+              protocol: TCP
+            - containerPort: 4455
+              name: http-proxy
+              protocol: TCP
+            - containerPort: 9000
+              name: http-metrics
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 5
+            httpGet:
+              httpHeaders:
+                - name: Host
+                  value: 127.0.0.1
+              path: /health/alive
+              port: http-api
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources: {}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+            seLinuxOptions:
+              level: s0:c123,c456
+            seccompProfile:
+              type: RuntimeDefault
+          startupProbe:
+            failureThreshold: 5
+            httpGet:
+              httpHeaders:
+                - name: Host
+                  value: 127.0.0.1
+              path: /health/ready
+              port: http-api
+            initialDelaySeconds: 1
+            successThreshold: 1
+            timeoutSeconds: 2
+          volumeMounts:
+            - mountPath: /etc/oathkeeper/id_token.jwks.json
+              name: jwks
+              readOnly: true
+              subPath: jwks.json
+            - mountPath: /etc/config
+              name: oathkeeper-config-volume
+              readOnly: true
+            - mountPath: /etc/rules
+              name: oathkeeper-rules-volume
+              readOnly: true
+      securityContext:
+        fsGroup: 65534
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: oathkeeper
+      terminationGracePeriodSeconds: 60
+      volumes:
+        - name: jwks
+          secret:
+            secretName: oathkeeper-jwks
+        - configMap:
+            name: oathkeeper-config
+          name: oathkeeper-config-volume
+        - configMap:
+            name: oathkeeper-rules
+          name: oathkeeper-rules-volume

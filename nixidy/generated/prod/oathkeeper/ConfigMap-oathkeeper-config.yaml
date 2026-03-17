@@ -1,0 +1,89 @@
+apiVersion: v1
+data:
+  config.yaml: |
+    access_rules:
+      repositories:
+      - inline://
+    authenticators:
+      anonymous:
+        enabled: true
+      bearer_token:
+        config:
+          check_session_url: http://kratos-public.identity.svc.cluster.local:4433/sessions/whoami
+          force_method: GET
+          token_from:
+            header: Authorization
+        enabled: true
+      cookie_session:
+        config:
+          check_session_url: http://kratos-public.identity.svc.cluster.local:4433/sessions/whoami
+          extra_from: '@this'
+          only:
+          - ory_kratos_session
+          preserve_path: true
+          subject_from: identity.id
+        enabled: true
+      noop:
+        enabled: true
+      oauth2_introspection:
+        config:
+          cache:
+            enabled: true
+            ttl: 300s
+          introspection_url: http://hydra-admin.identity.svc.cluster.local:4445/admin/oauth2/introspect
+        enabled: true
+    authorizers:
+      allow:
+        enabled: true
+      deny:
+        enabled: true
+    errors:
+      handlers:
+        json:
+          config:
+            verbose: false
+          enabled: true
+        redirect:
+          config:
+            to: https://login.trdos.me/login
+            when:
+            - error:
+              - unauthorized
+              - forbidden
+              request:
+                header:
+                  accept:
+                  - text/html
+          enabled: true
+    mutators:
+      header:
+        config:
+          headers:
+            X-Auth-Request-Email: '{{ print .Extra.identity.traits.email }}'
+            X-Auth-Request-Preferred-Username: '{{ print .Extra.identity.traits.email
+              }}'
+            X-User-Email: '{{ print .Extra.identity.traits.email }}'
+            X-User-Id: '{{ print .Subject }}'
+        enabled: true
+      id_token:
+        config:
+          issuer_url: https://oathkeeper.trdos.me
+          jwks_url: file:///etc/oathkeeper/id_token.jwks.json
+        enabled: true
+      noop:
+        enabled: true
+    serve:
+      api:
+        port: 4456
+      prometheus:
+        port: 9000
+      proxy:
+        port: 4455
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: oathkeeper
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: oathkeeper
+  name: oathkeeper-config
+  namespace: identity
