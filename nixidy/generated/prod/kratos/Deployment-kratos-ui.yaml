@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: kratos-ui
+    app.kubernetes.io/instance: kratos-ui
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kratos-ui
+  name: kratos-ui
+  namespace: identity
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: kratos-ui
+      app.kubernetes.io/instance: kratos-ui
+      app.kubernetes.io/name: kratos-ui
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: kratos-ui
+        app.kubernetes.io/instance: kratos-ui
+        app.kubernetes.io/name: kratos-ui
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - env:
+            - name: COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: cookie_secret
+                  name: kratos-ui
+            - name: CSRF_COOKIE_NAME
+              value: __HOST-trdos.me-x-csrf-token
+            - name: CSRF_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: csrf_secret
+                  name: kratos-ui
+            - name: HYDRA_ADMIN_URL
+              value: http://hydra-admin.identity.svc.cluster.local:4445
+            - name: KRATOS_BROWSER_URL
+              value: https://auth.trdos.me
+            - name: KRATOS_PUBLIC_URL
+              value: http://kratos-public.identity.svc.cluster.local:4433
+          image: oryd/kratos-selfservice-ui-node:v0.14.1
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 3000
+            timeoutSeconds: 1
+          name: kratos-ui
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 3000
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 3000
+            timeoutSeconds: 1
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: default

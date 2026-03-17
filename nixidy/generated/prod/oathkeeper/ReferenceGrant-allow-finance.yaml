@@ -1,0 +1,14 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: ReferenceGrant
+metadata:
+  name: allow-finance
+  namespace: identity
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: finance
+  to:
+    - group: ""
+      kind: Service
+      name: oathkeeper-proxy
