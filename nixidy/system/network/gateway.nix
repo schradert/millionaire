@@ -5,7 +5,18 @@
 }: let
   inherit (config.canivete.meta) domain;
 in {
-  nixidy = {pkgs, ...}: {
+  nixidy = {
+    charts,
+    pkgs,
+    ...
+  }: {
+    # TODO figure out a better way to patch in HTTPRoutev1
+    nixidy.charts.bjw-s-labs.app-template-patched = pkgs.runCommand "app-template-patched" {} ''
+      cp -r ${charts.bjw-s-labs.app-template} $out
+      chmod -R u+w $out
+      sed -i 's|gateway.networking.k8s.io/v1alpha2|gateway.networking.k8s.io/v1|g' \
+        $out/charts/common/templates/classes/_route.tpl
+    '';
     applications.gateway-crds.namespace = "kube-system";
     canivete.crds.gateway = {
       application = "gateway-crds";
@@ -13,7 +24,7 @@ in {
       # TODO ensure TLSRoutev1 compatibility with Cilium
       # NOTE currently TLSRoutev1alpha2 only available in 1.5.0 experimental
       prefix = "config/crd/experimental";
-      match = ".*_.*\\.yaml$";  # CRD files contain underscores, kustomization.yaml doesn't
+      match = ".*_.*\\.yaml$"; # CRD files contain underscores, kustomization.yaml doesn't
       src = pkgs.fetchFromGitHub {
         owner = "kubernetes-sigs";
         repo = "gateway-api";
