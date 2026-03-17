@@ -11,6 +11,7 @@
     ./observability/gatus.nix
     ./observability/grafana.nix
     ./observability/kube-state-metrics.nix
+    ./observability/loki.nix
     ./observability/node-exporter.nix
     ./observability/prometheus.nix
     ./security/cert-manager.nix
