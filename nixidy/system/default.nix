@@ -7,6 +7,7 @@
     ./network/coredns.nix
     ./network/external-dns.nix
     ./network/cloudflared.nix
+    ./observability/kube-state-metrics.nix
     ./observability/node-exporter.nix
     ./observability/prometheus.nix
     ./security/cert-manager.nix
