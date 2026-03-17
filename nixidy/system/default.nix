@@ -8,6 +8,7 @@
     ./network/external-dns.nix
     ./network/cloudflared.nix
     ./observability/alertmanager.nix
+    ./observability/gatus.nix
     ./observability/grafana.nix
     ./observability/kube-state-metrics.nix
     ./observability/node-exporter.nix
