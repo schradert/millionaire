@@ -1,7 +1,24 @@
 {config, ...}: {
-  nixidy = {lib, ...}: let
+  nixidy = {
+    lib,
+    pkgs,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
   in {
+    applications.oathkeeper-crds.namespace = "kube-system";
+    canivete.crds.oathkeeper = {
+      application = "oathkeeper-crds";
+      install = true;
+      prefix = "config/crd/bases";
+      match = ".*_.*\\.yaml$";
+      src = pkgs.fetchFromGitHub {
+        owner = "ory";
+        repo = "oathkeeper-maester";
+        rev = "v0.1.13";
+        hash = "sha256-V0oTW82oVReJUXQnlyTlh0MWXjwbGu75ZkU4CHu23KU=";
+      };
+    };
     applications.oathkeeper = {
       namespace = "identity";
 
@@ -13,7 +30,10 @@
           chartHash = "sha256-3szb/byf85oxDwB03yr3GDX5nIg7f17z6D2/6nnQQ2k=";
         };
         values = {
-          oathkeeper-maester.enabled = true;
+          oathkeeper-maester = {
+            enabled = true;
+            maesterExtraResources = "";
+          };
 
           oathkeeper.config = {
             authenticators = {
@@ -79,10 +99,12 @@
                 enabled = true;
                 config = {
                   to = "https://login.${domain}/login";
-                  when = [{
-                    error = ["unauthorized" "forbidden"];
-                    request.header.accept = ["text/html"];
-                  }];
+                  when = [
+                    {
+                      error = ["unauthorized" "forbidden"];
+                      request.header.accept = ["text/html"];
+                    }
+                  ];
                 };
               };
               json = {
@@ -95,16 +117,20 @@
           };
 
           deployment = {
-            extraVolumes = [{
-              name = "jwks";
-              secret.secretName = "oathkeeper-jwks";
-            }];
-            extraVolumeMounts = [{
-              name = "jwks";
-              mountPath = "/etc/oathkeeper/id_token.jwks.json";
-              subPath = "jwks.json";
-              readOnly = true;
-            }];
+            extraVolumes = [
+              {
+                name = "jwks";
+                secret.secretName = "oathkeeper-jwks";
+              }
+            ];
+            extraVolumeMounts = [
+              {
+                name = "jwks";
+                mountPath = "/etc/oathkeeper/id_token.jwks.json";
+                subPath = "jwks.json";
+                readOnly = true;
+              }
+            ];
           };
         };
       };
@@ -121,16 +147,20 @@
 
       # ReferenceGrant: allow HTTPRoutes in other namespaces to reference oathkeeper-proxy
       resources.referenceGrants.allow-finance.spec = {
-        from = [{
-          group = "gateway.networking.k8s.io";
-          kind = "HTTPRoute";
-          namespace = "finance";
-        }];
-        to = [{
-          group = "";
-          kind = "Service";
-          name = "oathkeeper-proxy";
-        }];
+        from = [
+          {
+            group = "gateway.networking.k8s.io";
+            kind = "HTTPRoute";
+            namespace = "finance";
+          }
+        ];
+        to = [
+          {
+            group = "";
+            kind = "Service";
+            name = "oathkeeper-proxy";
+          }
+        ];
       };
     };
   };

@@ -20,7 +20,7 @@ spec:
     - backendRefs:
         - group: ""
           kind: Service
-          name: firefly
-          namespace: finance
-          port: 8080
+          name: oathkeeper-proxy
+          namespace: identity
+          port: 4455
           weight: 1

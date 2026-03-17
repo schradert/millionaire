@@ -2,7 +2,11 @@
   # TODO https://docs.firefly-iii.org/how-to/data-importer/how-to-configure/
   # TODO https://github.com/dvankley/firefly-plaid-connector-2
   # TODO create access token at firefly/token
-  nixidy = {charts, lib, ...}: let
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "firefly.${domain}";
     probe = lib.recursiveUpdate {
@@ -76,6 +80,13 @@
               namespace = "kube-system";
               sectionName = "https";
             };
+            rules = lib.toList {
+              backendRefs = lib.toList {
+                name = "oathkeeper-proxy";
+                namespace = "identity";
+                port = 4455;
+              };
+            };
           };
         };
       };
@@ -124,6 +135,19 @@
           };
         };
       };
+      # Oathkeeper access rule: authenticate via Kratos session, inject auth headers
+      resources.rules.firefly.spec = {
+        upstream.url = "http://firefly.finance.svc.cluster.local:8080";
+        match = {
+          url = "https://${hostname}/<**>";
+          methods = ["GET" "POST" "PUT" "PATCH" "DELETE"];
+        };
+        authenticators = lib.toList {handler = "cookie_session";};
+        authorizer.handler = "allow";
+        mutators = lib.toList {handler = "header";};
+        errors = lib.toList {handler = "redirect";};
+      };
+
       resources.externalSecrets = {
         firefly.spec.data = [
           {
