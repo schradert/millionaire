@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: sure
+    app.kubernetes.io/instance: sure
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: sure
+  name: sure
+  namespace: finance
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: sure
+      app.kubernetes.io/instance: sure
+      app.kubernetes.io/name: sure
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 7c4fd775bf979087672c047dd0249efb3f8ff1d638a719d84ff30b107bc55dc3
+      labels:
+        app.kubernetes.io/controller: sure
+        app.kubernetes.io/instance: sure
+        app.kubernetes.io/name: sure
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - envFrom:
+            - configMapRef:
+                name: sure
+            - secretRef:
+                name: sure
+          image: ghcr.io/we-promise/sure:stable
+          livenessProbe:
+            httpGet:
+              path: /up
+              port: http
+          name: sure
+          readinessProbe:
+            httpGet:
+              path: /up
+              port: http
+            initialDelaySeconds: 15
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 30
+            httpGet:
+              path: /up
+              port: http
+            periodSeconds: 10
+          volumeMounts:
+            - mountPath: /rails/storage
+              name: storage
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: default
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: sure
