@@ -65,10 +65,13 @@ class Millionaire:
         Secret("volsync/restic/password", restic_password.result, "VolSync Restic password")
 
         firefly_admin_password = rand.RandomPassword("firefly_admin_password", length=24, special=False)
-        Secret("firefly/admin/password", restic_password.result, "Firefly-III admin password")
+        Secret("firefly/admin/password", firefly_admin_password.result, "Firefly-III admin password")
 
         grafana_admin_password = rand.RandomPassword("grafana_admin_password", length=21, special=False)
         Secret("grafana", grafana_admin_password.result, "Grafana admin password")
+
+        actualbudget_admin_password = rand.RandomPassword("actualbudget_admin_password", length=24, special=False)
+        Secret("actualbudget/admin/password", actualbudget_admin_password.result, "ActualBudget admin password")
 
         # --- Ory Identity Platform ---
         domain = millionaire.Nix.attr("canivete.meta.domain").value()
@@ -100,6 +103,18 @@ class Millionaire:
 
         # Hydra OAuth2 clients (requires running Hydra — set ory:hydra-admin-url after deploy)
         hydra_admin_url = pulumi.Config("ory").get("hydra-admin-url") or ""
+
+        argocd_client = millionaire.HydraOAuth2Client(
+            "ory_argocd_client",
+            admin_url=hydra_admin_url,
+            client_name="ArgoCD",
+            grant_types=["authorization_code", "refresh_token"],
+            redirect_uris=[f"https://argocd.{domain}/auth/callback"],
+            response_types=["code"],
+            scope="openid profile email",
+        )
+        Secret("ory/argocd/client-id", argocd_client.client_id, "ArgoCD Hydra OAuth2 client ID")
+        Secret("ory/argocd/client-secret", argocd_client.client_secret, "ArgoCD Hydra OAuth2 client secret")
 
 if __name__ == "__main__":
     Millionaire()

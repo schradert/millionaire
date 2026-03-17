@@ -22,14 +22,44 @@ in {
           # repoServer.autoscaling.enabled = true;
           # repoServer.autoscaling.minReplicas = 2;
           # applicationSet.replicas = 2;
-          server.httproute.enabled = true;
-          server.httproute.parentRefs = lib.toList {
-            name = "internal";
-            namespace = "kube-system";
-            sectionName = "https";
+          dex.enabled = false;
+          server = {
+            httproute.enabled = true;
+            httproute.parentRefs = lib.toList {
+              name = "internal";
+              namespace = "kube-system";
+              sectionName = "https";
+            };
+            config."oidc.config" = builtins.toJSON {
+              name = "Ory";
+              issuer = "https://hydra.${domain}";
+              clientID = "$oidc.argocd.clientID";
+              clientSecret = "$oidc.argocd.clientSecret";
+              requestedScopes = ["openid" "profile" "email"];
+            };
           };
         };
       };
+      # OAuth2 client credentials for Ory Hydra OIDC
+      resources.externalSecrets.argocd-oidc.spec = {
+        secretStoreRef = {
+          name = "bitwarden";
+          kind = "ClusterSecretStore";
+        };
+        target.name = "argocd-secret";
+        target.creationPolicy = "Merge";
+        data = [
+          {
+            secretKey = "oidc.argocd.clientID";
+            remoteRef.key = "ory/argocd/client-id";
+          }
+          {
+            secretKey = "oidc.argocd.clientSecret";
+            remoteRef.key = "ory/argocd/client-secret";
+          }
+        ];
+      };
+
       resources.secrets.argocd-in-cluster = {
         metadata.labels."argocd.argoproj.io/secret-type" = "cluster";
         stringData = {

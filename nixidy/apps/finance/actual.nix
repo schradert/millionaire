@@ -1,5 +1,12 @@
 {config, ...}: {
-  nixidy = {charts, lib, ...}: {
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
+    inherit (config.canivete.meta) domain;
+    hostname = "actual.${domain}";
+  in {
     applications.actual = {
       namespace = "finance";
       volsync.pvcs.actual.title = "actual";
@@ -21,14 +28,34 @@
             accessMode = "ReadWriteOnce";
           };
           route.actual = {
-            hostnames = ["actual.${config.canivete.meta.domain}"];
+            hostnames = [hostname];
             parentRefs = lib.toList {
               name = "internal";
               namespace = "kube-system";
               sectionName = "https";
             };
+            rules = lib.toList {
+              backendRefs = lib.toList {
+                name = "oathkeeper-proxy";
+                namespace = "identity";
+                port = 4455;
+              };
+            };
           };
         };
+      };
+
+      # Oathkeeper access rule: authenticate via Kratos session
+      resources.rules.actual.spec = {
+        upstream.url = "http://actual.finance.svc.cluster.local:5006";
+        match = {
+          url = "https://${hostname}/<**>";
+          methods = ["GET" "POST" "PUT" "PATCH" "DELETE"];
+        };
+        authenticators = lib.toList {handler = "cookie_session";};
+        authorizer.handler = "allow";
+        mutators = lib.toList {handler = "header";};
+        errors = lib.toList {handler = "redirect";};
       };
     };
   };
