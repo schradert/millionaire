@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    secret.reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/instance: gatus
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: gatus
+  name: gatus
+  namespace: observability
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: gatus
+      app.kubernetes.io/name: gatus
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/config: ed17a21cd3dc29b057a81febe39a0c47cbd18c45923875b15e16d536dd76baa1
+      labels:
+        app.kubernetes.io/instance: gatus
+        app.kubernetes.io/name: gatus
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - envFrom:
+            - configMapRef:
+                name: gatus
+            - secretRef:
+                name: gatus
+          image: twinproduction/gatus:v5.34.0
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+          name: gatus
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          resources: {}
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+          volumeMounts:
+            - mountPath: /config
+              name: gatus-config
+              readOnly: true
+      securityContext:
+        fsGroup: 65534
+      serviceAccountName: gatus
+      volumes:
+        - configMap:
+            name: gatus
+          name: gatus-config
