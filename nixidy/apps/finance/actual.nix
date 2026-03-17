@@ -4,7 +4,7 @@
       namespace = "finance";
       volsync.pvcs.actual.title = "actual";
       helm.releases.actual = {
-        chart = charts.bjw-s-labs.app-template;
+        chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.actual.containers.actual = {
             image.repository = "actualbudget/actual-server";

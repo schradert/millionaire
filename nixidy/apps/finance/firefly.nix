@@ -16,7 +16,7 @@
       namespace = "finance";
       postgres.enable = true;
       helm.releases.firefly = {
-        chart = charts.bjw-s-labs.app-template;
+        chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.firefly = {
             annotations."reloader.stakater.com/auto" = "true";
@@ -79,7 +79,7 @@
         };
       };
       helm.releases.firefly-importer = {
-        chart = charts.bjw-s-labs.app-template;
+        chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.firefly-importer = {
             annotations."reloader.stakater.com/auto" = "true";

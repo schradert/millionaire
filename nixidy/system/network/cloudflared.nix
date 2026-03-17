@@ -42,7 +42,7 @@ in {
         targets = ["${tunnel_id}.cfargotunnel.com"];
       };
       helm.releases.cloudflared = {
-        chart = charts.bjw-s-labs.app-template;
+        chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.cloudflared = {
             strategy = "RollingUpdate";
