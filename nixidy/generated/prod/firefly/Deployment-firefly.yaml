@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 2965e9672fabe331d6bf2c908d9e93a23ecf7eb3534ac7813ce68bf3052fa7f9
+        checksum/configMaps: c11063dd9f322f92e83a6dfe00d6e40526a18f6d27c11d62cec24fadc7e65be0
       labels:
         app.kubernetes.io/controller: firefly
         app.kubernetes.io/instance: firefly
@@ -53,6 +53,7 @@ spec:
             - mountPath: /.env
               name: config
               readOnly: true
+              subPath: .env
             - mountPath: /secrets
               name: secrets
             - mountPath: /var/www/html/storage/upload

@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 180017d5236a81e4d7260dc360e58a1bf5c4046a687bd0c628aba2f9f0aefeb4
+        checksum/configMaps: 58ca5196a1df117aaeb540ebf4d69cfbbfef8d965f9e3d33bfcf5ad96ea37e3e
       labels:
         app.kubernetes.io/controller: firefly-importer
         app.kubernetes.io/instance: firefly-importer
@@ -58,6 +58,7 @@ spec:
             - mountPath: /.env
               name: config
               readOnly: true
+              subPath: .env
             - mountPath: /secrets
               name: secrets
       dnsPolicy: ClusterFirst
