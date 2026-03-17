@@ -47,8 +47,8 @@
           txtPrefix = "k8s.";
           logFormat = "json";
           domainFilters = [config.canivete.meta.domain];
-          # serviceMonitor.enabled = true;
-          # podAnnotations."reloader.stakater.com/auto" = "true";
+          serviceMonitor.enabled = true;
+          podAnnotations."reloader.stakater.com/auto" = "true";
         };
       };
     };
