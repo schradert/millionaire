@@ -1,5 +1,6 @@
 /pulumi/sdks/*/build/
 /pulumi/sdks/*/*.egg-info
+/nixidy/generated/**/*.tmp
 /secrets/*
 .devenv*
 .direnv/
