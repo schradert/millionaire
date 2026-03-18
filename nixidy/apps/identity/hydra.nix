@@ -8,7 +8,6 @@
       namespace = "identity";
       postgres.enable = true;
       postgres.database = "hydra";
-
       helm.releases.hydra = {
         chart = lib.helm.downloadHelmChart {
           chart = "hydra";
@@ -18,48 +17,33 @@
         };
         values = {
           secret.enabled = false;
-
-          hydra = {
-            automigration = {
-              enabled = true;
-              type = "initContainer";
+          hydra.automigration = {
+            enabled = true;
+            type = "initContainer";
+          };
+          hydra.config = {
+            dsn = "postgres://hydra:$(DB_PASSWORD)@hydra-rw.identity.svc.cluster.local:5432/hydra?sslmode=disable";
+            serve.public.cors.enabled = true;
+            serve.cookies = {
+              same_site_mode = "Lax";
+              inherit domain;
             };
-
-            config = {
-              dsn = "postgres://hydra:$(DB_PASSWORD)@hydra-rw.identity.svc.cluster.local:5432/hydra?sslmode=disable";
-
-              serve = {
-                public.cors.enabled = true;
-                cookies = {
-                  same_site_mode = "Lax";
-                  inherit domain;
-                };
-              };
-
-              urls = {
-                self = {
-                  issuer = "https://${hydraPublicHost}";
-                  public = "https://${hydraPublicHost}";
-                };
-                login = "https://${uiHost}/login";
-                consent = "https://${uiHost}/consent";
-                logout = "https://${uiHost}/logout";
-                error = "https://${uiHost}/error";
-                post_logout_redirect = "https://${uiHost}/login";
-              };
-
-              oidc.subject_identifiers = {
-                supported_types = ["public" "pairwise"];
-                pairwise.salt = "$(OIDC_SUBJECT_SALT)";
-              };
-
-              oauth2 = {
-                expose_internal_errors = false;
-                hashers.bcrypt.cost = 12;
-              };
-
-              secrets.system = ["$(SYSTEM_SECRET)"];
+            urls = {
+              self.issuer = "https://${hydraPublicHost}";
+              self.public = "https://${hydraPublicHost}";
+              login = "https://${uiHost}/login";
+              consent = "https://${uiHost}/consent";
+              logout = "https://${uiHost}/logout";
+              error = "https://${uiHost}/error";
+              post_logout_redirect = "https://${uiHost}/login";
             };
+            oidc.subject_identifiers = {
+              supported_types = ["public" "pairwise"];
+              pairwise.salt = "$(OIDC_SUBJECT_SALT)";
+            };
+            oauth2.expose_internal_errors = false;
+            oauth2.hashers.bcrypt.cost = 12;
+            secrets.system = ["$(SYSTEM_SECRET)"];
           };
 
           deployment.extraEnv = [
@@ -97,39 +81,41 @@
           ];
         };
       };
-
-      # Secrets
-      resources.externalSecrets.hydra.spec.data = [
-        {
-          secretKey = "system_secret";
-          remoteRef.key = "ory/hydra/system-secret";
-          sourceRef.storeRef = {
-            name = "bitwarden";
-            kind = "ClusterSecretStore";
-          };
-        }
-        {
-          secretKey = "oidc_salt";
-          remoteRef.key = "ory/hydra/oidc-subject-salt";
-          sourceRef.storeRef = {
-            name = "bitwarden";
-            kind = "ClusterSecretStore";
-          };
-        }
-        {
-          secretKey = "db_password";
-          remoteRef = {
-            key = "hydra-app";
-            property = "password";
-          };
-          sourceRef.storeRef = {
-            name = "kubernetes-identity";
-            kind = "ClusterSecretStore";
-          };
-        }
-      ];
-
-      # HTTPRoute for Hydra public API
+      resources.externalSecrets.hydra.spec = {
+        data = [
+          {
+            secretKey = "system_secret";
+            remoteRef.key = "ory/hydra/system-secret";
+            sourceRef.storeRef = {
+              name = "bitwarden";
+              kind = "ClusterSecretStore";
+            };
+          }
+          {
+            secretKey = "oidc_salt";
+            remoteRef.key = "ory/hydra/oidc-subject-salt";
+            sourceRef.storeRef = {
+              name = "bitwarden";
+              kind = "ClusterSecretStore";
+            };
+          }
+          {
+            secretKey = "db_password";
+            remoteRef.key = "hydra-app";
+            remoteRef.property = "password";
+            sourceRef.storeRef = {
+              name = "kubernetes-identity";
+              kind = "ClusterSecretStore";
+            };
+          }
+        ];
+        target.template.data = {
+          dsn = "postgres://hydra:{{ .db_password }}@hydra-rw.identity.svc.cluster.local:5432/hydra?sslmode=disable";
+          db_password = "{{ .db_password }}";
+          system_secret = "{{ .system_secret }}";
+          oidc_salt = "{{ .oidc_salt }}";
+        };
+      };
       resources.httpRoutes.hydra-public.spec = {
         hostnames = [hydraPublicHost];
         parentRefs = lib.toList {
