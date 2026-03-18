@@ -1,5 +1,9 @@
 {config, ...}: {
-  nixidy = {charts, lib, ...}: let
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     kratosPublicHost = "auth.${domain}";
     uiHost = "login.${domain}";
@@ -9,7 +13,6 @@
       namespace = "identity";
       postgres.enable = true;
       postgres.database = "kratos";
-
       helm.releases.kratos = {
         chart = lib.helm.downloadHelmChart {
           chart = "kratos";
@@ -19,16 +22,13 @@
         };
         values = {
           secret.enabled = false;
-
           kratos = {
             automigration = {
               enabled = true;
               type = "initContainer";
             };
-
             config = {
               dsn = "postgres://kratos:$(DB_PASSWORD)@kratos-rw.identity.svc.cluster.local:5432/kratos?sslmode=disable";
-
               serve = {
                 public = {
                   base_url = "https://${kratosPublicHost}";
@@ -43,10 +43,8 @@
                 };
                 admin.base_url = "http://kratos-admin.identity.svc.cluster.local:4434";
               };
-
               selfservice = {
                 default_browser_return_url = "https://${uiHost}";
-
                 methods = {
                   password.enabled = true;
                   totp = {
@@ -68,7 +66,6 @@
                   link.enabled = true;
                   code.enabled = true;
                 };
-
                 flows = {
                   login = {
                     ui_url = "https://${uiHost}/login";
@@ -98,7 +95,6 @@
                   logout.after.default_browser_return_url = "https://${uiHost}/login";
                 };
               };
-
               session = {
                 lifespan = "24h";
                 cookie = {
@@ -106,36 +102,38 @@
                   same_site = "Lax";
                 };
               };
-
               identity = {
                 default_schema_id = "default";
-                schemas = [{
-                  id = "default";
-                  url = "file:///etc/kratos/identity.schema.json";
-                }];
+                schemas = [
+                  {
+                    id = "default";
+                    url = "file:///etc/kratos/identity.schema.json";
+                  }
+                ];
               };
-
               # TODO configure SMTP for email verification/recovery
               courier.smtp.connection_uri = "smtp://localhost:1025/?disable_starttls=true";
-
               secrets = {
                 cookie = ["$(SECRETS_COOKIE)"];
                 cipher = ["$(SECRETS_CIPHER)"];
               };
             };
           };
-
           deployment = {
-            extraVolumes = [{
-              name = "identity-schema";
-              configMap.name = "kratos-identity-schema";
-            }];
-            extraVolumeMounts = [{
-              name = "identity-schema";
-              mountPath = "/etc/kratos/identity.schema.json";
-              subPath = "identity.schema.json";
-              readOnly = true;
-            }];
+            extraVolumes = [
+              {
+                name = "identity-schema";
+                configMap.name = "kratos-identity-schema";
+              }
+            ];
+            extraVolumeMounts = [
+              {
+                name = "identity-schema";
+                mountPath = "/etc/kratos/identity.schema.json";
+                subPath = "identity.schema.json";
+                readOnly = true;
+              }
+            ];
             extraEnv = [
               {
                 name = "DB_PASSWORD";
@@ -160,7 +158,6 @@
               }
             ];
           };
-
           job.extraEnv = [
             {
               name = "DB_PASSWORD";
@@ -281,8 +278,13 @@
         };
       };
 
-      # Secrets
       resources.externalSecrets = {
+        kratos.spec.target.template.data = {
+          dsn = "postgres://kratos:{{ .db_password }}@kratos-rw.identity.svc.cluster.local:5432/kratos?sslmode=disable";
+          db_password = "{{ .db_password }}";
+          cookie_secret = "{{ .cookie_secret }}";
+          cipher_secret = "{{ .cipher_secret }}";
+        };
         kratos.spec.data = [
           {
             secretKey = "cookie_secret";
@@ -331,8 +333,6 @@
           }
         ];
       };
-
-      # HTTPRoute for Kratos public API
       resources.httpRoutes.kratos-public.spec = {
         hostnames = [kratosPublicHost];
         parentRefs = lib.toList {
