@@ -238,6 +238,8 @@
         };
       };
 
+      resources.serviceAccounts.kratos.automountServiceAccountToken = lib.mkForce true;
+
       # Identity schema
       resources.configMaps.kratos-identity-schema.data."identity.schema.json" = builtins.toJSON {
         "$id" = "https://${domain}/schemas/default.json";
