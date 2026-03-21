@@ -18,8 +18,8 @@ spec:
     retentionPolicy: 30d
   bootstrap:
     initdb:
-      database: sure
-      owner: sure
+      database: sure_production
+      owner: sure_production
       postInitApplicationSQL: []
       postInitSQL: []
   imageName: ghcr.io/cloudnative-pg/postgresql:17
@@ -28,6 +28,9 @@ spec:
     enablePodMonitor: true
   postgresql:
     shared_preload_libraries: []
+  serviceAccountTemplate:
+    metadata:
+      name: sure-pg
   storage:
     size: 5Gi
     storageClass: ceph-block

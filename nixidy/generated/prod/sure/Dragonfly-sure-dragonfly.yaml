@@ -4,6 +4,9 @@ metadata:
   name: sure-dragonfly
   namespace: finance
 spec:
+  args:
+    - --proactor_threads
+    - "2"
   replicas: 1
   resources:
     limits:

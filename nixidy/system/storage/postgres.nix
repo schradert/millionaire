@@ -88,6 +88,7 @@ in {
               clusters.${name}.spec = {
                 inherit (db) instances;
                 imageName = "ghcr.io/cloudnative-pg/postgresql:${db.version}";
+                serviceAccountTemplate.metadata.name = "${name}-pg";
                 storage = {
                   inherit (db) storageClass;
                   size = db.storageSize;
