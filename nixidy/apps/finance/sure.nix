@@ -107,7 +107,7 @@
         replicas = 1;
         args = ["--proactor_threads" "2"];
         resources.requests.memory = "256Mi";
-        resources.limits.memory = "512Mi";
+        resources.limits.memory = "1Gi";
       };
 
       resources.externalSecrets.sure.spec.data = [

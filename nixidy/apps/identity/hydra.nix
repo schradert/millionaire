@@ -93,6 +93,8 @@
           ];
         };
       };
+      resources.serviceAccounts.hydra.automountServiceAccountToken = lib.mkForce true;
+
       resources.externalSecrets.hydra.spec = {
         data = [
           {

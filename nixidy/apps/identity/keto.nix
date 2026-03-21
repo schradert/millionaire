@@ -46,6 +46,9 @@
           };
         };
       };
+      resources.serviceAccounts.keto.automountServiceAccountToken = lib.mkForce true;
+      resources.serviceAccounts.keto-job.automountServiceAccountToken = lib.mkForce true;
+
       resources.externalSecrets.keto.spec = {
         data = lib.toList {
           secretKey = "db_password";
