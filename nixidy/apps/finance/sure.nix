@@ -27,6 +27,7 @@
     applications.sure = {
       namespace = "finance";
       postgres.enable = true;
+      postgres.database = "sure_production";
       volsync.pvcs.sure.title = "sure";
 
       helm.releases.sure = {
@@ -104,6 +105,7 @@
       # DragonflyDB instance for Redis (Sidekiq queue + caching)
       resources.dragonflies.sure-dragonfly.spec = {
         replicas = 1;
+        args = ["--proactor_threads" "2"];
         resources.requests.memory = "256Mi";
         resources.limits.memory = "512Mi";
       };

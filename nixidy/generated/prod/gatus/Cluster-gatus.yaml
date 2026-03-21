@@ -28,6 +28,9 @@ spec:
     enablePodMonitor: true
   postgresql:
     shared_preload_libraries: []
+  serviceAccountTemplate:
+    metadata:
+      name: gatus-pg
   storage:
     size: 5Gi
     storageClass: ceph-block
