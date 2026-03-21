@@ -30,10 +30,8 @@
           chartHash = "sha256-3szb/byf85oxDwB03yr3GDX5nIg7f17z6D2/6nnQQ2k=";
         };
         values = {
-          oathkeeper-maester = {
-            enabled = true;
-            maesterExtraResources = "";
-          };
+          maester.enabled = true;
+          oathkeeper.managedAccessRules = false;
 
           oathkeeper.config = {
             authenticators = {
@@ -113,7 +111,7 @@
               };
             };
 
-            access_rules.repositories = ["inline://"];
+            access_rules.repositories = ["file:///etc/rules/access-rules.json"];
           };
 
           deployment = {
@@ -146,6 +144,38 @@
       };
 
       # ReferenceGrant: allow HTTPRoutes in other namespaces to reference oathkeeper-proxy
+      resources.referenceGrants.allow-home.spec = {
+        from = [
+          {
+            group = "gateway.networking.k8s.io";
+            kind = "HTTPRoute";
+            namespace = "home";
+          }
+        ];
+        to = [
+          {
+            group = "";
+            kind = "Service";
+            name = "oathkeeper-proxy";
+          }
+        ];
+      };
+      resources.referenceGrants.allow-media.spec = {
+        from = [
+          {
+            group = "gateway.networking.k8s.io";
+            kind = "HTTPRoute";
+            namespace = "media";
+          }
+        ];
+        to = [
+          {
+            group = "";
+            kind = "Service";
+            name = "oathkeeper-proxy";
+          }
+        ];
+      };
       resources.referenceGrants.allow-finance.spec = {
         from = [
           {

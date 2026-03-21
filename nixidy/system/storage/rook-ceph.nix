@@ -21,8 +21,8 @@ in {
         values = lib.mkMerge [
           {
             csi.cephFSKernelMountOptions = "ms_mode=prefer-crc";
-            csi.enableCephfsDriver = false;
-            csi.enableCephfsSnapshotter = false;
+            csi.enableCephfsDriver = true;
+            csi.enableCephfsSnapshotter = true;
             csi.serviceMonitor.enabled = true;
             monitoring.enabled = true;
             enableDiscoveryDaemon = true;
@@ -123,13 +123,14 @@ in {
               }
             ];
           };
-          cephFileSystems = [];
           cephBlockPoolsVolumeSnapshotClass.enabled = true;
           monitoring.enabled = true;
           monitoring.createPrometheusRules = true;
         };
       };
       resources = {
+        # FIXME how to support only x2 replication?!
+        # cephBlockPools.ceph-blockpool.spec.replicated.size = lib.mkForce 2;
         storageClasses.ceph-bucket.parameters.region = lib.mkForce "us-west-004";
         storageClasses.ceph-block = {
           # TODO should I prevent this from being the default storageclass?
