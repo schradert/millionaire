@@ -29,6 +29,7 @@
               }
             ];
           };
+          deployment.automountServiceAccountToken = true;
           deployment.extraEnv = lib.toList {
             name = "DB_PASSWORD";
             valueFrom.secretKeyRef = {

@@ -19,8 +19,8 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/cm: 56763391bf0bee45183158aa3d9eb7a29c777170e2d6e18b16346d30ab3bc675
-        checksum/cmd-params: 614dda3b865b7bd41f62b1ba2c3cbb0530f81dd93cb1e9f5399a1006dc163250
+        checksum/cm: ebd6364321c1a138ce0a4364fadfe0bc35f0fa23c0c9ce80a5b7c1eca1b0793f
+        checksum/cmd-params: c6f6e98d50a3ee237631012019a542d3b5b29a697422f43edfccf2f65947fee0
       labels:
         app.kubernetes.io/component: repo-server
         app.kubernetes.io/instance: argod

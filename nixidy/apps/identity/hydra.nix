@@ -1,9 +1,20 @@
 {config, ...}: {
-  nixidy = {lib, ...}: let
+  nixidy = {lib, pkgs, ...}: let
     inherit (config.canivete.meta) domain;
     hydraPublicHost = "hydra.${domain}";
     uiHost = "login.${domain}";
   in {
+    canivete.crds.hydra-maester = {
+      application = "hydra";
+      install = false; # CRD is installed by the Hydra Helm chart (hydra-maester sub-chart)
+      prefix = "config/crd/bases";
+      src = pkgs.fetchFromGitHub {
+        owner = "ory";
+        repo = "hydra-maester";
+        rev = "v0.0.41";
+        hash = "sha256-MN3i6KXo8D5LiwfIf9o8RWM+MXfk4XkNHVSAf99LIJ0=";
+      };
+    };
     applications.hydra = {
       namespace = "identity";
       postgres.enable = true;
@@ -46,6 +57,7 @@
             secrets.system = ["$(SYSTEM_SECRET)"];
           };
 
+          deployment.automountServiceAccountToken = true;
           deployment.extraEnv = [
             {
               name = "DB_PASSWORD";
@@ -113,6 +125,8 @@
           dsn = "postgres://hydra:{{ .db_password }}@hydra-rw.identity.svc.cluster.local:5432/hydra?sslmode=disable";
           db_password = "{{ .db_password }}";
           system_secret = "{{ .system_secret }}";
+          secretsSystem = "{{ .system_secret }}";
+          secretsCookie = "{{ .system_secret }}";
           oidc_salt = "{{ .oidc_salt }}";
         };
       };

@@ -7,6 +7,17 @@ in {
     lib,
     ...
   }: {
+    # OAuth2Client CRD — lands in identity namespace via hydra app, co-located here with consumer
+    applications.hydra.resources.oAuth2Clients.argocd.spec = {
+      secretName = "argocd-hydra-client";
+      clientName = "ArgoCD";
+      grantTypes = ["authorization_code" "refresh_token"];
+      redirectUris = ["https://argocd.${domain}/auth/callback"];
+      responseTypes = ["code"];
+      scope = "openid profile email";
+      tokenEndpointAuthMethod = "client_secret_post";
+    };
+
     applications.argo = {
       canivete.bootstrap.enable = true;
       namespace = "cicd";
@@ -43,7 +54,7 @@ in {
       # OAuth2 client credentials for Ory Hydra OIDC
       resources.externalSecrets.argocd-oidc.spec = {
         secretStoreRef = {
-          name = "bitwarden";
+          name = "kubernetes-identity";
           kind = "ClusterSecretStore";
         };
         target.name = "argocd-secret";
@@ -51,11 +62,13 @@ in {
         data = [
           {
             secretKey = "oidc.argocd.clientID";
-            remoteRef.key = "ory/argocd/client-id";
+            remoteRef.key = "argocd-hydra-client";
+            remoteRef.property = "CLIENT_ID";
           }
           {
             secretKey = "oidc.argocd.clientSecret";
-            remoteRef.key = "ory/argocd/client-secret";
+            remoteRef.key = "argocd-hydra-client";
+            remoteRef.property = "CLIENT_SECRET";
           }
         ];
       };

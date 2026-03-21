@@ -67,7 +67,7 @@
       nixpkgs.follows = "nixpkgs";
       rust-overlay.follows = "rust-overlay";
     };
-    opencode.url = "github:sst/opencode";
+    opencode.url = "github:anomalyco/opencode";
     opencode.inputs.nixpkgs.follows = "nixpkgs";
     wezterm.url = "github:wez/wezterm/main?dir=nix";
     wezterm.inputs = {

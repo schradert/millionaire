@@ -3,7 +3,7 @@ data:
   config.yaml: |
     access_rules:
       repositories:
-      - inline://
+      - file:///etc/rules/access-rules.json
     authenticators:
       anonymous:
         enabled: true
