@@ -1,0 +1,17 @@
+apiVersion: hydra.ory.sh/v1alpha1
+kind: OAuth2Client
+metadata:
+  name: argocd
+  namespace: identity
+spec:
+  clientName: ArgoCD
+  grantTypes:
+    - authorization_code
+    - refresh_token
+  redirectUris:
+    - https://argocd.trdos.me/auth/callback
+  responseTypes:
+    - code
+  scope: openid profile email
+  secretName: argocd-hydra-client
+  tokenEndpointAuthMethod: client_secret_post

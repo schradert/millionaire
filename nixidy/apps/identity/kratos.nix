@@ -120,6 +120,7 @@
             };
           };
           deployment = {
+            automountServiceAccountToken = true;
             extraVolumes = [
               {
                 name = "identity-schema";
@@ -284,6 +285,7 @@
           db_password = "{{ .db_password }}";
           cookie_secret = "{{ .cookie_secret }}";
           cipher_secret = "{{ .cipher_secret }}";
+          smtpConnectionURI = "smtp://localhost:1025/?disable_starttls=true";
         };
         kratos.spec.data = [
           {

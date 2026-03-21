@@ -28,7 +28,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: hydra
     spec:
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
       containers:
         - args:
             - serve

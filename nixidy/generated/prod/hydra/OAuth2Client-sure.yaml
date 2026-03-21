@@ -1,0 +1,17 @@
+apiVersion: hydra.ory.sh/v1alpha1
+kind: OAuth2Client
+metadata:
+  name: sure
+  namespace: identity
+spec:
+  clientName: Sure Finance
+  grantTypes:
+    - authorization_code
+    - refresh_token
+  redirectUris:
+    - https://sure.trdos.me/auth/oidc/callback
+  responseTypes:
+    - code
+  scope: openid profile email
+  secretName: sure-hydra-client
+  tokenEndpointAuthMethod: client_secret_post

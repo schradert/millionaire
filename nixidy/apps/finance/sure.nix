@@ -13,6 +13,17 @@
       {secretRef.name = "sure";}
     ];
   in {
+    # OAuth2Client CRD — lands in identity namespace via hydra app, co-located here with consumer
+    applications.hydra.resources.oAuth2Clients.sure.spec = {
+      secretName = "sure-hydra-client";
+      clientName = "Sure Finance";
+      grantTypes = ["authorization_code" "refresh_token"];
+      redirectUris = ["https://sure.${domain}/auth/oidc/callback"];
+      responseTypes = ["code"];
+      scope = "openid profile email";
+      tokenEndpointAuthMethod = "client_secret_post";
+    };
+
     applications.sure = {
       namespace = "finance";
       postgres.enable = true;
@@ -113,14 +124,16 @@
         }
         {
           secretKey = "OIDC_CLIENT_ID";
-          remoteRef.key = "ory/sure/client-id";
-          sourceRef.storeRef.name = "bitwarden";
+          remoteRef.key = "sure-hydra-client";
+          remoteRef.property = "CLIENT_ID";
+          sourceRef.storeRef.name = "kubernetes-identity";
           sourceRef.storeRef.kind = "ClusterSecretStore";
         }
         {
           secretKey = "OIDC_CLIENT_SECRET";
-          remoteRef.key = "ory/sure/client-secret";
-          sourceRef.storeRef.name = "bitwarden";
+          remoteRef.key = "sure-hydra-client";
+          remoteRef.property = "CLIENT_SECRET";
+          sourceRef.storeRef.name = "kubernetes-identity";
           sourceRef.storeRef.kind = "ClusterSecretStore";
         }
       ];

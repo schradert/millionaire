@@ -104,35 +104,8 @@ class Millionaire:
         jwks = millionaire.OryJwks("ory_oathkeeper_jwks")
         Secret("ory/oathkeeper/mutator-id-token-jwks", jwks.jwks_json, "Oathkeeper JWKS for ID token signing")
 
-        # Hydra OAuth2 clients (requires running Hydra — set ory:hydra-admin-url after deploy)
-        hydra_admin_url = pulumi.Config("ory").get("hydra-admin-url") or ""
-
-        argocd_client = millionaire.HydraOAuth2Client(
-            "ory_argocd_client",
-            admin_url=hydra_admin_url,
-            client_name="ArgoCD",
-            grant_types=["authorization_code", "refresh_token"],
-            redirect_uris=[f"https://argocd.{domain}/auth/callback"],
-            response_types=["code"],
-            scope="openid profile email",
-        )
-        Secret("ory/argocd/client-id", argocd_client.client_id, "ArgoCD Hydra OAuth2 client ID")
-        Secret("ory/argocd/client-secret", argocd_client.client_secret, "ArgoCD Hydra OAuth2 client secret")
-
         sure_secret_key_base = rand.RandomPassword("sure_secret_key_base", length=128, special=False)
         Secret("sure/secret_key_base", sure_secret_key_base.result, "Sure Finance Rails SECRET_KEY_BASE")
-
-        sure_client = millionaire.HydraOAuth2Client(
-            "ory_sure_client",
-            admin_url=hydra_admin_url,
-            client_name="Sure Finance",
-            grant_types=["authorization_code", "refresh_token"],
-            redirect_uris=[f"https://sure.{domain}/auth/oidc/callback"],
-            response_types=["code"],
-            scope="openid profile email",
-        )
-        Secret("ory/sure/client-id", sure_client.client_id, "Sure Finance Hydra OAuth2 client ID")
-        Secret("ory/sure/client-secret", sure_client.client_secret, "Sure Finance Hydra OAuth2 client secret")
 
 if __name__ == "__main__":
     Millionaire()
