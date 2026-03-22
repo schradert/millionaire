@@ -37,6 +37,9 @@ spec:
               path: /health
               port: http
           name: firefly
+          ports:
+            - containerPort: 8080
+              name: http
           readinessProbe:
             httpGet:
               path: /health
