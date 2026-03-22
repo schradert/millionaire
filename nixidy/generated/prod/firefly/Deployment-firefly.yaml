@@ -53,7 +53,7 @@ spec:
               port: http
             periodSeconds: 10
           volumeMounts:
-            - mountPath: /.env
+            - mountPath: /var/www/html/.env
               name: config
               readOnly: true
               subPath: .env
