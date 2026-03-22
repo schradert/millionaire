@@ -22,8 +22,6 @@ spec:
     type: Recreate
   template:
     metadata:
-      annotations:
-        checksum/configMaps: 94dc9a4423c887c052b31cd8f25708b6123e1a14f6defe2f22a18ea6c4bec8f5
       labels:
         app.kubernetes.io/controller: firefly
         app.kubernetes.io/instance: firefly
@@ -34,8 +32,24 @@ spec:
         - env:
             - name: APP_KEY_FILE
               value: /secrets/app_key.txt
+            - name: AUTHENTICATION_GUARD
+              value: remote_user_guard
+            - name: AUTHENTICATION_GUARD_EMAIL
+              value: HTTP_X_AUTH_REQUEST_EMAIL
+            - name: AUTHENTICATION_GUARD_HEADER
+              value: HTTP_X_AUTH_REQUEST_PREFERRED_USERNAME
+            - name: DB_CONNECTION
+              value: pgsql
+            - name: DB_DATABASE
+              value: firefly
+            - name: DB_HOST
+              value: firefly-rw
             - name: DB_PASSWORD_FILE
               value: /secrets/db_password.txt
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USERNAME
+              value: firefly
           image: fireflyiii/core:version-6.5.4@sha256:6ae1b92eb73b4ae8a8e7e038440b93fba46267e05b5b903c62316b8cb03779af
           livenessProbe:
             httpGet:
@@ -58,10 +72,6 @@ spec:
               port: http
             periodSeconds: 10
           volumeMounts:
-            - mountPath: /var/www/html/.env
-              name: config
-              readOnly: true
-              subPath: .env
             - mountPath: /secrets
               name: secrets
             - mountPath: /var/www/html/storage/upload
@@ -73,9 +83,6 @@ spec:
       hostPID: false
       serviceAccountName: default
       volumes:
-        - configMap:
-            name: firefly
-          name: config
         - name: secrets
           secret:
             secretName: firefly
