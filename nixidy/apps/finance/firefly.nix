@@ -68,7 +68,7 @@
               type = "configMap";
               name = "firefly";
               globalMounts = lib.toList {
-                path = "/.env";
+                path = "/var/www/html/.env";
                 subPath = ".env";
                 readOnly = true;
               };
