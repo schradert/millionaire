@@ -30,7 +30,15 @@
               image.digest = "sha256:6ae1b92eb73b4ae8a8e7e038440b93fba46267e05b5b903c62316b8cb03779af";
               ports = lib.toList { name = "http"; containerPort = 8080; };
               env = {
+                AUTHENTICATION_GUARD = "remote_user_guard";
+                AUTHENTICATION_GUARD_HEADER = "HTTP_X_AUTH_REQUEST_PREFERRED_USERNAME";
+                AUTHENTICATION_GUARD_EMAIL = "HTTP_X_AUTH_REQUEST_EMAIL";
                 APP_KEY_FILE = "/secrets/app_key.txt";
+                DB_CONNECTION = "pgsql";
+                DB_HOST = "firefly-rw";
+                DB_PORT = "5432";
+                DB_DATABASE = "firefly";
+                DB_USERNAME = "firefly";
                 DB_PASSWORD_FILE = "/secrets/db_password.txt";
               };
               probes.liveness = probe {};
@@ -45,16 +53,6 @@
             };
           };
           service.firefly.ports.http.port = 8080;
-          configMaps.firefly.data.".env" = lib.concatStringsSep "\n" [
-            "AUTHENTICATION_GUARD=remote_user_guard"
-            "AUTHENTICATION_GUARD_HEADER=HTTP_X_AUTH_REQUEST_PREFERRED_USERNAME"
-            "AUTHENTICATION_GUARD_EMAIL=HTTP_X_AUTH_REQUEST_EMAIL"
-            "DB_CONNECTION=pgsql"
-            "DB_HOST=firefly-rw"
-            "DB_PORT=5432"
-            "DB_DATABASE=firefly"
-            "DB_USERNAME=firefly"
-          ];
           persistence = {
             secrets = {
               type = "secret";
@@ -65,15 +63,6 @@
               accessMode = "ReadWriteOnce";
               size = "1Gi";
               globalMounts = [{path = "/var/www/html/storage/upload";}];
-            };
-            config = {
-              type = "configMap";
-              name = "firefly";
-              globalMounts = lib.toList {
-                path = "/var/www/html/.env";
-                subPath = ".env";
-                readOnly = true;
-              };
             };
           };
           route.firefly = {
