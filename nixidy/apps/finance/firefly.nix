@@ -153,7 +153,7 @@
         firefly.spec.data = [
           {
             secretKey = "app_key.txt";
-            remoteRef.key = "firefly/admin/password";
+            remoteRef.key = "firefly/app_key";
             sourceRef.storeRef.name = "bitwarden";
             sourceRef.storeRef.kind = "ClusterSecretStore";
           }
