@@ -40,6 +40,7 @@
               image.tag = "stable";
               # TODO: pin digest for reproducibility
               inherit envFrom;
+              ports = lib.toList { name = "http"; containerPort = 3000; };
               probes.liveness = probe {};
               probes.readiness = probe {
                 spec.initialDelaySeconds = 15;
