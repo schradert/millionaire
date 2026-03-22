@@ -67,7 +67,7 @@ in {
         clusterIssuers.letsencrypt-staging = mkClusterIssuer "letsencrypt-staging" "https://acme-staging-v02.api.letsencrypt.org/directory";
         certificates.${domainName}.spec = {
           secretName = "${domainName}-tls";
-          issuerRef.name = "letsencrypt-staging";
+          issuerRef.name = "letsencrypt-production";
           issuerRef.kind = "ClusterIssuer";
           commonName = domain;
           dnsNames = [domain "*.${domain}"];
