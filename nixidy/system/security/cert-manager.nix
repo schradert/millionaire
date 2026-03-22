@@ -72,6 +72,18 @@ in {
           commonName = domain;
           dnsNames = [domain "*.${domain}"];
         };
+        referenceGrants.allow-gateway-tls = {
+          spec.from = lib.toList {
+            group = "gateway.networking.k8s.io";
+            kind = "Gateway";
+            namespace = "kube-system";
+          };
+          spec.to = lib.toList {
+            group = "";
+            kind = "Secret";
+            name = "${domainName}-tls";
+          };
+        };
       };
     };
   };
