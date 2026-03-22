@@ -29,6 +29,10 @@
               image.tag = "version-6.5.4";
               image.digest = "sha256:6ae1b92eb73b4ae8a8e7e038440b93fba46267e05b5b903c62316b8cb03779af";
               ports = lib.toList { name = "http"; containerPort = 8080; };
+              env = {
+                APP_KEY_FILE = "/secrets/app_key.txt";
+                DB_PASSWORD_FILE = "/secrets/db_password.txt";
+              };
               probes.liveness = probe {};
               probes.readiness = probe {
                 spec.initialDelaySeconds = 15;
@@ -45,13 +49,11 @@
             "AUTHENTICATION_GUARD=remote_user_guard"
             "AUTHENTICATION_GUARD_HEADER=HTTP_X_AUTH_REQUEST_PREFERRED_USERNAME"
             "AUTHENTICATION_GUARD_EMAIL=HTTP_X_AUTH_REQUEST_EMAIL"
-            "APP_KEY_FILE=/secrets/app_key.txt"
             "DB_CONNECTION=pgsql"
             "DB_HOST=firefly-rw"
             "DB_PORT=5432"
             "DB_DATABASE=firefly"
             "DB_USERNAME=firefly"
-            "DB_PASSWORD_FILE=/secrets/db_password.txt"
           ];
           persistence = {
             secrets = {

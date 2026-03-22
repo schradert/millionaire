@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: c11063dd9f322f92e83a6dfe00d6e40526a18f6d27c11d62cec24fadc7e65be0
+        checksum/configMaps: 94dc9a4423c887c052b31cd8f25708b6123e1a14f6defe2f22a18ea6c4bec8f5
       labels:
         app.kubernetes.io/controller: firefly
         app.kubernetes.io/instance: firefly
@@ -31,7 +31,12 @@ spec:
     spec:
       automountServiceAccountToken: true
       containers:
-        - image: fireflyiii/core:version-6.5.4@sha256:6ae1b92eb73b4ae8a8e7e038440b93fba46267e05b5b903c62316b8cb03779af
+        - env:
+            - name: APP_KEY_FILE
+              value: /secrets/app_key.txt
+            - name: DB_PASSWORD_FILE
+              value: /secrets/db_password.txt
+          image: fireflyiii/core:version-6.5.4@sha256:6ae1b92eb73b4ae8a8e7e038440b93fba46267e05b5b903c62316b8cb03779af
           livenessProbe:
             httpGet:
               path: /health
