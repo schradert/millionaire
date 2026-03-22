@@ -67,8 +67,8 @@ class Millionaire:
         restic_password = rand.RandomPassword("restic_password", length=24, special=False)
         Secret("volsync/restic/password", restic_password.result, "VolSync Restic password")
 
-        firefly_admin_password = rand.RandomPassword("firefly_admin_password", length=24, special=False)
-        Secret("firefly/admin/password", firefly_admin_password.result, "Firefly-III admin password")
+        firefly_app_key = rand.RandomBytes("firefly_app_key", length=32)
+        Secret("firefly/app_key", firefly_app_key.base64.apply(lambda b: f"base64:{b}"), "Firefly-III Laravel APP_KEY")
 
         grafana_admin_password = rand.RandomPassword("grafana_admin_password", length=21, special=False)
         Secret("grafana", grafana_admin_password.result, "Grafana admin password")
