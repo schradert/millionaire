@@ -19,7 +19,7 @@ spec:
   bootstrap:
     initdb:
       database: sure_production
-      owner: sure_production
+      owner: sure
       postInitApplicationSQL: []
       postInitSQL: []
   imageName: ghcr.io/cloudnative-pg/postgresql:17

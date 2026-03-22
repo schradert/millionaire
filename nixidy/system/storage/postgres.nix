@@ -52,6 +52,7 @@ in {
           storageClass = can.str "Storage class name" {default = "ceph-block";};
           version = can.str "PostgreSQL major version" {default = "17";};
           database = can.str "Database name" {default = name;};
+          owner = can.str "Database owner" {default = name;};
           extensions = can.list.str "Extensions to CREATE EXTENSION" {default = [];};
           sharedPreloadLibraries = can.list.str "shared_preload_libraries" {default = [];};
           initSQL = can.list.str "Post-init SQL statements (superuser)" {default = [];};
@@ -95,7 +96,7 @@ in {
                 };
                 bootstrap.initdb = {
                   database = db.database;
-                  owner = db.database;
+                  owner = db.owner;
                   postInitSQL =
                     (map (ext: "CREATE EXTENSION IF NOT EXISTS ${ext};") db.extensions)
                     ++ db.initSQL;
