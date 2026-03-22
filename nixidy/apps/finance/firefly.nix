@@ -28,6 +28,7 @@
               image.repository = "fireflyiii/core";
               image.tag = "version-6.5.4";
               image.digest = "sha256:6ae1b92eb73b4ae8a8e7e038440b93fba46267e05b5b903c62316b8cb03779af";
+              ports = lib.toList { name = "http"; containerPort = 8080; };
               probes.liveness = probe {};
               probes.readiness = probe {
                 spec.initialDelaySeconds = 15;
