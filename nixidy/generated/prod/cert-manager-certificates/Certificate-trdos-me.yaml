@@ -10,5 +10,5 @@ spec:
     - '*.trdos.me'
   issuerRef:
     kind: ClusterIssuer
-    name: letsencrypt-staging
+    name: letsencrypt-production
   secretName: trdos-me-tls
