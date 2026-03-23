@@ -104,6 +104,11 @@ class Millionaire:
         jwks = millionaire.OryJwks("ory_oathkeeper_jwks")
         Secret("ory/oathkeeper/mutator-id-token-jwks", jwks.jwks_json, "Oathkeeper JWKS for ID token signing")
 
+        # --- AdGuard Home ---
+        adguard_admin_password = rand.RandomPassword("adguard_admin_password", length=24, special=False)
+        Secret("adguard/admin/password", adguard_admin_password.result, "AdGuard Home admin password (plaintext for external-dns webhook)")
+        Secret("adguard/admin/password-hash", adguard_admin_password.bcrypt_hash, "AdGuard Home admin password (bcrypt hash for config)")
+
         sure_secret_key_base = rand.RandomPassword("sure_secret_key_base", length=128, special=False)
         Secret("sure/secret_key_base", sure_secret_key_base.result, "Sure Finance Rails SECRET_KEY_BASE")
 

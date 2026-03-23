@@ -1,0 +1,17 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: adguard
+  namespace: kube-system
+spec:
+  hostnames:
+    - adguard.trdos.me
+  parentRefs:
+    - name: internal
+      namespace: kube-system
+      sectionName: https
+  rules:
+    - backendRefs:
+        - name: oathkeeper-proxy
+          namespace: identity
+          port: 4455
