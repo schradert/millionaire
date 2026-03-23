@@ -24,6 +24,7 @@
       tokenEndpointAuthMethod = "client_secret_post";
     };
 
+    gatus.endpoints.sure = { url = "https://${hostname}"; group = "internal"; };
     applications.sure = {
       namespace = "finance";
       postgres.enable = true;
@@ -92,13 +93,19 @@
             advancedMounts.sure.sure = [{path = "/rails/storage";}];
           };
 
-          route.sure = {
-            hostnames = [hostname];
-            parentRefs = lib.toList {
-              name = "internal";
-              namespace = "kube-system";
-              sectionName = "https";
-            };
+        };
+      };
+      resources.httpRoutes.sure.spec = {
+        hostnames = [hostname];
+        parentRefs = lib.toList {
+          name = "internal";
+          namespace = "kube-system";
+          sectionName = "https";
+        };
+        rules = lib.toList {
+          backendRefs = lib.toList {
+            name = "sure";
+            port = 3000;
           };
         };
       };

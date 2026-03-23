@@ -3,6 +3,7 @@
     inherit (config.canivete.meta) domain;
     hostname = "alertmanager.${domain}";
   in {
+    gatus.endpoints.alertmanager = { url = "https://${hostname}"; group = "internal"; };
     applications.alertmanager = {
       namespace = "observability";
       helm.releases.alertmanager = {

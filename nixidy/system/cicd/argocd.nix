@@ -18,6 +18,7 @@ in {
       tokenEndpointAuthMethod = "client_secret_post";
     };
 
+    gatus.endpoints.argo = { url = "https://argocd.${domain}"; group = "internal"; };
     applications.argo = {
       canivete.bootstrap.enable = true;
       namespace = "cicd";
@@ -35,12 +36,6 @@ in {
           # applicationSet.replicas = 2;
           dex.enabled = false;
           server = {
-            httproute.enabled = true;
-            httproute.parentRefs = lib.toList {
-              name = "internal";
-              namespace = "kube-system";
-              sectionName = "https";
-            };
             config."oidc.config" = builtins.toJSON {
               name = "Ory";
               issuer = "https://hydra.${domain}";
@@ -48,6 +43,20 @@ in {
               clientSecret = "$oidc.argocd.clientSecret";
               requestedScopes = ["openid" "profile" "email"];
             };
+          };
+        };
+      };
+      resources.httpRoutes.argo.spec = {
+        hostnames = ["argocd.${domain}"];
+        parentRefs = lib.toList {
+          name = "internal";
+          namespace = "kube-system";
+          sectionName = "https";
+        };
+        rules = lib.toList {
+          backendRefs = lib.toList {
+            name = "argod-argocd-server";
+            port = 80;
           };
         };
       };

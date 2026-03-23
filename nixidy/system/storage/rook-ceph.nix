@@ -14,6 +14,7 @@ in {
     lib,
     ...
   }: {
+    gatus.endpoints.rook-ceph = { url = "https://${subdomain}"; group = "internal"; };
     applications.rook-ceph = {
       namespace = "storage";
       helm.releases.rook-ceph-operator = {
