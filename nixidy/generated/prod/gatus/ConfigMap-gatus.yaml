@@ -17,6 +17,12 @@ data:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
+      name: adguard
+      url: https://adguard.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
       name: alertmanager
       url: https://alertmanager.trdos.me
     - conditions:

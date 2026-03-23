@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    lbipam.cilium.io/ips: 192.168.50.242
+  labels:
+    app.kubernetes.io/instance: adguard
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: adguard
+    app.kubernetes.io/service: adguard-dns
+  name: adguard-dns
+  namespace: kube-system
+spec:
+  ports:
+    - name: dns-tcp
+      port: 53
+      protocol: TCP
+      targetPort: 53
+    - name: dns-udp
+      port: 53
+      protocol: UDP
+      targetPort: 53
+  selector:
+    app.kubernetes.io/controller: adguard
+    app.kubernetes.io/instance: adguard
+    app.kubernetes.io/name: adguard
+  type: LoadBalancer

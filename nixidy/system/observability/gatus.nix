@@ -49,9 +49,11 @@ in {
               ui.header = "Status";
               connectivity.checker.target = "1.1.1.1:53";
               connectivity.checker.interval = "1m";
-              endpoints = map (ep: ep // lib.optionalAttrs (ep.group == "external") {
-                client.dns-resolver = "tcp://1.1.1.1:53";
-              }) (builtins.attrValues config.gatus.endpoints);
+              endpoints = map (ep:
+                ep // lib.optionalAttrs (ep.group == "external") {
+                  client.dns-resolver = "tcp://1.1.1.1:53";
+                }
+              ) (builtins.attrValues config.gatus.endpoints);
             };
           };
         };

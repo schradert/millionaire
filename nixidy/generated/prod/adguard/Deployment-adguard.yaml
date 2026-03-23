@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: adguard
+    app.kubernetes.io/instance: adguard
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: adguard
+  name: adguard
+  namespace: kube-system
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: adguard
+      app.kubernetes.io/instance: adguard
+      app.kubernetes.io/name: adguard
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: adguard
+        app.kubernetes.io/instance: adguard
+        app.kubernetes.io/name: adguard
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - image: adguard/adguardhome:v0.107.56
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          name: adguard
+          ports:
+            - containerPort: 3000
+              name: http
+            - containerPort: 53
+              name: dns-tcp
+              protocol: TCP
+            - containerPort: 53
+              name: dns-udp
+              protocol: UDP
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          startupProbe:
+            failureThreshold: 30
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+          volumeMounts:
+            - mountPath: /opt/adguardhome/conf
+              name: data
+              subPath: conf
+            - mountPath: /opt/adguardhome/work
+              name: data
+              subPath: work
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      initContainers:
+        - command:
+            - sh
+            - -c
+            - |
+              if [ ! -f /opt/adguardhome/conf/AdGuardHome.yaml ]; then
+                cp /tmp/AdGuardHome.yaml /opt/adguardhome/conf/AdGuardHome.yaml
+              fi
+          image: busybox:1.37
+          name: copy-config
+          volumeMounts:
+            - mountPath: /tmp/AdGuardHome.yaml
+              name: config
+              readOnly: true
+              subPath: AdGuardHome.yaml
+            - mountPath: /opt/adguardhome/conf
+              name: data
+              subPath: conf
+      serviceAccountName: default
+      volumes:
+        - name: config
+          secret:
+            secretName: adguard-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: adguard
