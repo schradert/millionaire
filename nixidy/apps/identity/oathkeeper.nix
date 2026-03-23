@@ -176,6 +176,22 @@
           }
         ];
       };
+      resources.referenceGrants.allow-kube-system.spec = {
+        from = [
+          {
+            group = "gateway.networking.k8s.io";
+            kind = "HTTPRoute";
+            namespace = "kube-system";
+          }
+        ];
+        to = [
+          {
+            group = "";
+            kind = "Service";
+            name = "oathkeeper-proxy";
+          }
+        ];
+      };
       resources.referenceGrants.allow-finance.spec = {
         from = [
           {
