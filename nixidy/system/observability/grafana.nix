@@ -7,6 +7,7 @@
     inherit (config.canivete.meta) domain;
     hostname = "grafana.${domain}";
   in {
+    gatus.endpoints.grafana = { url = "https://${hostname}"; group = "internal"; };
     applications.grafana = {
       namespace = "observability";
       volsync.pvcs.grafana = {
@@ -31,18 +32,23 @@
             datasources.enabled = true;
             datasources.searchNamespace = "ALL";
           };
-          route.main = {
-            enabled = true;
-            hostnames = [hostname];
-            parentRefs = lib.toList {
-              name = "internal";
-              namespace = "kube-system";
-              sectionName = "https";
-            };
-          };
         };
       };
       resources = {
+        httpRoutes.grafana.spec = {
+          hostnames = [hostname];
+          parentRefs = lib.toList {
+            name = "internal";
+            namespace = "kube-system";
+            sectionName = "https";
+          };
+          rules = lib.toList {
+            backendRefs = lib.toList {
+              name = "grafana";
+              port = 80;
+            };
+          };
+        };
         configMaps.grafana.data = {
           GF_ANALYTICS_CHECK_FOR_UPDATES = "false";
           GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES = "false";

@@ -16,6 +16,7 @@
       spec.httpGet.port = "http";
     };
   in {
+    gatus.endpoints.firefly = { url = "https://${hostname}"; group = "internal"; };
     applications.firefly = {
       namespace = "finance";
       postgres.enable = true;
@@ -65,21 +66,6 @@
               globalMounts = [{path = "/var/www/html/storage/upload";}];
             };
           };
-          route.firefly = {
-            hostnames = [hostname];
-            parentRefs = lib.toList {
-              name = "internal";
-              namespace = "kube-system";
-              sectionName = "https";
-            };
-            rules = lib.toList {
-              backendRefs = lib.toList {
-                name = "oathkeeper-proxy";
-                namespace = "identity";
-                port = 4455;
-              };
-            };
-          };
         };
       };
       helm.releases.firefly-importer = {
@@ -117,14 +103,6 @@
               };
             };
           };
-          route.firefly-importer = {
-            hostnames = ["firefly-importer-${config.canivete.meta.people.me}.${domain}"];
-            parentRefs = lib.toList {
-              name = "internal";
-              namespace = "kube-system";
-              sectionName = "https";
-            };
-          };
         };
       };
       # Oathkeeper access rule: authenticate via Kratos session, inject auth headers
@@ -140,6 +118,35 @@
         errors = lib.toList {handler = "redirect";};
       };
 
+      resources.httpRoutes.firefly.spec = {
+        hostnames = [hostname];
+        parentRefs = lib.toList {
+          name = "internal";
+          namespace = "kube-system";
+          sectionName = "https";
+        };
+        rules = lib.toList {
+          backendRefs = lib.toList {
+            name = "oathkeeper-proxy";
+            namespace = "identity";
+            port = 4455;
+          };
+        };
+      };
+      resources.httpRoutes.firefly-importer.spec = {
+        hostnames = ["firefly-importer-${config.canivete.meta.people.me}.${domain}"];
+        parentRefs = lib.toList {
+          name = "internal";
+          namespace = "kube-system";
+          sectionName = "https";
+        };
+        rules = lib.toList {
+          backendRefs = lib.toList {
+            name = "firefly-importer";
+            port = 8080;
+          };
+        };
+      };
       resources.externalSecrets = {
         firefly.spec.data = [
           {

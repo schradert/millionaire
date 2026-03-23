@@ -7,6 +7,30 @@ data:
         target: 1.1.1.1:53
     debug: false
     endpoints:
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: actual
+      url: https://actual.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: alertmanager
+      url: https://alertmanager.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: argo
+      url: https://argocd.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: firefly
+      url: https://firefly.trdos.me
     - client:
         dns-resolver: tcp://1.1.1.1:53
       conditions:
@@ -15,6 +39,48 @@ data:
       interval: 1m
       name: gatus
       url: https://gatus.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: grafana
+      url: https://grafana.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: hydra
+      url: https://hydra.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: kratos
+      url: https://auth.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: mealie
+      url: https://mealie.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: prometheus
+      url: https://prometheus.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: rook-ceph
+      url: https://rook.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: sure
+      url: https://sure.trdos.me
     metrics: true
     storage:
       caching: true

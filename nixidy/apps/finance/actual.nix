@@ -7,6 +7,7 @@
     inherit (config.canivete.meta) domain;
     hostname = "actual.${domain}";
   in {
+    gatus.endpoints.actual = { url = "https://${hostname}"; group = "internal"; };
     applications.actual = {
       namespace = "finance";
       volsync.pvcs.actual.title = "actual";
@@ -27,20 +28,20 @@
             size = "1Gi";
             accessMode = "ReadWriteOnce";
           };
-          route.actual = {
-            hostnames = [hostname];
-            parentRefs = lib.toList {
-              name = "internal";
-              namespace = "kube-system";
-              sectionName = "https";
-            };
-            rules = lib.toList {
-              backendRefs = lib.toList {
-                name = "oathkeeper-proxy";
-                namespace = "identity";
-                port = 4455;
-              };
-            };
+        };
+      };
+      resources.httpRoutes.actual.spec = {
+        hostnames = [hostname];
+        parentRefs = lib.toList {
+          name = "internal";
+          namespace = "kube-system";
+          sectionName = "https";
+        };
+        rules = lib.toList {
+          backendRefs = lib.toList {
+            name = "oathkeeper-proxy";
+            namespace = "identity";
+            port = 4455;
           };
         };
       };

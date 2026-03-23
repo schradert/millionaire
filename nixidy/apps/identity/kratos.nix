@@ -9,6 +9,7 @@
     uiHost = "login.${domain}";
     adminHost = "admin.${domain}";
   in {
+    gatus.endpoints.kratos = { url = "https://${kratosPublicHost}"; group = "internal"; };
     applications.kratos = {
       namespace = "identity";
       postgres.enable = true;
@@ -202,14 +203,6 @@
             };
           };
           service.kratos-ui.ports.http.port = 3000;
-          route.kratos-ui = {
-            hostnames = [uiHost];
-            parentRefs = lib.toList {
-              name = "internal";
-              namespace = "kube-system";
-              sectionName = "https";
-            };
-          };
         };
       };
 
@@ -227,14 +220,6 @@
             probes.startup.enabled = true;
           };
           service.kratos-admin-ui.ports.http.port = 8080;
-          route.kratos-admin-ui = {
-            hostnames = [adminHost];
-            parentRefs = lib.toList {
-              name = "internal";
-              namespace = "kube-system";
-              sectionName = "https";
-            };
-          };
         };
       };
 
@@ -348,6 +333,34 @@
           backendRefs = lib.toList {
             name = "kratos-public";
             port = 4433;
+          };
+        };
+      };
+      resources.httpRoutes.kratos-ui.spec = {
+        hostnames = [uiHost];
+        parentRefs = lib.toList {
+          name = "internal";
+          namespace = "kube-system";
+          sectionName = "https";
+        };
+        rules = lib.toList {
+          backendRefs = lib.toList {
+            name = "kratos-ui";
+            port = 3000;
+          };
+        };
+      };
+      resources.httpRoutes.kratos-admin-ui.spec = {
+        hostnames = [adminHost];
+        parentRefs = lib.toList {
+          name = "internal";
+          namespace = "kube-system";
+          sectionName = "https";
+        };
+        rules = lib.toList {
+          backendRefs = lib.toList {
+            name = "kratos-admin-ui";
+            port = 8080;
           };
         };
       };

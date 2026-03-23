@@ -1,16 +1,16 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: kratos-admin-ui
-  namespace: identity
+  name: argo
+  namespace: cicd
 spec:
   hostnames:
-    - admin.trdos.me
+    - argocd.trdos.me
   parentRefs:
     - name: internal
       namespace: kube-system
       sectionName: https
   rules:
     - backendRefs:
-        - name: kratos-admin-ui
-          port: 8080
+        - name: argod-argocd-server
+          port: 80

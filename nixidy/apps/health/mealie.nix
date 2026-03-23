@@ -14,6 +14,7 @@
     inherit (config.canivete.meta) domain;
     hostname = "mealie.${domain}";
   in {
+    gatus.endpoints.mealie = { url = "https://${hostname}"; group = "internal"; };
     applications.mealie = {
       namespace = "health";
       postgres.enable = true;
@@ -52,13 +53,19 @@
             OIDC_AUTO_REDIRECT = "True";
             OIDC_REMEMBER_ME = "True";
           };
-          route.mealie = {
-            hostnames = [hostname];
-            parentRefs = lib.toList {
-              name = "internal";
-              namespace = "kube-system";
-              sectionName = "https";
-            };
+        };
+      };
+      resources.httpRoutes.mealie.spec = {
+        hostnames = [hostname];
+        parentRefs = lib.toList {
+          name = "internal";
+          namespace = "kube-system";
+          sectionName = "https";
+        };
+        rules = lib.toList {
+          backendRefs = lib.toList {
+            name = "mealie";
+            port = 9000;
           };
         };
       };

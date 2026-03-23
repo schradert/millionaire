@@ -12,15 +12,14 @@ in {
       freeformType = (pkgs.formats.yaml {}).type;
       options.name = can.str "Endpoint title" {default = name;};
       options.url = can.str "Location Gatus needs to query, shows up as subtitle" {};
+      options.group = can.str "Gateway group (internal or external)" {};
       config = {
-        group = "external";
         interval = "1m";
-        client.dns-resolver = "tcp://1.1.1.1:53";
         conditions = ["[STATUS] == 200"];
       };
     });
     config = {
-      gatus.endpoints.gatus.url = "https://${hostname}";
+      gatus.endpoints.gatus = { url = "https://${hostname}"; group = "external"; };
       applications.gatus = {
         namespace = "observability";
         postgres.enable = true;
@@ -50,7 +49,9 @@ in {
               ui.header = "Status";
               connectivity.checker.target = "1.1.1.1:53";
               connectivity.checker.interval = "1m";
-              endpoints = builtins.attrValues config.gatus.endpoints;
+              endpoints = map (ep: ep // lib.optionalAttrs (ep.group == "external") {
+                client.dns-resolver = "tcp://1.1.1.1:53";
+              }) (builtins.attrValues config.gatus.endpoints);
             };
           };
         };
