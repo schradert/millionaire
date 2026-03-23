@@ -1,26 +1,16 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  labels:
-    app.kubernetes.io/instance: kratos-ui
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/name: kratos-ui
   name: kratos-ui
   namespace: identity
 spec:
   hostnames:
     - login.trdos.me
   parentRefs:
-    - group: gateway.networking.k8s.io
-      kind: Gateway
-      name: internal
+    - name: internal
       namespace: kube-system
       sectionName: https
   rules:
     - backendRefs:
-        - group: ""
-          kind: Service
-          name: kratos-ui
-          namespace: identity
+        - name: kratos-ui
           port: 3000
-          weight: 1

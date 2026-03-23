@@ -4,6 +4,7 @@
     hydraPublicHost = "hydra.${domain}";
     uiHost = "login.${domain}";
   in {
+    gatus.endpoints.hydra = { url = "https://${hydraPublicHost}"; group = "internal"; };
     canivete.crds.hydra-maester = {
       application = "hydra";
       install = false; # CRD is installed by the Hydra Helm chart (hydra-maester sub-chart)

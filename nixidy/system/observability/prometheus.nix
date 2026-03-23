@@ -13,6 +13,7 @@
       install = true;
       src = chart;
     };
+    gatus.endpoints.prometheus = { url = "https://prometheus.${config.canivete.meta.domain}"; group = "internal"; };
     applications.prometheus = {
       namespace = "observability";
       canivete.bootstrap.enable = true;
@@ -32,15 +33,6 @@
               accessModes = ["ReadWriteOnce"];
               resources.requests.storage = "10Gi";
             };
-            route.main = {
-              enabled = true;
-              hostnames = ["prometheus.${config.canivete.meta.domain}"];
-              parentRefs = lib.toList {
-                name = "internal";
-                namespace = "kube-system";
-                sectionName = "https";
-              };
-            };
           };
           prometheusOperator.admissionWebhooks.deployment.enabled = true;
 
@@ -54,6 +46,20 @@
           nodeExporter.enabled = false;
           grafana.enabled = false;
           grafana.forceDeployDashboards = true;
+        };
+      };
+      resources.httpRoutes.prometheus.spec = {
+        hostnames = ["prometheus.${config.canivete.meta.domain}"];
+        parentRefs = lib.toList {
+          name = "internal";
+          namespace = "kube-system";
+          sectionName = "https";
+        };
+        rules = lib.toList {
+          backendRefs = lib.toList {
+            name = "prometheus-kube-prometheus-prometheus";
+            port = 9090;
+          };
         };
       };
     };
