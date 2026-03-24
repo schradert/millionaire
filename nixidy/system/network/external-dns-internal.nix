@@ -56,14 +56,8 @@
               periodSeconds = 10;
             };
           };
-          # NOTE: --default-targets overrides the gateway's external-dns target annotation
-          # (internal.trdos.me) with the actual LAN IP. Without this, external-dns creates
-          # CNAME records (firefly.trdos.me → internal.trdos.me), but AdGuard Home doesn't
-          # resolve CNAME targets against its own local rewrites — it goes upstream instead.
-          # See: https://github.com/AdguardTeam/AdGuardHome/issues/3350
           extraArgs = [
             "--gateway-name=internal"
-            "--default-targets=192.168.50.241"
           ];
           policy = "sync";
           sources = ["gateway-httproute"];

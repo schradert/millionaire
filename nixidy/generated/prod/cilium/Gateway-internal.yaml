@@ -2,7 +2,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   annotations:
-    external-dns.alpha.kubernetes.io/target: internal.trdos.me
+    external-dns.alpha.kubernetes.io/target: 192.168.50.241
     io.cilium/lb-ipam-ips: home-pool
   name: internal
   namespace: kube-system
