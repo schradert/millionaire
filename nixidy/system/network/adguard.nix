@@ -106,6 +106,9 @@ in {
             ];
             bootstrap_dns = ["1.1.1.1" "1.0.0.1"];
           };
+          filtering.rewrites = [
+            {domain = "internal.${domain}"; answer = "192.168.50.241";}
+          ];
           users = [
             {
               name = "admin";
