@@ -68,7 +68,12 @@ in {
           };
         };
       in {
-        internal = gateway "internal";
+        # NOTE: target is the internal gateway LAN IP (not a hostname) so
+        # external-dns creates A records in AdGuard Home. CNAME targets don't
+        # chain locally in AdGuard: https://github.com/AdguardTeam/AdGuardHome/issues/3350
+        internal = lib.recursiveUpdate (gateway "internal") {
+          metadata.annotations."external-dns.alpha.kubernetes.io/target" = "192.168.50.241";
+        };
         external = gateway "external";
       };
     };
