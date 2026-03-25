@@ -1,0 +1,23 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: sure
+  namespace: identity
+spec:
+  definition:
+    clientId: sure
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Sure Finance
+    protocol: openid-connect
+    redirectUris:
+      - https://sure.trdos.me/auth/oidc/callback
+    standardFlowEnabled: true
+    webOrigins:
+      - https://sure.trdos.me
+  realmRef:
+    name: default

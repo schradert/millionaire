@@ -1,0 +1,16 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakUser
+metadata:
+  name: tristan
+  namespace: identity
+spec:
+  definition:
+    email: tristan@trdos.me
+    emailVerified: true
+    enabled: true
+    groups:
+      - admin
+      - family
+    username: tristan
+  realmRef:
+    name: default

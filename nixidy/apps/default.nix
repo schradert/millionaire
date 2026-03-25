@@ -4,9 +4,9 @@
     ./finance/firefly.nix
     ./finance/sure.nix
     ./health/mealie.nix
-    ./identity/hydra.nix
-    ./identity/keto.nix
-    ./identity/kratos.nix
+    ./identity/keycloak.nix
+    ./identity/keycloak-operator.nix
+    ./identity/oauth2-proxy.nix
     ./identity/oathkeeper.nix
   ];
   nixidy.applications.namespaces.resources.namespaces = {

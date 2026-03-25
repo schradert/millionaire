@@ -7,30 +7,16 @@ data:
     authenticators:
       anonymous:
         enabled: true
-      bearer_token:
-        config:
-          check_session_url: http://kratos-public.identity.svc.cluster.local:4433/sessions/whoami
-          force_method: GET
-          token_from:
-            header: Authorization
-        enabled: true
       cookie_session:
         config:
-          check_session_url: http://kratos-public.identity.svc.cluster.local:4433/sessions/whoami
+          check_session_url: http://oauth2-proxy.identity.svc.cluster.local:4180/oauth2/auth
           extra_from: '@this'
           only:
-          - ory_kratos_session
+          - _oauth2_proxy
           preserve_path: true
-          subject_from: identity.id
+          subject_from: email
         enabled: true
       noop:
-        enabled: true
-      oauth2_introspection:
-        config:
-          cache:
-            enabled: true
-            ttl: 300s
-          introspection_url: http://hydra-admin.identity.svc.cluster.local:4445/admin/oauth2/introspect
         enabled: true
     authorizers:
       allow:
@@ -45,7 +31,8 @@ data:
           enabled: true
         redirect:
           config:
-            to: https://login.trdos.me/login
+            return_to_query_param: rd
+            to: https://oauth2.trdos.me/oauth2/start
             when:
             - error:
               - unauthorized
@@ -59,10 +46,9 @@ data:
       header:
         config:
           headers:
-            X-Auth-Request-Email: '{{ print .Extra.identity.traits.email }}'
-            X-Auth-Request-Preferred-Username: '{{ print .Extra.identity.traits.email
-              }}'
-            X-User-Email: '{{ print .Extra.identity.traits.email }}'
+            X-Auth-Request-Email: '{{ print .Subject }}'
+            X-Auth-Request-Preferred-Username: '{{ print .Subject }}'
+            X-User-Email: '{{ print .Subject }}'
             X-User-Id: '{{ print .Subject }}'
         enabled: true
       id_token:

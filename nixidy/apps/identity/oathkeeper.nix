@@ -38,29 +38,12 @@
               cookie_session = {
                 enabled = true;
                 config = {
-                  check_session_url = "http://kratos-public.identity.svc.cluster.local:4433/sessions/whoami";
+                  # OAuth2 Proxy validates the Keycloak session cookie
+                  check_session_url = "http://oauth2-proxy.identity.svc.cluster.local:4180/oauth2/auth";
                   preserve_path = true;
                   extra_from = "@this";
-                  subject_from = "identity.id";
-                  only = ["ory_kratos_session"];
-                };
-              };
-              bearer_token = {
-                enabled = true;
-                config = {
-                  check_session_url = "http://kratos-public.identity.svc.cluster.local:4433/sessions/whoami";
-                  token_from.header = "Authorization";
-                  force_method = "GET";
-                };
-              };
-              oauth2_introspection = {
-                enabled = true;
-                config = {
-                  introspection_url = "http://hydra-admin.identity.svc.cluster.local:4445/admin/oauth2/introspect";
-                  cache = {
-                    enabled = true;
-                    ttl = "300s";
-                  };
+                  subject_from = "email";
+                  only = ["_oauth2_proxy"];
                 };
               };
               anonymous.enabled = true;
@@ -77,9 +60,9 @@
                 enabled = true;
                 config.headers = {
                   "X-User-Id" = "{{ print .Subject }}";
-                  "X-User-Email" = "{{ print .Extra.identity.traits.email }}";
-                  "X-Auth-Request-Preferred-Username" = "{{ print .Extra.identity.traits.email }}";
-                  "X-Auth-Request-Email" = "{{ print .Extra.identity.traits.email }}";
+                  "X-User-Email" = "{{ print .Subject }}";
+                  "X-Auth-Request-Preferred-Username" = "{{ print .Subject }}";
+                  "X-Auth-Request-Email" = "{{ print .Subject }}";
                 };
               };
               noop.enabled = true;
@@ -96,7 +79,9 @@
               redirect = {
                 enabled = true;
                 config = {
-                  to = "https://login.${domain}/login";
+                  # OAuth2 Proxy handles the Keycloak OIDC login flow
+                  to = "https://oauth2.${domain}/oauth2/start";
+                  return_to_query_param = "rd";
                   when = [
                     {
                       error = ["unauthorized" "forbidden"];
@@ -182,6 +167,22 @@
             group = "gateway.networking.k8s.io";
             kind = "HTTPRoute";
             namespace = "kube-system";
+          }
+        ];
+        to = [
+          {
+            group = "";
+            kind = "Service";
+            name = "oathkeeper-proxy";
+          }
+        ];
+      };
+      resources.referenceGrants.allow-printing.spec = {
+        from = [
+          {
+            group = "gateway.networking.k8s.io";
+            kind = "HTTPRoute";
+            namespace = "printing";
           }
         ];
         to = [
