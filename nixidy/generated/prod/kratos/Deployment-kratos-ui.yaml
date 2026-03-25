@@ -36,7 +36,7 @@ spec:
                   key: cookie_secret
                   name: kratos-ui
             - name: CSRF_COOKIE_NAME
-              value: __HOST-trdos.me-x-csrf-token
+              value: __Secure-trdos.me-x-csrf-token
             - name: CSRF_COOKIE_SECRET
               valueFrom:
                 secretKeyRef:

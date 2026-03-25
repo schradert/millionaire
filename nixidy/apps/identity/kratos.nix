@@ -30,6 +30,8 @@
             };
             config = {
               dsn = "postgres://kratos:$(DB_PASSWORD)@kratos-rw.identity.svc.cluster.local:5432/kratos?sslmode=disable";
+              cookies.domain = domain;
+              cookies.same_site = "Lax";
               serve = {
                 public = {
                   base_url = "https://${kratosPublicHost}";
@@ -191,7 +193,7 @@
                   name = "kratos-ui";
                   key = "cookie_secret";
                 };
-                CSRF_COOKIE_NAME = "__HOST-${domain}-x-csrf-token";
+                CSRF_COOKIE_NAME = "__Secure-${domain}-x-csrf-token";
                 CSRF_COOKIE_SECRET.valueFrom.secretKeyRef = {
                   name = "kratos-ui";
                   key = "csrf_secret";
