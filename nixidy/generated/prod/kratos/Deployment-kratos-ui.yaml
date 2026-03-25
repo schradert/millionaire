@@ -47,7 +47,7 @@ spec:
             - name: KRATOS_BROWSER_URL
               value: https://auth.trdos.me
             - name: KRATOS_PUBLIC_URL
-              value: http://kratos-public.identity.svc.cluster.local:4433
+              value: http://kratos-public.identity.svc.cluster.local
           image: oryd/kratos-selfservice-ui-node:v0.14.1
           livenessProbe:
             failureThreshold: 3
