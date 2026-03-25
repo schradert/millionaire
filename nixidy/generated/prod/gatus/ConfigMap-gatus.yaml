@@ -55,20 +55,20 @@ data:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
-      name: hydra
-      url: https://hydra.trdos.me
-    - conditions:
-      - '[STATUS] == 200'
-      group: internal
-      interval: 1m
-      name: kratos
-      url: https://auth.trdos.me
+      name: keycloak
+      url: https://keycloak.trdos.me
     - conditions:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
       name: mealie
       url: https://mealie.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: oauth2-proxy
+      url: https://oauth2.trdos.me/ping
     - conditions:
       - '[STATUS] == 200'
       group: internal

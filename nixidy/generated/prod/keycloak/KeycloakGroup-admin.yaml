@@ -1,0 +1,10 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakGroup
+metadata:
+  name: admin
+  namespace: identity
+spec:
+  definition:
+    name: admin
+  realmRef:
+    name: default

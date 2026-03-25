@@ -1,5 +1,9 @@
 {config, ...}: {
-  nixidy = {charts, lib, ...}: let
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "sure.${domain}";
     probe = lib.recursiveUpdate {
@@ -13,18 +17,25 @@
       {secretRef.name = "sure";}
     ];
   in {
-    # OAuth2Client CRD — lands in identity namespace via hydra app, co-located here with consumer
-    applications.hydra.resources.oAuth2Clients.sure.spec = {
-      secretName = "sure-hydra-client";
-      clientName = "Sure Finance";
-      grantTypes = ["authorization_code" "refresh_token"];
-      redirectUris = ["https://sure.${domain}/auth/oidc/callback"];
-      responseTypes = ["code"];
-      scope = "openid profile email";
-      tokenEndpointAuthMethod = "client_secret_post";
+    applications.keycloak.resources.keycloakClients.sure.spec = {
+      realmRef.name = "default";
+      definition = {
+        clientId = "sure";
+        name = "Sure Finance";
+        enabled = true;
+        protocol = "openid-connect";
+        standardFlowEnabled = true;
+        directAccessGrantsEnabled = false;
+        redirectUris = ["https://${hostname}/auth/oidc/callback"];
+        webOrigins = ["https://${hostname}"];
+        defaultClientScopes = ["openid" "profile" "email"];
+      };
     };
 
-    gatus.endpoints.sure = { url = "https://${hostname}"; group = "internal"; };
+    gatus.endpoints.sure = {
+      url = "https://${hostname}";
+      group = "internal";
+    };
     applications.sure = {
       namespace = "finance";
       postgres.enable = true;
@@ -41,7 +52,10 @@
               image.tag = "stable";
               # TODO: pin digest for reproducibility
               inherit envFrom;
-              ports = lib.toList { name = "http"; containerPort = 3000; };
+              ports = lib.toList {
+                name = "http";
+                containerPort = 3000;
+              };
               probes.liveness = probe {};
               probes.readiness = probe {
                 spec.initialDelaySeconds = 15;
@@ -82,7 +96,7 @@
             REDIS_URL = "redis://sure-dragonfly.finance.svc.cluster.local:6379/0";
             ONBOARDING_STATE = "invite_only";
             APP_DOMAIN = hostname;
-            OIDC_ISSUER = "https://hydra.${domain}";
+            OIDC_ISSUER = "https://keycloak.${domain}/realms/default";
             OIDC_REDIRECT_URI = "https://${hostname}/auth/oidc/callback";
           };
 
@@ -92,7 +106,6 @@
             size = "5Gi";
             advancedMounts.sure.sure = [{path = "/rails/storage";}];
           };
-
         };
       };
       resources.httpRoutes.sure.spec = {
@@ -134,14 +147,14 @@
         }
         {
           secretKey = "OIDC_CLIENT_ID";
-          remoteRef.key = "sure-hydra-client";
+          remoteRef.key = "sure";
           remoteRef.property = "CLIENT_ID";
           sourceRef.storeRef.name = "kubernetes-identity";
           sourceRef.storeRef.kind = "ClusterSecretStore";
         }
         {
           secretKey = "OIDC_CLIENT_SECRET";
-          remoteRef.key = "sure-hydra-client";
+          remoteRef.key = "sure";
           remoteRef.property = "CLIENT_SECRET";
           sourceRef.storeRef.name = "kubernetes-identity";
           sourceRef.storeRef.kind = "ClusterSecretStore";

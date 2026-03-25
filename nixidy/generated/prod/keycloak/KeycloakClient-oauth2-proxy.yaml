@@ -1,0 +1,23 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: oauth2-proxy
+  namespace: identity
+spec:
+  definition:
+    clientId: oauth2-proxy
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: OAuth2 Proxy
+    protocol: openid-connect
+    redirectUris:
+      - https://oauth2.trdos.me/oauth2/callback
+    standardFlowEnabled: true
+    webOrigins:
+      - https://*.trdos.me
+  realmRef:
+    name: default
