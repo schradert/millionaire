@@ -36,6 +36,7 @@ in {
           # applicationSet.replicas = 2;
           dex.enabled = false;
           server = {
+            extraArgs = ["--insecure"];
             config."oidc.config" = builtins.toJSON {
               name = "Ory";
               issuer = "https://hydra.${domain}";
