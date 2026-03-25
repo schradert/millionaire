@@ -1,6 +1,9 @@
 apiVersion: v1
 data:
   kratos.yaml: |
+    cookies:
+      domain: trdos.me
+      same_site: Lax
     courier:
       smtp: {}
     identity:
