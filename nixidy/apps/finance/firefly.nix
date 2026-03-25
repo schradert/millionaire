@@ -109,7 +109,7 @@
       resources.rules.firefly.spec = {
         upstream.url = "http://firefly.finance.svc.cluster.local:8080";
         match = {
-          url = "https://${hostname}/<**>";
+          url = "https://${hostname}/<.*>";
           methods = ["GET" "POST" "PUT" "PATCH" "DELETE"];
         };
         authenticators = lib.toList {handler = "cookie_session";};

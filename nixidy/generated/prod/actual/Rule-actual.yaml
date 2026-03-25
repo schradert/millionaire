@@ -17,7 +17,7 @@ spec:
       - PUT
       - PATCH
       - DELETE
-    url: https://actual.trdos.me/<**>
+    url: https://actual.trdos.me/<.*>
   mutators:
     - handler: header
   upstream:
