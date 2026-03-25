@@ -184,7 +184,7 @@
                 tag = "v0.14.1";
               };
               env = {
-                KRATOS_PUBLIC_URL = "http://kratos-public.identity.svc.cluster.local:4433";
+                KRATOS_PUBLIC_URL = "http://kratos-public.identity.svc.cluster.local";
                 KRATOS_BROWSER_URL = "https://${kratosPublicHost}";
                 HYDRA_ADMIN_URL = "http://hydra-admin.identity.svc.cluster.local:4445";
                 COOKIE_SECRET.valueFrom.secretKeyRef = {
@@ -332,7 +332,7 @@
         rules = lib.toList {
           backendRefs = lib.toList {
             name = "kratos-public";
-            port = 4433;
+            port = 80;
           };
         };
       };
