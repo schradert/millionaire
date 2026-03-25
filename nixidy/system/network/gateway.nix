@@ -76,6 +76,30 @@ in {
         };
         external = gateway "external";
       };
+      resources.httpRoutes = let
+        redirect = gw: {
+          spec = {
+            hostnames = ["*.${domain}"];
+            parentRefs = lib.toList {
+              name = gw;
+              namespace = "kube-system";
+              sectionName = "http";
+            };
+            rules = lib.toList {
+              filters = lib.toList {
+                type = "RequestRedirect";
+                requestRedirect = {
+                  scheme = "https";
+                  statusCode = 301;
+                };
+              };
+            };
+          };
+        };
+      in {
+        http-to-https-internal = redirect "internal";
+        http-to-https-external = redirect "external";
+      };
     };
   };
 }
