@@ -50,7 +50,7 @@
       resources.rules.actual.spec = {
         upstream.url = "http://actual.finance.svc.cluster.local:5006";
         match = {
-          url = "https://${hostname}/<**>";
+          url = "https://${hostname}/<.*>";
           methods = ["GET" "POST" "PUT" "PATCH" "DELETE"];
         };
         authenticators = lib.toList {handler = "cookie_session";};
