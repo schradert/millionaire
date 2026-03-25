@@ -1,0 +1,10 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: keycloak
+  namespace: identity
+spec:
+  backupOwnerReference: self
+  cluster:
+    name: keycloak
+  schedule: 0 0 * * *

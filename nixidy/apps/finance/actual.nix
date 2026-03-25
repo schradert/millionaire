@@ -7,7 +7,10 @@
     inherit (config.canivete.meta) domain;
     hostname = "actual.${domain}";
   in {
-    gatus.endpoints.actual = { url = "https://${hostname}"; group = "internal"; };
+    gatus.endpoints.actual = {
+      url = "https://${hostname}";
+      group = "internal";
+    };
     applications.actual = {
       namespace = "finance";
       volsync.pvcs.actual.title = "actual";
@@ -46,7 +49,6 @@
         };
       };
 
-      # Oathkeeper access rule: authenticate via Kratos session
       resources.rules.actual.spec = {
         upstream.url = "http://actual.finance.svc.cluster.local:5006";
         match = {

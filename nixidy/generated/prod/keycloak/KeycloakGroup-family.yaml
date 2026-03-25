@@ -1,0 +1,10 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakGroup
+metadata:
+  name: family
+  namespace: identity
+spec:
+  definition:
+    name: family
+  realmRef:
+    name: default

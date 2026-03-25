@@ -7,18 +7,23 @@ in {
     lib,
     ...
   }: {
-    # OAuth2Client CRD — lands in identity namespace via hydra app, co-located here with consumer
-    applications.hydra.resources.oAuth2Clients.argocd.spec = {
-      secretName = "argocd-hydra-client";
-      clientName = "ArgoCD";
-      grantTypes = ["authorization_code" "refresh_token"];
-      redirectUris = ["https://argocd.${domain}/auth/callback"];
-      responseTypes = ["code"];
-      scope = "openid profile email";
-      tokenEndpointAuthMethod = "client_secret_post";
+    # Keycloak OIDC client — Hostzero operator syncs secret to K8s
+    applications.keycloak.resources.keycloakClients.argocd.spec = {
+      realmRef.name = "default";
+      definition = {
+        clientId = "argocd";
+        name = "ArgoCD";
+        enabled = true;
+        protocol = "openid-connect";
+        standardFlowEnabled = true;
+        directAccessGrantsEnabled = false;
+        redirectUris = ["https://argocd.${domain}/auth/callback"];
+        webOrigins = ["https://argocd.${domain}"];
+        defaultClientScopes = ["openid" "profile" "email"];
+      };
     };
 
-    gatus.endpoints.argo = { url = "https://argocd.${domain}"; group = "internal"; };
+    gatus.endpoints.argo = {url = "https://argocd.${domain}"; group = "internal";};
     applications.argo = {
       canivete.bootstrap.enable = true;
       namespace = "cicd";
@@ -38,8 +43,8 @@ in {
           server = {
             extraArgs = ["--insecure"];
             config."oidc.config" = builtins.toJSON {
-              name = "Ory";
-              issuer = "https://hydra.${domain}";
+              name = "Keycloak";
+              issuer = "https://keycloak.${domain}/realms/default";
               clientID = "$oidc.argocd.clientID";
               clientSecret = "$oidc.argocd.clientSecret";
               requestedScopes = ["openid" "profile" "email"];
@@ -61,7 +66,7 @@ in {
           };
         };
       };
-      # OAuth2 client credentials for Ory Hydra OIDC
+      # Keycloak OIDC client credentials (Hostzero operator syncs to K8s Secret)
       resources.externalSecrets.argocd-oidc.spec = {
         secretStoreRef = {
           name = "kubernetes-identity";
@@ -72,12 +77,12 @@ in {
         data = [
           {
             secretKey = "oidc.argocd.clientID";
-            remoteRef.key = "argocd-hydra-client";
+            remoteRef.key = "argocd"; # Keycloak client secret name
             remoteRef.property = "CLIENT_ID";
           }
           {
             secretKey = "oidc.argocd.clientSecret";
-            remoteRef.key = "argocd-hydra-client";
+            remoteRef.key = "argocd";
             remoteRef.property = "CLIENT_SECRET";
           }
         ];

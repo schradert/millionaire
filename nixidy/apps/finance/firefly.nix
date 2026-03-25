@@ -16,7 +16,10 @@
       spec.httpGet.port = "http";
     };
   in {
-    gatus.endpoints.firefly = { url = "https://${hostname}"; group = "internal"; };
+    gatus.endpoints.firefly = {
+      url = "https://${hostname}";
+      group = "internal";
+    };
     applications.firefly = {
       namespace = "finance";
       postgres.enable = true;
@@ -29,7 +32,10 @@
               image.repository = "fireflyiii/core";
               image.tag = "version-6.5.4";
               image.digest = "sha256:6ae1b92eb73b4ae8a8e7e038440b93fba46267e05b5b903c62316b8cb03779af";
-              ports = lib.toList { name = "http"; containerPort = 8080; };
+              ports = lib.toList {
+                name = "http";
+                containerPort = 8080;
+              };
               env = {
                 AUTHENTICATION_GUARD = "remote_user_guard";
                 AUTHENTICATION_GUARD_HEADER = "HTTP_X_AUTH_REQUEST_PREFERRED_USERNAME";
@@ -105,7 +111,6 @@
           };
         };
       };
-      # Oathkeeper access rule: authenticate via Kratos session, inject auth headers
       resources.rules.firefly.spec = {
         upstream.url = "http://firefly.finance.svc.cluster.local:8080";
         match = {

@@ -1,0 +1,12 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakInstance
+metadata:
+  name: default
+  namespace: identity
+spec:
+  baseUrl: http://keycloak.identity.svc.cluster.local:8080
+  credentials:
+    secretRef:
+      name: keycloak
+      passwordKey: KEYCLOAK_ADMIN_PASSWORD
+      usernameKey: KEYCLOAK_ADMIN

@@ -3,7 +3,7 @@ data:
   APP_DOMAIN: sure.trdos.me
   DB_HOST: sure-rw
   DB_PORT: "5432"
-  OIDC_ISSUER: https://hydra.trdos.me
+  OIDC_ISSUER: https://keycloak.trdos.me/realms/default
   OIDC_REDIRECT_URI: https://sure.trdos.me/auth/oidc/callback
   ONBOARDING_STATE: invite_only
   POSTGRES_USER: sure

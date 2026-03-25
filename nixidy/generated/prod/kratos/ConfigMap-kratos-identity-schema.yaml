@@ -1,7 +1,0 @@
-apiVersion: v1
-data:
-  identity.schema.json: '{"$id":"https://trdos.me/schemas/default.json","$schema":"http://json-schema.org/draft-07/schema#","properties":{"traits":{"properties":{"email":{"format":"email","ory.sh/kratos":{"credentials":{"password":{"identifier":true},"totp":{"account_name":true},"webauthn":{"identifier":true}},"recovery":{"via":"email"},"verification":{"via":"email"}},"title":"Email","type":"string"},"name":{"properties":{"first":{"title":"First Name","type":"string"},"last":{"title":"Last Name","type":"string"}},"type":"object"}},"required":["email"],"type":"object"}},"title":"Person","type":"object"}'
-kind: ConfigMap
-metadata:
-  name: kratos-identity-schema
-  namespace: identity

@@ -1,0 +1,23 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: argocd
+  namespace: identity
+spec:
+  definition:
+    clientId: argocd
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: ArgoCD
+    protocol: openid-connect
+    redirectUris:
+      - https://argocd.trdos.me/auth/callback
+    standardFlowEnabled: true
+    webOrigins:
+      - https://argocd.trdos.me
+  realmRef:
+    name: default

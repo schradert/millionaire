@@ -1,0 +1,22 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakRealm
+metadata:
+  name: default
+  namespace: identity
+spec:
+  definition:
+    accessTokenLifespan: 250
+    bruteForceProtected: true
+    displayName: Default
+    duplicateEmailsAllowed: false
+    enabled: true
+    loginWithEmailAllowed: true
+    otpPolicyType: totp
+    realm: default
+    registrationAllowed: false
+    ssoSessionIdleTimeout: 86400
+    ssoSessionMaxLifespan: 259200
+    webAuthnPolicyRpEntityName: Homelab Default Realm
+    webAuthnPolicyRpId: trdos.me
+  instanceRef:
+    name: default
