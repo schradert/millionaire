@@ -8,13 +8,13 @@ data:
     debug: false
     endpoints:
     - conditions:
-      - '[STATUS] == 200'
+      - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
       name: actual
       url: https://actual.trdos.me
     - conditions:
-      - '[STATUS] == 200'
+      - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
       name: adguard
@@ -32,7 +32,7 @@ data:
       name: argo
       url: https://argocd.trdos.me
     - conditions:
-      - '[STATUS] == 200'
+      - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
       name: firefly

@@ -19,6 +19,7 @@
     gatus.endpoints.firefly = {
       url = "https://${hostname}";
       group = "internal";
+      conditions = ["[STATUS] == any(200, 302, 401)"];
     };
     applications.firefly = {
       namespace = "finance";

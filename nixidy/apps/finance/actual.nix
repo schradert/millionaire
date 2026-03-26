@@ -10,6 +10,7 @@
     gatus.endpoints.actual = {
       url = "https://${hostname}";
       group = "internal";
+      conditions = ["[STATUS] == any(200, 302, 401)"];
     };
     applications.actual = {
       namespace = "finance";

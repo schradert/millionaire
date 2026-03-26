@@ -15,7 +15,7 @@ in {
       options.group = can.str "Gateway group (internal or external)" {};
       config = {
         interval = "1m";
-        conditions = ["[STATUS] == 200"];
+        conditions = lib.mkDefault ["[STATUS] == 200"];
       };
     });
     config = {

@@ -4,7 +4,11 @@
   adguardIP = "192.168.50.242";
 in {
   nixidy = {charts, lib, ...}: {
-    gatus.endpoints.adguard = {url = "https://${hostname}"; group = "internal";};
+    gatus.endpoints.adguard = {
+      url = "https://adguard.${domain}";
+      group = "internal";
+      conditions = ["[STATUS] == any(200, 302, 401)"];
+    };
     applications.adguard = {
       namespace = "kube-system";
       helm.releases.adguard = {
