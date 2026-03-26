@@ -36,45 +36,43 @@ in {
       helm.releases.cilium.values.gatewayAPI.enabled = true;
       helm.releases.cilium.values.gatewayAPI.gatewayClass.create = "true";
       resources.gateways = let
-        gateway = name: {
-          metadata.annotations = {
-            "external-dns.alpha.kubernetes.io/target" = "${name}.${domain}";
-            "io.cilium/lb-ipam-ips" = "home-pool";
-          };
-          spec = {
-            gatewayClassName = "cilium";
-            infrastructure.annotations."external-dns.alpha.kubernetes.io/hostname" = "${name}.${domain}";
-            listeners = [
-              {
-                name = "http";
-                protocol = "HTTP";
-                port = 80;
-                hostname = "*.${domain}";
-                allowedRoutes.namespaces.from = "All";
-              }
-              {
-                name = "https";
-                protocol = "HTTPS";
-                port = 443;
-                hostname = "*.${domain}";
-                allowedRoutes.namespaces.from = "All";
-                tls.certificateRefs = lib.toList {
-                  kind = "Secret";
-                  name = "${lib.replaceStrings ["."] ["-"] domain}-tls";
-                  namespace = "security";
-                };
-              }
-            ];
-          };
+        gateway = {
+          metadata.annotations."io.cilium/lb-ipam-ips" = "home-pool";
+          spec.gatewayClassName = "cilium";
+          spec.listeners = [
+            {
+              name = "http";
+              protocol = "HTTP";
+              port = 80;
+              hostname = "*.${domain}";
+              allowedRoutes.namespaces.from = "All";
+            }
+            {
+              name = "https";
+              protocol = "HTTPS";
+              port = 443;
+              hostname = "*.${domain}";
+              allowedRoutes.namespaces.from = "All";
+              tls.certificateRefs = lib.toList {
+                kind = "Secret";
+                name = "${lib.replaceStrings ["."] ["-"] domain}-tls";
+                namespace = "security";
+              };
+            }
+          ];
         };
       in {
-        # NOTE: target is the internal gateway LAN IP (not a hostname) so
-        # external-dns creates A records in AdGuard Home. CNAME targets don't
-        # chain locally in AdGuard: https://github.com/AdguardTeam/AdGuardHome/issues/3350
-        internal = lib.recursiveUpdate (gateway "internal") {
+        internal = lib.recursiveUpdate gateway {
+          # NOTE: target is the internal gateway LAN IP (not a hostname) so
+          # external-dns creates A records in AdGuard Home. CNAME targets don't
+          # chain locally in AdGuard: https://github.com/AdguardTeam/AdGuardHome/issues/3350
+          # Also don't set a hostname to avoid wildcard creation in AdGuard
           metadata.annotations."external-dns.alpha.kubernetes.io/target" = "192.168.50.241";
         };
-        external = gateway "external";
+        external = lib.recursiveUpdate gateway {
+          metadata.annotations."external-dns.alpha.kubernetes.io/target" = "external.${domain}";
+          spec.infrastructure.annotations."external-dns.alpha.kubernetes.io/hostname" = "external.${domain}";
+        };
       };
       resources.httpRoutes = let
         redirect = gw: {

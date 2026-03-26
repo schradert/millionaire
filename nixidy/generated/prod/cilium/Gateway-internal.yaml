@@ -8,9 +8,6 @@ metadata:
   namespace: kube-system
 spec:
   gatewayClassName: cilium
-  infrastructure:
-    annotations:
-      external-dns.alpha.kubernetes.io/hostname: internal.trdos.me
   listeners:
     - allowedRoutes:
         namespaces:
