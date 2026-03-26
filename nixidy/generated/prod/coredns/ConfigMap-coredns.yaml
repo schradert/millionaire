@@ -1,6 +1,10 @@
 apiVersion: v1
 data:
   Corefile: |-
+    trdos.me.:53 {
+        forward trdos.me 192.168.50.242
+        cache 30
+    }
     .:53 {
         errors
         health {
