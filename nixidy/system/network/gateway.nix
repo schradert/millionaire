@@ -76,6 +76,8 @@ in {
       };
       resources.httpRoutes = let
         redirect = gw: {
+          # Prevent external-dns from creating wildcard *.trdos.me DNS records
+          metadata.annotations."external-dns.alpha.kubernetes.io/exclude" = "true";
           spec = {
             hostnames = ["*.${domain}"];
             parentRefs = lib.toList {
