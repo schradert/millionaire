@@ -8,5 +8,5 @@ spec:
   credentials:
     secretRef:
       name: keycloak
-      passwordKey: KEYCLOAK_ADMIN_PASSWORD
-      usernameKey: KEYCLOAK_ADMIN
+      passwordKey: KC_BOOTSTRAP_ADMIN_PASSWORD
+      usernameKey: KC_BOOTSTRAP_ADMIN_USERNAME
