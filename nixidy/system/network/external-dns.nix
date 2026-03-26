@@ -40,6 +40,7 @@
             "--crd-source-kind=DNSEndpoint"
             "--gateway-name=external"
             "--cloudflare-proxied"
+            "--annotation-filter=external-dns.alpha.kubernetes.io/exclude notin (true)"
           ];
           policy = "sync";
           sources = ["crd" "gateway-httproute"];
