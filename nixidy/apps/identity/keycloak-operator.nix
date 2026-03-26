@@ -35,8 +35,8 @@ in {
         baseUrl = "http://keycloak.identity.svc.cluster.local:8080";
         credentials.secretRef = {
           name = "keycloak";
-          usernameKey = "KEYCLOAK_ADMIN";
-          passwordKey = "KEYCLOAK_ADMIN_PASSWORD";
+          usernameKey = "KC_BOOTSTRAP_ADMIN_USERNAME";
+          passwordKey = "KC_BOOTSTRAP_ADMIN_PASSWORD";
         };
       };
       keycloakRealms.default.spec = {

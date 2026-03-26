@@ -76,31 +76,7 @@ class Millionaire:
         actualbudget_admin_password = rand.RandomPassword("actualbudget_admin_password", length=24, special=False)
         Secret("actualbudget/admin/password", actualbudget_admin_password.result, "ActualBudget admin password")
 
-        # --- Ory Identity Platform ---
-        domain = millionaire.Nix.attr("canivete.meta.domain").value()
-
-        # Kratos secrets
-        kratos_cookie = rand.RandomPassword("ory_kratos_cookie", length=32, special=False)
-        Secret("ory/kratos/secret", kratos_cookie.result, "Ory Kratos cookie/session secret")
-
-        kratos_cipher = rand.RandomPassword("ory_kratos_cipher", length=32, special=False)
-        Secret("ory/kratos/cipher", kratos_cipher.result, "Ory Kratos cipher secret")
-
-        # Hydra secrets
-        hydra_system = rand.RandomPassword("ory_hydra_system", length=32, special=False)
-        Secret("ory/hydra/system-secret", hydra_system.result, "Ory Hydra system secret")
-
-        hydra_salt = rand.RandomPassword("ory_hydra_salt", length=32, special=False)
-        Secret("ory/hydra/oidc-subject-salt", hydra_salt.result, "Ory Hydra OIDC subject salt")
-
-        # UI secrets
-        ui_cookie = rand.RandomPassword("ory_ui_cookie", length=32, special=False)
-        Secret("ory/ui/cookie-secret", ui_cookie.result, "Ory Kratos UI cookie secret")
-
-        ui_csrf = rand.RandomPassword("ory_ui_csrf", length=32, special=False)
-        Secret("ory/ui/csrf-secret", ui_csrf.result, "Ory Kratos UI CSRF secret")
-
-        # Oathkeeper JWKS (RSA key pair for ID token signing)
+        # --- Oathkeeper (kept as auth proxy for Keycloak) ---
         jwks = millionaire.OryJwks("ory_oathkeeper_jwks")
         Secret("ory/oathkeeper/mutator-id-token-jwks", jwks.jwks_json, "Oathkeeper JWKS for ID token signing")
 
@@ -108,6 +84,16 @@ class Millionaire:
         adguard_admin_password = rand.RandomPassword("adguard_admin_password", length=24, special=False)
         Secret("adguard/admin/password", adguard_admin_password.result, "AdGuard Home admin password (plaintext for external-dns webhook)")
         Secret("adguard/admin/password-hash", adguard_admin_password.bcrypt_hash, "AdGuard Home admin password (bcrypt hash for config)")
+
+        # --- Keycloak ---
+        keycloak_admin_password = rand.RandomPassword("keycloak_admin_password", length=24, special=False)
+        Secret("keycloak/admin/password", keycloak_admin_password.result, "Keycloak bootstrap admin password")
+
+        oauth2_proxy_client_secret = rand.RandomPassword("oauth2_proxy_client_secret", length=32, special=False)
+        Secret("oauth2-proxy/client-secret", oauth2_proxy_client_secret.result, "OAuth2 Proxy OIDC client secret")
+
+        oauth2_proxy_cookie_secret = rand.RandomPassword("oauth2_proxy_cookie_secret", length=32, special=False)
+        Secret("oauth2-proxy/cookie-secret", oauth2_proxy_cookie_secret.result, "OAuth2 Proxy cookie encryption secret (must be 16/24/32 bytes)")
 
         sure_secret_key_base = rand.RandomPassword("sure_secret_key_base", length=128, special=False)
         Secret("sure/secret_key_base", sure_secret_key_base.result, "Sure Finance Rails SECRET_KEY_BASE")

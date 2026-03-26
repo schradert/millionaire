@@ -24,29 +24,31 @@ in {
                 KC_PROXY_HEADERS = "xforwarded";
                 KC_HTTP_ENABLED = "true";
                 KC_HEALTH_ENABLED = "true";
-                KEYCLOAK_ADMIN = "admin";
+                KC_BOOTSTRAP_ADMIN_USERNAME = "admin";
               };
               envFrom = [{secretRef.name = "keycloak";}];
-              ports = lib.toList {name = "http"; containerPort = 8080;};
+              ports = [
+                {name = "http"; containerPort = 8080;}
+                {name = "management"; containerPort = 9000;}
+              ];
               probes.liveness = {
                 enabled = true;
                 custom = true;
                 spec.httpGet.path = "/health/live";
-                spec.httpGet.port = "http";
+                spec.httpGet.port = "management";
               };
               probes.readiness = {
                 enabled = true;
                 custom = true;
                 spec.httpGet.path = "/health/ready";
-                spec.httpGet.port = "http";
-                spec.initialDelaySeconds = 30;
+                spec.httpGet.port = "management";
               };
               probes.startup = {
                 enabled = true;
                 custom = true;
                 spec.httpGet.path = "/health/started";
-                spec.httpGet.port = "http";
-                spec.failureThreshold = 30;
+                spec.httpGet.port = "management";
+                spec.failureThreshold = 60;
                 spec.periodSeconds = 10;
               };
             };
@@ -60,8 +62,8 @@ in {
           secretStoreRef.kind = "ClusterSecretStore";
           target.template.data = {
             KC_DB_PASSWORD = "{{ .db_password }}";
-            KEYCLOAK_ADMIN = "admin";
-            KEYCLOAK_ADMIN_PASSWORD = "{{ .admin_password }}";
+            KC_BOOTSTRAP_ADMIN_USERNAME = "admin";
+            KC_BOOTSTRAP_ADMIN_PASSWORD = "{{ .admin_password }}";
           };
           data = [
             {
