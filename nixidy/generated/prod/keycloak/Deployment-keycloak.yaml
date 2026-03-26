@@ -40,11 +40,15 @@ spec:
               value: jdbc:postgresql://keycloak-rw:5432/keycloak
             - name: KC_DB_USERNAME
               value: keycloak
+            - name: KC_FEATURES
+              value: hostname:v2
             - name: KC_HEALTH_ENABLED
               value: "true"
             - name: KC_HOSTNAME
               value: keycloak.trdos.me
             - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_METRICS_ENABLED
               value: "true"
             - name: KC_PROXY_HEADERS
               value: xforwarded
