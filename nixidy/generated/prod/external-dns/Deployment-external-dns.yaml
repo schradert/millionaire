@@ -42,6 +42,7 @@ spec:
             - --crd-source-kind=DNSEndpoint
             - --gateway-name=external
             - --cloudflare-proxied
+            - --annotation-filter=external-dns.alpha.kubernetes.io/exclude notin (true)
           env:
             - name: CF_API_TOKEN
               valueFrom:

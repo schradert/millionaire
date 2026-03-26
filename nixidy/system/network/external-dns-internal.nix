@@ -58,6 +58,7 @@
           };
           extraArgs = [
             "--gateway-name=internal"
+            "--annotation-filter=external-dns.alpha.kubernetes.io/exclude notin (true)"
           ];
           policy = "sync";
           sources = ["gateway-httproute"];

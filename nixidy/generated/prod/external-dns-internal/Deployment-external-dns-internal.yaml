@@ -37,6 +37,7 @@ spec:
             - --domain-filter=trdos.me
             - --provider=webhook
             - --gateway-name=internal
+            - --annotation-filter=external-dns.alpha.kubernetes.io/exclude notin (true)
           image: registry.k8s.io/external-dns/external-dns:v0.20.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
