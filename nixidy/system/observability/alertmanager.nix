@@ -1,9 +1,12 @@
 {config, ...}: {
   nixidy = {lib, ...}: let
-    inherit (config.canivete.meta) domain;
+    inherit (config.canivete.meta) domain people;
     hostname = "alertmanager.${domain}";
   in {
-    gatus.endpoints.alertmanager = { url = "https://${hostname}"; group = "internal"; };
+    gatus.endpoints.alertmanager = {
+      url = "https://${hostname}";
+      group = "internal";
+    };
     applications.alertmanager = {
       namespace = "observability";
       helm.releases.alertmanager = {
@@ -15,7 +18,27 @@
         };
         values = {
           baseURL = "https://${hostname}";
-          # TODO config receivers
+          config = {
+            route = {
+              receiver = "email";
+              group_wait = "30s";
+              group_interval = "5m";
+              repeat_interval = "4h";
+            };
+            receivers = [
+              {
+                name = "email";
+                email_configs = [
+                  {
+                    to = people.my.profiles.personal.email;
+                    from = "noreply@${domain}";
+                    smarthost = "stalwart.mail.svc.cluster.local:25";
+                    require_tls = false;
+                  }
+                ];
+              }
+            ];
+          };
           configmapReload.enabled = true;
           configmapReload.image.tag = "v0.81.0";
           statefulSet.annotations."reloader.stakater.com/auto" = "true";

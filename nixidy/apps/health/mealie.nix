@@ -3,9 +3,7 @@
   # TODO bulk import some recipes https://docs.mealie.io/documentation/community-guide/bulk-url-import/
   # TODO bookmarklet https://docs.mealie.io/documentation/community-guide/import-recipe-bookmarklet/
   # TODO theme dracula / stylix
-  # TODO keycloak OIDC secret
   # TODO ollama api key + model
-  # TODO stalwart SMTP config
   nixidy = {
     charts,
     lib,
@@ -15,6 +13,23 @@
     hostname = "mealie.${domain}";
   in {
     gatus.endpoints.mealie = { url = "https://${hostname}"; group = "internal"; };
+
+    # Keycloak OIDC client — Hostzero operator syncs secret to K8s
+    applications.keycloak.resources.keycloakClients.mealie.spec = {
+      realmRef.name = "default";
+      definition = {
+        clientId = "mealie";
+        name = "Mealie";
+        enabled = true;
+        protocol = "openid-connect";
+        standardFlowEnabled = true;
+        directAccessGrantsEnabled = false;
+        redirectUris = ["https://${hostname}/login*"];
+        webOrigins = ["https://${hostname}"];
+        defaultClientScopes = ["openid" "profile" "email"];
+      };
+    };
+
     applications.mealie = {
       namespace = "health";
       postgres.enable = true;
@@ -46,12 +61,20 @@
             POSTGRES_SERVER = "mealie-rw";
             POSTGRES_PASSWORD_FILE = "/secrets/db_password.txt";
             OIDC_AUTH_ENABLED = "True";
-            # OIDC_CONFIGURATION_URL = "https://keycloak.${domain}/realms/primary/.well-known/openid-configuration";
+            OIDC_CONFIGURATION_URL = "https://keycloak.${domain}/realms/default/.well-known/openid-configuration";
             OIDC_CLIENT_ID = "mealie";
+            OIDC_CLIENT_SECRET_FILE = "/secrets/client_secret";
+            OIDC_PROVIDER_NAME = "Keycloak";
+            OIDC_SIGNUP_ENABLED = "True";
             OIDC_USER_GROUP = "/family";
             OIDC_ADMIN_GROUP = "/admin";
             OIDC_AUTO_REDIRECT = "True";
             OIDC_REMEMBER_ME = "True";
+            SMTP_HOST = "stalwart.mail.svc.cluster.local";
+            SMTP_PORT = "25";
+            SMTP_AUTH_STRATEGY = "NONE";
+            SMTP_FROM_NAME = "Mealie";
+            SMTP_FROM_EMAIL = "noreply@${domain}";
           };
         };
       };
@@ -75,6 +98,13 @@
           remoteRef.key = "mealie-app";
           remoteRef.property = "password";
           sourceRef.storeRef.name = "kubernetes-health";
+          sourceRef.storeRef.kind = "ClusterSecretStore";
+        }
+        {
+          secretKey = "client_secret";
+          remoteRef.key = "mealie";
+          remoteRef.property = "CLIENT_SECRET";
+          sourceRef.storeRef.name = "kubernetes-identity";
           sourceRef.storeRef.kind = "ClusterSecretStore";
         }
       ];

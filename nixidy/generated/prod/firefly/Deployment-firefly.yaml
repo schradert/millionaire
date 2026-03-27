@@ -50,6 +50,18 @@ spec:
               value: "5432"
             - name: DB_USERNAME
               value: firefly
+            - name: MAIL_ENCRYPTION
+              value: "null"
+            - name: MAIL_FROM
+              value: noreply@trdos.me
+            - name: MAIL_HOST
+              value: stalwart.mail.svc.cluster.local
+            - name: MAIL_MAILER
+              value: smtp
+            - name: MAIL_PORT
+              value: "25"
+            - name: SITE_OWNER
+              value: t0rdos@pm.me
           image: fireflyiii/core:version-6.5.4@sha256:6ae1b92eb73b4ae8a8e7e038440b93fba46267e05b5b903c62316b8cb03779af
           livenessProbe:
             httpGet:
@@ -81,6 +93,8 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
+      securityContext:
+        fsGroup: 33
       serviceAccountName: default
       volumes:
         - name: secrets
