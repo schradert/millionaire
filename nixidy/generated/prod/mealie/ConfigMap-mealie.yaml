@@ -8,10 +8,19 @@ data:
   OIDC_AUTH_ENABLED: "True"
   OIDC_AUTO_REDIRECT: "True"
   OIDC_CLIENT_ID: mealie
+  OIDC_CLIENT_SECRET_FILE: /secrets/client_secret
+  OIDC_CONFIGURATION_URL: https://keycloak.trdos.me/realms/default/.well-known/openid-configuration
+  OIDC_PROVIDER_NAME: Keycloak
   OIDC_REMEMBER_ME: "True"
+  OIDC_SIGNUP_ENABLED: "True"
   OIDC_USER_GROUP: /family
   POSTGRES_PASSWORD_FILE: /secrets/db_password.txt
   POSTGRES_SERVER: mealie-rw
+  SMTP_AUTH_STRATEGY: NONE
+  SMTP_FROM_EMAIL: noreply@trdos.me
+  SMTP_FROM_NAME: Mealie
+  SMTP_HOST: stalwart.mail.svc.cluster.local
+  SMTP_PORT: "25"
 kind: ConfigMap
 metadata:
   labels:

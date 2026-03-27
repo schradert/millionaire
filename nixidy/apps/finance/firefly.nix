@@ -29,6 +29,7 @@
         values = {
           controllers.firefly = {
             annotations."reloader.stakater.com/auto" = "true";
+            pod.securityContext.fsGroup = 33;
             containers.firefly = {
               image.repository = "fireflyiii/core";
               image.tag = "version-6.5.4";
@@ -48,6 +49,12 @@
                 DB_DATABASE = "firefly";
                 DB_USERNAME = "firefly";
                 DB_PASSWORD_FILE = "/secrets/db_password.txt";
+                SITE_OWNER = config.canivete.meta.people.my.profiles.personal.email;
+                MAIL_MAILER = "smtp";
+                MAIL_HOST = "stalwart.mail.svc.cluster.local";
+                MAIL_PORT = "25";
+                MAIL_ENCRYPTION = "null";
+                MAIL_FROM = "noreply@${domain}";
               };
               probes.liveness = probe {};
               probes.readiness = probe {

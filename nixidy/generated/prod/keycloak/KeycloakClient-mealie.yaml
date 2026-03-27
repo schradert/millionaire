@@ -1,0 +1,23 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: mealie
+  namespace: identity
+spec:
+  definition:
+    clientId: mealie
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Mealie
+    protocol: openid-connect
+    redirectUris:
+      - https://mealie.trdos.me/login*
+    standardFlowEnabled: true
+    webOrigins:
+      - https://mealie.trdos.me
+  realmRef:
+    name: default

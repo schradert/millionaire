@@ -3,6 +3,7 @@
     ./cicd/argocd.nix
     ./cicd/descheduler.nix
     ./cicd/reloader.nix
+    ./mail/stalwart.nix
     ./network/cilium.nix
     ./network/coredns.nix
     ./network/adguard.nix
@@ -29,6 +30,7 @@
     canivete.bootstrap.enable = true;
     resources.namespaces = {
       cicd = {};
+      mail = {};
       observability = {};
       security = {};
       storage = {};

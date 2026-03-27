@@ -5,7 +5,7 @@ metadata:
   namespace: identity
 spec:
   definition:
-    email: tristan@trdos.me
+    email: t0rdos@pm.me
     emailVerified: true
     enabled: true
     groups:

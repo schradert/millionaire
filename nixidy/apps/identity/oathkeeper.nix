@@ -193,6 +193,22 @@
           }
         ];
       };
+      resources.referenceGrants.allow-mail.spec = {
+        from = [
+          {
+            group = "gateway.networking.k8s.io";
+            kind = "HTTPRoute";
+            namespace = "mail";
+          }
+        ];
+        to = [
+          {
+            group = "";
+            kind = "Service";
+            name = "oathkeeper-proxy";
+          }
+        ];
+      };
       resources.referenceGrants.allow-finance.spec = {
         from = [
           {

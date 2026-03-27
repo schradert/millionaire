@@ -63,6 +63,10 @@
           GF_NEWS_NEWS_FEED_ENABLED = "false";
           GF_SECURITY_COOKIE_SAMESITE = "grafana";
           GF_SERVER_ROOT_URL = "https://${hostname}";
+          GF_SMTP_ENABLED = "true";
+          GF_SMTP_HOST = "stalwart.mail.svc.cluster.local:25";
+          GF_SMTP_FROM_ADDRESS = "noreply@${domain}";
+          GF_SMTP_FROM_NAME = "Grafana";
         };
         externalSecrets.grafana-admin.spec = {
           secretStoreRef.name = "bitwarden";
