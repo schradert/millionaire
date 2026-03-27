@@ -14,6 +14,14 @@ spec:
     otpPolicyType: totp
     realm: default
     registrationAllowed: false
+    smtpServer:
+      auth: "false"
+      from: noreply@trdos.me
+      fromDisplayName: Homelab
+      host: stalwart.mail.svc.cluster.local
+      port: "25"
+      ssl: "false"
+      starttls: "false"
     ssoSessionIdleTimeout: 86400
     ssoSessionMaxLifespan: 259200
     webAuthnPolicyRpEntityName: Homelab Default Realm

@@ -1,0 +1,15 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--stalwart--stalwart-dst
+  namespace: mail
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: stalwart
+    moverSecurityContext:
+      runAsGroup: 101
+      runAsUser: 101
+    repository: volsync--stalwart--stalwart
+  trigger:
+    manual: "1"

@@ -55,16 +55,15 @@ in {
           webAuthnPolicyRpEntityName = "Homelab Default Realm";
           webAuthnPolicyRpId = domain;
           otpPolicyType = "totp";
-          # TODO Stalwart hookup
-          # smtpServer = {
-          #   host = "stalwart.mail.svc.cluster.local";
-          #   port = "25";
-          #   from = "noreply@${domain}";
-          #   fromDisplayName = "Millionaire Homelab";
-          #   starttls = "false";
-          #   ssl = "false";
-          #   auth = "false";
-          # };
+          smtpServer = {
+            host = "stalwart.mail.svc.cluster.local";
+            port = "25";
+            from = "noreply@${domain}";
+            fromDisplayName = "Homelab";
+            starttls = "false";
+            ssl = "false";
+            auth = "false";
+          };
         };
       };
       keycloakGroups.admin.spec = {
@@ -79,7 +78,7 @@ in {
         realmRef.name = "default";
         definition = {
           username = people.me;
-          email = people.my.profiles.default.email;
+          email = people.my.profiles.personal.email;
           emailVerified = true;
           enabled = true;
           groups = ["admin" "family"];

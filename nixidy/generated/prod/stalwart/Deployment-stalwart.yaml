@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: stalwart
+    app.kubernetes.io/instance: stalwart
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: stalwart
+  name: stalwart
+  namespace: mail
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: stalwart
+      app.kubernetes.io/instance: stalwart
+      app.kubernetes.io/name: stalwart
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: bec2f1b615d3d60dd7d432a1e6b8dbe22a447368476cee99d4453217a35eb344
+      labels:
+        app.kubernetes.io/controller: stalwart
+        app.kubernetes.io/instance: stalwart
+        app.kubernetes.io/name: stalwart
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - envFrom:
+            - secretRef:
+                name: stalwart
+          image: stalwartlabs/mail-server:v0.11.8
+          livenessProbe:
+            httpGet:
+              path: /healthz/live
+              port: http
+          name: stalwart
+          ports:
+            - containerPort: 25
+              name: smtp
+            - containerPort: 8080
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: http
+          startupProbe:
+            failureThreshold: 30
+            httpGet:
+              path: /healthz/live
+              port: http
+            periodSeconds: 10
+          volumeMounts:
+            - mountPath: /opt/stalwart/etc/config.toml
+              name: config
+              readOnly: true
+              subPath: config.toml
+            - mountPath: /opt/stalwart
+              name: data
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: default
+      volumes:
+        - configMap:
+            name: stalwart
+          name: config
+        - name: data
+          persistentVolumeClaim:
+            claimName: stalwart

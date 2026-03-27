@@ -1,0 +1,22 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app.kubernetes.io/instance: stalwart
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: stalwart
+  name: stalwart
+  namespace: mail
+spec:
+  endpoints:
+    - path: /metrics/prometheus
+      port: http
+  jobLabel: stalwart
+  namespaceSelector:
+    matchNames:
+      - mail
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: stalwart
+      app.kubernetes.io/name: stalwart
+      app.kubernetes.io/service: stalwart
