@@ -37,6 +37,9 @@ data:
     bind = ["[::]:25"]
     protocol = "smtp"
 
+    [session.rcpt]
+    relay = true
+
     [storage]
     blob = "rocksdb"
     data = "rocksdb"
