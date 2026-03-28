@@ -123,8 +123,8 @@ in {
               user = "admin";
               secret = "%{env:ADMIN_SECRET}%";
             };
-
             metrics.prometheus.enable = true;
+            session.rcpt.relay = true;
 
             queue.strategy.route = [{"else" = "'relay'";}];
             queue.route.relay = {

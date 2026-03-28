@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: bec2f1b615d3d60dd7d432a1e6b8dbe22a447368476cee99d4453217a35eb344
+        checksum/configMaps: 93670892a26f0a8b87ca88c801b22f24dcafeb68524f9ff2f7b98034a2a17cbf
       labels:
         app.kubernetes.io/controller: stalwart
         app.kubernetes.io/instance: stalwart
