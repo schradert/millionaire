@@ -19,8 +19,11 @@ in {
           controllers.stalwart = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.stalwart = {
-              image.repository = "stalwartlabs/mail-server";
-              image.tag = "v0.11.8";
+              image = {
+                repository = "stalwartlabs/stalwart";
+                tag = "v0.15.5";
+                digest = "sha256:b6c2a04a79695136d5e2c16e9da0254135d0c3f3b1f8147873e812916b0ae8c4";
+              };
               envFrom = [{secretRef.name = "stalwart";}];
               ports = [
                 {
@@ -58,12 +61,9 @@ in {
             smtp.port = ports.smtp;
             http.port = ports.http;
           };
-          serviceMonitor.stalwart = {
-            serviceName = "stalwart";
-            endpoints = lib.toList {
-              port = "http";
-              path = "/metrics/prometheus";
-            };
+          serviceMonitor.stalwart.endpoints = lib.toList {
+            port = "http";
+            path = "/metrics/prometheus";
           };
           persistence = {
             data = {
