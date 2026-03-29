@@ -140,6 +140,7 @@ in {
             metrics.prometheus.enable = true;
             session.rcpt.relay = true;
 
+            queue.strategy.route = "'relay'";
             queue.route.relay = {
               type = "relay";
               address = "smtp.protonmail.ch";
@@ -150,14 +151,8 @@ in {
               auth.username = "noreply@${domain}";
               auth.secret = "%{env:SMTP_TOKEN}%";
             };
-            # pkgs.formats.toml renders lists of attrsets as [[array.of.tables]] sections,
-            # but Stalwart expects [queue.strategy] route = [{...}] (inline array).
-            # Trailing newline is also required to avoid "Unexpected EOF" parse errors.
-          }) + ''
-
-            [queue.strategy]
-            route = [{else = "'relay'"}]
-          '' + "\n";
+            # Trailing newline required to avoid Stalwart "Unexpected EOF" parse error.
+          }) + "\n";
         };
       };
       resources = {
