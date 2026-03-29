@@ -21,7 +21,6 @@ in {
             containers.stalwart = {
               image.repository = "stalwartlabs/mail-server";
               image.tag = "v0.11.8";
-              env.CONFIG_PATH = "/config/config.toml";
               envFrom = [{secretRef.name = "stalwart";}];
               ports = [
                 {
@@ -71,14 +70,14 @@ in {
               type = "persistentVolumeClaim";
               accessMode = "ReadWriteOnce";
               size = "2Gi";
-              advancedMounts.stalwart.stalwart = [{path = "/opt/stalwart-mail";}];
+              advancedMounts.stalwart.stalwart = [{path = "/data";}];
             };
             config = {
               type = "configMap";
               name = "stalwart";
               advancedMounts.stalwart.stalwart = [
                 {
-                  path = "/config/config.toml";
+                  path = "/opt/stalwart/etc/config.toml";
                   subPath = "config.toml";
                   readOnly = true;
                 }
@@ -86,6 +85,20 @@ in {
             };
           };
           configMaps.stalwart.data."config.toml" = builtins.readFile ((pkgs.formats.toml {}).generate "stalwart.toml" {
+            # Keys matching these patterns are authoritative from TOML, not overridden by RocksDB defaults
+            config.local-keys = [
+              "store.*"
+              "storage.*"
+              "server.*"
+              "directory.*"
+              "authentication.fallback-admin.*"
+              "tracer.*"
+              "metrics.prometheus.*"
+              "session.*"
+              "queue.*"
+              "config.local-keys.*"
+            ];
+
             server.listener = {
               smtp = {
                 protocol = "smtp";
@@ -99,7 +112,7 @@ in {
 
             store.rocksdb = {
               type = "rocksdb";
-              path = "/opt/stalwart-mail/data";
+              path = "/data";
               compression = "lz4";
             };
             directory.internal = {
@@ -127,7 +140,6 @@ in {
             metrics.prometheus.enable = true;
             session.rcpt.relay = true;
 
-            queue.strategy.route = [{"else" = "'relay'";}];
             queue.route.relay = {
               type = "relay";
               address = "smtp.protonmail.ch";
@@ -138,7 +150,14 @@ in {
               auth.username = "noreply@${domain}";
               auth.secret = "%{env:SMTP_TOKEN}%";
             };
-          }) + "\n";
+            # pkgs.formats.toml renders lists of attrsets as [[array.of.tables]] sections,
+            # but Stalwart expects [queue.strategy] route = [{...}] (inline array).
+            # Trailing newline is also required to avoid "Unexpected EOF" parse errors.
+          }) + ''
+
+            [queue.strategy]
+            route = [{else = "'relay'"}]
+          '' + "\n";
         };
       };
       resources = {
