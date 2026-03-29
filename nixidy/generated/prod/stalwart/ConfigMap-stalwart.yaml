@@ -40,6 +40,9 @@ data:
     allow-invalid-certs = false
     implicit = false
 
+    [queue.strategy]
+    route = "'relay'"
+
     [server.listener.management]
     bind = ["[::]:8080"]
     protocol = "http"
@@ -68,9 +71,6 @@ data:
     enable = true
     level = "info"
     type = "stdout"
-
-    [queue.strategy]
-    route = [{else = "'relay'"}]
 kind: ConfigMap
 metadata:
   labels:
