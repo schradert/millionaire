@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 93670892a26f0a8b87ca88c801b22f24dcafeb68524f9ff2f7b98034a2a17cbf
+        checksum/configMaps: 9f3ddd9f51b2ed14d223acf6adfbe429d0b3f997763bdbc7aed9ba37e8a3a50e
       labels:
         app.kubernetes.io/controller: stalwart
         app.kubernetes.io/instance: stalwart
@@ -31,7 +31,10 @@ spec:
     spec:
       automountServiceAccountToken: true
       containers:
-        - envFrom:
+        - env:
+            - name: CONFIG_PATH
+              value: /config/config.toml
+          envFrom:
             - secretRef:
                 name: stalwart
           image: stalwartlabs/mail-server:v0.11.8
@@ -56,11 +59,11 @@ spec:
               port: http
             periodSeconds: 10
           volumeMounts:
-            - mountPath: /opt/stalwart/etc/config.toml
+            - mountPath: /config/config.toml
               name: config
               readOnly: true
               subPath: config.toml
-            - mountPath: /opt/stalwart
+            - mountPath: /opt/stalwart-mail
               name: data
       dnsPolicy: ClusterFirst
       enableServiceLinks: false

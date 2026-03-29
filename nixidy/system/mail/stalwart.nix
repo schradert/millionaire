@@ -21,6 +21,7 @@ in {
             containers.stalwart = {
               image.repository = "stalwartlabs/mail-server";
               image.tag = "v0.11.8";
+              env.CONFIG_PATH = "/config/config.toml";
               envFrom = [{secretRef.name = "stalwart";}];
               ports = [
                 {
@@ -70,14 +71,14 @@ in {
               type = "persistentVolumeClaim";
               accessMode = "ReadWriteOnce";
               size = "2Gi";
-              advancedMounts.stalwart.stalwart = [{path = "/opt/stalwart";}];
+              advancedMounts.stalwart.stalwart = [{path = "/opt/stalwart-mail";}];
             };
             config = {
               type = "configMap";
               name = "stalwart";
               advancedMounts.stalwart.stalwart = [
                 {
-                  path = "/opt/stalwart/etc/config.toml";
+                  path = "/config/config.toml";
                   subPath = "config.toml";
                   readOnly = true;
                 }
@@ -98,7 +99,7 @@ in {
 
             store.rocksdb = {
               type = "rocksdb";
-              path = "/opt/stalwart/data";
+              path = "/opt/stalwart-mail/data";
               compression = "lz4";
             };
             directory.internal = {
@@ -137,7 +138,7 @@ in {
               auth.username = "noreply@${domain}";
               auth.secret = "%{env:SMTP_TOKEN}%";
             };
-          });
+          }) + "\n";
         };
       };
       resources = {
