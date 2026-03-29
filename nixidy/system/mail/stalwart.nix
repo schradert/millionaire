@@ -10,6 +10,11 @@ in {
     pkgs,
     ...
   }: {
+    gatus.endpoints.stalwart = {
+      url = "https://${hostname}";
+      group = "internal";
+      conditions = ["[STATUS] == 401"];
+    };
     applications.stalwart = {
       namespace = "mail";
       volsync.pvcs.stalwart.title = "stalwart";
@@ -179,7 +184,8 @@ in {
           };
           rules = lib.toList {
             backendRefs = lib.toList {
-              name = "stalwart";
+              name = "oathkeeper-proxy";
+              namespace = "identity";
               port = 4455;
             };
           };
