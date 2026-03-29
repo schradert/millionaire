@@ -5,6 +5,20 @@ data:
     secret = "%{env:ADMIN_SECRET}%"
     user = "admin"
 
+    [config]
+    local-keys = [
+        "store.*",
+        "storage.*",
+        "server.*",
+        "directory.*",
+        "authentication.fallback-admin.*",
+        "tracer.*",
+        "metrics.prometheus.*",
+        "session.*",
+        "queue.*",
+        "config.local-keys.*",
+    ]
+
     [directory.internal]
     store = "rocksdb"
     type = "internal"
@@ -26,9 +40,6 @@ data:
     allow-invalid-certs = false
     implicit = false
 
-    [[queue.strategy.route]]
-    else = "'relay'"
-
     [server.listener.management]
     bind = ["[::]:8080"]
     protocol = "http"
@@ -49,7 +60,7 @@ data:
 
     [store.rocksdb]
     compression = "lz4"
-    path = "/opt/stalwart-mail/data"
+    path = "/data"
     type = "rocksdb"
 
     [tracer.stdout]
@@ -57,6 +68,9 @@ data:
     enable = true
     level = "info"
     type = "stdout"
+
+    [queue.strategy]
+    route = [{else = "'relay'"}]
 kind: ConfigMap
 metadata:
   labels:
