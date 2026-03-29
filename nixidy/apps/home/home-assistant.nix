@@ -55,7 +55,7 @@
           };
           persistence.base-config = {
             type = "configMap";
-            name = "ha-config";
+            name = "ha";
             advancedMounts.ha.ha = [
               {
                 path = "/config/configuration.yaml";

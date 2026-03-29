@@ -71,7 +71,7 @@ spec:
       serviceAccountName: default
       volumes:
         - configMap:
-            name: ha-config
+            name: ha
           name: base-config
         - name: config
           persistentVolumeClaim:
