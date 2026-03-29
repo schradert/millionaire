@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: ha
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: ha
+    app.kubernetes.io/service: ha
+  name: ha
+  namespace: home
+spec:
+  ports:
+    - name: http
+      port: 8123
+      protocol: TCP
+      targetPort: 8123
+  selector:
+    app.kubernetes.io/controller: ha
+    app.kubernetes.io/instance: ha
+    app.kubernetes.io/name: ha
+  type: ClusterIP
