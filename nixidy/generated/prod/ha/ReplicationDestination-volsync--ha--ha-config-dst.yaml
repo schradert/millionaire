@@ -1,0 +1,15 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--ha--ha-config-dst
+  namespace: home
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: ha-config
+    moverSecurityContext:
+      runAsGroup: 101
+      runAsUser: 101
+    repository: volsync--ha--ha-config
+  trigger:
+    manual: "1"

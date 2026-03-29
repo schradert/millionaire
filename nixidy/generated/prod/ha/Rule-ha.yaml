@@ -1,0 +1,24 @@
+apiVersion: oathkeeper.ory.sh/v1alpha1
+kind: Rule
+metadata:
+  name: ha
+  namespace: home
+spec:
+  authenticators:
+    - handler: cookie_session
+  authorizer:
+    handler: allow
+  errors:
+    - handler: redirect
+  match:
+    methods:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+    url: https://hass.trdos.me/<.*>
+  mutators:
+    - handler: header
+  upstream:
+    url: http://ha.home.svc.cluster.local:8123
