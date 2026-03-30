@@ -2,8 +2,45 @@
   inherit (config.canivete.meta) domain;
   hostname = "keycloak.${domain}";
 in {
-  nixidy = {charts, lib, ...}: {
-    gatus.endpoints.keycloak = {url = "https://${hostname}"; group = "internal";};
+  devenv = {...}: {
+    scripts.keycloak-reset-password.exec = ''
+      email="''${1:?Usage: keycloak-reset-password <email>}"
+      realm="''${2:-default}"
+      base_url="https://keycloak.${domain}"
+
+      admin_password=$(kubectl get secret keycloak -n identity -o jsonpath='{.data.KC_BOOTSTRAP_ADMIN_PASSWORD}' | base64 -d)
+
+      token=$(curl -sf -X POST "$base_url/realms/master/protocol/openid-connect/token" \
+        -d "client_id=admin-cli" \
+        -d "grant_type=password" \
+        -d "username=admin" \
+        -d "password=$admin_password" | jq -r '.access_token')
+
+      user_id=$(curl -sf -H "Authorization: Bearer $token" \
+        "$base_url/admin/realms/$realm/users?email=$email&exact=true" | jq -r '.[0].id')
+
+      if [ "$user_id" = "null" ] || [ -z "$user_id" ]; then
+        echo "No user found with email: $email"
+        exit 1
+      fi
+
+      curl -sf -X PUT -H "Authorization: Bearer $token" \
+        -H "Content-Type: application/json" \
+        -d '["UPDATE_PASSWORD"]' \
+        "$base_url/admin/realms/$realm/users/$user_id/execute-actions-email"
+
+      echo "Password reset email sent to $email"
+    '';
+  };
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: {
+    gatus.endpoints.keycloak = {
+      url = "https://${hostname}";
+      group = "internal";
+    };
     applications.keycloak = {
       namespace = "identity";
       postgres.enable = true;
@@ -30,8 +67,14 @@ in {
               };
               envFrom = [{secretRef.name = "keycloak";}];
               ports = [
-                {name = "http"; containerPort = 8080;}
-                {name = "management"; containerPort = 9000;}
+                {
+                  name = "http";
+                  containerPort = 8080;
+                }
+                {
+                  name = "management";
+                  containerPort = 9000;
+                }
               ];
               probes.liveness = {
                 enabled = true;
@@ -71,6 +114,12 @@ in {
         };
       };
       resources = {
+        # Keycloak needs to pass a valid FQDN to Stalwart for email sending
+        # app-template doesn't support setting these variables though
+        deployments.keycloak.spec.template.spec = {
+          hostname = "keycloak";
+          subdomain = "keycloak";
+        };
         externalSecrets.keycloak.spec = {
           secretStoreRef.name = "bitwarden";
           secretStoreRef.kind = "ClusterSecretStore";
