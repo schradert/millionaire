@@ -42,7 +42,7 @@
                   check_session_url = "http://oauth2-proxy.identity.svc.cluster.local:4180/oauth2/auth";
                   preserve_path = true;
                   extra_from = "@this";
-                  subject_from = "email";
+                  subject_from = "headers.x-auth-request-email.0";
                   only = ["_oauth2_proxy"];
                 };
               };

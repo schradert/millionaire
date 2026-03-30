@@ -14,7 +14,7 @@ data:
           only:
           - _oauth2_proxy
           preserve_path: true
-          subject_from: email
+          subject_from: headers.x-auth-request-email.0
         enabled: true
       noop:
         enabled: true

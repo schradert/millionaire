@@ -20,7 +20,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/oathkeeper-config: 2cb500d6bf00f794c70921b7490b8bb9b621cf493a2e060fce8412ddcf875065
+        checksum/oathkeeper-config: af201e7ecf20b515fe5b861d2744d02667495c0fb746781285473f3997fda9f2
       labels:
         app.kubernetes.io/instance: oathkeeper
         app.kubernetes.io/managed-by: Helm
