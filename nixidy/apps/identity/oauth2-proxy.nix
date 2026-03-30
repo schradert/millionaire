@@ -98,8 +98,8 @@ in {
       resources.dragonflies.oauth2-proxy-dragonfly.spec = {
         replicas = 1;
         args = ["--proactor_threads" "1"];
-        resources.requests.memory = "64Mi";
-        resources.limits.memory = "128Mi";
+        resources.requests.memory = "320Mi";
+        resources.limits.memory = "320Mi";
       };
       resources = {
         httpRoutes.oauth2-proxy.spec = {
