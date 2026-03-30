@@ -84,6 +84,13 @@ in {
           groups = ["admin" "family"];
         };
       };
+      keycloakRoleMappings.tristan-realm-admin.spec = {
+        subject.userRef.name = "tristan";
+        role = {
+          name = "realm-admin";
+          clientId = "realm-management";
+        };
+      };
     };
   };
 }

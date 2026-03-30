@@ -1,0 +1,12 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakRoleMapping
+metadata:
+  name: tristan-realm-admin
+  namespace: identity
+spec:
+  role:
+    clientId: realm-management
+    name: realm-admin
+  subject:
+    userRef:
+      name: tristan
