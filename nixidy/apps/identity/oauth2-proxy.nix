@@ -153,10 +153,10 @@ in {
               };
             };
             service.oauth2-proxy.ports.http.port = 4180;
-            configMaps.oauth2-proxy-routes.data."default.conf" = nginxConf;
+            configMaps.routes.data."default.conf" = nginxConf;
             persistence.routes = {
               type = "configMap";
-              name = "oauth2-proxy-routes";
+              name = "oauth2-proxy";
               advancedMounts.oauth2-proxy.router = lib.toList {
                 path = "/etc/nginx/conf.d/default.conf";
                 subPath = "default.conf";

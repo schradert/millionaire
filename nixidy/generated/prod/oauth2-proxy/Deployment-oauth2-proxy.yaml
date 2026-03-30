@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 91238830d3864d1c43b08ed97032da21753bcf4124635cf582e88599a409bc91
+        checksum/configMaps: d730db4ca0c89b2b661a5be86c2e319081dcf1bdd67ec720122a0e467b65f220
       labels:
         app.kubernetes.io/controller: oauth2-proxy
         app.kubernetes.io/instance: oauth2-proxy
@@ -112,5 +112,5 @@ spec:
       serviceAccountName: default
       volumes:
         - configMap:
-            name: oauth2-proxy-routes
+            name: oauth2-proxy
           name: routes
