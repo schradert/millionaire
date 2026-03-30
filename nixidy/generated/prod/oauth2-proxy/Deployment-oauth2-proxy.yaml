@@ -45,6 +45,8 @@ spec:
             - --skip-provider-button=true
             - --reverse-proxy=true
             - --whitelist-domain=.trdos.me
+            - --session-store-type=redis
+            - --redis-connection-url=redis://oauth2-proxy-dragonfly.identity.svc.cluster.local:6379
           envFrom:
             - secretRef:
                 name: oauth2-proxy
