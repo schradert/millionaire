@@ -81,4 +81,6 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
+      hostname: keycloak
       serviceAccountName: default
+      subdomain: keycloak
