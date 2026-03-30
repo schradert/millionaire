@@ -59,7 +59,6 @@ in {
                 "--cookie-name=_oauth2_proxy"
                 "--email-domain=*"
                 "--set-xauthrequest=true"
-                "--pass-access-token=true"
                 "--upstream=static://202"
                 "--skip-provider-button=true"
                 "--reverse-proxy=true"
