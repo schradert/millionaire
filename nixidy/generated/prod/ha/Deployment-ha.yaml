@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: d7f5e985972777cc861a932852842afde0d9653bf65cb0f010c6a7bf4adab011
+        checksum/configMaps: c5e17bfccd2dd033a53baa3521c32a447360c5f16e3104f4fd31d8fe67bc2ab9
       labels:
         app.kubernetes.io/controller: ha
         app.kubernetes.io/instance: ha
