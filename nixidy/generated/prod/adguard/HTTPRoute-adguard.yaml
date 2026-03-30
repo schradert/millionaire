@@ -12,6 +12,6 @@ spec:
       sectionName: https
   rules:
     - backendRefs:
-        - name: oathkeeper-proxy
+        - name: oauth2-proxy
           namespace: identity
-          port: 4455
+          port: 4180

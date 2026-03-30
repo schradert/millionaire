@@ -135,23 +135,17 @@ in {
         };
         rules = lib.toList {
           backendRefs = lib.toList {
-            name = "oathkeeper-proxy";
+            name = "oauth2-proxy";
             namespace = "identity";
-            port = 4455;
+            port = 4180;
           };
         };
       };
-      resources.rules.adguard.spec = {
-        upstream.url = "http://adguard.kube-system.svc.cluster.local:3000";
-        match = {
-          url = "https://${hostname}/<.*>";
-          methods = ["GET" "POST" "PUT" "PATCH" "DELETE"];
-        };
-        authenticators = lib.toList {handler = "cookie_session";};
-        authorizer.handler = "allow";
-        mutators = lib.toList {handler = "header";};
-        errors = lib.toList {handler = "redirect";};
-      };
+    };
+
+    oauth2Proxy.upstreams."${hostname}" = {
+      url = "http://adguard.kube-system.svc.cluster.local:3000";
+      namespace = "kube-system";
     };
   };
 }
