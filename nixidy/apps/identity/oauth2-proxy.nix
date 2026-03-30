@@ -40,6 +40,9 @@ in {
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header X-Auth-Request-User $http_x_forwarded_user;
+            proxy_set_header X-Auth-Request-Email $http_x_forwarded_email;
+            proxy_set_header X-Auth-Request-Preferred-Username $http_x_forwarded_preferred_username;
             proxy_http_version 1.1;
             ${lib.optionalString cfg.websocket ''
               proxy_set_header Upgrade $http_upgrade;
