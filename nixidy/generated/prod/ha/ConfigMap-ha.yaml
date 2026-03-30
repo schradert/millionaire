@@ -6,8 +6,7 @@ data:
       name: Home
     http:
       trusted_proxies:
-      - 10.42.0.0/16
-      - 10.43.0.0/16
+      - 10.0.0.0/8
       use_x_forwarded_for: true
 kind: ConfigMap
 metadata:
