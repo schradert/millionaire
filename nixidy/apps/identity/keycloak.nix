@@ -151,12 +151,24 @@ in {
             namespace = "kube-system";
             sectionName = "https";
           };
-          rules = lib.toList {
-            backendRefs = lib.toList {
-              name = "keycloak";
-              port = 8080;
-            };
-          };
+          rules = [
+            {
+              matches = lib.toList {path = {type = "Exact"; value = "/";};};
+              filters = lib.toList {
+                type = "RequestRedirect";
+                requestRedirect = {
+                  path = {type = "ReplaceFullPath"; replaceFullPath = "/admin/default/console/";};
+                  statusCode = 302;
+                };
+              };
+            }
+            {
+              backendRefs = lib.toList {
+                name = "keycloak";
+                port = 8080;
+              };
+            }
+          ];
         };
       };
     };

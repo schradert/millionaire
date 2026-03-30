@@ -11,6 +11,14 @@ spec:
       namespace: kube-system
       sectionName: https
   rules:
-    - backendRefs:
-        - name: keycloak
-          port: 8080
+    - filters:
+        - requestRedirect:
+            path:
+              replaceFullPath: /admin/default/console/
+              type: ReplaceFullPath
+            statusCode: 302
+          type: RequestRedirect
+      matches:
+        - path:
+            type: Exact
+            value: /
