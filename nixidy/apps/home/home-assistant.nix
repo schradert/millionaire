@@ -73,9 +73,9 @@
             };
             rules = lib.toList {
               backendRefs = lib.toList {
-                name = "oathkeeper-proxy";
+                name = "oauth2-proxy";
                 namespace = "identity";
-                port = 4455;
+                port = 4180;
               };
             };
           };
@@ -96,18 +96,11 @@
         };
       };
 
-      # Oathkeeper access rule: authenticate via SSO
-      resources.rules.ha.spec = {
-        upstream.url = "http://ha.home.svc.cluster.local:8123";
-        match = {
-          url = "https://${hostname}/<.*>";
-          methods = ["GET" "POST" "PUT" "PATCH" "DELETE"];
-        };
-        authenticators = lib.toList {handler = "cookie_session";};
-        authorizer.handler = "allow";
-        mutators = lib.toList {handler = "header";};
-        errors = lib.toList {handler = "redirect";};
-      };
+    };
+    oauth2Proxy.upstreams.${hostname} = {
+      url = "http://ha.home.svc.cluster.local:8123";
+      namespace = "home";
+      websocket = true;
     };
   };
 }

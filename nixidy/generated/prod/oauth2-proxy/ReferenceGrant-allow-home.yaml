@@ -1,14 +1,14 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: ReferenceGrant
 metadata:
-  name: allow-kube-system
+  name: allow-home
   namespace: identity
 spec:
   from:
     - group: gateway.networking.k8s.io
       kind: HTTPRoute
-      namespace: kube-system
+      namespace: home
   to:
     - group: ""
       kind: Service
-      name: oathkeeper-proxy
+      name: oauth2-proxy

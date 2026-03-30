@@ -20,7 +20,7 @@ spec:
     - backendRefs:
         - group: ""
           kind: Service
-          name: oathkeeper-proxy
+          name: oauth2-proxy
           namespace: identity
-          port: 4455
+          port: 4180
           weight: 1
