@@ -1,0 +1,15 @@
+apiVersion: dragonflydb.io/v1alpha1
+kind: Dragonfly
+metadata:
+  name: oauth2-proxy-dragonfly
+  namespace: identity
+spec:
+  args:
+    - --proactor_threads
+    - "1"
+  replicas: 1
+  resources:
+    limits:
+      memory: 128Mi
+    requests:
+      memory: 64Mi

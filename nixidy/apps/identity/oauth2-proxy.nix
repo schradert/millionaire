@@ -5,8 +5,11 @@
   inherit (config.canivete.meta) domain;
   hostname = "oauth2.${domain}";
 in {
-  nixidy = {charts, lib, ...}: {
-    # Keycloak OIDC client — Hostzero operator syncs secret to K8s
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: {
     applications.keycloak.resources.keycloakClients.oauth2-proxy.spec = {
       realmRef.name = "default";
       definition = {
@@ -36,7 +39,10 @@ in {
       };
     };
 
-    gatus.endpoints.oauth2-proxy = {url = "https://${hostname}/ping"; group = "internal";};
+    gatus.endpoints.oauth2-proxy = {
+      url = "https://${hostname}/ping";
+      group = "internal";
+    };
     applications.oauth2-proxy = {
       namespace = "identity";
       helm.releases.oauth2-proxy = {
@@ -63,9 +69,14 @@ in {
                 "--skip-provider-button=true"
                 "--reverse-proxy=true"
                 "--whitelist-domain=.${domain}"
+                "--session-store-type=redis"
+                "--redis-connection-url=redis://oauth2-proxy-dragonfly.identity.svc.cluster.local:6379"
               ];
               envFrom = [{secretRef.name = "oauth2-proxy";}];
-              ports = lib.toList {name = "http"; containerPort = 4180;};
+              ports = lib.toList {
+                name = "http";
+                containerPort = 4180;
+              };
               probes.liveness = {
                 enabled = true;
                 custom = true;
@@ -83,6 +94,12 @@ in {
           };
           service.oauth2-proxy.ports.http.port = 4180;
         };
+      };
+      resources.dragonflies.oauth2-proxy-dragonfly.spec = {
+        replicas = 1;
+        args = ["--proactor_threads" "1"];
+        resources.requests.memory = "64Mi";
+        resources.limits.memory = "128Mi";
       };
       resources = {
         httpRoutes.oauth2-proxy.spec = {
