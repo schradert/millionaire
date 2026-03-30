@@ -19,6 +19,20 @@ in {
         redirectUris = ["https://${hostname}/oauth2/callback"];
         webOrigins = ["https://*.${domain}"];
         defaultClientScopes = ["openid" "profile" "email"];
+        protocolMappers = [
+          {
+            name = "audience";
+            protocol = "openid-connect";
+            protocolMapper = "oidc-audience-mapper";
+            consentRequired = false;
+            config = {
+              "included.client.audience" = "oauth2-proxy";
+              "id.token.claim" = "true";
+              "access.token.claim" = "true";
+              "introspection.token.claim" = "true";
+            };
+          }
+        ];
       };
     };
 

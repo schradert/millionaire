@@ -14,6 +14,16 @@ spec:
     enabled: true
     name: OAuth2 Proxy
     protocol: openid-connect
+    protocolMappers:
+      - config:
+          access.token.claim: "true"
+          id.token.claim: "true"
+          included.client.audience: oauth2-proxy
+          introspection.token.claim: "true"
+        consentRequired: false
+        name: audience
+        protocol: openid-connect
+        protocolMapper: oidc-audience-mapper
     redirectUris:
       - https://oauth2.trdos.me/oauth2/callback
     standardFlowEnabled: true
