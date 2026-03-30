@@ -26,7 +26,7 @@ in {
             listen 8080 default_server;
             server_name _;
             location /healthz { return 200 "ok"; }
-            location / { return 404; }
+            location / { return 202; }
           }
         ''
       ]
