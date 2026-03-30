@@ -63,6 +63,7 @@ in {
                 "--upstream=static://202"
                 "--skip-provider-button=true"
                 "--reverse-proxy=true"
+                "--whitelist-domain=.${domain}"
               ];
               envFrom = [{secretRef.name = "oauth2-proxy";}];
               ports = lib.toList {name = "http"; containerPort = 4180;};
