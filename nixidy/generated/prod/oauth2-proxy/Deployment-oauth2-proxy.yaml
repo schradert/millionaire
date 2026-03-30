@@ -45,6 +45,7 @@ spec:
             - --upstream=static://202
             - --skip-provider-button=true
             - --reverse-proxy=true
+            - --whitelist-domain=.trdos.me
           envFrom:
             - secretRef:
                 name: oauth2-proxy
