@@ -1,0 +1,23 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app: harbor
+    app.kubernetes.io/instance: harbor
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: harbor
+    app.kubernetes.io/part-of: harbor
+    chart: harbor
+    heritage: Helm
+    release: harbor
+  name: harbor
+  namespace: cicd
+spec:
+  endpoints:
+    - honorLabels: true
+      port: http-metrics
+  jobLabel: app.kubernetes.io/name
+  selector:
+    matchLabels:
+      app: harbor
+      release: harbor

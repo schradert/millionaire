@@ -1,0 +1,62 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: harbor-oidc-config
+  namespace: cicd
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      containers:
+        - args:
+            - |
+              ADMIN_PASS=$(cat /secrets/harbor/HARBOR_ADMIN_PASSWORD)
+              CLIENT_SECRET=$(cat /secrets/oidc/OIDC_CLIENT_SECRET)
+              curl -sf -X PUT \
+                -u "admin:$ADMIN_PASS" \
+                -H "Content-Type: application/json" \
+                -d "{
+                  \"auth_mode\": \"oidc_auth\",
+                  \"oidc_name\": \"Keycloak\",
+                  \"oidc_endpoint\": \"https://keycloak.trdos.me/realms/default\",
+                  \"oidc_client_id\": \"harbor\",
+                  \"oidc_client_secret\": \"$CLIENT_SECRET\",
+                  \"oidc_scope\": \"openid,profile,email,groups\",
+                  \"oidc_groups_claim\": \"groups\",
+                  \"oidc_admin_group\": \"/admin\",
+                  \"oidc_auto_onboard\": true,
+                  \"oidc_verify_cert\": true
+                }" \
+                "http://harbor.cicd.svc.cluster.local/api/v2.0/configurations"
+          command:
+            - sh
+            - -c
+          image: curlimages/curl:8.13.0
+          name: configure-oidc
+          volumeMounts:
+            - mountPath: /secrets/harbor
+              name: harbor-secrets
+              readOnly: true
+            - mountPath: /secrets/oidc
+              name: oidc-secrets
+              readOnly: true
+      initContainers:
+        - args:
+            - |
+              until curl -sf http://harbor.cicd.svc.cluster.local/api/v2.0/health; do
+                echo "Waiting for Harbor..."
+                sleep 10
+              done
+          command:
+            - sh
+            - -c
+          image: curlimages/curl:8.13.0
+          name: wait-for-harbor
+      restartPolicy: OnFailure
+      volumes:
+        - name: harbor-secrets
+          secret:
+            secretName: harbor
+        - name: oidc-secrets
+          secret:
+            secretName: harbor-oidc

@@ -61,6 +61,12 @@ data:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
+      name: harbor
+      url: https://harbor.trdos.me/api/v2.0/health
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
       name: keycloak
       url: https://keycloak.trdos.me
     - conditions:

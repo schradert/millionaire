@@ -1,0 +1,36 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: harbor
+  namespace: cicd
+spec:
+  backup:
+    barmanObjectStore:
+      destinationPath: s3://trdos-me--volsync/cnpg/harbor/
+      endpointURL: https://s3.us-west-004.backblazeb2.com
+      s3Credentials:
+        accessKeyId:
+          key: ACCESS_KEY_ID
+          name: harbor-b2-postgres
+        secretAccessKey:
+          key: ACCESS_SECRET_KEY
+          name: harbor-b2-postgres
+    retentionPolicy: 30d
+  bootstrap:
+    initdb:
+      database: harbor
+      owner: harbor
+      postInitApplicationSQL: []
+      postInitSQL: []
+  imageName: ghcr.io/cloudnative-pg/postgresql:17
+  instances: 1
+  monitoring:
+    enablePodMonitor: true
+  postgresql:
+    shared_preload_libraries: []
+  serviceAccountTemplate:
+    metadata:
+      name: harbor-pg
+  storage:
+    size: 5Gi
+    storageClass: ceph-block

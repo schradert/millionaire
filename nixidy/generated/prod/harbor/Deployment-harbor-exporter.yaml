@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: harbor
+    app.kubernetes.io/component: exporter
+    app.kubernetes.io/instance: harbor
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: harbor
+    app.kubernetes.io/part-of: harbor
+    chart: harbor
+    component: exporter
+    heritage: Helm
+    release: harbor
+  name: harbor-exporter
+  namespace: cicd
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: harbor
+      component: exporter
+      release: harbor
+  template:
+    metadata:
+      annotations:
+        checksum/configmap: 037e684ada3fb9c3bf0f34266122395b71caff9838eb0a111e96129a9699905c
+        checksum/secret: b40bf6ba2d644add2bf5cf8591620f8974f6eba7fb5b82d44e7f7bc6cb7740bd
+      labels:
+        app: harbor
+        app.kubernetes.io/component: exporter
+        app.kubernetes.io/instance: harbor
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: harbor
+        app.kubernetes.io/part-of: harbor
+        chart: harbor
+        component: exporter
+        heritage: Helm
+        release: harbor
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - -log-level
+            - info
+          env:
+            - name: HARBOR_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: harbor
+            - name: HARBOR_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: HARBOR_ADMIN_PASSWORD
+                  name: harbor
+          envFrom:
+            - configMapRef:
+                name: harbor-exporter-env
+            - secretRef:
+                name: harbor-exporter
+          image: goharbor/harbor-exporter:v2.14.3
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8001
+            initialDelaySeconds: 300
+            periodSeconds: 10
+          name: exporter
+          ports:
+            - containerPort: 8001
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8001
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+      volumes:
+        - name: config
+          secret:
+            secretName: harbor-exporter
