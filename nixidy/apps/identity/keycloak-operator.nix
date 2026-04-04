@@ -66,6 +66,32 @@ in {
           };
         };
       };
+      keycloakClientScopes.groups.spec = {
+        realmRef.name = "default";
+        definition = {
+          name = "groups";
+          description = "Map user group memberships to the groups claim";
+          protocol = "openid-connect";
+          attributes."include.in.token.scope" = "true";
+          protocolMappers = [
+            {
+              name = "groups";
+              protocol = "openid-connect";
+              protocolMapper = "oidc-group-membership-mapper";
+              consentRequired = false;
+              config = {
+                "full.path" = "false";
+                "introspection.token.claim" = "true";
+                "userinfo.token.claim" = "true";
+                "id.token.claim" = "true";
+                "access.token.claim" = "true";
+                "claim.name" = "groups";
+              };
+            }
+          ];
+        };
+      };
+
       keycloakGroups.admin.spec = {
         realmRef.name = "default";
         definition.name = "admin";
