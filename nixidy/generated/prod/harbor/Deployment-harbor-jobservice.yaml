@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: harbor
+    app.kubernetes.io/component: jobservice
+    app.kubernetes.io/instance: harbor
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: harbor
+    app.kubernetes.io/part-of: harbor
+    chart: harbor
+    component: jobservice
+    heritage: Helm
+    release: harbor
+  name: harbor-jobservice
+  namespace: cicd
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: harbor
+      component: jobservice
+      release: harbor
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/configmap: f16b5a22e0435d71313354137e35764333625d9422bf98bfd6c9679bcb23d7ef
+        checksum/configmap-env: c989a324bafcbfd6cca67251dbe23d5fb05838424dfb79734d82f0c4ba4630e3
+        checksum/secret: 4b316afaeaa3430997256c5e6b4601ca09acab4f57900248be5d04f2ca5bc96e
+        checksum/secret-core: 57c5bd20adb6c1a7dac1f0b5007a3424e93ce397de822ae0e46457ee32ca58fa
+      labels:
+        app: harbor
+        app.kubernetes.io/component: jobservice
+        app.kubernetes.io/instance: harbor
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: harbor
+        app.kubernetes.io/part-of: harbor
+        chart: harbor
+        component: jobservice
+        heritage: Helm
+        release: harbor
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: CORE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: secret
+                  name: harbor-core
+          envFrom:
+            - configMapRef:
+                name: harbor-jobservice-env
+            - secretRef:
+                name: harbor-jobservice
+          image: goharbor/harbor-jobservice:v2.14.3
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            httpGet:
+              path: /api/v1/stats
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 300
+            periodSeconds: 10
+          name: jobservice
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /api/v1/stats
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /etc/jobservice/config.yml
+              name: jobservice-config
+              subPath: config.yml
+            - mountPath: /var/log/jobs
+              name: job-logs
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+      terminationGracePeriodSeconds: 120
+      volumes:
+        - configMap:
+            name: harbor-jobservice
+          name: jobservice-config
+        - name: job-logs
+          persistentVolumeClaim:
+            claimName: harbor-jobservice

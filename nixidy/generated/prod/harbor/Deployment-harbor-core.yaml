@@ -1,0 +1,140 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: harbor
+    app.kubernetes.io/component: core
+    app.kubernetes.io/instance: harbor
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: harbor
+    app.kubernetes.io/part-of: harbor
+    chart: harbor
+    component: core
+    heritage: Helm
+    release: harbor
+  name: harbor-core
+  namespace: cicd
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: harbor
+      component: core
+      release: harbor
+  template:
+    metadata:
+      annotations:
+        checksum/configmap: 5bb103c403e3db14fc0e87940a56d81aac672ad7e377c6501f94263e338d8c30
+        checksum/secret: 07df7478da204cabe0bf5571248168c0065a683de1530e8eb46935c49b87980c
+        checksum/secret-jobservice: 9676ae0e53eeb358724b598f3637d3fa2f3470944bc9a1465a6972650f40f6af
+      labels:
+        app: harbor
+        app.kubernetes.io/component: core
+        app.kubernetes.io/instance: harbor
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: harbor
+        app.kubernetes.io/part-of: harbor
+        chart: harbor
+        component: core
+        heritage: Helm
+        release: harbor
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: CORE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: secret
+                  name: harbor-core
+            - name: JOBSERVICE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: JOBSERVICE_SECRET
+                  name: harbor-jobservice
+            - name: HARBOR_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: HARBOR_ADMIN_PASSWORD
+                  name: harbor
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: harbor
+          envFrom:
+            - configMapRef:
+                name: harbor-core
+            - secretRef:
+                name: harbor-core
+          image: goharbor/harbor-core:v2.14.3
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 2
+            httpGet:
+              path: /api/v2.0/ping
+              port: 8080
+              scheme: HTTP
+            periodSeconds: 10
+          name: core
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            failureThreshold: 2
+            httpGet:
+              path: /api/v2.0/ping
+              port: 8080
+              scheme: HTTP
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          startupProbe:
+            failureThreshold: 360
+            httpGet:
+              path: /api/v2.0/ping
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - mountPath: /etc/core/app.conf
+              name: config
+              subPath: app.conf
+            - mountPath: /etc/core/key
+              name: secret-key
+              subPath: key
+            - mountPath: /etc/core/private_key.pem
+              name: token-service-private-key
+              subPath: tls.key
+            - mountPath: /etc/core/token
+              name: psc
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+      terminationGracePeriodSeconds: 120
+      volumes:
+        - configMap:
+            items:
+              - key: app.conf
+                path: app.conf
+            name: harbor-core
+          name: config
+        - name: secret-key
+          secret:
+            items:
+              - key: secretKey
+                path: key
+            secretName: harbor
+        - name: token-service-private-key
+          secret:
+            secretName: harbor-core
+        - emptyDir: {}
+          name: psc
