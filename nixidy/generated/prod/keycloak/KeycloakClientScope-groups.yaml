@@ -1,0 +1,26 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClientScope
+metadata:
+  name: groups
+  namespace: identity
+spec:
+  definition:
+    attributes:
+      include.in.token.scope: "true"
+    description: Map user group memberships to the groups claim
+    name: groups
+    protocol: openid-connect
+    protocolMappers:
+      - config:
+          access.token.claim: "true"
+          claim.name: groups
+          full.path: "false"
+          id.token.claim: "true"
+          introspection.token.claim: "true"
+          userinfo.token.claim: "true"
+        consentRequired: false
+        name: groups
+        protocol: openid-connect
+        protocolMapper: oidc-group-membership-mapper
+  realmRef:
+    name: default
