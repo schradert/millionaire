@@ -1,0 +1,24 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: harbor
+  namespace: identity
+spec:
+  definition:
+    clientId: harbor
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+      - groups
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Harbor
+    protocol: openid-connect
+    redirectUris:
+      - https://harbor.trdos.me/c/oidc/callback
+    standardFlowEnabled: true
+    webOrigins:
+      - https://harbor.trdos.me
+  realmRef:
+    name: default

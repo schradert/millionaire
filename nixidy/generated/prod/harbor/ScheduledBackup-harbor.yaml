@@ -1,0 +1,10 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: harbor
+  namespace: cicd
+spec:
+  backupOwnerReference: self
+  cluster:
+    name: harbor
+  schedule: 0 0 * * *

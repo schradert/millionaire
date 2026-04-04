@@ -1,0 +1,15 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--harbor--harbor-registry-dst
+  namespace: cicd
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: harbor-registry
+    moverSecurityContext:
+      runAsGroup: 101
+      runAsUser: 101
+    repository: volsync--harbor--harbor-registry
+  trigger:
+    manual: "1"
