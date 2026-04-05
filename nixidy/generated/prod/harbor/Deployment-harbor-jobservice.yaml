@@ -8,6 +8,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
+    app.kubernetes.io/version: 2.14.3
     chart: harbor
     component: jobservice
     heritage: Helm
@@ -29,8 +30,8 @@ spec:
       annotations:
         checksum/configmap: f16b5a22e0435d71313354137e35764333625d9422bf98bfd6c9679bcb23d7ef
         checksum/configmap-env: c989a324bafcbfd6cca67251dbe23d5fb05838424dfb79734d82f0c4ba4630e3
-        checksum/secret: 4b316afaeaa3430997256c5e6b4601ca09acab4f57900248be5d04f2ca5bc96e
-        checksum/secret-core: 57c5bd20adb6c1a7dac1f0b5007a3424e93ce397de822ae0e46457ee32ca58fa
+        checksum/secret: 9b1546d3c5fd40ae3aebead60aae96a30051f0333eeed113cf8746998ae9aa13
+        checksum/secret-core: 823f5bb433208439fa6bfa0a69ac2bd0176d267f0e683d8e24690d11a5270ee6
       labels:
         app: harbor
         app.kubernetes.io/component: jobservice
@@ -38,6 +39,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: harbor
         app.kubernetes.io/part-of: harbor
+        app.kubernetes.io/version: 2.14.3
         chart: harbor
         component: jobservice
         heritage: Helm
@@ -51,6 +53,16 @@ spec:
                 secretKeyRef:
                   key: secret
                   name: harbor-core
+            - name: JOBSERVICE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: JOBSERVICE_SECRET
+                  name: harbor-jobservice
+            - name: REGISTRY_CREDENTIAL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: REGISTRY_PASSWD
+                  name: harbor-credentials
           envFrom:
             - configMapRef:
                 name: harbor-jobservice-env

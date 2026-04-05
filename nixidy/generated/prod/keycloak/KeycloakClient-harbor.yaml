@@ -4,6 +4,9 @@ metadata:
   name: harbor
   namespace: identity
 spec:
+  clientSecretRef:
+    create: true
+    name: harbor
   definition:
     clientId: harbor
     defaultClientScopes:
