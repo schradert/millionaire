@@ -96,8 +96,8 @@
       resources = {
         dragonflies.harbor-dragonfly.spec = {
           replicas = 1;
-          args = ["--proactor_threads" "2"];
-          resources.requests.memory = "512Mi";
+          args = ["--proactor_threads" "1"];
+          resources.requests.memory = "256Mi";
           resources.limits.memory = "512Mi";
         };
         persistentVolumeClaims.harbor-registry.spec = {
