@@ -17,11 +17,16 @@
     # Keycloak OIDC client — Hostzero operator syncs secret to K8s
     applications.keycloak.resources.keycloakClients.mealie.spec = {
       realmRef.name = "default";
+      clientSecretRef = {
+        name = "mealie";
+        create = true;
+      };
       definition = {
         clientId = "mealie";
         name = "Mealie";
         enabled = true;
         protocol = "openid-connect";
+        publicClient = false;
         standardFlowEnabled = true;
         directAccessGrantsEnabled = false;
         redirectUris = ["https://${hostname}/login*"];
@@ -103,7 +108,7 @@
         {
           secretKey = "client_secret";
           remoteRef.key = "mealie";
-          remoteRef.property = "CLIENT_SECRET";
+          remoteRef.property = "client-secret";
           sourceRef.storeRef.name = "kubernetes-identity";
           sourceRef.storeRef.kind = "ClusterSecretStore";
         }

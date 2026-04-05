@@ -10,11 +10,16 @@ in {
     # Keycloak OIDC client — Hostzero operator syncs secret to K8s
     applications.keycloak.resources.keycloakClients.argocd.spec = {
       realmRef.name = "default";
+      clientSecretRef = {
+        name = "argocd";
+        create = true;
+      };
       definition = {
         clientId = "argocd";
         name = "ArgoCD";
         enabled = true;
         protocol = "openid-connect";
+        publicClient = false;
         standardFlowEnabled = true;
         directAccessGrantsEnabled = false;
         redirectUris = ["https://argocd.${domain}/auth/callback"];
@@ -78,12 +83,12 @@ in {
           {
             secretKey = "oidc.argocd.clientID";
             remoteRef.key = "argocd"; # Keycloak client secret name
-            remoteRef.property = "CLIENT_ID";
+            remoteRef.property = "client-id";
           }
           {
             secretKey = "oidc.argocd.clientSecret";
             remoteRef.key = "argocd";
-            remoteRef.property = "CLIENT_SECRET";
+            remoteRef.property = "client-secret";
           }
         ];
       };

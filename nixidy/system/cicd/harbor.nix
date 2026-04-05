@@ -20,6 +20,7 @@
         name = "Harbor";
         enabled = true;
         protocol = "openid-connect";
+        publicClient = false;
         standardFlowEnabled = true;
         directAccessGrantsEnabled = false;
         redirectUris = ["https://${hostname}/c/oidc/callback"];

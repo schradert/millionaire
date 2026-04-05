@@ -4,6 +4,9 @@ metadata:
   name: sure
   namespace: identity
 spec:
+  clientSecretRef:
+    create: true
+    name: sure
   definition:
     clientId: sure
     defaultClientScopes:
@@ -14,6 +17,7 @@ spec:
     enabled: true
     name: Sure Finance
     protocol: openid-connect
+    publicClient: false
     redirectUris:
       - https://sure.trdos.me/auth/oidc/callback
     standardFlowEnabled: true
