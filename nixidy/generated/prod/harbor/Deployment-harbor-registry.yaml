@@ -8,6 +8,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
+    app.kubernetes.io/version: 2.14.3
     chart: harbor
     component: registry
     heritage: Helm
@@ -28,9 +29,9 @@ spec:
     metadata:
       annotations:
         checksum/configmap: 4541ce9b6792dd4ca7455726164811e744a41b4e8695325b50aec7a1896cde69
-        checksum/secret: d08314fda288048bc332fe16c4c58b3491d12e248c36f6d1f7373dabca16b3c7
-        checksum/secret-core: 1abbf23075afc760cacc7ad3af76be2525a775aaa3d8981a18c40e261afa21f3
-        checksum/secret-jobservice: 058998f713beb5f3b029259e2591fc380722d22ce4b2ef0ebb1c11045ae42023
+        checksum/secret: bfaf0428748fc7b05afa7fb77db63856ff914b3a3c2742c634ab67ce974afd99
+        checksum/secret-core: 823f5bb433208439fa6bfa0a69ac2bd0176d267f0e683d8e24690d11a5270ee6
+        checksum/secret-jobservice: 9b1546d3c5fd40ae3aebead60aae96a30051f0333eeed113cf8746998ae9aa13
       labels:
         app: harbor
         app.kubernetes.io/component: registry
@@ -38,6 +39,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: harbor
         app.kubernetes.io/part-of: harbor
+        app.kubernetes.io/version: 2.14.3
         chart: harbor
         component: registry
         heritage: Helm
@@ -45,7 +47,13 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - envFrom:
+        - env:
+            - name: REGISTRY_HTTP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: REGISTRY_HTTP_SECRET
+                  name: harbor-registry
+          envFrom:
             - secretRef:
                 name: harbor-registry
           image: goharbor/registry-photon:v2.14.3
@@ -87,6 +95,11 @@ spec:
               name: registry-config
               subPath: config.yml
         - env:
+            - name: REGISTRY_HTTP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: REGISTRY_HTTP_SECRET
+                  name: harbor-registry
             - name: CORE_SECRET
               valueFrom:
                 secretKeyRef:
@@ -152,7 +165,7 @@ spec:
             items:
               - key: REGISTRY_HTPASSWD
                 path: passwd
-            secretName: harbor-registry-htpasswd
+            secretName: harbor-credentials
         - configMap:
             name: harbor-registry
           name: registry-config

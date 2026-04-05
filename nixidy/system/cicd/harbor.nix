@@ -11,6 +11,10 @@
 
     applications.keycloak.resources.keycloakClients.harbor.spec = {
       realmRef.name = "default";
+      clientSecretRef = {
+        name = "harbor";
+        create = true;
+      };
       definition = {
         clientId = "harbor";
         name = "Harbor";
@@ -30,6 +34,8 @@
       volsync.pvcs.harbor-registry.title = "harbor-registry";
 
       helm.releases.harbor = {
+        # Prevent Secret manifests from generating
+        transformer = builtins.filter (r: r.kind or "" != "Secret");
         chart = lib.helm.downloadHelmChart {
           chart = "harbor";
           version = "1.18.3";
@@ -71,6 +77,16 @@
           existingSecretAdminPassword = "harbor";
           existingSecretAdminPasswordKey = "HARBOR_ADMIN_PASSWORD";
           existingSecretSecretKey = "harbor";
+          core = {
+            existingSecret = "harbor-core";
+            existingXsrfSecret = "harbor-core";
+            secretName = "harbor-core";
+          };
+          jobservice.existingSecret = "harbor-jobservice";
+          registry = {
+            existingSecret = "harbor-registry";
+            credentials.existingSecret = "harbor-credentials";
+          };
           trivy.enabled = true;
           metrics.enabled = true;
           metrics.serviceMonitor.enabled = true;
@@ -103,31 +119,110 @@
             };
           };
         };
-        externalSecrets.harbor.spec.data = [
-          {
-            secretKey = "HARBOR_ADMIN_PASSWORD";
-            remoteRef.key = "harbor/admin/password";
+        externalSecrets.harbor.spec = {
+          target.template.data = {
+            HARBOR_ADMIN_PASSWORD = "{{ .admin_password }}";
+            secretKey = "{{ .secret_key }}";
+            password = "{{ .db_password }}";
+          };
+          data = [
+            {
+              secretKey = "admin_password";
+              remoteRef.key = "harbor/admin/password";
+              sourceRef.storeRef.name = "bitwarden";
+              sourceRef.storeRef.kind = "ClusterSecretStore";
+            }
+            {
+              secretKey = "secret_key";
+              remoteRef.key = "harbor/secret-key";
+              sourceRef.storeRef.name = "bitwarden";
+              sourceRef.storeRef.kind = "ClusterSecretStore";
+            }
+            {
+              secretKey = "db_password";
+              remoteRef.key = "harbor-app";
+              remoteRef.property = "password";
+              sourceRef.storeRef.name = "kubernetes-cicd";
+              sourceRef.storeRef.kind = "ClusterSecretStore";
+            }
+          ];
+        };
+        externalSecrets.harbor-core.spec = {
+          target.template.data = {
+            secret = "{{ .secret }}";
+            CSRF_KEY = "{{ .csrf_key }}";
+            "tls.crt" = "{{ .tls_cert | b64dec }}";
+            "tls.key" = "{{ .tls_key | b64dec }}";
+          };
+          data = [
+            {
+              secretKey = "secret";
+              remoteRef.key = "harbor/core/secret";
+              sourceRef.storeRef.name = "bitwarden";
+              sourceRef.storeRef.kind = "ClusterSecretStore";
+            }
+            {
+              secretKey = "csrf_key";
+              remoteRef.key = "harbor/core/csrf-key";
+              sourceRef.storeRef.name = "bitwarden";
+              sourceRef.storeRef.kind = "ClusterSecretStore";
+            }
+            {
+              secretKey = "tls_cert";
+              remoteRef.key = "harbor/core/tls-cert";
+              sourceRef.storeRef.name = "bitwarden";
+              sourceRef.storeRef.kind = "ClusterSecretStore";
+            }
+            {
+              secretKey = "tls_key";
+              remoteRef.key = "harbor/core/tls-key";
+              sourceRef.storeRef.name = "bitwarden";
+              sourceRef.storeRef.kind = "ClusterSecretStore";
+            }
+          ];
+        };
+        externalSecrets.harbor-jobservice.spec = {
+          target.template.data.JOBSERVICE_SECRET = "{{ .secret }}";
+          data = lib.toList {
+            secretKey = "secret";
+            remoteRef.key = "harbor/jobservice/secret";
             sourceRef.storeRef.name = "bitwarden";
             sourceRef.storeRef.kind = "ClusterSecretStore";
-          }
-          {
-            secretKey = "secretKey";
-            remoteRef.key = "harbor/secret-key";
+          };
+        };
+        externalSecrets.harbor-registry.spec = {
+          target.template.data.REGISTRY_HTTP_SECRET = "{{ .http_secret }}";
+          data = lib.toList {
+            secretKey = "http_secret";
+            remoteRef.key = "harbor/registry/http-secret";
             sourceRef.storeRef.name = "bitwarden";
             sourceRef.storeRef.kind = "ClusterSecretStore";
-          }
-          {
-            secretKey = "HARBOR_DATABASE_PASSWORD";
-            remoteRef.key = "harbor-app";
-            remoteRef.property = "password";
-            sourceRef.storeRef.name = "kubernetes-cicd";
-            sourceRef.storeRef.kind = "ClusterSecretStore";
-          }
-        ];
+          };
+        };
+        externalSecrets.harbor-credentials.spec = {
+          target.template.data = {
+            REGISTRY_PASSWD = "{{ .password }}";
+            REGISTRY_HTPASSWD = "{{ .htpasswd }}";
+          };
+          data = [
+            {
+              secretKey = "password";
+              remoteRef.key = "harbor/registry/password";
+              sourceRef.storeRef.name = "bitwarden";
+              sourceRef.storeRef.kind = "ClusterSecretStore";
+            }
+            {
+              secretKey = "htpasswd";
+              remoteRef.key = "harbor/registry/htpasswd";
+              sourceRef.storeRef.name = "bitwarden";
+              sourceRef.storeRef.kind = "ClusterSecretStore";
+            }
+          ];
+        };
         externalSecrets.harbor-oidc.spec.data = lib.toList {
           secretKey = "OIDC_CLIENT_SECRET";
           remoteRef.key = "harbor";
-          remoteRef.property = "CLIENT_SECRET";
+          remoteRef.property = "client-secret";
           sourceRef.storeRef = {
             name = "kubernetes-identity";
             kind = "ClusterSecretStore";
