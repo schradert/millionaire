@@ -19,11 +19,16 @@
   in {
     applications.keycloak.resources.keycloakClients.sure.spec = {
       realmRef.name = "default";
+      clientSecretRef = {
+        name = "sure";
+        create = true;
+      };
       definition = {
         clientId = "sure";
         name = "Sure Finance";
         enabled = true;
         protocol = "openid-connect";
+        publicClient = false;
         standardFlowEnabled = true;
         directAccessGrantsEnabled = false;
         redirectUris = ["https://${hostname}/auth/oidc/callback"];
@@ -148,14 +153,14 @@
         {
           secretKey = "OIDC_CLIENT_ID";
           remoteRef.key = "sure";
-          remoteRef.property = "CLIENT_ID";
+          remoteRef.property = "client-id";
           sourceRef.storeRef.name = "kubernetes-identity";
           sourceRef.storeRef.kind = "ClusterSecretStore";
         }
         {
           secretKey = "OIDC_CLIENT_SECRET";
           remoteRef.key = "sure";
-          remoteRef.property = "CLIENT_SECRET";
+          remoteRef.property = "client-secret";
           sourceRef.storeRef.name = "kubernetes-identity";
           sourceRef.storeRef.kind = "ClusterSecretStore";
         }

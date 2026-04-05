@@ -4,6 +4,9 @@ metadata:
   name: mealie
   namespace: identity
 spec:
+  clientSecretRef:
+    create: true
+    name: mealie
   definition:
     clientId: mealie
     defaultClientScopes:
@@ -14,6 +17,7 @@ spec:
     enabled: true
     name: Mealie
     protocol: openid-connect
+    publicClient: false
     redirectUris:
       - https://mealie.trdos.me/login*
     standardFlowEnabled: true

@@ -18,6 +18,7 @@ spec:
     enabled: true
     name: Harbor
     protocol: openid-connect
+    publicClient: false
     redirectUris:
       - https://harbor.trdos.me/c/oidc/callback
     standardFlowEnabled: true
