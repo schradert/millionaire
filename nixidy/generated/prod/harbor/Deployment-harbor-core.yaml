@@ -8,6 +8,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
+    app.kubernetes.io/version: 2.14.3
     chart: harbor
     component: core
     heritage: Helm
@@ -26,8 +27,8 @@ spec:
     metadata:
       annotations:
         checksum/configmap: 5bb103c403e3db14fc0e87940a56d81aac672ad7e377c6501f94263e338d8c30
-        checksum/secret: 07df7478da204cabe0bf5571248168c0065a683de1530e8eb46935c49b87980c
-        checksum/secret-jobservice: 9676ae0e53eeb358724b598f3637d3fa2f3470944bc9a1465a6972650f40f6af
+        checksum/secret: 823f5bb433208439fa6bfa0a69ac2bd0176d267f0e683d8e24690d11a5270ee6
+        checksum/secret-jobservice: 9b1546d3c5fd40ae3aebead60aae96a30051f0333eeed113cf8746998ae9aa13
       labels:
         app: harbor
         app.kubernetes.io/component: core
@@ -35,6 +36,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: harbor
         app.kubernetes.io/part-of: harbor
+        app.kubernetes.io/version: 2.14.3
         chart: harbor
         component: core
         heritage: Helm
@@ -63,6 +65,16 @@ spec:
                 secretKeyRef:
                   key: password
                   name: harbor
+            - name: REGISTRY_CREDENTIAL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: REGISTRY_PASSWD
+                  name: harbor-credentials
+            - name: CSRF_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: CSRF_KEY
+                  name: harbor-core
           envFrom:
             - configMapRef:
                 name: harbor-core

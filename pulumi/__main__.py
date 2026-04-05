@@ -3,6 +3,7 @@ import pulumi_bitwarden as bw
 import pulumi_cloudflare as cf
 import pulumi_command as command
 import pulumi_random as rand
+import pulumi_tls as tls
 
 import millionaire
 
@@ -97,6 +98,55 @@ class Millionaire:
 
         sure_secret_key_base = rand.RandomPassword("sure_secret_key_base", length=128, special=False)
         Secret("sure/secret_key_base", sure_secret_key_base.result, "Sure Finance Rails SECRET_KEY_BASE")
+
+        # --- Harbor ---
+        harbor_admin_password = rand.RandomPassword("harbor_admin_password", length=24, special=False)
+        Secret("harbor/admin/password", harbor_admin_password.result, "Harbor admin password")
+
+        harbor_secret_key = rand.RandomPassword("harbor_secret_key", length=16, special=False)
+        Secret("harbor/secret-key", harbor_secret_key.result, "Harbor encryption secret key (16 chars)")
+
+        harbor_core_csrf = rand.RandomPassword("harbor_core_csrf", length=32, special=False)
+        Secret("harbor/core/csrf-key", harbor_core_csrf.result, "Harbor core CSRF/XSRF key")
+
+        harbor_core_secret = rand.RandomPassword("harbor_core_secret", length=16, special=False)
+        Secret("harbor/core/secret", harbor_core_secret.result, "Harbor core component communication secret")
+
+        harbor_token_key = tls.PrivateKey("harbor_token_key", algorithm="RSA", rsa_bits=2048)
+        harbor_token_cert = tls.SelfSignedCert(
+            "harbor_token_cert",
+            private_key_pem=harbor_token_key.private_key_pem,
+            subject=tls.SelfSignedCertSubjectArgs(common_name="harbor-token-ca"),
+            validity_period_hours=87600,
+            allowed_uses=["cert_signing", "digital_signature", "key_encipherment"],
+            is_ca_certificate=True,
+        )
+        # Base64-encode PEM values to avoid bws CLI multiline/dash issues
+        import base64
+        Secret(
+            "harbor/core/tls-cert",
+            harbor_token_cert.cert_pem.apply(lambda pem: base64.b64encode(pem.encode()).decode()),
+            "Harbor token service TLS certificate (base64-encoded PEM)",
+        )
+        Secret(
+            "harbor/core/tls-key",
+            harbor_token_key.private_key_pem.apply(lambda pem: base64.b64encode(pem.encode()).decode()),
+            "Harbor token service TLS private key (base64-encoded PEM)",
+        )
+
+        harbor_jobservice_secret = rand.RandomPassword("harbor_jobservice_secret", length=16, special=False)
+        Secret("harbor/jobservice/secret", harbor_jobservice_secret.result, "Harbor jobservice communication secret")
+
+        harbor_registry_http_secret = rand.RandomPassword("harbor_registry_http_secret", length=16, special=False)
+        Secret("harbor/registry/http-secret", harbor_registry_http_secret.result, "Harbor registry HTTP secret")
+
+        harbor_registry_password = rand.RandomPassword("harbor_registry_password", length=16, special=False)
+        Secret("harbor/registry/password", harbor_registry_password.result, "Harbor internal registry credential password")
+        Secret(
+            "harbor/registry/htpasswd",
+            harbor_registry_password.bcrypt_hash.apply(lambda h: f"harbor_registry_user:{h}"),
+            "Harbor registry htpasswd entry (bcrypt)",
+        )
 
 if __name__ == "__main__":
     Millionaire()
