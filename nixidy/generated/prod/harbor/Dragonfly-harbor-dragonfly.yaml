@@ -6,10 +6,10 @@ metadata:
 spec:
   args:
     - --proactor_threads
-    - "2"
+    - "1"
   replicas: 1
   resources:
     limits:
       memory: 512Mi
     requests:
-      memory: 512Mi
+      memory: 256Mi
