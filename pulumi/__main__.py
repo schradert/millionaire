@@ -100,6 +100,9 @@ class Millionaire:
         Secret("sure/secret_key_base", sure_secret_key_base.result, "Sure Finance Rails SECRET_KEY_BASE")
 
         # --- Harbor ---
+        harbor_robot_secret = rand.RandomPassword("harbor_robot_secret", length=32, special=False)
+        Secret("harbor/robot/secret", harbor_robot_secret.result, "Harbor system robot account secret for CI/local push")
+
         harbor_admin_password = rand.RandomPassword("harbor_admin_password", length=24, special=False)
         Secret("harbor/admin/password", harbor_admin_password.result, "Harbor admin password")
 
