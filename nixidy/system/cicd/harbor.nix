@@ -35,8 +35,15 @@
       volsync.pvcs.harbor-registry.title = "harbor-registry";
 
       helm.releases.harbor = {
-        # Prevent Secret manifests from generating
-        transformer = builtins.filter (r: r.kind or "" != "Secret");
+        # Filter out Helm-generated Secrets that contain sensitive data (managed by ExternalSecrets)
+        # Keep empty config secrets (exporter, registryctl, trivy) that components expect to exist
+        transformer = let
+          managedSecrets = ["harbor-core" "harbor-jobservice" "harbor-registry" "harbor-registry-htpasswd"];
+        in
+          builtins.filter (r:
+            r.kind or ""
+            != "Secret"
+            || !builtins.elem (r.metadata.name or "") managedSecrets);
         chart = lib.helm.downloadHelmChart {
           chart = "harbor";
           version = "1.18.3";
@@ -229,9 +236,18 @@
             kind = "ClusterSecretStore";
           };
         };
+        externalSecrets.harbor-robot.spec = {
+          target.template.data.ROBOT_SECRET = "{{ .secret }}";
+          data = lib.toList {
+            secretKey = "secret";
+            remoteRef.key = "harbor/robot/secret";
+            sourceRef.storeRef.name = "bitwarden";
+            sourceRef.storeRef.kind = "ClusterSecretStore";
+          };
+        };
 
-        # Post-deploy Job to configure OIDC auth mode via Harbor API
-        jobs.harbor-oidc-config.spec = {
+        # Post-deploy Job: configure OIDC + create robot account (idempotent)
+        jobs.harbor-init.spec = {
           backoffLimit = 5;
           template.spec = {
             restartPolicy = "OnFailure";
@@ -249,29 +265,85 @@
               ];
             };
             containers = lib.toList {
-              name = "configure-oidc";
+              name = "init";
               image = "curlimages/curl:8.13.0";
               command = ["sh" "-c"];
-              args = [
+              args = let
+                api = "http://harbor.${namespace}.svc.cluster.local/api/v2.0";
+                # Use __PLACEHOLDER__ for values injected at shell runtime
+                oidcConfig = builtins.toJSON {
+                  auth_mode = "oidc_auth";
+                  oidc_name = "Keycloak";
+                  oidc_endpoint = "https://keycloak.${domain}/realms/default";
+                  oidc_client_id = "harbor";
+                  oidc_client_secret = "__OIDC_CLIENT_SECRET__";
+                  oidc_scope = "openid,profile,email,groups";
+                  oidc_groups_claim = "groups";
+                  oidc_admin_group = "/admin";
+                  oidc_auto_onboard = true;
+                  oidc_verify_cert = true;
+                };
+                robotCreate = builtins.toJSON {
+                  name = "push";
+                  duration = -1;
+                  level = "system";
+                  secret = "__ROBOT_SECRET__";
+                  permissions = [
+                    {
+                      kind = "project";
+                      namespace = "*";
+                      access = [
+                        {
+                          resource = "repository";
+                          action = "push";
+                        }
+                        {
+                          resource = "repository";
+                          action = "pull";
+                        }
+                        {
+                          resource = "tag";
+                          action = "create";
+                        }
+                        {
+                          resource = "tag";
+                          action = "list";
+                        }
+                      ];
+                    }
+                  ];
+                };
+                robotUpdate = builtins.toJSON {secret = "__ROBOT_SECRET__";};
+              in [
                 ''
+                  set -e
                   ADMIN_PASS=$(cat /secrets/harbor/HARBOR_ADMIN_PASSWORD)
+                  AUTH="admin:$ADMIN_PASS"
+
+                  # --- Create/update robot account (before OIDC switch) ---
+                  ROBOT_SECRET=$(cat /secrets/robot/ROBOT_SECRET)
+                  ROBOT_NAME="push"
+
+                  EXISTING=$(curl -sf -u "$AUTH" "${api}/robots?q=name%3D$ROBOT_NAME" | grep -c '"id"' || true)
+                  if [ "$EXISTING" -eq 0 ]; then
+                    echo "Creating robot account '$ROBOT_NAME'..."
+                    echo '${robotCreate}' | sed "s/__ROBOT_SECRET__/$ROBOT_SECRET/" | \
+                      curl -sf -X POST -u "$AUTH" -H "Content-Type: application/json" -d @- "${api}/robots"
+                  fi
+
+                  # Always set the secret to match Bitwarden (Harbor ignores secret on create)
+                  ROBOT_ID=$(curl -sf -u "$AUTH" "${api}/robots?q=name%3D$ROBOT_NAME" | sed -n 's/.*"id":\([0-9]*\).*/\1/p' | head -1)
+                  echo "Setting robot secret (id=$ROBOT_ID)..."
+                  echo '${robotUpdate}' | sed "s/__ROBOT_SECRET__/$ROBOT_SECRET/" | \
+                    curl -sf -X PATCH -u "$AUTH" -H "Content-Type: application/json" -d @- "${api}/robots/$ROBOT_ID"
+                  echo "Robot account ready."
+
+                  # --- Configure OIDC ---
                   CLIENT_SECRET=$(cat /secrets/oidc/OIDC_CLIENT_SECRET)
-                  curl -sf -X PUT \
-                    -u "admin:$ADMIN_PASS" \
-                    -H "Content-Type: application/json" \
-                    -d "{
-                      \"auth_mode\": \"oidc_auth\",
-                      \"oidc_name\": \"Keycloak\",
-                      \"oidc_endpoint\": \"https://keycloak.${domain}/realms/default\",
-                      \"oidc_client_id\": \"harbor\",
-                      \"oidc_client_secret\": \"$CLIENT_SECRET\",
-                      \"oidc_scope\": \"openid,profile,email,groups\",
-                      \"oidc_groups_claim\": \"groups\",
-                      \"oidc_admin_group\": \"/admin\",
-                      \"oidc_auto_onboard\": true,
-                      \"oidc_verify_cert\": true
-                    }" \
-                    "http://harbor.${namespace}.svc.cluster.local/api/v2.0/configurations"
+                  echo "Configuring OIDC..."
+                  echo '${oidcConfig}' | sed "s/__OIDC_CLIENT_SECRET__/$CLIENT_SECRET/" | \
+                    curl -sf -X PUT -u "$AUTH" -H "Content-Type: application/json" -d @- "${api}/configurations"
+                  echo "OIDC configured."
                 ''
               ];
               volumeMounts = [
@@ -285,6 +357,11 @@
                   mountPath = "/secrets/oidc";
                   readOnly = true;
                 }
+                {
+                  name = "robot-secrets";
+                  mountPath = "/secrets/robot";
+                  readOnly = true;
+                }
               ];
             };
             volumes = [
@@ -295,6 +372,10 @@
               {
                 name = "oidc-secrets";
                 secret.secretName = "harbor-oidc";
+              }
+              {
+                name = "robot-secrets";
+                secret.secretName = "harbor-robot";
               }
             ];
           };
