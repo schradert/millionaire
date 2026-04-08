@@ -156,7 +156,7 @@ spec:
               subPath: ctl-config.yml
       securityContext:
         fsGroup: 10000
-        fsGroupChangePolicy: OnRootMismatch
+        fsGroupChangePolicy: Always
         runAsUser: 10000
       terminationGracePeriodSeconds: 120
       volumes:
