@@ -320,6 +320,13 @@
                   ];
                 };
                 robotUpdate = builtins.toJSON {secret = "__ROBOT_SECRET__";};
+                projectSettings = builtins.toJSON {
+                  metadata = {
+                    auto_scan = "true";
+                    auto_sbom_generation = "true";
+                    public = "true";
+                  };
+                };
               in [
                 ''
                   set -e
@@ -350,6 +357,12 @@
                   echo '${oidcConfig}' | sed "s/__OIDC_CLIENT_SECRET__/$CLIENT_SECRET/" | \
                     curl -sf -X PUT -u "$AUTH" -H "Content-Type: application/json" -d @- "${api}/configurations"
                   echo "OIDC configured."
+
+                  # --- Configure library project (auto-scan + SBOM) ---
+                  echo "Configuring library project..."
+                  curl -sf -X PUT -u "$AUTH" -H "Content-Type: application/json" \
+                    -d '${projectSettings}' "${api}/projects/library"
+                  echo "Project configured."
                 ''
               ];
               volumeMounts = [

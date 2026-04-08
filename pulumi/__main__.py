@@ -103,6 +103,29 @@ class Millionaire:
         harbor_robot_secret = rand.RandomPassword("harbor_robot_secret", length=32, special=False)
         Secret("harbor/robot/secret", harbor_robot_secret.result, "Harbor system robot account secret for CI/local push")
 
+        harbor_cosign_password = rand.RandomPassword("harbor_cosign_password", length=32, special=False)
+        Secret("harbor/cosign/password", harbor_cosign_password.result, "Cosign private key encryption password")
+        harbor_cosign_keypair = command.local.Command(
+            "harbor_cosign_keypair",
+            create=pulumi.Output.concat(
+                "tmpdir=$(mktemp -d) && cd $tmpdir && COSIGN_PASSWORD='",
+                harbor_cosign_password.result,
+                "' cosign generate-key-pair 2>/dev/null && "
+                "printf '%s:::%s' \"$(base64 < cosign.key | tr -d '\\n')\" \"$(base64 < cosign.pub | tr -d '\\n')\" && "
+                "rm -rf $tmpdir",
+            ),
+        )
+        Secret(
+            "harbor/cosign/key",
+            harbor_cosign_keypair.stdout.apply(lambda s: s.split(":::")[0]),
+            "Cosign private key (base64-encoded PEM)",
+        )
+        Secret(
+            "harbor/cosign/pub",
+            harbor_cosign_keypair.stdout.apply(lambda s: s.split(":::")[1]),
+            "Cosign public key (base64-encoded PEM)",
+        )
+
         harbor_admin_password = rand.RandomPassword("harbor_admin_password", length=24, special=False)
         Secret("harbor/admin/password", harbor_admin_password.result, "Harbor admin password")
 
