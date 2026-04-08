@@ -99,6 +99,10 @@ class Millionaire:
         sure_secret_key_base = rand.RandomPassword("sure_secret_key_base", length=128, special=False)
         Secret("sure/secret_key_base", sure_secret_key_base.result, "Sure Finance Rails SECRET_KEY_BASE")
 
+        # --- Home Assistant ---
+        ha_admin_password = rand.RandomPassword("ha_admin_password", length=24, special=False)
+        Secret("ha/admin/password", ha_admin_password.result, "Home Assistant initial admin password")
+
         # --- Harbor ---
         harbor_robot_secret = rand.RandomPassword("harbor_robot_secret", length=32, special=False)
         Secret("harbor/robot/secret", harbor_robot_secret.result, "Harbor system robot account secret for CI/local push")

@@ -1,9 +1,21 @@
 apiVersion: v1
 data:
   configuration.yaml: |-
+    auth_oidc:
+      claims:
+        display_name: name
+        groups: groups
+        username: preferred_username
+      client_id: keycloak
+      discovery_url: https://keycloak.trdos.me/realms/default/.well-known/openid-configuration
+      display_name: Keycloak SSO
+      features:
+        automatic_person_creation: true
+      roles:
+        admin: admin
     homeassistant:
       external_url: https://hass.trdos.me
-      name: Home
+      name: Homelab
     http:
       trusted_proxies:
       - 10.0.0.0/8

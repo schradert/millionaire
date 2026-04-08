@@ -1,0 +1,25 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: home-assistant
+  namespace: identity
+spec:
+  definition:
+    clientId: home-assistant
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+      - groups
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Home Assistant
+    protocol: openid-connect
+    publicClient: true
+    redirectUris:
+      - https://hass.trdos.me/auth/oidc/callback
+    standardFlowEnabled: true
+    webOrigins:
+      - https://hass.trdos.me
+  realmRef:
+    name: default
