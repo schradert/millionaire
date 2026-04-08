@@ -1,19 +1,45 @@
-{config, ...}: {
+{config, ...}: let
+  inherit (config.canivete.meta) domain;
+  hostname = "hass.${domain}";
+in {
   nixidy = {
     charts,
     lib,
     pkgs,
     ...
   }: let
-    inherit (config.canivete.meta) domain;
-    hostname = "hass.${domain}";
-    yaml = pkgs.formats.yaml {};
-    toYAML = name: obj: builtins.readFile (yaml.generate name obj);
+    toYAML = name: obj: builtins.readFile ((pkgs.formats.yaml {}).generate name obj);
+    onboardingJson = builtins.toJSON {
+      version = 4;
+      minor_version = 1;
+      key = "onboarding";
+      data.done = ["user" "core_config" "analytics" "integration"];
+    };
+    image = {
+      repository = "harbor.${domain}/library/ha";
+      tag = "2026.2.3";
+      digest = "sha256:a6259b0ab4ea16b77033e70aafb6d89ed9e1b54e8be3b3881f721480be5317fe";
+    };
   in {
     gatus.endpoints.ha = {
       url = "https://${hostname}";
       group = "internal";
       conditions = ["[STATUS] == any(200, 302, 401)"];
+    };
+    applications.keycloak.resources.keycloakClients.home-assistant.spec = {
+      realmRef.name = "default";
+      definition = {
+        clientId = "home-assistant";
+        name = "Home Assistant";
+        enabled = true;
+        protocol = "openid-connect";
+        standardFlowEnabled = true;
+        directAccessGrantsEnabled = false;
+        publicClient = true;
+        redirectUris = ["https://${hostname}/auth/oidc/callback"];
+        webOrigins = ["https://${hostname}"];
+        defaultClientScopes = ["openid" "profile" "email" "groups"];
+      };
     };
     applications.ha = {
       namespace = "home";
@@ -24,9 +50,30 @@
         values = {
           controllers.ha = {
             annotations."reloader.stakater.com/auto" = "true";
+            initContainers.setup = {
+              inherit image;
+              envFrom = [{secretRef.name = "ha";}];
+              command = [
+                "sh"
+                "-c"
+                ''
+                  set -e
+                  # Skip if already onboarded
+                  [ -f /config/.storage/onboarding ] && exit 0
+
+                  # Create initial admin user via HA CLI
+                  python3 -m homeassistant.scripts.auth -c /config add admin "$HASS_ADMIN_PASSWORD"
+
+                  # Mark onboarding as complete
+                  mkdir -p /config/.storage
+                  echo '${onboardingJson}' > /config/.storage/onboarding
+
+                  echo "Home Assistant onboarded successfully"
+                ''
+              ];
+            };
             containers.ha = {
-              image.repository = "ghcr.io/home-assistant/home-assistant";
-              image.tag = "2025.3";
+              inherit image;
               envFrom = [{secretRef.name = "ha";}];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
@@ -36,14 +83,23 @@
           service.ha.ports.http.port = 8123;
           configMaps.ha-config.data."configuration.yaml" = toYAML "configuration.yaml" {
             homeassistant = {
-              name = "Home";
+              name = "Homelab";
               external_url = "https://${hostname}";
             };
             http = {
               use_x_forwarded_for = true;
-              trusted_proxies = [
-                "10.0.0.0/8"
-              ];
+              # Cluster CIDR
+              trusted_proxies = ["10.0.0.0/8"];
+            };
+            auth_oidc = {
+              client_id = "keycloak";
+              discovery_url = "https://keycloak.${domain}/realms/default/.well-known/openid-configuration";
+              display_name = "Keycloak SSO";
+              claims.display_name = "name";
+              claims.username = "preferred_username";
+              claims.groups = "groups";
+              roles.admin = "admin";
+              features.automatic_person_creation = true;
             };
           };
           persistence.config = {
@@ -51,6 +107,7 @@
             size = "10Gi";
             accessMode = "ReadWriteOnce";
             advancedMounts.ha.ha = [{path = "/config";}];
+            advancedMounts.ha.setup = [{path = "/config";}];
           };
           persistence.base-config = {
             type = "configMap";
@@ -89,12 +146,18 @@
             sourceRef.storeRef.name = "kubernetes-home";
             sourceRef.storeRef.kind = "ClusterSecretStore";
           }
+          {
+            secretKey = "HASS_ADMIN_PASSWORD";
+            remoteRef.key = "ha/admin/password";
+            sourceRef.storeRef.name = "bitwarden";
+            sourceRef.storeRef.kind = "ClusterSecretStore";
+          }
         ];
         target.template.data = {
           HASS_RECORDER_DB_URL = "postgresql://ha:{{ .HASS_RECORDER_DB_URL }}@ha-rw.home.svc.cluster.local:5432/ha";
+          HASS_ADMIN_PASSWORD = "{{ .HASS_ADMIN_PASSWORD }}";
         };
       };
-
     };
     oauth2Proxy.upstreams.${hostname} = {
       url = "http://ha.home.svc.cluster.local:8123";
