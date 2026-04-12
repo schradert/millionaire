@@ -195,9 +195,8 @@ in {
             };
             rules = lib.toList {
               backendRefs = lib.toList {
-                name = "oauth2-proxy";
-                namespace = "identity";
-                port = 4180;
+                name = "ha";
+                port = 8123;
               };
             };
           };
@@ -224,11 +223,6 @@ in {
           HASS_ADMIN_PASSWORD = "{{ .HASS_ADMIN_PASSWORD }}";
         };
       };
-    };
-    oauth2Proxy.upstreams.${hostname} = {
-      url = "http://ha.home.svc.cluster.local:8123";
-      namespace = "home";
-      websocket = true;
     };
   };
 }
