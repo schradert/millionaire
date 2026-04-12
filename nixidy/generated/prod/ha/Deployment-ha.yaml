@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 05898067bb96b62d19cc2466c54e2c81d4eb5195dc4614851578ca1488c1a2bb
+        checksum/configMaps: 2f8dd8acf8c5106f0331993f1640670b840672826f8b77fe7e55ac4977819102
       labels:
         app.kubernetes.io/controller: ha
         app.kubernetes.io/instance: ha
@@ -34,7 +34,7 @@ spec:
         - envFrom:
             - secretRef:
                 name: ha
-          image: harbor.trdos.me/library/ha:2026.4.1@sha256:365907aa555aac6bacc6a11902e95c54e435a83c31fc0eceff5614d24081767b
+          image: harbor.trdos.me/library/ha:2026.4.1@sha256:ca0540ef1f706c2a6fa82a9111c57e5639dcae006a7670cbfadeda70fb52bb3f
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0
@@ -88,7 +88,7 @@ spec:
           envFrom:
             - secretRef:
                 name: ha
-          image: harbor.trdos.me/library/ha:2026.4.1@sha256:365907aa555aac6bacc6a11902e95c54e435a83c31fc0eceff5614d24081767b
+          image: harbor.trdos.me/library/ha:2026.4.1@sha256:ca0540ef1f706c2a6fa82a9111c57e5639dcae006a7670cbfadeda70fb52bb3f
           name: setup
           volumeMounts:
             - mountPath: /config
