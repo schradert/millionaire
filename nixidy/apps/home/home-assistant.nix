@@ -18,7 +18,7 @@ in {
     image = {
       repository = "harbor.${domain}/library/ha";
       tag = "2026.4.1";
-      digest = "sha256:a5746c79fa568afde8655c99a7946c66f96bacbe4a2852628727c11bae97279d";
+      digest = "sha256:bf622d9eba0cc9bed8d3b0f710592c03bca7617ce55368c30e6d68eece530e3b";
     };
   in {
     gatus.endpoints.ha = {
@@ -58,7 +58,26 @@ in {
                 "-c"
                 ''
                   set -e
-                  # Skip if already onboarded
+
+                  # Symlink nix-managed custom components into PVC (same as NixOS module preStart)
+                  mkdir -p /config/custom_components
+                  # Remove stale nix store symlinks
+                  for link in /config/custom_components/*; do
+                    if [ -L "$link" ] && readlink "$link" | grep -q /nix/store; then
+                      rm "$link"
+                    fi
+                  done
+                  # Link current components
+                  for comp in /ha-extras/custom_components/*; do
+                    name=$(basename "$comp")
+                    ln -sfn "$comp" "/config/custom_components/$name"
+                  done
+
+                  # Symlink lovelace modules
+                  mkdir -p /config/www
+                  ln -sfn /ha-extras/www/nixos-lovelace-modules /config/www/nixos-lovelace-modules
+
+                  # Skip onboarding if already done
                   [ -f /config/.storage/onboarding ] && exit 0
 
                   # Create initial admin user via HA CLI
