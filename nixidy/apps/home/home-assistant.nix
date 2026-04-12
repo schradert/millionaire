@@ -17,8 +17,8 @@ in {
     };
     image = {
       repository = "harbor.${domain}/library/ha";
-      tag = "2026.2.3";
-      digest = "sha256:ca0540ef1f706c2a6fa82a9111c57e5639dcae006a7670cbfadeda70fb52bb3f";
+      tag = "2026.4.1";
+      digest = "sha256:365907aa555aac6bacc6a11902e95c54e435a83c31fc0eceff5614d24081767b";
     };
   in {
     gatus.endpoints.ha = {

@@ -170,6 +170,22 @@
             system.stateVersion = 6;
             home-manager.sharedModules = [{home.stateVersion = "25.11";}];
             nix.linux-builder.enable = true;
+            # Personal attic cache is NOT set system-wide on the dev host.
+            # It's activated per-project via devenv's nix.settings to avoid
+            # caching work builds on the personal cache.
+            # Nodes (server.nix) have it system-wide since they're personal-only.
+            nix.buildMachines = let
+              mkBuilder = hostName: {
+                inherit hostName;
+                systems = ["x86_64-linux"];
+                sshUser = "nix-remote-builder";
+                sshKey = "/Users/tristan/.ssh/personal";
+                protocol = "ssh-ng";
+                supportedFeatures = ["kvm" "benchmark" "big-parallel"];
+                maxJobs = 4;
+              };
+            in
+              map mkBuilder ["sirver" "octopus" "dingo" "bonobo" "chinchilla"];
             nix.settings.trusted-users = ["@admin"];
 
             # TODO follow broken Nix 2.33 with Devenv 1.11.2 support
@@ -208,18 +224,27 @@
         # };
         sirver = {
           remoteBuild = true;
-          profiles.system.canivete.configuration = {
+          profiles.system.canivete.configuration = {config, ...}: {
             imports = [./static/facter ./static/server.nix];
             boot.initrd.availableKernelModules = ["sr_mod"];
             disko.devices.disk.root.device = "/dev/disk/by-id/scsi-35000c50067faa64b";
             # Mini switch on spare LAN to connect another system (dingo)
             networking.bridges.br0.interfaces = ["eno3" "eno4"];
             networking.interfaces.br0.useDHCP = true;
+
+            # Attic binary cache server
+            services.atticd = {
+              enable = true;
+              environmentFile = config.sops.secrets.attic-server-key.path;
+              settings.listen = "[::]:8199";
+            };
+            sops.secrets.attic-server-key.key = "attic/server-key";
+            networking.firewall.allowedTCPPorts = [8199];
           };
         };
         octopus = {
           remoteBuild = true;
-          profiles.system.canivete.configuration = {lib, ...}: {
+          profiles.system.canivete.configuration = {
             imports = [./static/facter ./static/server.nix];
             boot.initrd.availableKernelModules = ["sr_mod"];
             disko.devices.disk.root.device = "/dev/disk/by-id/scsi-36b82a720cf60ce002fd94d2e2991b17e";
@@ -228,7 +253,7 @@
         };
         dingo = {
           remoteBuild = true;
-          profiles.system.canivete.configuration = {lib, ...}: {
+          profiles.system.canivete.configuration = {
             imports = [./static/facter ./static/server.nix];
             disko.devices.disk.root.device = "/dev/disk/by-id/ata-LITEON_IT_LCS-256L9S_SD0E97900L2TH61100DL";
             services.rke2.role = "server";
@@ -238,14 +263,14 @@
         # Agents
         bonobo = {
           remoteBuild = true;
-          profiles.system.canivete.configuration = {lib, ...}: {
+          profiles.system.canivete.configuration = {
             imports = [./static/facter ./static/server.nix];
             disko.devices.disk.root.device = "/dev/disk/by-id/ata-Micron_1100_SATA_256GB_165015496CBD";
           };
         };
         chinchilla = {
           remoteBuild = true;
-          profiles.system.canivete.configuration = {lib, ...}: {
+          profiles.system.canivete.configuration = {
             imports = [./static/facter ./static/server.nix];
             disko.devices.disk.root.device = "/dev/disk/by-id/ata-MTFDDAK256TBN-1AR1ZABHA_UGXVK01J7BDCER";
           };
