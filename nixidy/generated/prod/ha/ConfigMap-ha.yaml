@@ -20,6 +20,183 @@ data:
       trusted_proxies:
       - 10.0.0.0/8
       use_x_forwarded_for: true
+    lovelace:
+      mode: storage
+      resources:
+      - type: module
+        url: /local/nixos-lovelace-modules/advanced-camera-card.js
+      - type: module
+        url: /local/nixos-lovelace-modules/audio-4628bb9a.js
+      - type: module
+        url: /local/nixos-lovelace-modules/base-9a0cb438.js
+      - type: module
+        url: /local/nixos-lovelace-modules/card-5ac0b927.js
+      - type: module
+        url: /local/nixos-lovelace-modules/date-picker-e60655b9.js
+      - type: module
+        url: /local/nixos-lovelace-modules/dispatch-live-error-383675fb.js
+      - type: module
+        url: /local/nixos-lovelace-modules/editor-e22db631.js
+      - type: module
+        url: /local/nixos-lovelace-modules/endOfDay-9c596b89.js
+      - type: module
+        url: /local/nixos-lovelace-modules/engine-86b0096c.js
+      - type: module
+        url: /local/nixos-lovelace-modules/engine-browse-media-7f451be7.js
+      - type: module
+        url: /local/nixos-lovelace-modules/engine-frigate-83f6a13f.js
+      - type: module
+        url: /local/nixos-lovelace-modules/engine-generic-829fe62b.js
+      - type: module
+        url: /local/nixos-lovelace-modules/engine-motioneye-0a4d3121.js
+      - type: module
+        url: /local/nixos-lovelace-modules/engine-reolink-1992f748.js
+      - type: module
+        url: /local/nixos-lovelace-modules/engine-tplink-38fc118c.js
+      - type: module
+        url: /local/nixos-lovelace-modules/entity-camera-dc5b8582.js
+      - type: module
+        url: /local/nixos-lovelace-modules/fireworks-aa08016a.js
+      - type: module
+        url: /local/nixos-lovelace-modules/folder-gallery-36167189.js
+      - type: module
+        url: /local/nixos-lovelace-modules/frigate-hass-card.js
+      - type: module
+        url: /local/nixos-lovelace-modules/gallery-core-1061e277.js
+      - type: module
+        url: /local/nixos-lovelace-modules/get-technology-for-video-rtc-778a0c05.js
+      - type: module
+        url: /local/nixos-lovelace-modules/ghost-a759bd13.js
+      - type: module
+        url: /local/nixos-lovelace-modules/ha-128fffd0.js
+      - type: module
+        url: /local/nixos-lovelace-modules/hearts-6a90ae23.js
+      - type: module
+        url: /local/nixos-lovelace-modules/image-04ebd9fe.js
+      - type: module
+        url: /local/nixos-lovelace-modules/image-62518126.js
+      - type: module
+        url: /local/nixos-lovelace-modules/image-player-dbe31179.js
+      - type: module
+        url: /local/nixos-lovelace-modules/image-updating-player-61bfd714.js
+      - type: module
+        url: /local/nixos-lovelace-modules/index-5213db71.js
+      - type: module
+        url: /local/nixos-lovelace-modules/index-6cfb7061.js
+      - type: module
+        url: /local/nixos-lovelace-modules/index-a94d25a3.js
+      - type: module
+        url: /local/nixos-lovelace-modules/index-b2231c57.js
+      - type: module
+        url: /local/nixos-lovelace-modules/jsmpeg-a9647211.js
+      - type: module
+        url: /local/nixos-lovelace-modules/lang-ca-f85ce535.js
+      - type: module
+        url: /local/nixos-lovelace-modules/lang-de-6dc05ec2.js
+      - type: module
+        url: /local/nixos-lovelace-modules/lang-fr-163f03e7.js
+      - type: module
+        url: /local/nixos-lovelace-modules/lang-it-e52e5194.js
+      - type: module
+        url: /local/nixos-lovelace-modules/lang-pl-375c7c5f.js
+      - type: module
+        url: /local/nixos-lovelace-modules/lang-pt-BR-78c23b42.js
+      - type: module
+        url: /local/nixos-lovelace-modules/lang-pt-PT-64e6e903.js
+      - type: module
+        url: /local/nixos-lovelace-modules/live-provider-e7de87a0.js
+      - type: module
+        url: /local/nixos-lovelace-modules/media-dimensions-container-1a51c277.js
+      - type: module
+        url: /local/nixos-lovelace-modules/media-gallery-4805730f.js
+      - type: module
+        url: /local/nixos-lovelace-modules/media-grid-572ccf10.js
+      - type: module
+        url: /local/nixos-lovelace-modules/repeat-787d1bc3.js
+      - type: module
+        url: /local/nixos-lovelace-modules/shamrocks-cb912b81.js
+      - type: module
+        url: /local/nixos-lovelace-modules/snow-146fde7d.js
+      - type: module
+        url: /local/nixos-lovelace-modules/startOfHour-404c16be.js
+      - type: module
+        url: /local/nixos-lovelace-modules/timeline-core-de56c15e.js
+      - type: module
+        url: /local/nixos-lovelace-modules/timeline-f9122013.js
+      - type: module
+        url: /local/nixos-lovelace-modules/webrtc-card-f1d1f5cd.js
+      - type: module
+        url: /local/nixos-lovelace-modules/zoomer-6cadb91c.js
+      - type: module
+        url: /local/nixos-lovelace-modules/apexcharts-card.js
+      - type: module
+        url: /local/nixos-lovelace-modules/atomic-calendar-revive.js
+      - type: module
+        url: /local/nixos-lovelace-modules/auto-entities.js
+      - type: module
+        url: /local/nixos-lovelace-modules/battery-state-card.js
+      - type: module
+        url: /local/nixos-lovelace-modules/bubble-card.js
+      - type: module
+        url: /local/nixos-lovelace-modules/bubble-pop-up-fix.js
+      - type: module
+        url: /local/nixos-lovelace-modules/button-card.js
+      - type: module
+        url: /local/nixos-lovelace-modules/card-mod.js
+      - type: module
+        url: /local/nixos-lovelace-modules/clock-weather-card.js
+      - type: module
+        url: /local/nixos-lovelace-modules/custom-sidebar-json.js
+      - type: module
+        url: /local/nixos-lovelace-modules/custom-sidebar-yaml.js
+      - type: module
+        url: /local/nixos-lovelace-modules/custom-sidebar.js
+      - type: module
+        url: /local/nixos-lovelace-modules/decluttering-card.js
+      - type: module
+        url: /local/nixos-lovelace-modules/flower-card.js
+      - type: module
+        url: /local/nixos-lovelace-modules/lovelace-horizon-card.js
+      - type: module
+        url: /local/nixos-lovelace-modules/hourly-weather.js
+      - type: module
+        url: /local/nixos-lovelace-modules/kiosk-mode.js
+      - type: module
+        url: /local/nixos-lovelace-modules/light-entity-card.js
+      - type: module
+        url: /local/nixos-lovelace-modules/material-you-utilities.min.js
+      - type: module
+        url: /local/nixos-lovelace-modules/mini-graph-card-bundle.js
+      - type: module
+        url: /local/nixos-lovelace-modules/mini-media-player-bundle.js
+      - type: module
+        url: /local/nixos-lovelace-modules/multiple-entity-row.js
+      - type: module
+        url: /local/nixos-lovelace-modules/mushroom.js
+      - type: module
+        url: /local/nixos-lovelace-modules/navbar-card.js
+      - type: module
+        url: /local/nixos-lovelace-modules/plotly-graph-card.js
+      - type: module
+        url: /local/nixos-lovelace-modules/restriction-card.js
+      - type: module
+        url: /local/nixos-lovelace-modules/sankey-chart.js
+      - type: module
+        url: /local/nixos-lovelace-modules/scheduler-card.js
+      - type: module
+        url: /local/nixos-lovelace-modules/swipe-navigation.js
+      - type: module
+        url: /local/nixos-lovelace-modules/template-entity-row.js
+      - type: module
+        url: /local/nixos-lovelace-modules/universal-remote-card.min.js
+      - type: module
+        url: /local/nixos-lovelace-modules/versatile-thermostat-ui-card.js
+      - type: module
+        url: /local/nixos-lovelace-modules/weather-card.js
+      - type: module
+        url: /local/nixos-lovelace-modules/weather-chart-card.js
+      - type: module
+        url: /local/nixos-lovelace-modules/zigbee2mqtt-networkmap.js
 kind: ConfigMap
 metadata:
   labels:

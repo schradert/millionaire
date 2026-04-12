@@ -18,7 +18,7 @@ in {
     image = {
       repository = "harbor.${domain}/library/ha";
       tag = "2026.4.1";
-      digest = "sha256:365907aa555aac6bacc6a11902e95c54e435a83c31fc0eceff5614d24081767b";
+      digest = "sha256:ca0540ef1f706c2a6fa82a9111c57e5639dcae006a7670cbfadeda70fb52bb3f";
     };
   in {
     gatus.endpoints.ha = {
@@ -101,6 +101,54 @@ in {
               roles.admin = "admin";
               features.automatic_person_creation = true;
             };
+            lovelace.mode = "storage";
+            lovelace.resources = let
+              mods = pkgs.home-assistant-custom-lovelace-modules;
+              lovelaceModules = with mods; [
+                advanced-camera-card
+                apexcharts-card
+                atomic-calendar-revive
+                auto-entities
+                battery-state-card
+                bubble-card
+                button-card
+                card-mod
+                clock-weather-card
+                custom-sidebar
+                decluttering-card
+                flower-card
+                horizon-card
+                hourly-weather
+                kiosk-mode
+                light-entity-card
+                material-you-utilities
+                mini-graph-card
+                mini-media-player
+                multiple-entity-row
+                mushroom
+                navbar-card
+                plotly-chart-card
+                restriction-card
+                sankey-chart
+                scheduler-card
+                swipe-navigation
+                template-entity-row
+                universal-remote-card
+                versatile-thermostat-ui-card
+                weather-card
+                weather-chart-card
+                zigbee2mqtt-networkmap
+              ];
+              jsFiles = mod:
+                builtins.filter (f: lib.hasSuffix ".js" f)
+                  (builtins.attrNames (builtins.readDir "${mod}"));
+              mkResources = mod:
+                map (f: {
+                  url = "/local/nixos-lovelace-modules/${f}";
+                  type = "module";
+                }) (jsFiles mod);
+            in
+              builtins.concatMap mkResources lovelaceModules;
           };
           persistence.config = {
             type = "persistentVolumeClaim";
