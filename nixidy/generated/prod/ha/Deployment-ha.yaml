@@ -34,7 +34,7 @@ spec:
         - envFrom:
             - secretRef:
                 name: ha
-          image: harbor.trdos.me/library/ha:2026.2.3@sha256:ca0540ef1f706c2a6fa82a9111c57e5639dcae006a7670cbfadeda70fb52bb3f
+          image: harbor.trdos.me/library/ha:2026.4.1@sha256:365907aa555aac6bacc6a11902e95c54e435a83c31fc0eceff5614d24081767b
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0
@@ -88,7 +88,7 @@ spec:
           envFrom:
             - secretRef:
                 name: ha
-          image: harbor.trdos.me/library/ha:2026.2.3@sha256:ca0540ef1f706c2a6fa82a9111c57e5639dcae006a7670cbfadeda70fb52bb3f
+          image: harbor.trdos.me/library/ha:2026.4.1@sha256:365907aa555aac6bacc6a11902e95c54e435a83c31fc0eceff5614d24081767b
           name: setup
           volumeMounts:
             - mountPath: /config

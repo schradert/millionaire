@@ -18,11 +18,77 @@ def Secret(key: str, value: pulumi.Input[str], note: str = "") -> bw.Secret:
 
 class Millionaire:
     def __init__(self) -> None:
-        millionaire.NixOS("sirver", "root@nixos")
-        millionaire.NixOS("octopus", "root@nixos")
-        millionaire.NixOS("dingo", "root@nixos")
-        millionaire.NixOS("bonobo", "root@nixos")
-        millionaire.NixOS("chinchilla", "root@nixos")
+        # --- Attic binary cache (must exist before sirver deploy) ---
+        attic_server_key = command.local.Command(
+            "attic_server_key",
+            create=(
+                "openssl genrsa -traditional 4096 2>/dev/null | base64 | tr -d '\\n'"
+            ),
+        )
+        attic_sops_write = command.local.Command(
+            "attic_sops_write",
+            create=pulumi.Output.concat(
+                'cd "', str(millionaire.Nix.root), '" && ',
+                "sops set secrets/sops/default.yaml ",
+                '\'["attic"]["server-key"]\' ',
+                '--input-type json \'\"ATTIC_SERVER_TOKEN_RS256_SECRET_BASE64=', attic_server_key.stdout, '"\'',
+            ),
+            opts=pulumi.ResourceOptions(depends_on=[attic_server_key]),
+        )
+
+        # --- NixOS nodes ---
+        sirver = millionaire.NixOS("sirver", "root@nixos", depends_on=[attic_sops_write])
+        octopus = millionaire.NixOS("octopus", "root@nixos")
+        dingo = millionaire.NixOS("dingo", "root@nixos")
+        bonobo = millionaire.NixOS("bonobo", "root@nixos")
+        chinchilla = millionaire.NixOS("chinchilla", "root@nixos")
+
+        # --- Attic post-deploy setup (after sirver has atticd running) ---
+        attic_setup = command.local.Command(
+            "attic_setup",
+            create=(
+                "ssh -i ~/.ssh/personal sirver '"
+                "sudo atticd-atticadm create-cache main 2>/dev/null || true && "
+                "sudo atticd-atticadm make-token --sub admin --validity \"10y\" --push \"*\" --pull \"*\""
+                "'"
+            ),
+            opts=pulumi.ResourceOptions(depends_on=[sirver.refresh]),
+        )
+        Secret("attic/auth-token", attic_setup.stdout, "Attic client auth token for push/pull")
+
+        # Save the auth token to SOPS for the post-build hook on all nodes
+        command.local.Command(
+            "attic_auth_sops_write",
+            create=pulumi.Output.concat(
+                'cd "', str(millionaire.Nix.root), '" && ',
+                "sops set secrets/sops/default.yaml ",
+                '\'["attic"]["auth-token"]\' ',
+                '--input-type json \'\"', attic_setup.stdout, '"\'',
+            ),
+            opts=pulumi.ResourceOptions(depends_on=[attic_setup]),
+        )
+
+        # Get the cache public key and save to a committed JSON file
+        attic_public_key = command.local.Command(
+            "attic_public_key",
+            create=(
+                "ssh -i ~/.ssh/personal sirver '"
+                "sudo atticd-atticadm show-cache main 2>/dev/null"
+                "' | grep -oP '(?<=Public key: ).*'"
+            ),
+            opts=pulumi.ResourceOptions(depends_on=[attic_setup]),
+        )
+        # Read existing values, merge in the new key, write back
+        command.local.Command(
+            "attic_public_key_file",
+            create=pulumi.Output.concat(
+                'FILE="', str(millionaire.Nix.root), '/static/generated.json" && ',
+                '[ -f "$FILE" ] && EXISTING=$(cat "$FILE") || EXISTING="{}" && ',
+                "echo \"$EXISTING\" | jq --arg key '", attic_public_key.stdout.apply(str.strip),
+                "' '.attic_pubkey = $key' > \"$FILE\"",
+            ),
+            opts=pulumi.ResourceOptions(depends_on=[attic_public_key]),
+        )
 
         # RPI doesn't support kexec
         # millionaire.NixOS("piper", "piper", "--phases disko,install,reboot")
