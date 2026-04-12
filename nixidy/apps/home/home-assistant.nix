@@ -18,7 +18,7 @@ in {
     image = {
       repository = "harbor.${domain}/library/ha";
       tag = "2026.4.1";
-      digest = "sha256:ca0540ef1f706c2a6fa82a9111c57e5639dcae006a7670cbfadeda70fb52bb3f";
+      digest = "sha256:a5746c79fa568afde8655c99a7946c66f96bacbe4a2852628727c11bae97279d";
     };
   in {
     gatus.endpoints.ha = {
@@ -141,7 +141,7 @@ in {
               ];
               jsFiles = mod:
                 builtins.filter (f: lib.hasSuffix ".js" f)
-                  (builtins.attrNames (builtins.readDir "${mod}"));
+                (builtins.attrNames (builtins.readDir "${mod}"));
               mkResources = mod:
                 map (f: {
                   url = "/local/nixos-lovelace-modules/${f}";
