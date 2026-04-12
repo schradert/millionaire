@@ -63,9 +63,8 @@ in {
                   mkdir -p /config/custom_components
                   # Remove stale nix store symlinks
                   for link in /config/custom_components/*; do
-                    if [ -L "$link" ] && readlink "$link" | grep -q /nix/store; then
-                      rm "$link"
-                    fi
+                    target=$(readlink "$link" 2>/dev/null || true)
+                    case "$target" in /nix/store/*) rm "$link" ;; esac
                   done
                   # Link current components
                   for comp in /ha-extras/custom_components/*; do
@@ -111,7 +110,7 @@ in {
               trusted_proxies = ["10.0.0.0/8"];
             };
             auth_oidc = {
-              client_id = "keycloak";
+              client_id = "home-assistant";
               discovery_url = "https://keycloak.${domain}/realms/default/.well-known/openid-configuration";
               display_name = "Keycloak SSO";
               claims.display_name = "name";
