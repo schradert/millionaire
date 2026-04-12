@@ -107,8 +107,9 @@ in {
             http = {
               use_x_forwarded_for = true;
               # Cluster CIDR
-              trusted_proxies = ["10.0.0.0/8"];
+              trusted_proxies = ["10.0.0.0/8" "192.168.50.0/24"];
             };
+            logger.logs."custom_components.auth_oidc" = "debug";
             auth_oidc = {
               client_id = "home-assistant";
               discovery_url = "https://keycloak.${domain}/realms/default/.well-known/openid-configuration";
