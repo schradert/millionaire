@@ -19,7 +19,11 @@ data:
     http:
       trusted_proxies:
       - 10.0.0.0/8
+      - 192.168.50.0/24
       use_x_forwarded_for: true
+    logger:
+      logs:
+        custom_components.auth_oidc: debug
     lovelace:
       mode: storage
       resources:
