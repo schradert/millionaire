@@ -62,7 +62,7 @@ in {
                   [ -f /config/.storage/onboarding ] && exit 0
 
                   # Create initial admin user via HA CLI
-                  python3 -m homeassistant.scripts.auth -c /config add admin "$HASS_ADMIN_PASSWORD"
+                  hass --config /config --script auth add admin "$HASS_ADMIN_PASSWORD"
 
                   # Mark onboarding as complete
                   mkdir -p /config/.storage
