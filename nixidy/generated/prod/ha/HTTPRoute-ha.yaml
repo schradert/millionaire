@@ -20,7 +20,7 @@ spec:
     - backendRefs:
         - group: ""
           kind: Service
-          name: oauth2-proxy
-          namespace: identity
-          port: 4180
+          name: ha
+          namespace: home
+          port: 8123
           weight: 1
