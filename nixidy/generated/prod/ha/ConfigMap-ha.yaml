@@ -6,7 +6,7 @@ data:
         display_name: name
         groups: groups
         username: preferred_username
-      client_id: keycloak
+      client_id: home-assistant
       discovery_url: https://keycloak.trdos.me/realms/default/.well-known/openid-configuration
       display_name: Keycloak SSO
       features:
