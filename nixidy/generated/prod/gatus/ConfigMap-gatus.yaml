@@ -105,6 +105,12 @@ data:
       interval: 1m
       name: sure
       url: https://sure.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: zwave-js-ui
+      url: https://zwave.trdos.me
     metrics: true
     storage:
       caching: true
