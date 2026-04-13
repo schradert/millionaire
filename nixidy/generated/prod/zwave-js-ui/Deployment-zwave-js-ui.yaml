@@ -22,6 +22,8 @@ spec:
     type: Recreate
   template:
     metadata:
+      annotations:
+        checksum/configMaps: 4b91d6254ad7b73319a9ebed538cb84995e746de19fb115d9e0a3b9ef5d407f5
       labels:
         app.kubernetes.io/controller: zwave-js-ui
         app.kubernetes.io/instance: zwave-js-ui
@@ -55,6 +57,9 @@ spec:
               port: 8091
             timeoutSeconds: 1
           volumeMounts:
+            - mountPath: /usr/src/app/store/settings.json
+              name: settings
+              subPath: settings.json
             - mountPath: /usr/src/app/store
               name: store
             - mountPath: /dev/serial/by-id/usb-Nabu_Casa_ZWA-2_1CDBD4AEBC68-if00
@@ -68,6 +73,9 @@ spec:
         kubernetes.io/hostname: sirver
       serviceAccountName: default
       volumes:
+        - configMap:
+            name: zwave-js-ui
+          name: settings
         - name: store
           persistentVolumeClaim:
             claimName: zwave-js-ui
