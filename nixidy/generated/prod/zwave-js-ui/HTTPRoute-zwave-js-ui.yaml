@@ -1,0 +1,26 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  labels:
+    app.kubernetes.io/instance: zwave-js-ui
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: zwave-js-ui
+  name: zwave-js-ui
+  namespace: home
+spec:
+  hostnames:
+    - zwave.trdos.me
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: internal
+      namespace: kube-system
+      sectionName: https
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: oauth2-proxy
+          namespace: identity
+          port: 4180
+          weight: 1

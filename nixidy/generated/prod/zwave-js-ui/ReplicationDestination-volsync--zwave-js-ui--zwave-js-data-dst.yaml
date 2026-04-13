@@ -1,0 +1,15 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--zwave-js-ui--zwave-js-data-dst
+  namespace: home
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: zwave-js-data
+    moverSecurityContext:
+      runAsGroup: 101
+      runAsUser: 101
+    repository: volsync--zwave-js-ui--zwave-js-data
+  trigger:
+    manual: "1"

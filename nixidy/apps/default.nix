@@ -5,6 +5,7 @@
     ./finance/sure.nix
     ./health/mealie.nix
     ./home/home-assistant.nix
+    ./home/zwave-js-ui.nix
     ./identity/keycloak.nix
     ./identity/keycloak-operator.nix
     ./identity/oauth2-proxy.nix
