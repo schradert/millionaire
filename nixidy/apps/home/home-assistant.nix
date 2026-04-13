@@ -119,6 +119,8 @@ in {
               claims.groups = "groups";
               roles.admin = "admin";
               features.automatic_person_creation = true;
+              features.automatic_user_linking = true;
+              features.force_https = true;
             };
             lovelace.mode = "storage";
             lovelace.resources = let
@@ -187,19 +189,22 @@ in {
               }
             ];
           };
-          route.ha = {
-            hostnames = [hostname];
-            parentRefs = lib.toList {
-              name = "internal";
-              namespace = "kube-system";
-              sectionName = "https";
-            };
-            rules = lib.toList {
-              backendRefs = lib.toList {
-                name = "ha";
-                port = 8123;
-              };
-            };
+        };
+      };
+      # NOTE: Do NOT redirect /auth/authorize — auth_oidc uses a cookie-based flow
+      # that requires /auth/authorize to reach HA's login_flow endpoint.
+      # Users should bookmark /auth/oidc/welcome for OIDC login.
+      resources.httpRoutes.ha.spec = {
+        hostnames = [hostname];
+        parentRefs = lib.toList {
+          name = "internal";
+          namespace = "kube-system";
+          sectionName = "https";
+        };
+        rules = lib.toList {
+          backendRefs = lib.toList {
+            name = "ha";
+            port = 8123;
           };
         };
       };

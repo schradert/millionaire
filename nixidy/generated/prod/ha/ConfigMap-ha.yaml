@@ -11,6 +11,8 @@ data:
       display_name: Keycloak SSO
       features:
         automatic_person_creation: true
+        automatic_user_linking: true
+        force_https: true
       roles:
         admin: admin
     homeassistant:
