@@ -11,7 +11,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
     app.kubernetes.io/part-of: kube-prometheus-stack
-    chart: kube-prometheus-stack-82.10.5
+    chart: kube-prometheus-stack-83.0.2
     heritage: Helm
     release: prometheus
   name: prometheus-kube-prometheus-admission-patch
@@ -26,7 +26,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
         app.kubernetes.io/part-of: kube-prometheus-stack
-        chart: kube-prometheus-stack-82.10.5
+        chart: kube-prometheus-stack-83.0.2
         heritage: Helm
         release: prometheus
       name: prometheus-kube-prometheus-admission-patch
@@ -38,7 +38,7 @@ spec:
             - --namespace=observability
             - --secret-name=prometheus-kube-prometheus-admission
             - --patch-failure-policy=
-          image: ghcr.io/jkroepke/kube-webhook-certgen:1.7.8
+          image: ghcr.io/jkroepke/kube-webhook-certgen:1.8.0
           imagePullPolicy: IfNotPresent
           name: patch
           resources: {}
