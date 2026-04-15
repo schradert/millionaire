@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/instance: prometheus
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: kube-prometheus-stack
-    chart: kube-prometheus-stack-82.10.5
+    chart: kube-prometheus-stack-83.0.2
     heritage: Helm
     release: prometheus
   name: prometheus-kube-prometheus-prometheus
@@ -33,7 +33,7 @@ spec:
   enableOTLPReceiver: false
   externalUrl: http://prometheus-kube-prometheus-prometheus.observability:9090
   hostNetwork: false
-  image: quay.io/prometheus/prometheus:v3.10.0
+  image: quay.io/prometheus/prometheus:v3.11.1
   imagePullPolicy: IfNotPresent
   listenLocal: false
   logFormat: logfmt
@@ -82,5 +82,5 @@ spec:
             storage: 10Gi
   tsdb:
     outOfOrderTimeWindow: 0s
-  version: v3.10.0
+  version: v3.11.1
   walCompression: true
