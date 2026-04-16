@@ -57,7 +57,6 @@ in {
           };
           service.dns = {
             type = "LoadBalancer";
-            externalTrafficPolicy = "Local";
             annotations."lbipam.cilium.io/ips" = adguardIP;
             ports = {
               dns-tcp = {port = 53; protocol = "TCP";};
