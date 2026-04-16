@@ -11,6 +11,7 @@ metadata:
   name: adguard-dns
   namespace: kube-system
 spec:
+  externalTrafficPolicy: Local
   ports:
     - name: dns-tcp
       port: 53
