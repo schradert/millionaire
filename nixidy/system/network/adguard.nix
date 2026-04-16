@@ -19,11 +19,7 @@ in {
             initContainers.copy-config = {
               image.repository = "busybox";
               image.tag = "1.37";
-              command = ["sh" "-c" ''
-                if [ ! -f /opt/adguardhome/conf/AdGuardHome.yaml ]; then
-                  cp /tmp/AdGuardHome.yaml /opt/adguardhome/conf/AdGuardHome.yaml
-                fi
-              ''];
+              command = ["sh" "-c" "cp /tmp/AdGuardHome.yaml /opt/adguardhome/conf/AdGuardHome.yaml"];
             };
             containers.adguard = {
               image.repository = "adguard/adguardhome";
@@ -109,6 +105,9 @@ in {
               "1.0.0.1"
             ];
             bootstrap_dns = ["1.1.1.1" "1.0.0.1"];
+            ratelimit = 0;
+            use_private_ptr_resolvers = true;
+            local_ptr_upstreams = ["192.168.50.1"];
           };
           filtering.rewrites = [
             {domain = "internal.${domain}"; answer = "192.168.50.241";}
