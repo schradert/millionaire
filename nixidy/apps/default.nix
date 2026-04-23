@@ -4,7 +4,11 @@
     ./finance/firefly.nix
     ./finance/sure.nix
     ./health/mealie.nix
+    ./home/baikal.nix
     ./home/home-assistant.nix
+    ./home/homepage.nix
+    ./home/syncthing.nix
+    ./home/webdav.nix
     ./home/zwave-js-ui.nix
     ./identity/keycloak.nix
     ./identity/keycloak-operator.nix
