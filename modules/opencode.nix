@@ -12,8 +12,15 @@
         CONTEXT7_API_KEY = "$(cat ~/.secrets/context7)";
         OPENAI_API_KEY = "$(cat ~/.secrets/openai)";
       };
+      # FIXME move most of this to per-project devenv (claude.code.*, opencode.*)
+      # once we're ready — home-manager is the interim user-global layer.
       programs = {
         claude-code.enable = true;
+        claude-code.enableMcpIntegration = true;
+        claude-code.settings = {
+          model = "opus[1m]";
+          alwaysThinkingEnabled = true;
+        };
         mcp.enable = true;
         mcp.servers = {
           context7.url = "https://mcp.context7.com/mcp";
