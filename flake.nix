@@ -19,6 +19,10 @@
     devenv.url = "github:cachix/devenv";
     devenv-agents.url = "github:cachix/devenv-ai-agents";
     devenv-agents.flake = false;
+    bun2nix.url = "github:nix-community/bun2nix";
+    bun2nix.inputs.nixpkgs.follows = "nixpkgs";
+    nix2container.url = "github:nlewo/nix2container";
+    nix2container.inputs.nixpkgs.follows = "nixpkgs";
 
     # Systems
     deploy-rs.url = "github:serokell/deploy-rs";
@@ -140,7 +144,7 @@
       inherit inputs;
       everything = [./options ./modules ./pulumi ./esp32-s3];
     } {
-      imports = [./nixidy];
+      imports = [./nixidy ./modules/images.nix];
       devenv = {lib, ...}: {
         git-hooks.hooks = {
           lychee.toml.accept = [200 403 405 406];
