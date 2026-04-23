@@ -349,6 +349,54 @@
         "type": "github"
       }
     },
+    "datadog-agent-skills": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1776273651,
+        "narHash": "sha256-ZnlOEhzAq2LfNzOtEN6mO50epkw8eI0A7b2OxCasD68=",
+        "owner": "datadog-labs",
+        "repo": "agent-skills",
+        "rev": "a04611e9d3c402859f7d973be451c16cd5982ca5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "datadog-labs",
+        "repo": "agent-skills",
+        "type": "github"
+      }
+    },
+    "datadog-api-claude-plugin": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1774376339,
+        "narHash": "sha256-Tkbc53AjR8s+UBa66Cd9wmzA0VrPnqdLKMEdgABO+Hk=",
+        "owner": "DataDog",
+        "repo": "datadog-api-claude-plugin",
+        "rev": "366ed89a09c3857cede5bbb53327fdc74c752766",
+        "type": "github"
+      },
+      "original": {
+        "owner": "DataDog",
+        "repo": "datadog-api-claude-plugin",
+        "type": "github"
+      }
+    },
+    "datadog-pup": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1776888043,
+        "narHash": "sha256-B+Kduo8ywJz3avJkPsSsC/6bJCJDUFaa8jbJYRb7wVQ=",
+        "owner": "datadog-labs",
+        "repo": "pup",
+        "rev": "251cb2a1c9b29ed6af261db333dc0310531d8ead",
+        "type": "github"
+      },
+      "original": {
+        "owner": "datadog-labs",
+        "repo": "pup",
+        "type": "github"
+      }
+    },
     "deploy-rs": {
       "inputs": {
         "flake-compat": [
@@ -1891,11 +1939,11 @@
     },
     "nixpkgs_12": {
       "locked": {
-        "lastModified": 1773734432,
-        "narHash": "sha256-IF5ppUWh6gHGHYDbtVUyhwy/i7D261P7fWD1bPefOsw=",
+        "lastModified": 1776548001,
+        "narHash": "sha256-ZSK0NL4a1BwVbbTBoSnWgbJy9HeZFXLYQizjb2DPF24=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "cda48547b432e8d3b18b4180ba07473762ec8558",
+        "rev": "b12141ef619e0a9c1c84dc8c684040326f27cdcc",
         "type": "github"
       },
       "original": {
@@ -2192,6 +2240,9 @@
     "root": {
       "inputs": {
         "canivete": "canivete",
+        "datadog-agent-skills": "datadog-agent-skills",
+        "datadog-api-claude-plugin": "datadog-api-claude-plugin",
+        "datadog-pup": "datadog-pup",
         "deploy-rs": "deploy-rs",
         "devenv": "devenv_2",
         "devenv-agents": "devenv-agents",
