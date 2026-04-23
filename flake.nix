@@ -123,6 +123,14 @@
     rust-overlay.url = "github:oxalica/rust-overlay";
     rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
 
+    # AI / Agents
+    datadog-agent-skills.url = "github:datadog-labs/agent-skills";
+    datadog-agent-skills.flake = false;
+    datadog-api-claude-plugin.url = "github:DataDog/datadog-api-claude-plugin";
+    datadog-api-claude-plugin.flake = false;
+    datadog-pup.url = "github:datadog-labs/pup";
+    datadog-pup.flake = false;
+
     # Special
     kdl.url = "https://raw.githubusercontent.com/jrobsonchase/nixos-config/8ea380ad196e630044846f06945131602ec7056f/lib/kdl.nix";
     kdl.flake = false;
