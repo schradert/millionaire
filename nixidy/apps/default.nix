@@ -5,6 +5,10 @@
     ./finance/sure.nix
     ./health/mealie.nix
     ./home/home-assistant.nix
+    ./home/logseq.nix
+    ./home/org-bridge.nix
+    ./home/org-storage.nix
+    ./home/siyuan.nix
     ./home/zwave-js-ui.nix
     ./identity/keycloak.nix
     ./identity/keycloak-operator.nix
