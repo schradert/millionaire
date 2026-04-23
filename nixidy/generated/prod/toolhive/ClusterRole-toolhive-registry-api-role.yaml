@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/component: registry-api
+    app.kubernetes.io/managed-by: toolhive-operator
+    app.kubernetes.io/name: toolhive-registry-api
+  name: toolhive-registry-api-role
+rules:
+  - apiGroups:
+      - toolhive.stacklok.dev
+    resources:
+      - mcpservers
+    verbs:
+      - get
+      - list
+      - watch
