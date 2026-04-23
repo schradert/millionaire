@@ -26,6 +26,6 @@ in {
       (writeShellScriptBin "b2" ''exec b2v4 "$@"'')
       (pkgs.pulumi.withPackages (ps: [ps.pulumi-python]))
     ];
-    git-hooks.hooks.ruff.excludes = ["pulumi/sdks/**"];
+    git-hooks.hooks.ruff.excludes = ["^pulumi/sdks/"];
   };
 }
