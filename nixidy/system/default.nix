@@ -4,6 +4,7 @@
     ./cicd/descheduler.nix
     ./cicd/harbor.nix
     ./cicd/reloader.nix
+    ./mail/bulwark.nix
     ./mail/stalwart.nix
     ./network/cilium.nix
     ./network/coredns.nix
