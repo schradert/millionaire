@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: autobrr
+    app.kubernetes.io/instance: autobrr
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: autobrr
+  name: autobrr
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: autobrr
+      app.kubernetes.io/instance: autobrr
+      app.kubernetes.io/name: autobrr
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 1ab415924caa0a4413ecd01320da3dd0ebca5f89969827c5b95edc29349eb808
+      labels:
+        app.kubernetes.io/controller: autobrr
+        app.kubernetes.io/instance: autobrr
+        app.kubernetes.io/name: autobrr
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - envFrom:
+            - configMapRef:
+                name: autobrr
+          image: ghcr.io/autobrr/autobrr:v1.74.0@sha256:6f37217bbc0496fff0c7ffb4264545036bf735775e484188b80b31f21daa06e2
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 7474
+            timeoutSeconds: 1
+          name: autobrr
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 7474
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 7474
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /config
+              name: config
+            - mountPath: /secrets
+              name: secrets
+              readOnly: true
+            - mountPath: /config/log
+              name: tmpfs
+              subPath: log
+            - mountPath: /tmp
+              name: tmpfs
+              subPath: tmp
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: default
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: autobrr
+        - name: secrets
+          secret:
+            secretName: autobrr
+        - emptyDir: {}
+          name: tmpfs

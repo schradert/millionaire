@@ -190,17 +190,6 @@ in {
             };
           };
         };
-        rules.stalwart.spec = {
-          upstream.url = "http://stalwart.mail.svc.cluster.local:8080";
-          match = {
-            url = "https://${hostname}/<.*>";
-            methods = ["GET" "POST" "PUT" "PATCH" "DELETE"];
-          };
-          authenticators = lib.toList {handler = "cookie_session";};
-          authorizer.handler = "allow";
-          mutators = lib.toList {handler = "header";};
-          errors = lib.toList {handler = "redirect";};
-        };
       };
     };
   };
