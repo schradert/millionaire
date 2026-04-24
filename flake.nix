@@ -283,6 +283,27 @@
             disko.devices.disk.root.device = "/dev/disk/by-id/ata-MTFDDAK256TBN-1AR1ZABHA_UGXVK01J7BDCER";
           };
         };
+
+        voron = {
+          canivete.system = "aarch64-linux";
+          profiles.system = {config, ...}: {
+            canivete = {
+              args = inputs;
+              builder = modules:
+                inputs.nixos-raspberrypi.lib.nixosInstaller {
+                  specialArgs = config.canivete.args;
+                  modules = [modules];
+                };
+              configuration = {
+                imports = [./static/rpi.nix ./static/printer.nix];
+                system.stateVersion = "26.05";
+                home-manager.sharedModules = [{home.stateVersion = "26.05";}];
+                disko.devices.disk.root.device = "/dev/mmcblk0";
+                networking.hostName = "voron";
+              };
+            };
+          };
+        };
       };
     };
 }
