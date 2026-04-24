@@ -5,6 +5,7 @@
     ./finance/sure.nix
     ./health/mealie.nix
     ./home/home-assistant.nix
+    ./home/kosync.nix
     ./home/zwave-js-ui.nix
     ./identity/keycloak.nix
     ./identity/keycloak-operator.nix
