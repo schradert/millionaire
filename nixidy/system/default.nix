@@ -11,6 +11,11 @@
     ./network/external-dns.nix
     ./network/external-dns-internal.nix
     ./network/cloudflared.nix
+    # TODO multus: cluster-wide CNI extension. Adds a meta-CNI alongside Cilium so
+    # specific pods (Music Assistant) can attach a macvlan NIC for L2 multicast /
+    # mDNS discovery of smart speakers. Staged here pending separate testing —
+    # CNI changes warrant their own validation pass before going to a running cluster.
+    # ./network/multus.nix
     ./observability/alertmanager.nix
     ./observability/gatus.nix
     ./observability/grafana.nix

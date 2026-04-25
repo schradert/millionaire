@@ -71,6 +71,7 @@
           lib.mkMerge [
             [
               bitwarden-desktop
+              picard
               spotify
             ]
             (lib.mkIf stdenv.hostPlatform.isLinux [
