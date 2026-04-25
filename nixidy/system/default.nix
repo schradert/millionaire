@@ -1,5 +1,6 @@
 {
   imports = [
+    ./cicd/app-of-apps.nix
     ./cicd/argocd.nix
     ./cicd/descheduler.nix
     ./cicd/harbor.nix
