@@ -1,0 +1,15 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--frigate--frigate-config-dst
+  namespace: home
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: frigate-config
+    moverSecurityContext:
+      runAsGroup: 101
+      runAsUser: 101
+    repository: volsync--frigate--frigate-config
+  trigger:
+    manual: "1"

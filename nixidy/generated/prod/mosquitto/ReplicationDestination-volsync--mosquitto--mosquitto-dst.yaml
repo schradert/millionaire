@@ -1,0 +1,15 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--mosquitto--mosquitto-dst
+  namespace: home
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: mosquitto
+    moverSecurityContext:
+      runAsGroup: 101
+      runAsUser: 101
+    repository: volsync--mosquitto--mosquitto
+  trigger:
+    manual: "1"

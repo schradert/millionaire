@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: chirpstack
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: chirpstack
+    app.kubernetes.io/service: chirpstack
+  name: chirpstack
+  namespace: home
+spec:
+  ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app.kubernetes.io/controller: chirpstack
+    app.kubernetes.io/instance: chirpstack
+    app.kubernetes.io/name: chirpstack
+  type: ClusterIP
