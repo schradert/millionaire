@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: chirpstack
+    app.kubernetes.io/instance: chirpstack
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: chirpstack
+  name: chirpstack
+  namespace: home
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: chirpstack
+      app.kubernetes.io/instance: chirpstack
+      app.kubernetes.io/name: chirpstack
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 5560a3e8b6bc34f518d3aac6c5aeac242affcdb61c3229c75d01269cb2611d9b
+      labels:
+        app.kubernetes.io/controller: chirpstack
+        app.kubernetes.io/instance: chirpstack
+        app.kubernetes.io/name: chirpstack
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - args:
+            - -c
+            - /etc/chirpstack/chirpstack.toml
+          envFrom:
+            - secretRef:
+                name: chirpstack
+          image: chirpstack/chirpstack:4
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+          name: chirpstack
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+          startupProbe:
+            tcpSocket:
+              port: 8080
+          volumeMounts:
+            - mountPath: /etc/chirpstack/chirpstack.toml
+              name: config
+              readOnly: true
+              subPath: chirpstack.toml
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: default
+      volumes:
+        - configMap:
+            name: chirpstack
+          name: config

@@ -6,8 +6,13 @@
     ./finance/firefly.nix
     ./finance/sure.nix
     ./health/mealie.nix
-    ./home/baikal.nix
+    ./home/chirpstack.nix
+    ./home/frigate.nix
+    ./home/govee2mqtt.nix
     ./home/home-assistant.nix
+    ./home/mosquitto.nix
+    ./home/zigbee2mqtt.nix
+    ./home/baikal.nix
     ./home/homepage.nix
     ./home/syncthing.nix
     ./home/webdav.nix
