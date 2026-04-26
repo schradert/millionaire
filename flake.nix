@@ -124,12 +124,16 @@
     rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
 
     # AI / Agents
+    agency-agents.url = "github:msitarzewski/agency-agents";
+    agency-agents.flake = false;
     datadog-agent-skills.url = "github:datadog-labs/agent-skills";
     datadog-agent-skills.flake = false;
     datadog-api-claude-plugin.url = "github:DataDog/datadog-api-claude-plugin";
     datadog-api-claude-plugin.flake = false;
     datadog-pup.url = "github:datadog-labs/pup";
     datadog-pup.flake = false;
+    gastown.url = "github:steveyegge/gastown";
+    gastown.flake = false;
 
     # Special
     kdl.url = "https://raw.githubusercontent.com/jrobsonchase/nixos-config/8ea380ad196e630044846f06945131602ec7056f/lib/kdl.nix";
@@ -138,7 +142,7 @@
   outputs = inputs:
     inputs.canivete.lib.mkFlake {
       inherit inputs;
-      everything = [./options ./modules ./pulumi ./esp32-s3];
+      everything = [./options ./modules ./esp32-s3];
     } {
       imports = [./nixidy];
       devenv = {lib, ...}: {

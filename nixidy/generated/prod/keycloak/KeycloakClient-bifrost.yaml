@@ -1,0 +1,23 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: bifrost
+  namespace: identity
+spec:
+  definition:
+    clientId: bifrost
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Bifrost LLM Gateway
+    protocol: openid-connect
+    redirectUris:
+      - https://bifrost.trdos.me/*
+    standardFlowEnabled: true
+    webOrigins:
+      - https://bifrost.trdos.me
+  realmRef:
+    name: default
