@@ -10,7 +10,6 @@
     darwin = can.module "nix-darwin" {};
     nixos = can.module "NixOS" {};
     nixidy = can.module "nixidy" {};
-    devenv = can.module "devenv" {};
   };
   config = {
     canivete.nixidy.shared = config.nixidy;
@@ -18,6 +17,5 @@
       inherit (config) shared system darwin nixos;
       home-manager = config.home;
     };
-    perSystem.canivete.devenv.modules = [config.devenv];
   };
 }

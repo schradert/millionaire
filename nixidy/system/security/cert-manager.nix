@@ -2,7 +2,6 @@
   inherit (config.canivete.meta) domain people;
   inherit (people.my.profiles.default) email;
 in {
-  devenv.git-hooks.hooks.lychee.toml.exclude = ["^.+/dns-query$"];
   nixidy = {
     charts,
     lib,
