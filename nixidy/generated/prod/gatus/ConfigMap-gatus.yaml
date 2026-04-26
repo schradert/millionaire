@@ -106,12 +106,6 @@ data:
       name: rook-ceph
       url: https://rook.trdos.me
     - conditions:
-      - '[STATUS] == 401'
-      group: internal
-      interval: 1m
-      name: stalwart
-      url: https://mail.trdos.me
-    - conditions:
       - '[STATUS] == 200'
       group: internal
       interval: 1m

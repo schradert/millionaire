@@ -1,6 +1,5 @@
 {config, ...}: let
   inherit (config.canivete.meta) domain;
-  hostname = "mail.${domain}";
   ports.smtp = 25;
   ports.http = 8080;
 in {
@@ -10,11 +9,6 @@ in {
     pkgs,
     ...
   }: {
-    gatus.endpoints.stalwart = {
-      url = "https://${hostname}";
-      group = "internal";
-      conditions = ["[STATUS] == 401"];
-    };
     applications.stalwart = {
       namespace = "mail";
       volsync.pvcs.stalwart.title = "stalwart";
@@ -74,7 +68,7 @@ in {
             data = {
               type = "persistentVolumeClaim";
               accessMode = "ReadWriteOnce";
-              size = "2Gi";
+              size = "10Gi";
               advancedMounts.stalwart.stalwart = [{path = "/data";}];
             };
             config = {
@@ -190,20 +184,6 @@ in {
             };
           };
         };
-        # TODO: leftover Oathkeeper rule from Ory → Keycloak migration, option
-        # no longer exists and blocks `nixidy switch`. Decide whether to route
-        # stalwart through oauth2-proxy or drop SSO here, then remove/rewire.
-        # rules.stalwart.spec = {
-        #   upstream.url = "http://stalwart.mail.svc.cluster.local:8080";
-        #   match = {
-        #     url = "https://${hostname}/<.*>";
-        #     methods = ["GET" "POST" "PUT" "PATCH" "DELETE"];
-        #   };
-        #   authenticators = lib.toList {handler = "cookie_session";};
-        #   authorizer.handler = "allow";
-        #   mutators = lib.toList {handler = "header";};
-        #   errors = lib.toList {handler = "redirect";};
-        # };
       };
     };
   };
