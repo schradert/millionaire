@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: promptfoo
+    app.kubernetes.io/instance: promptfoo
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: promptfoo
+  name: promptfoo
+  namespace: ai
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: promptfoo
+      app.kubernetes.io/instance: promptfoo
+      app.kubernetes.io/name: promptfoo
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: promptfoo
+        app.kubernetes.io/instance: promptfoo
+        app.kubernetes.io/name: promptfoo
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - args:
+            - share
+            - --yes
+          env:
+            - name: OLLAMA_BASE_URL
+              value: http://ollama.ai.svc.cluster.local:11434
+            - name: OPENAI_BASE_URL
+              value: http://bifrost.ai.svc.cluster.local:8000/v1
+            - name: PROMPTFOO_SHARE_STORE_TYPE
+              value: sqlite
+            - name: PROMPTFOO_SHARE_TTL
+              value: "0"
+          envFrom:
+            - secretRef:
+                name: promptfoo
+          image: ghcr.io/promptfoo/promptfoo:latest
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 3000
+            timeoutSeconds: 1
+          name: promptfoo
+          ports:
+            - containerPort: 3000
+              name: http
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 3000
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 3000
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /root/.promptfoo
+              name: data
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: default
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: promptfoo

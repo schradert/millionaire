@@ -111,7 +111,7 @@ class NixOS:
     def __init__(
         self,
         name: str,
-        target: str,
+        target: str | pulumi.Output[str],
         *flags: str,
         depends_on: list[pulumi.Resource] | None = None,
     ):
@@ -119,10 +119,9 @@ class NixOS:
             f"canivete.inputs.nixos-anywhere.packages.{Nix.system()}.default"
         )
         sops_dir = Nix.attr("canivete.sops.directory").value().strip()
-        self.command = command.local.Command(
-            f"nixos-{name}-install",
-            # FIXME prevent retriggering!
-            create=f"""
+
+        def _make_install_cmd(resolved_target: str) -> str:
+            return f"""
                 set -euo pipefail
                 ulimit -n 1048576
 
@@ -139,23 +138,36 @@ class NixOS:
                 NA_ARGS=(--extra-files "$EXTRA_DIR" --flake "{Nix.root}#{name}" {" ".join(flags)})
 
                 # Phase 1: kexec into the NixOS installer
-                "$NA" "${{NA_ARGS[@]}}" --phases kexec {target}
+                "$NA" "${{NA_ARGS[@]}}" --phases kexec {resolved_target}
 
                 # Raise file descriptor limits on the remote NixOS installer.
                 # After kexec the default ulimit is 1024 which is too low for
                 # large NixOS builds (2000+ derivations).
-                ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {target} \
+                ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {resolved_target} \
                     'for pid in 1 $(pgrep -x sshd) $(pgrep -x nix-daemon); do prlimit --nofile=1048576:1048576 --pid "$pid" 2>/dev/null; done'
 
                 # Phase 2: partition, install, and reboot
-                "$NA" "${{NA_ARGS[@]}}" --phases disko,install,reboot {target}
-            """,
+                "$NA" "${{NA_ARGS[@]}}" --phases disko,install,reboot {resolved_target}
+            """
+
+        create_cmd = (
+            pulumi.Output.from_input(target).apply(_make_install_cmd)
+            if isinstance(target, pulumi.Output)
+            else _make_install_cmd(target)
+        )
+
+        self.command = command.local.Command(
+            f"nixos-{name}-install",
+            # FIXME prevent retriggering!
+            create=create_cmd,
             opts=pulumi.ResourceOptions(depends_on=depends_on or []),
         )
 
         self.refresh = command.local.Command(
             f"nixos-{name}-deploy",
             triggers=[Nix.attr(f"nixosConfigurations.{name}.config.system.build.toplevel.outPath").impure().value()],
-            create=f"{Nix.bin(f'canivete.inputs.deploy-rs.packages.{Nix.system()}.default')} .#{name}.system --skip-checks",
+            # TODO re-enable rollback once RKE2 restart handling is fixed
+            # RKE2 transiently fails on config switch (port conflicts), triggering rollback loops
+            create=f"{Nix.bin(f'canivete.inputs.deploy-rs.packages.{Nix.system()}.default')} .#{name}.system --skip-checks --auto-rollback false --magic-rollback false",
             opts=pulumi.ResourceOptions(depends_on=[self.command]),
         )

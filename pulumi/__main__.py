@@ -2,6 +2,7 @@ import pulumi
 import pulumi_bitwarden as bw
 import pulumi_cloudflare as cf
 import pulumi_command as command
+import pulumi_hcloud as hcloud
 import pulumi_random as rand
 import pulumi_tls as tls
 
@@ -27,58 +28,80 @@ class Millionaire:
         )
         attic_sops_write = command.local.Command(
             "attic_sops_write",
-            create=pulumi.Output.concat(
-                'cd "', str(millionaire.Nix.root), '" && ',
-                "sops set secrets/sops/default.yaml ",
-                '\'["attic"]["server-key"]\' ',
-                '--input-type json \'\"ATTIC_SERVER_TOKEN_RS256_SECRET_BASE64=', attic_server_key.stdout, '"\'',
+            create=(
+                f'cd "{millionaire.Nix.root}" && '
+                "printf '%s' \"$ATTIC_VALUE\" | jq -Rs . | "
+                "sops set secrets/sops/default.yaml '[\"attic\"][\"server-key\"]' --value-stdin"
             ),
+            environment={
+                "ATTIC_VALUE": pulumi.Output.concat(
+                    "ATTIC_SERVER_TOKEN_RS256_SECRET_BASE64=", attic_server_key.stdout
+                )
+            },
             opts=pulumi.ResourceOptions(depends_on=[attic_server_key]),
         )
 
         # --- NixOS nodes ---
         sirver = millionaire.NixOS("sirver", "root@nixos", depends_on=[attic_sops_write])
-        octopus = millionaire.NixOS("octopus", "root@nixos")
-        dingo = millionaire.NixOS("dingo", "root@nixos")
-        bonobo = millionaire.NixOS("bonobo", "root@nixos")
-        chinchilla = millionaire.NixOS("chinchilla", "root@nixos")
 
         # --- Attic post-deploy setup (after sirver has atticd running) ---
-        attic_setup = command.local.Command(
-            "attic_setup",
+        # Generate admin token, then use attic client to create/configure cache
+        attic_token = command.local.Command(
+            "attic_token",
             create=(
                 "ssh -i ~/.ssh/personal sirver '"
-                "sudo atticd-atticadm create-cache main 2>/dev/null || true && "
-                "sudo atticd-atticadm make-token --sub admin --validity \"10y\" --push \"*\" --pull \"*\""
+                "sudo atticd-atticadm make-token --sub admin --validity \"10y\" "
+                "--push \"*\" --pull \"*\" --delete \"*\" "
+                "--create-cache \"*\" --configure-cache \"*\" --configure-cache-retention \"*\" --destroy-cache \"*\""
                 "'"
             ),
             opts=pulumi.ResourceOptions(depends_on=[sirver.refresh]),
         )
-        Secret("attic/auth-token", attic_setup.stdout, "Attic client auth token for push/pull")
+        Secret("attic/auth-token", attic_token.stdout, "Attic client auth token for push/pull")
+
+        attic_setup = command.local.Command(
+            "attic_setup",
+            create=attic_token.stdout.apply(
+                lambda token: (
+                    f"ssh -i ~/.ssh/personal sirver '"
+                    f"nix-shell -p attic-client --run \""
+                    f"attic login local http://localhost:8199 {token.strip()} && "
+                    f"(attic cache create main 2>/dev/null; true) && "
+                    f"attic cache configure main --public"
+                    f"\"'"
+                )
+            ),
+            opts=pulumi.ResourceOptions(depends_on=[attic_token]),
+        )
 
         # Save the auth token to SOPS for the post-build hook on all nodes
-        command.local.Command(
+        attic_auth_sops_write = command.local.Command(
             "attic_auth_sops_write",
-            create=pulumi.Output.concat(
-                'cd "', str(millionaire.Nix.root), '" && ',
-                "sops set secrets/sops/default.yaml ",
-                '\'["attic"]["auth-token"]\' ',
-                '--input-type json \'\"', attic_setup.stdout, '"\'',
+            create=(
+                f'cd "{millionaire.Nix.root}" && '
+                "printf '%s' \"$ATTIC_AUTH_TOKEN\" | jq -Rs . | "
+                "sops set secrets/sops/default.yaml '[\"attic\"][\"auth-token\"]' --value-stdin"
             ),
-            opts=pulumi.ResourceOptions(depends_on=[attic_setup]),
+            environment={"ATTIC_AUTH_TOKEN": attic_token.stdout},
+            opts=pulumi.ResourceOptions(depends_on=[attic_token]),
         )
 
         # Get the cache public key and save to a committed JSON file
         attic_public_key = command.local.Command(
             "attic_public_key",
-            create=(
-                "ssh -i ~/.ssh/personal sirver '"
-                "sudo atticd-atticadm show-cache main 2>/dev/null"
-                "' | grep -oP '(?<=Public key: ).*'"
+            create=attic_token.stdout.apply(
+                lambda token: (
+                    "ssh -i ~/.ssh/personal sirver "
+                    "'nix-shell -p attic-client --run \""
+                    f"attic login local http://localhost:8199 {token.strip()} && "
+                    "attic cache info main"
+                    "\"' 2>&1"
+                    " | sed -n 's/.*Public Key: //p'"
+                )
             ),
+            triggers=[attic_setup.stdout],
             opts=pulumi.ResourceOptions(depends_on=[attic_setup]),
         )
-        # Read existing values, merge in the new key, write back
         command.local.Command(
             "attic_public_key_file",
             create=pulumi.Output.concat(
@@ -87,13 +110,62 @@ class Millionaire:
                 "echo \"$EXISTING\" | jq --arg key '", attic_public_key.stdout.apply(str.strip),
                 "' '.attic_pubkey = $key' > \"$FILE\"",
             ),
+            triggers=[attic_public_key.stdout],
             opts=pulumi.ResourceOptions(depends_on=[attic_public_key]),
         )
+
+        # Other nodes depend on attic being fully set up (auth token in SOPS + public key file)
+        other_node_deps = [attic_auth_sops_write]
+        octopus = millionaire.NixOS("octopus", "root@nixos", depends_on=other_node_deps)
+        dingo = millionaire.NixOS("dingo", "root@nixos", depends_on=other_node_deps)
+        bonobo = millionaire.NixOS("bonobo", "root@nixos", depends_on=other_node_deps)
+        chinchilla = millionaire.NixOS("chinchilla", "root@nixos", depends_on=other_node_deps)
 
         # RPI doesn't support kexec
         # millionaire.NixOS("piper", "piper", "--phases disko,install,reboot")
 
+        # --- Hetzner VPS (hyena) ---
+        ssh_key = hcloud.SshKey(
+            "millionaire",
+            public_key="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFBq/GWgq0+wAbRS53AqDdgXhyqpQtvcwlsPEguTPzL9 tristan@millionaire",
+        )
+        hyena_firewall = hcloud.Firewall(
+            "hyena",
+            rules=[
+                hcloud.FirewallRuleArgs(direction="in", protocol="tcp", port="22", source_ips=["0.0.0.0/0", "::/0"]),
+                hcloud.FirewallRuleArgs(direction="in", protocol="tcp", port="443", source_ips=["0.0.0.0/0", "::/0"]),
+                hcloud.FirewallRuleArgs(direction="in", protocol="udp", port="3478", source_ips=["0.0.0.0/0", "::/0"]),
+                hcloud.FirewallRuleArgs(direction="in", protocol="udp", port="41641", source_ips=["0.0.0.0/0", "::/0"]),
+            ],
+        )
+        hyena_server = hcloud.Server(
+            "hyena",
+            server_type="cx22",
+            image="ubuntu-24.04",
+            location="nbg1",
+            ssh_keys=[ssh_key.id],
+            firewall_ids=[hyena_firewall.id],
+        )
+        hyena = millionaire.NixOS(
+            "hyena",
+            hyena_server.ipv4_address.apply(lambda ip: f"root@{ip}"),
+            depends_on=[hyena_server],
+        )
+
+        headscale_noise_key = rand.RandomPassword("headscale_noise_key", length=64, special=False)
+        Secret("headscale/noise-private-key", headscale_noise_key.result, "Headscale noise private key")
+
+        # DNS record for headscale on the VPS
         account_id = "73c86a33c82d5c90d0feb68269932302"
+        zone = cf.get_zone_output(account_id=account_id, name="trdos.me")
+        cf.Record(
+            "headscale",
+            zone_id=zone.zone_id,
+            type="A",
+            name="headscale",
+            content=hyena_server.ipv4_address,
+            proxied=False,
+        )
         tunnel = cf.ZeroTrustTunnelCloudflared(
             "main", account_id=account_id, name="main", config_src="local"
         )
@@ -136,6 +208,12 @@ class Millionaire:
 
         firefly_app_key = rand.RandomBytes("firefly_app_key", length=32)
         Secret("firefly/app_key", firefly_app_key.base64.apply(lambda b: f"base64:{b}"), "Firefly-III Laravel APP_KEY")
+
+        stalwart_admin_password = rand.RandomPassword("stalwart_admin_password", length=24, special=False)
+        Secret("stalwart/admin/password", stalwart_admin_password.result, "Stalwart Mail admin password")
+
+        bulwark_session_secret = rand.RandomPassword("bulwark_session_secret", length=32, special=False)
+        Secret("bulwark/session-secret", bulwark_session_secret.result, "Bulwark webmail session encryption secret")
 
         grafana_admin_password = rand.RandomPassword("grafana_admin_password", length=21, special=False)
         Secret("grafana", grafana_admin_password.result, "Grafana admin password")

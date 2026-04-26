@@ -19,6 +19,10 @@
     devenv.url = "github:cachix/devenv";
     devenv-agents.url = "github:cachix/devenv-ai-agents";
     devenv-agents.flake = false;
+    bun2nix.url = "github:nix-community/bun2nix";
+    bun2nix.inputs.nixpkgs.follows = "nixpkgs";
+    nix2container.url = "github:nlewo/nix2container";
+    nix2container.inputs.nixpkgs.follows = "nixpkgs";
 
     # Systems
     deploy-rs.url = "github:serokell/deploy-rs";
@@ -124,12 +128,16 @@
     rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
 
     # AI / Agents
+    agency-agents.url = "github:msitarzewski/agency-agents";
+    agency-agents.flake = false;
     datadog-agent-skills.url = "github:datadog-labs/agent-skills";
     datadog-agent-skills.flake = false;
     datadog-api-claude-plugin.url = "github:DataDog/datadog-api-claude-plugin";
     datadog-api-claude-plugin.flake = false;
     datadog-pup.url = "github:datadog-labs/pup";
     datadog-pup.flake = false;
+    gastown.url = "github:steveyegge/gastown";
+    gastown.flake = false;
 
     # Special
     kdl.url = "https://raw.githubusercontent.com/jrobsonchase/nixos-config/8ea380ad196e630044846f06945131602ec7056f/lib/kdl.nix";
@@ -140,7 +148,7 @@
       inherit inputs;
       everything = [./options ./modules ./pulumi ./esp32-s3];
     } {
-      imports = [./nixidy];
+      imports = [./nixidy ./modules/images.nix];
       devenv = {lib, ...}: {
         git-hooks.hooks = {
           lychee.toml.accept = [200 403 405 406];
@@ -281,6 +289,27 @@
           profiles.system.canivete.configuration = {
             imports = [./static/facter ./static/server.nix];
             disko.devices.disk.root.device = "/dev/disk/by-id/ata-MTFDDAK256TBN-1AR1ZABHA_UGXVK01J7BDCER";
+          };
+        };
+
+        voron = {
+          canivete.system = "aarch64-linux";
+          profiles.system = {config, ...}: {
+            canivete = {
+              args = inputs;
+              builder = modules:
+                inputs.nixos-raspberrypi.lib.nixosInstaller {
+                  specialArgs = config.canivete.args;
+                  modules = [modules];
+                };
+              configuration = {
+                imports = [./static/rpi.nix ./static/printer.nix];
+                system.stateVersion = "26.05";
+                home-manager.sharedModules = [{home.stateVersion = "26.05";}];
+                disko.devices.disk.root.device = "/dev/mmcblk0";
+                networking.hostName = "voron";
+              };
+            };
           };
         };
       };
