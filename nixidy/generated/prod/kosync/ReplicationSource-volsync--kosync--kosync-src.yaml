@@ -1,0 +1,20 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: volsync--kosync--kosync-src
+  namespace: home
+spec:
+  restic:
+    copyMethod: Direct
+    moverSecurityContext:
+      fsGroup: 101
+    pruneIntervalDays: 8
+    repository: volsync--kosync--kosync
+    retain:
+      daily: 1
+      monthly: 1
+      weekly: 1
+      yearly: 1
+  sourcePVC: kosync
+  trigger:
+    schedule: 0 4 * * *

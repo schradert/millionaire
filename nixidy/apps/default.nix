@@ -10,6 +10,7 @@
     ./home/frigate.nix
     ./home/govee2mqtt.nix
     ./home/home-assistant.nix
+    ./home/kosync.nix
     ./home/mosquitto.nix
     ./home/zigbee2mqtt.nix
     ./home/baikal.nix
