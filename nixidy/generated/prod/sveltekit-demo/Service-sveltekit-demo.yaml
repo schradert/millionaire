@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: sveltekit-demo
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: sveltekit-demo
+    app.kubernetes.io/service: sveltekit-demo
+  name: sveltekit-demo
+  namespace: development
+spec:
+  ports:
+    - name: http
+      port: 3000
+      protocol: TCP
+      targetPort: 3000
+  selector:
+    app.kubernetes.io/controller: sveltekit-demo
+    app.kubernetes.io/instance: sveltekit-demo
+    app.kubernetes.io/name: sveltekit-demo
+  type: ClusterIP

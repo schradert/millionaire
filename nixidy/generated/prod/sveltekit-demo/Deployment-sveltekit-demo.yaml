@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: sveltekit-demo
+    app.kubernetes.io/instance: sveltekit-demo
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: sveltekit-demo
+  name: sveltekit-demo
+  namespace: development
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: sveltekit-demo
+      app.kubernetes.io/instance: sveltekit-demo
+      app.kubernetes.io/name: sveltekit-demo
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: sveltekit-demo
+        app.kubernetes.io/instance: sveltekit-demo
+        app.kubernetes.io/name: sveltekit-demo
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - env:
+            - name: HOST
+              value: 0.0.0.0
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "3000"
+          image: harbor.trdos.me/library/sveltekit-demo:latest@sha256:0000000000000000000000000000000000000000000000000000000000000000
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+          name: sveltekit-demo
+          ports:
+            - containerPort: 3000
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: default
