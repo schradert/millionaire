@@ -1,5 +1,6 @@
 {
   imports = [
+    ./ai
     ./cicd/argocd.nix
     ./cicd/descheduler.nix
     ./cicd/harbor.nix
@@ -32,6 +33,8 @@
     annotations."argocd.argoproj.io/sync-wave" = "1";
     canivete.bootstrap.enable = true;
     resources.namespaces = {
+      ai = {};
+      ai-sandbox = {};
       cicd = {};
       mail = {};
       observability = {};

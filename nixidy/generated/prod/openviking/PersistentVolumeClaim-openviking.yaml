@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app.kubernetes.io/instance: openviking
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openviking
+  name: openviking
+  namespace: ai
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
