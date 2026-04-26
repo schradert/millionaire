@@ -15,6 +15,12 @@
     ./identity/keycloak.nix
     ./identity/keycloak-operator.nix
     ./identity/oauth2-proxy.nix
+    ./printing/mainsail.nix
+    ./printing/spoolman.nix
+    ./printing/obico.nix
+    ./printing/mooncord.nix
+    ./printing/mobileraker-companion.nix
+    ./printing/prometheus-klipper-exporter.nix
   ];
   nixidy.applications.namespaces.resources.namespaces = {
     development = {};
@@ -22,5 +28,6 @@
     health = {};
     home = {};
     identity = {};
+    printing = {};
   };
 }
