@@ -16,6 +16,7 @@
     ./network/external-dns.nix
     ./network/external-dns-internal.nix
     ./network/cloudflared.nix
+    ./network/multus.nix
     ./network/tailscale.nix
     ./observability/alertmanager.nix
     ./observability/gatus.nix
