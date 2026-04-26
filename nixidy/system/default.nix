@@ -1,9 +1,14 @@
 {
   imports = [
+    ./cicd/argo-events.nix
+    ./cicd/argo-rollouts.nix
+    ./cicd/argo-workflows.nix
+    ./ai
     ./cicd/argocd.nix
     ./cicd/descheduler.nix
     ./cicd/harbor.nix
     ./cicd/reloader.nix
+    ./mail/bulwark.nix
     ./mail/stalwart.nix
     ./network/cilium.nix
     ./network/coredns.nix
@@ -11,11 +16,8 @@
     ./network/external-dns.nix
     ./network/external-dns-internal.nix
     ./network/cloudflared.nix
-    # TODO multus: cluster-wide CNI extension. Adds a meta-CNI alongside Cilium so
-    # specific pods (Music Assistant) can attach a macvlan NIC for L2 multicast /
-    # mDNS discovery of smart speakers. Staged here pending separate testing —
-    # CNI changes warrant their own validation pass before going to a running cluster.
-    # ./network/multus.nix
+    ./network/multus.nix
+    ./network/tailscale.nix
     ./observability/alertmanager.nix
     ./observability/gatus.nix
     ./observability/grafana.nix
@@ -35,6 +37,8 @@
     annotations."argocd.argoproj.io/sync-wave" = "1";
     canivete.bootstrap.enable = true;
     resources.namespaces = {
+      ai = {};
+      ai-sandbox = {};
       cicd = {};
       mail = {};
       observability = {};

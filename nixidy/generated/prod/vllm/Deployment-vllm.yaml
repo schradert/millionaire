@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: vllm
+    app.kubernetes.io/instance: vllm
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: vllm
+  name: vllm
+  namespace: ai
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: vllm
+      app.kubernetes.io/instance: vllm
+      app.kubernetes.io/name: vllm
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: vllm
+        app.kubernetes.io/instance: vllm
+        app.kubernetes.io/name: vllm
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - args:
+            - --model
+            - mistralai/Mistral-7B-Instruct-v0.3
+            - --tensor-parallel-size
+            - "1"
+            - --gpu-memory-utilization
+            - "0.5"
+            - --max-model-len
+            - "8192"
+            - --port
+            - "8000"
+          env:
+            - name: HUGGING_FACE_HUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: hf_token
+                  name: vllm
+          image: vllm/vllm-openai:v0.8.5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 120
+            periodSeconds: 30
+          name: vllm
+          ports:
+            - containerPort: 8000
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 120
+          resources:
+            limits:
+              cpu: "16"
+              memory: 48Gi
+              nvidia.com/gpu: "1"
+            requests:
+              cpu: "4"
+              memory: 16Gi
+              nvidia.com/gpu: "1"
+          startupProbe:
+            failureThreshold: 60
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          volumeMounts:
+            - mountPath: /root/.cache/huggingface
+              name: cache
+            - mountPath: /dev/shm
+              name: shm
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
+      securityContext:
+        supplementalGroups:
+          - 0
+      serviceAccountName: default
+      tolerations:
+        - effect: NoSchedule
+          key: nvidia.com/gpu
+          operator: Exists
+      volumes:
+        - name: cache
+          persistentVolumeClaim:
+            claimName: vllm
+        - emptyDir:
+            medium: Memory
+            sizeLimit: 8Gi
+          name: shm

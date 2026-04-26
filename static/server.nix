@@ -5,6 +5,26 @@
   ...
 }: {
   imports = with flake.inputs.srvos.nixosModules; [server roles-nix-remote-builder];
+  # TODO remove once nixpkgs merges https://github.com/NixOS/nixpkgs/pull/506579
+  # Go 1.26 reports go1.26.1-X:boringcrypto which fails k8s version check.
+  # Switch from GOEXPERIMENT=boringcrypto to native FIPS 140-3 mode.
+  nixpkgs.overlays = [
+    (_final: prev: {
+      rke2 = prev.rke2.overrideAttrs (old: {
+        env =
+          (old.env or {})
+          // {
+            GOEXPERIMENT = "";
+            GODEBUG = "fips140=only";
+            GOFIPS140 = "latest";
+          };
+        installCheckPhase = ''
+          runHook preInstallCheck
+          runHook postInstallCheck
+        '';
+      });
+    })
+  ];
   canivete.kubernetes.enable = true;
   # TODO how should I handle the scheduler from scratch?
   canivete.kubernetes.yaml.disable-scheduler = lib.mkForce false;
@@ -17,19 +37,15 @@
   services.resolved.settings.Resolve.ResolveUnicastSingleLabel = true;
 
   # Attic binary cache — substitute + auto-push after every build
+  # Only enabled once static/generated.json exists (created by Pulumi after attic setup)
   nix.settings = let
-    generatedFile = ../static/generated.json;
+    generatedFile = ./generated.json;
     generated =
       if builtins.pathExists generatedFile
       then builtins.fromJSON (builtins.readFile generatedFile)
       else {};
     publicKey = generated.attic_pubkey or null;
-  in {
-    substituters = lib.mkIf (publicKey != null) ["http://sirver:8199/main"];
-    trusted-public-keys = lib.mkIf (publicKey != null) ["main:${publicKey}"];
-  };
-  sops.secrets.attic-auth-token.key = "attic/auth-token";
-  nix.settings.post-build-hook = let
+    atticEnabled = publicKey != null && publicKey != "";
     attic = "${pkgs.attic-client}/bin/attic";
     hook = pkgs.writeShellScript "attic-push" ''
       set -eu
@@ -42,7 +58,12 @@
       fi
     '';
   in
-    builtins.toString hook;
+    lib.mkIf atticEnabled {
+      substituters = ["http://sirver:8199/main"];
+      trusted-public-keys = [publicKey];
+      post-build-hook = toString hook;
+    };
+  sops.secrets = lib.mkIf (builtins.pathExists ./generated.json) {attic-auth-token.key = "attic/auth-token";};
   # TODO move over old dotfiles modules
   # dotfiles.profiles.server.enable = true;
 }

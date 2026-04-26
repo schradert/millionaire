@@ -1,9 +1,5 @@
 {
   imports = [./apps ./system];
-  devenv = {
-    git-hooks.excludes = ["nixidy/generated"];
-    git-hooks.hooks.lychee.toml.exclude = ["^.+\\.svc$"];
-  };
   nixidy = {
     can,
     config,
