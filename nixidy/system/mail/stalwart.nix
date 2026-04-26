@@ -154,20 +154,37 @@ in {
           }) + "\n";
         };
       };
-      resources.externalSecrets.stalwart.spec.data = [
-        {
-          secretKey = "SMTP_TOKEN";
-          remoteRef.key = "stalwart/smtp/token";
-          sourceRef.storeRef.name = "bitwarden";
-          sourceRef.storeRef.kind = "ClusterSecretStore";
-        }
-        {
-          secretKey = "ADMIN_SECRET";
-          remoteRef.key = "stalwart/admin/password";
-          sourceRef.storeRef.name = "bitwarden";
-          sourceRef.storeRef.kind = "ClusterSecretStore";
-        }
-      ];
+      resources = {
+        externalSecrets.stalwart.spec.data = [
+          {
+            secretKey = "SMTP_TOKEN";
+            remoteRef.key = "stalwart/smtp/token";
+            sourceRef.storeRef.name = "bitwarden";
+            sourceRef.storeRef.kind = "ClusterSecretStore";
+          }
+          {
+            secretKey = "ADMIN_SECRET";
+            remoteRef.key = "stalwart/admin/password";
+            sourceRef.storeRef.name = "bitwarden";
+            sourceRef.storeRef.kind = "ClusterSecretStore";
+          }
+        ];
+        httpRoutes.stalwart.spec = {
+          hostnames = [hostname];
+          parentRefs = lib.toList {
+            name = "internal";
+            namespace = "kube-system";
+            sectionName = "https";
+          };
+          rules = lib.toList {
+            backendRefs = lib.toList {
+              name = "oathkeeper-proxy";
+              namespace = "identity";
+              port = 4455;
+            };
+          };
+        };
+      };
     };
   };
 }

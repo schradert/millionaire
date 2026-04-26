@@ -13,7 +13,14 @@
       daemon.enable = true;
       settings.keymap_mode = "vim-normal";
     };
-    # Ensures a broken socket doesn't cripple the service
-    launchd.agents.atuin-daemon.config.RunAtLoad = true;
+    # --force cleans up stale sockets left behind after rebuilds
+    launchd.agents.atuin-daemon.config.ProgramArguments = let
+      atuin = config.programs.atuin.package;
+    in [
+      (lib.getExe atuin)
+      "daemon"
+      "start"
+      "--force"
+    ];
   };
 }

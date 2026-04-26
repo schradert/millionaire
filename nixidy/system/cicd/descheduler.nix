@@ -1,5 +1,4 @@
 {...}: {
-  devenv.git-hooks.hooks.lychee.toml.exclude = ["https://kubernetes-sigs.github.io/descheduler"];
   nixidy = {lib, ...}: {
     applications.descheduler = {
       namespace = "cicd";
