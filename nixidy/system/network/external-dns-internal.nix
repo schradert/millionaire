@@ -21,7 +21,9 @@
             env = [
               {
                 name = "ADGUARD_URL";
-                value = "http://adguard.kube-system.svc.cluster.local:3000";
+                # AdGuard Home on hyena VPS, reachable via tailscale operator sidecar
+                # TODO: update with hyena's actual tailnet IP after headscale deployment
+                value = "http://hyena:3000";
               }
               {
                 name = "ADGUARD_USER";

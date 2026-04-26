@@ -1,0 +1,38 @@
+apiVersion: v1
+data:
+  librechat.yaml: |-
+    cache: true
+    endpoints:
+      custom:
+      - apiKey: ${BIFROST_API_KEY}
+        baseURL: http://bifrost.ai.svc.cluster.local:8000/v1
+        dropParams:
+        - stop
+        - user
+        models:
+          default:
+          - mistral:7b
+          - codellama:7b
+          - mistralai/Mistral-7B-Instruct-v0.3
+          fetch: true
+        name: Homelab
+        titleConvo: true
+        titleModel: mistral:7b
+    mcpServers:
+      contextforge:
+        type: streamable-http
+        url: http://contextforge.ai.svc.cluster.local:8080/mcp
+    registration:
+      allowedDomains:
+      - trdos.me
+      socialLogins:
+      - openid
+    version: 1.2.1
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: librechat
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: librechat
+  name: librechat
+  namespace: ai

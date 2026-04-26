@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: radarr
+    app.kubernetes.io/instance: radarr
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: radarr
+  name: radarr
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: radarr
+      app.kubernetes.io/instance: radarr
+      app.kubernetes.io/name: radarr
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 9b5757ae6cf3a6649a097b3e64ac0cc840f0b8515ff551e71cb855c4abd45d6b
+      labels:
+        app.kubernetes.io/controller: radarr
+        app.kubernetes.io/instance: radarr
+        app.kubernetes.io/name: radarr
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - envFrom:
+            - secretRef:
+                name: radarr
+            - configMapRef:
+                name: radarr
+          image: ghcr.io/home-operations/radarr:6.1.1.10317@sha256:5e08c0eefd2770d1d29395c4f84fe5bf7dfc3a986598021306a5d8ac017a3989
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 80
+            timeoutSeconds: 1
+          name: radarr
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 80
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 80
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /config
+              name: config
+            - mountPath: /media/downloads
+              name: media-downloads
+            - mountPath: /media/movies
+              name: media-movies
+            - mountPath: /tmp
+              name: tmpfs
+              subPath: tmp
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: default
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: radarr
+        - name: media-downloads
+          persistentVolumeClaim:
+            claimName: media-downloads
+        - name: media-movies
+          persistentVolumeClaim:
+            claimName: media-movies
+        - emptyDir: {}
+          name: tmpfs
