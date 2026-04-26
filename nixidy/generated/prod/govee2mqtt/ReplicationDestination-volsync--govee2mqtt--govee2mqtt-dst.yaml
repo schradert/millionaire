@@ -1,0 +1,15 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--govee2mqtt--govee2mqtt-dst
+  namespace: home
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: govee2mqtt
+    moverSecurityContext:
+      runAsGroup: 101
+      runAsUser: 101
+    repository: volsync--govee2mqtt--govee2mqtt
+  trigger:
+    manual: "1"
