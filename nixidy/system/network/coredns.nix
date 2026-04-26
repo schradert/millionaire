@@ -10,13 +10,21 @@ in {
         values = {
           service.clusterIP = "10.43.0.10";
           servers = [
-            # Forward trdos.me queries to AdGuard Home so in-cluster services
-            # resolve internal hostnames to the internal gateway
+            # Resolve *.trdos.me to the internal gateway so in-cluster
+            # services can reach each other via domain names
             {
               zones = [{zone = "${domain}."; use_tcp = true;}];
               port = 53;
               plugins = [
-                {name = "forward"; parameters = "${domain} 192.168.50.242";}
+                {
+                  name = "template";
+                  parameters = "IN A ${domain}";
+                  configBlock = ''
+                    match .*\.${domain}\.$
+                    answer "{{.Name}} 60 IN A 192.168.50.241"
+                    fallthrough
+                  '';
+                }
                 {name = "cache"; parameters = "30";}
               ];
             }
