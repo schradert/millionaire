@@ -26,6 +26,10 @@
     ./identity/keycloak.nix
     ./identity/keycloak-operator.nix
     ./identity/oauth2-proxy.nix
+    ./media/maloja.nix
+    ./media/multi-scrobbler.nix
+    ./media/navidrome.nix
+    ./media/music-assistant.nix
     ./media/arr/autobrr.nix
     ./media/arr/bazarr.nix
     ./media/arr/chaptarr.nix
