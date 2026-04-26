@@ -13,6 +13,10 @@ data:
   GF_NEWS_NEWS_FEED_ENABLED: "false"
   GF_SECURITY_COOKIE_SAMESITE: grafana
   GF_SERVER_ROOT_URL: https://grafana.trdos.me
+  GF_SMTP_ENABLED: "true"
+  GF_SMTP_FROM_ADDRESS: noreply@trdos.me
+  GF_SMTP_FROM_NAME: Grafana
+  GF_SMTP_HOST: stalwart.mail.svc.cluster.local:25
   grafana.ini: |
     [analytics]
     check_for_updates = true
@@ -24,7 +28,7 @@ data:
     plugins = /var/lib/grafana/plugins
     provisioning = /etc/grafana/provisioning
     [server]
-    domain = grafana.trdos.me
+    domain = ''
     [unified_storage]
     index_path = /var/lib/grafana-search/bleve
 kind: ConfigMap
