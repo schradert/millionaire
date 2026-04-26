@@ -1,5 +1,7 @@
 {
   imports = [
+    ./development/forgejo.nix
+    ./development/windmill.nix
     ./finance/actual.nix
     ./finance/firefly.nix
     ./finance/sure.nix
@@ -11,6 +13,7 @@
     ./identity/oauth2-proxy.nix
   ];
   nixidy.applications.namespaces.resources.namespaces = {
+    development = {};
     finance = {};
     health = {};
     home = {};
