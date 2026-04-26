@@ -1,0 +1,27 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: chirpstack
+  namespace: identity
+spec:
+  clientSecretRef:
+    create: true
+    name: chirpstack
+  definition:
+    clientId: chirpstack
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Chirpstack
+    protocol: openid-connect
+    publicClient: false
+    redirectUris:
+      - https://chirpstack.trdos.me/api/oauth2/callback
+    standardFlowEnabled: true
+    webOrigins:
+      - https://chirpstack.trdos.me
+  realmRef:
+    name: default

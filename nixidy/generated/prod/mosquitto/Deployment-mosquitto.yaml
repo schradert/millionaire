@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: mosquitto
+    app.kubernetes.io/instance: mosquitto
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mosquitto
+  name: mosquitto
+  namespace: home
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: mosquitto
+      app.kubernetes.io/instance: mosquitto
+      app.kubernetes.io/name: mosquitto
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: a60ec28da7d2a7a957aacf46dd49ea33569fcb7ac395acdd66f51f96bf1340cc
+      labels:
+        app.kubernetes.io/controller: mosquitto
+        app.kubernetes.io/instance: mosquitto
+        app.kubernetes.io/name: mosquitto
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - image: eclipse-mosquitto:2.0
+          livenessProbe:
+            tcpSocket:
+              port: 1883
+          name: mosquitto
+          readinessProbe:
+            tcpSocket:
+              port: 1883
+          startupProbe:
+            tcpSocket:
+              port: 1883
+          volumeMounts:
+            - mountPath: /mosquitto/config/mosquitto.conf
+              name: config
+              readOnly: true
+              subPath: mosquitto.conf
+            - mountPath: /mosquitto/data
+              name: data
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: default
+      volumes:
+        - configMap:
+            name: mosquitto
+          name: config
+        - name: data
+          persistentVolumeClaim:
+            claimName: mosquitto

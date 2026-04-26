@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: zigbee2mqtt
+    app.kubernetes.io/instance: zigbee2mqtt
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: zigbee2mqtt
+  name: zigbee2mqtt
+  namespace: home
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: zigbee2mqtt
+      app.kubernetes.io/instance: zigbee2mqtt
+      app.kubernetes.io/name: zigbee2mqtt
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: zigbee2mqtt
+        app.kubernetes.io/instance: zigbee2mqtt
+        app.kubernetes.io/name: zigbee2mqtt
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - env:
+            - name: ZIGBEE2MQTT_CONFIG_FRONTEND_PORT
+              value: "8080"
+            - name: ZIGBEE2MQTT_CONFIG_HOMEASSISTANT_ENABLED
+              value: "true"
+            - name: ZIGBEE2MQTT_CONFIG_MQTT_SERVER
+              value: mqtt://mosquitto.home.svc.cluster.local:1883
+            - name: ZIGBEE2MQTT_CONFIG_SERIAL_PORT
+              value: /dev/serial/by-id/TBD-zigbee-stick
+          image: koenkk/zigbee2mqtt:1.43.0
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 1
+          name: zigbee2mqtt
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 1
+          securityContext:
+            privileged: true
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /data
+              name: data
+            - mountPath: /dev/serial/by-id/TBD-zigbee-stick
+              name: usb
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      nodeSelector:
+        kubernetes.io/hostname: sirver
+      serviceAccountName: default
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: zigbee2mqtt
+        - hostPath:
+            path: /dev/serial/by-id/TBD-zigbee-stick
+          name: usb

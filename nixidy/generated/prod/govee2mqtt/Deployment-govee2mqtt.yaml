@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: govee2mqtt
+    app.kubernetes.io/instance: govee2mqtt
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: govee2mqtt
+  name: govee2mqtt
+  namespace: home
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: govee2mqtt
+      app.kubernetes.io/instance: govee2mqtt
+      app.kubernetes.io/name: govee2mqtt
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: govee2mqtt
+        app.kubernetes.io/instance: govee2mqtt
+        app.kubernetes.io/name: govee2mqtt
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - env:
+            - name: GOVEE_MQTT_HOST
+              value: mosquitto.home.svc.cluster.local
+            - name: GOVEE_MQTT_PORT
+              value: "1883"
+            - name: XDG_CACHE_HOME
+              value: /data
+          envFrom:
+            - secretRef:
+                name: govee2mqtt
+          image: harbor.trdos.me/library/govee2mqtt:2025.11.25-60a39bcc
+          name: govee2mqtt
+          volumeMounts:
+            - mountPath: /data
+              name: data
+      dnsPolicy: ClusterFirstWithHostNet
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: true
+      hostPID: false
+      serviceAccountName: default
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: govee2mqtt

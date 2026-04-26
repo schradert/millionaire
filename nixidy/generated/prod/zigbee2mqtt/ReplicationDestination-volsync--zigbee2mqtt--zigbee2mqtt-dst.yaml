@@ -1,0 +1,15 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--zigbee2mqtt--zigbee2mqtt-dst
+  namespace: home
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: zigbee2mqtt
+    moverSecurityContext:
+      runAsGroup: 101
+      runAsUser: 101
+    repository: volsync--zigbee2mqtt--zigbee2mqtt
+  trigger:
+    manual: "1"
