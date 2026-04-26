@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/controller: kosync
+    app.kubernetes.io/instance: kosync
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kosync
+  name: kosync
+  namespace: home
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: kosync
+      app.kubernetes.io/instance: kosync
+      app.kubernetes.io/name: kosync
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: kosync
+        app.kubernetes.io/instance: kosync
+        app.kubernetes.io/name: kosync
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - env:
+            - name: KORROSYNC_DB_PATH
+              value: /data/db.redb
+            - name: KORROSYNC_SERVER_ADDRESS
+              value: 0.0.0.0:3000
+            - name: KORROSYNC_USE_TLS
+              value: "false"
+          image: szaffarano/korrosync:v0.3.0@sha256:5689cd5f7d722bdaf525265e66e4a51759e513f0db4d45d7aaa133c593d31c25
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+          name: kosync
+          ports:
+            - containerPort: 3000
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+          startupProbe:
+            failureThreshold: 30
+            httpGet:
+              path: /healthcheck
+              port: http
+            periodSeconds: 10
+          volumeMounts:
+            - mountPath: /data
+              name: data
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: default
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: kosync

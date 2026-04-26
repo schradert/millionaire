@@ -190,17 +190,20 @@ in {
             };
           };
         };
-        rules.stalwart.spec = {
-          upstream.url = "http://stalwart.mail.svc.cluster.local:8080";
-          match = {
-            url = "https://${hostname}/<.*>";
-            methods = ["GET" "POST" "PUT" "PATCH" "DELETE"];
-          };
-          authenticators = lib.toList {handler = "cookie_session";};
-          authorizer.handler = "allow";
-          mutators = lib.toList {handler = "header";};
-          errors = lib.toList {handler = "redirect";};
-        };
+        # TODO: leftover Oathkeeper rule from Ory → Keycloak migration, option
+        # no longer exists and blocks `nixidy switch`. Decide whether to route
+        # stalwart through oauth2-proxy or drop SSO here, then remove/rewire.
+        # rules.stalwart.spec = {
+        #   upstream.url = "http://stalwart.mail.svc.cluster.local:8080";
+        #   match = {
+        #     url = "https://${hostname}/<.*>";
+        #     methods = ["GET" "POST" "PUT" "PATCH" "DELETE"];
+        #   };
+        #   authenticators = lib.toList {handler = "cookie_session";};
+        #   authorizer.handler = "allow";
+        #   mutators = lib.toList {handler = "header";};
+        #   errors = lib.toList {handler = "redirect";};
+        # };
       };
     };
   };

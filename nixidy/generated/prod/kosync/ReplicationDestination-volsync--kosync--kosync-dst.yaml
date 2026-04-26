@@ -1,0 +1,15 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--kosync--kosync-dst
+  namespace: home
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: kosync
+    moverSecurityContext:
+      runAsGroup: 101
+      runAsUser: 101
+    repository: volsync--kosync--kosync
+  trigger:
+    manual: "1"
