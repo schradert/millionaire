@@ -10,6 +10,10 @@
     ./home/frigate.nix
     ./home/govee2mqtt.nix
     ./home/home-assistant.nix
+    ./home/logseq.nix
+    ./home/org-bridge.nix
+    ./home/org-storage.nix
+    ./home/siyuan.nix
     ./home/kosync.nix
     ./home/mosquitto.nix
     ./home/zigbee2mqtt.nix

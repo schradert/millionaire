@@ -1,0 +1,29 @@
+#+TITLE: Test Tasks
+
+* TODO Write thesis chapter                                        :work:writing:
+SCHEDULED: <2026-03-25 Wed 10:00-12:00>
+DEADLINE: <2026-04-01 Tue>
+Need to finish the introduction section.
+
+* TODO Buy groceries                                               :errands:home:
+SCHEDULED: <2026-03-23 Mon 09:00>
+- Milk
+- Bread
+- Eggs
+
+* DONE Submit tax return                                                  :admin:
+DEADLINE: <2026-03-15 Sun>
+
+* [#A] TODO Urgent: fix production bug                                     :work:
+SCHEDULED: <2026-03-22 Sun 14:00>
+
+* Meeting with advisor
+<2026-03-26 Thu 15:00-16:00>
+
+* Project planning
+** TODO Phase 1: Research
+SCHEDULED: <2026-04-01 Tue>
+** TODO Phase 2: Implementation
+SCHEDULED: <2026-04-15 Tue>
+** TODO Phase 3: Testing
+SCHEDULED: <2026-05-01 Thu>
