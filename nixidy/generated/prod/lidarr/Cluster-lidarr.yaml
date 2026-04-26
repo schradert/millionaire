@@ -1,0 +1,36 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: lidarr
+  namespace: media
+spec:
+  backup:
+    barmanObjectStore:
+      destinationPath: s3://trdos-me--volsync/cnpg/lidarr/
+      endpointURL: https://s3.us-west-004.backblazeb2.com
+      s3Credentials:
+        accessKeyId:
+          key: ACCESS_KEY_ID
+          name: lidarr-b2-postgres
+        secretAccessKey:
+          key: ACCESS_SECRET_KEY
+          name: lidarr-b2-postgres
+    retentionPolicy: 30d
+  bootstrap:
+    initdb:
+      database: lidarr
+      owner: lidarr
+      postInitApplicationSQL: []
+      postInitSQL: []
+  imageName: ghcr.io/cloudnative-pg/postgresql:17
+  instances: 1
+  monitoring:
+    enablePodMonitor: true
+  postgresql:
+    shared_preload_libraries: []
+  serviceAccountTemplate:
+    metadata:
+      name: lidarr-pg
+  storage:
+    size: 5Gi
+    storageClass: ceph-block

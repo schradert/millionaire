@@ -35,8 +35,14 @@ data:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
-      name: chirpstack
-      url: https://chirpstack.trdos.me
+      name: autobrr
+      url: https://autobrr.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: bazarr
+      url: https://bazarr.trdos.me
     - conditions:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
@@ -82,6 +88,18 @@ data:
       name: keycloak
       url: https://keycloak.trdos.me
     - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: lidarr
+      url: https://lidarr.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: maintainerr
+      url: https://maintainerr.trdos.me
+    - conditions:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
@@ -100,11 +118,47 @@ data:
       name: prometheus
       url: https://prometheus.trdos.me
     - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: prowlarr
+      url: https://prowlarr.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: qbittorrent
+      url: https://qbittorrent.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: radarr
+      url: https://radarr.trdos.me
+    - conditions:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
       name: rook-ceph
       url: https://rook.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: seerr
+      url: https://seerr.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: sonarr
+      url: https://sonarr.trdos.me
+    - conditions:
+      - '[STATUS] == 401'
+      group: internal
+      interval: 1m
+      name: stalwart
+      url: https://mail.trdos.me
     - conditions:
       - '[STATUS] == 200'
       group: internal

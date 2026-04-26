@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/controller: flaresolverr
+    app.kubernetes.io/instance: flaresolverr
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: flaresolverr
+  name: flaresolverr
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: flaresolverr
+      app.kubernetes.io/instance: flaresolverr
+      app.kubernetes.io/name: flaresolverr
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: flaresolverr
+        app.kubernetes.io/instance: flaresolverr
+        app.kubernetes.io/name: flaresolverr
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - image: ghcr.io/flaresolverr/flaresolverr:v3.4.6@sha256:7962759d99d7e125e108e0f5e7f3cdbcd36161776d058d1d9b7153b92ef1af9e
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8191
+            timeoutSeconds: 1
+          name: flaresolverr
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8191
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8191
+            timeoutSeconds: 1
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: default
