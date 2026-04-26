@@ -1,7 +1,6 @@
 {config, ...}: let
   inherit (config.canivete.meta) domain;
 in {
-  devenv = {pkgs, ...}: {packages = [pkgs.argocd];};
   nixidy = {
     charts,
     lib,

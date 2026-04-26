@@ -1,6 +1,5 @@
 {lib, ...}: {
   imports = [./gateway.nix];
-  devenv = {pkgs, ...}: {packages = [pkgs.cilium-cli];};
   nixos = {
     config,
     pkgs,

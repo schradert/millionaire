@@ -4,11 +4,13 @@
 /secrets/*
 .devenv*
 .direnv/
+.docker/
 .helix/
 .pre-commit-config.yaml
 .zed/
 __pycache__/
 devenv.local.nix
+node_modules/
 result
 
 !/secrets/sops/
