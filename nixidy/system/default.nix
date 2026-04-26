@@ -1,5 +1,8 @@
 {
   imports = [
+    ./cicd/argo-events.nix
+    ./cicd/argo-rollouts.nix
+    ./cicd/argo-workflows.nix
     ./ai
     ./cicd/argocd.nix
     ./cicd/descheduler.nix
