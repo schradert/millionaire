@@ -1,0 +1,12 @@
+apiVersion: dragonflydb.io/v1alpha1
+kind: Dragonfly
+metadata:
+  name: chirpstack-dragonfly
+  namespace: home
+spec:
+  replicas: 1
+  resources:
+    limits:
+      memory: 512Mi
+    requests:
+      memory: 256Mi

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: kosync
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kosync
+    app.kubernetes.io/service: kosync
+  name: kosync
+  namespace: home
+spec:
+  ports:
+    - name: http
+      port: 3000
+      protocol: TCP
+      targetPort: 3000
+  selector:
+    app.kubernetes.io/controller: kosync
+    app.kubernetes.io/instance: kosync
+    app.kubernetes.io/name: kosync
+  type: ClusterIP
