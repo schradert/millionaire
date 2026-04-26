@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: bifrost
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: bifrost
+  name: bifrost
+  namespace: ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: bifrost
+      app.kubernetes.io/name: bifrost
+  template:
+    metadata:
+      annotations:
+        checksum/config: 64984e1bb4b52e43c84a1f669e951cab65f11e9893a8922b3577e58b7903d974
+      labels:
+        app.kubernetes.io/instance: bifrost
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: bifrost
+    spec:
+      containers:
+        - env:
+            - name: APP_DIR
+              value: /app/data
+            - name: APP_PORT
+              value: "8080"
+            - name: APP_HOST
+              value: 0.0.0.0
+            - name: LOG_LEVEL
+              value: info
+            - name: LOG_STYLE
+              value: json
+          envFrom:
+            - secretRef:
+                name: bifrost
+          image: docker.io/maximhq/bifrost:v1.3.36
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /metrics
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+          name: bifrost
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /metrics
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+            requests:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 1000
+          volumeMounts:
+            - mountPath: /app/data
+              name: data
+            - mountPath: /app/data/config.json
+              name: config
+              readOnly: true
+              subPath: config.json
+      securityContext:
+        fsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccountName: bifrost
+      volumes:
+        - configMap:
+            name: bifrost-config
+          name: config
+        - name: data
+          persistentVolumeClaim:
+            claimName: bifrost-data
