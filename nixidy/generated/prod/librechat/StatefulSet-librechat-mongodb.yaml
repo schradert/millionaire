@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/controller: mongodb
+    app.kubernetes.io/instance: librechat
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: librechat
+  name: librechat-mongodb
+  namespace: ai
+spec:
+  podManagementPolicy: OrderedReady
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: mongodb
+      app.kubernetes.io/instance: librechat
+      app.kubernetes.io/name: librechat
+  serviceName: librechat
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 99b4ba563881bdf41be6a10590ce5d5e88454eaa8b10db10a69f160ac44b2e06
+      labels:
+        app.kubernetes.io/controller: mongodb
+        app.kubernetes.io/instance: librechat
+        app.kubernetes.io/name: librechat
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - image: mongo:7
+          name: mongodb
+          ports:
+            - containerPort: 27017
+              name: mongodb
+          volumeMounts:
+            - mountPath: /data/db
+              name: data
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: default
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
