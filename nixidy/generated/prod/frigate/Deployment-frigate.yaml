@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: frigate
+    app.kubernetes.io/instance: frigate
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: frigate
+  name: frigate
+  namespace: home
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: frigate
+      app.kubernetes.io/instance: frigate
+      app.kubernetes.io/name: frigate
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: e45043f05cc1c9bc614b6ea1f1e4d3e27cddb1a6c0a80871d0cb2fee56b718c9
+      labels:
+        app.kubernetes.io/controller: frigate
+        app.kubernetes.io/instance: frigate
+        app.kubernetes.io/name: frigate
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - preference:
+                matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - bonobo
+                      - chinchilla
+                      - dingo
+              weight: 100
+      automountServiceAccountToken: true
+      containers:
+        - env:
+            - name: TZ
+              value: America/Los_Angeles
+          envFrom:
+            - secretRef:
+                name: frigate
+          image: ghcr.io/blakeblackshear/frigate:0.15.1
+          livenessProbe:
+            httpGet:
+              path: /api/version
+              port: 5000
+          name: frigate
+          readinessProbe:
+            httpGet:
+              path: /api/version
+              port: 5000
+          resources:
+            limits:
+              memory: 4Gi
+            requests:
+              cpu: 500m
+              memory: 1Gi
+          securityContext:
+            privileged: true
+          startupProbe:
+            failureThreshold: 10
+            httpGet:
+              path: /api/version
+              port: 5000
+            initialDelaySeconds: 30
+          volumeMounts:
+            - mountPath: /config/config.yml
+              name: base-config
+              subPath: config.yml
+            - mountPath: /tmp/cache
+              name: cache
+            - mountPath: /config
+              name: config
+            - mountPath: /dev/dri
+              name: dri
+            - mountPath: /media/frigate
+              name: media
+            - mountPath: /dev/shm
+              name: shm
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: default
+      volumes:
+        - configMap:
+            name: frigate
+          name: base-config
+        - emptyDir: {}
+          name: cache
+        - name: config
+          persistentVolumeClaim:
+            claimName: frigate-config
+        - hostPath:
+            path: /dev/dri
+          name: dri
+        - name: media
+          persistentVolumeClaim:
+            claimName: frigate-media
+        - emptyDir:
+            medium: Memory
+            sizeLimit: 256Mi
+          name: shm
