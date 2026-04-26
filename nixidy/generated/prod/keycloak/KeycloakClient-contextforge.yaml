@@ -1,0 +1,23 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: contextforge
+  namespace: identity
+spec:
+  definition:
+    clientId: contextforge
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: ContextForge MCP Gateway
+    protocol: openid-connect
+    redirectUris:
+      - https://mcp.trdos.me/*
+    standardFlowEnabled: true
+    webOrigins:
+      - https://mcp.trdos.me
+  realmRef:
+    name: default

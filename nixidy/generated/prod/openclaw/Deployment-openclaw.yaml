@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: openclaw
+    app.kubernetes.io/instance: openclaw
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openclaw
+  name: openclaw
+  namespace: ai-sandbox
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: openclaw
+      app.kubernetes.io/instance: openclaw
+      app.kubernetes.io/name: openclaw
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: openclaw
+        app.kubernetes.io/instance: openclaw
+        app.kubernetes.io/name: openclaw
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - env:
+            - name: ALLOW_DEVICE_ACTIONS
+              value: "false"
+            - name: DM_PAIRING_MODE
+              value: "true"
+            - name: GATEWAY_HOST
+              value: 0.0.0.0
+            - name: GATEWAY_PORT
+              value: "18789"
+            - name: LLM_BASE_URL
+              value: http://bifrost.ai.svc.cluster.local:8000/v1
+            - name: MCP_GATEWAY_URL
+              value: http://contextforge.ai.svc.cluster.local:8080
+          envFrom:
+            - secretRef:
+                name: openclaw
+          image: ghcr.io/openclaw/openclaw:latest
+          name: openclaw
+          ports:
+            - containerPort: 18789
+              name: ws
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: default

@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: librechat
+    app.kubernetes.io/instance: librechat
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: librechat
+  name: librechat
+  namespace: ai
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: librechat
+      app.kubernetes.io/instance: librechat
+      app.kubernetes.io/name: librechat
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 99b4ba563881bdf41be6a10590ce5d5e88454eaa8b10db10a69f160ac44b2e06
+      labels:
+        app.kubernetes.io/controller: librechat
+        app.kubernetes.io/instance: librechat
+        app.kubernetes.io/name: librechat
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - env:
+            - name: ALLOW_REGISTRATION
+              value: "false"
+            - name: ALLOW_SOCIAL_LOGIN
+              value: "true"
+            - name: ALLOW_SOCIAL_REGISTRATION
+              value: "true"
+            - name: HOST
+              value: 0.0.0.0
+            - name: MONGO_URI
+              value: mongodb://librechat-mongodb:27017/librechat
+            - name: OPENID_BUTTON_LABEL
+              value: Login with Keycloak
+            - name: OPENID_CALLBACK_URL
+              value: https://chat.trdos.me/oauth/openid/callback
+            - name: OPENID_CLIENT_ID
+              value: librechat
+            - name: OPENID_ISSUER
+              value: https://keycloak.trdos.me/realms/default
+            - name: OPENID_SCOPE
+              value: openid profile email
+            - name: PORT
+              value: "3080"
+          envFrom:
+            - secretRef:
+                name: librechat
+          image: ghcr.io/danny-avila/librechat:v0.7.70
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+          name: librechat
+          ports:
+            - containerPort: 3080
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 3080
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /app/librechat.yaml
+              name: config
+              readOnly: true
+              subPath: librechat.yaml
+            - mountPath: /app/client/public/images
+              name: uploads
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: default
+      volumes:
+        - configMap:
+            name: librechat
+          name: config
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: librechat

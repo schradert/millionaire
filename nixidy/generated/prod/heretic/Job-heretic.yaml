@@ -1,0 +1,69 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app.kubernetes.io/controller: heretic
+    app.kubernetes.io/instance: heretic
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: heretic
+  name: heretic
+  namespace: ai
+spec:
+  backoffLimit: 6
+  suspend: false
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: heretic
+        app.kubernetes.io/instance: heretic
+        app.kubernetes.io/name: heretic
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - args:
+            - --model
+            - mistralai/Mistral-7B-Instruct-v0.3
+            - --output-dir
+            - /output
+          env:
+            - name: HUGGING_FACE_HUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: hf_token
+                  name: heretic
+          image: ghcr.io/p-e-w/heretic:latest
+          name: heretic
+          resources:
+            limits:
+              cpu: "16"
+              memory: 48Gi
+              nvidia.com/gpu: "1"
+            requests:
+              cpu: "4"
+              memory: 32Gi
+              nvidia.com/gpu: "1"
+          volumeMounts:
+            - mountPath: /root/.cache/huggingface
+              name: cache
+            - mountPath: /output
+              name: output
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
+      restartPolicy: Never
+      serviceAccountName: default
+      tolerations:
+        - effect: NoSchedule
+          key: nvidia.com/gpu
+          operator: Exists
+      volumes:
+        - name: cache
+          persistentVolumeClaim:
+            claimName: heretic-cache
+        - name: output
+          persistentVolumeClaim:
+            claimName: heretic-output

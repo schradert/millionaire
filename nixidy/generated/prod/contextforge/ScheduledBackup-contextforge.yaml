@@ -1,0 +1,10 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: contextforge
+  namespace: ai
+spec:
+  backupOwnerReference: self
+  cluster:
+    name: contextforge
+  schedule: 0 0 * * *
