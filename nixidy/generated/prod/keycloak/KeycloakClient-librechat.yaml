@@ -1,0 +1,23 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: librechat
+  namespace: identity
+spec:
+  definition:
+    clientId: librechat
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: LibreChat
+    protocol: openid-connect
+    redirectUris:
+      - https://chat.trdos.me/oauth/openid/callback
+    standardFlowEnabled: true
+    webOrigins:
+      - https://chat.trdos.me
+  realmRef:
+    name: default

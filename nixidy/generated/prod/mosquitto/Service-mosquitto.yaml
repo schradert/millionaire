@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: mosquitto
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mosquitto
+    app.kubernetes.io/service: mosquitto
+  name: mosquitto
+  namespace: home
+spec:
+  ports:
+    - name: mqtt
+      port: 1883
+      protocol: TCP
+      targetPort: 1883
+  selector:
+    app.kubernetes.io/controller: mosquitto
+    app.kubernetes.io/instance: mosquitto
+    app.kubernetes.io/name: mosquitto
+  type: ClusterIP
