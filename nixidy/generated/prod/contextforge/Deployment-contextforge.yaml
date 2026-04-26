@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: contextforge
+    app.kubernetes.io/instance: contextforge
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: contextforge
+  name: contextforge
+  namespace: ai
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: contextforge
+      app.kubernetes.io/instance: contextforge
+      app.kubernetes.io/name: contextforge
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: contextforge
+        app.kubernetes.io/instance: contextforge
+        app.kubernetes.io/name: contextforge
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - env:
+            - name: DATABASE_URL
+              value: postgres://contextforge:$(DB_PASSWORD)@contextforge-rw:5432/contextforge
+            - name: MCP_GATEWAY_HOST
+              value: 0.0.0.0
+            - name: MCP_GATEWAY_PORT
+              value: "8080"
+            - name: OIDC_CLIENT_ID
+              value: contextforge
+            - name: OIDC_CLIENT_SECRET_ENV
+              value: OIDC_CLIENT_SECRET
+            - name: OIDC_ISSUER_URL
+              value: https://keycloak.trdos.me/realms/default
+            - name: TOOLHIVE_VMCP_URL
+              value: http://homelab-vmcp.ai.svc.cluster.local:8080
+          envFrom:
+            - secretRef:
+                name: contextforge
+          image: ghcr.io/ibm/mcp-context-forge:latest
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+          name: contextforge
+          ports:
+            - containerPort: 8080
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          startupProbe:
+            failureThreshold: 30
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: default
