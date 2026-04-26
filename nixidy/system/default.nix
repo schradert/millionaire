@@ -1,5 +1,6 @@
 {
   imports = [
+    ./cicd/app-of-apps.nix
     ./cicd/argo-events.nix
     ./cicd/argo-rollouts.nix
     ./cicd/argo-workflows.nix
