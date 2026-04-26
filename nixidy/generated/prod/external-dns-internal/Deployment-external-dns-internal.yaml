@@ -75,7 +75,7 @@ spec:
             runAsUser: 65532
         - env:
             - name: ADGUARD_URL
-              value: http://adguard.kube-system.svc.cluster.local:3000
+              value: http://hyena:3000
             - name: ADGUARD_USER
               value: admin
             - name: ADGUARD_PASSWORD

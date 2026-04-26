@@ -1,28 +1,6 @@
 apiVersion: v1
 data:
-  Corefile: |-
-    trdos.me.:53 {
-        forward trdos.me 192.168.50.242
-        cache 30
-    }
-    .:53 {
-        errors
-        health {
-            lameduck 10s
-        }
-        ready
-        kubernetes cluster.local in-addr.arpa ip6.arpa {
-            pods insecure
-            fallthrough in-addr.arpa ip6.arpa
-            ttl 30
-        }
-        prometheus 0.0.0.0:9153
-        forward . /etc/resolv.conf
-        cache 30
-        loop
-        reload
-        loadbalance
-    }
+  Corefile: "trdos.me.:53 {\n    template IN A trdos.me {\n        match .*\\.trdos.me\\.$\n        answer \"{{.Name}} 60 IN A 192.168.50.241\"\n        fallthrough\n        \n    }\n    cache 30\n}\n.:53 {\n    errors\n    health {\n        lameduck 10s\n    }\n    ready\n    kubernetes cluster.local in-addr.arpa ip6.arpa {\n        pods insecure\n        fallthrough in-addr.arpa ip6.arpa\n        ttl 30\n    }\n    prometheus 0.0.0.0:9153\n    forward . /etc/resolv.conf\n    cache 30\n    loop\n    reload\n    loadbalance\n}"
 kind: ConfigMap
 metadata:
   labels:
