@@ -1,5 +1,21 @@
 {
   "nodes": {
+    "agency-agents": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1775967959,
+        "narHash": "sha256-FMjC1w6631Y4Aiz4O4UW2zK4EDUvOub/dsnxoKto1pw=",
+        "owner": "msitarzewski",
+        "repo": "agency-agents",
+        "rev": "783f6a72bfd7f3135700ac273c619d92821b419a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "msitarzewski",
+        "repo": "agency-agents",
+        "type": "github"
+      }
+    },
     "argononed": {
       "flake": false,
       "locked": {
@@ -944,6 +960,22 @@
       "original": {
         "owner": "SenchoPens",
         "repo": "fromYaml",
+        "type": "github"
+      }
+    },
+    "gastown": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1776888147,
+        "narHash": "sha256-BPR2tUvIiVwjgST4Ay+6zBu+/Qo9oLSF1pVfM3yBWPk=",
+        "owner": "steveyegge",
+        "repo": "gastown",
+        "rev": "b1dc37c75dbd0404e81e024385d77115b908eafe",
+        "type": "github"
+      },
+      "original": {
+        "owner": "steveyegge",
+        "repo": "gastown",
         "type": "github"
       }
     },
@@ -2239,6 +2271,7 @@
     },
     "root": {
       "inputs": {
+        "agency-agents": "agency-agents",
         "canivete": "canivete",
         "datadog-agent-skills": "datadog-agent-skills",
         "datadog-api-claude-plugin": "datadog-api-claude-plugin",
@@ -2250,6 +2283,7 @@
         "flake-compat": "flake-compat_5",
         "flake-parts": "flake-parts_5",
         "flake-utils": "flake-utils",
+        "gastown": "gastown",
         "helix": "helix",
         "home-manager": "home-manager",
         "kdl": "kdl",
