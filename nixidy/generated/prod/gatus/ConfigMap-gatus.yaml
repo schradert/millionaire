@@ -35,8 +35,20 @@ data:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
+      name: chirpstack
+      url: https://chirpstack.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
       name: firefly
       url: https://firefly.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: frigate
+      url: https://frigate.trdos.me
     - client:
         dns-resolver: tcp://1.1.1.1:53
       conditions:
@@ -94,17 +106,17 @@ data:
       name: rook-ceph
       url: https://rook.trdos.me
     - conditions:
-      - '[STATUS] == 401'
-      group: internal
-      interval: 1m
-      name: stalwart
-      url: https://mail.trdos.me
-    - conditions:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
       name: sure
       url: https://sure.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: zigbee2mqtt
+      url: https://zigbee.trdos.me
     - conditions:
       - '[STATUS] == any(200, 302, 401)'
       group: internal

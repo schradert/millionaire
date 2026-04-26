@@ -19,7 +19,6 @@
     issuerRef.group = "cert-manager.io";
   };
 in {
-  devenv.git-hooks.hooks.lychee.toml.exclude = ["https://api.bitwarden.com" "https://identity.bitwarden.com"];
   nixidy.applications.__bootstrap.resources.secrets.external-secrets-bitwarden = {
     metadata.namespace = "security";
     data.token = can.toBase64 (can.vals.sops.default config "bitwarden");

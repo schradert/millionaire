@@ -1,0 +1,24 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: toolhive
+  namespace: identity
+spec:
+  definition:
+    clientId: toolhive
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+    directAccessGrantsEnabled: true
+    enabled: true
+    name: ToolHive MCP Operator
+    protocol: openid-connect
+    redirectUris:
+      - https://mcp.trdos.me/*
+    serviceAccountsEnabled: true
+    standardFlowEnabled: true
+    webOrigins:
+      - https://mcp.trdos.me
+  realmRef:
+    name: default

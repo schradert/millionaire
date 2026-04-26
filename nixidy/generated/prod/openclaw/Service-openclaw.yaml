@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: openclaw
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/service: openclaw
+  name: openclaw
+  namespace: ai-sandbox
+spec:
+  ports:
+    - name: ws
+      port: 18789
+      protocol: TCP
+      targetPort: 18789
+  selector:
+    app.kubernetes.io/controller: openclaw
+    app.kubernetes.io/instance: openclaw
+    app.kubernetes.io/name: openclaw
+  type: ClusterIP
