@@ -142,7 +142,7 @@
   outputs = inputs:
     inputs.canivete.lib.mkFlake {
       inherit inputs;
-      everything = [./options ./modules ./pulumi ./esp32-s3];
+      everything = [./options ./modules ./esp32-s3];
     } {
       imports = [./nixidy];
       devenv = {lib, ...}: {
