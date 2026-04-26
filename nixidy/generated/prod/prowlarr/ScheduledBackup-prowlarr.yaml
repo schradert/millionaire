@@ -1,0 +1,10 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: prowlarr
+  namespace: media
+spec:
+  backupOwnerReference: self
+  cluster:
+    name: prowlarr
+  schedule: 0 0 * * *

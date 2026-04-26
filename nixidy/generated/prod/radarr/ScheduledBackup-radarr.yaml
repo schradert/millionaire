@@ -1,0 +1,10 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: radarr
+  namespace: media
+spec:
+  backupOwnerReference: self
+  cluster:
+    name: radarr
+  schedule: 0 0 * * *
