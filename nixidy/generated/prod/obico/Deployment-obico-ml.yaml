@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/controller: ml
+    app.kubernetes.io/instance: obico
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: obico
+  name: obico-ml
+  namespace: printing
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: ml
+      app.kubernetes.io/instance: obico
+      app.kubernetes.io/name: obico
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: ml
+        app.kubernetes.io/instance: obico
+        app.kubernetes.io/name: obico
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: ML_API_TOKEN
+              value: $(ML_API_TOKEN)
+          envFrom:
+            - secretRef:
+                name: obico
+          image: thespaghettidetective/ml_api:latest
+          name: ml
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: obico

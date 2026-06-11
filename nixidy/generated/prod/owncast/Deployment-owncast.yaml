@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: owncast
+    app.kubernetes.io/instance: owncast
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: owncast
+  name: owncast
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: owncast
+      app.kubernetes.io/instance: owncast
+      app.kubernetes.io/name: owncast
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: owncast
+        app.kubernetes.io/instance: owncast
+        app.kubernetes.io/name: owncast
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - envFrom:
+            - secretRef:
+                name: owncast
+          image: owncast/owncast:0.2.4@sha256:0138977cbfaf130ec472c773e07314c8bf3c67b1f20d1c52c8086688227eb4ba
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 1
+          name: owncast
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /app/data
+              name: data
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: owncast
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: owncast

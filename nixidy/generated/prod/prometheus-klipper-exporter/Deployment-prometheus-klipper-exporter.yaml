@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/controller: prometheus-klipper-exporter
+    app.kubernetes.io/instance: prometheus-klipper-exporter
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: prometheus-klipper-exporter
+  name: prometheus-klipper-exporter
+  namespace: printing
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: prometheus-klipper-exporter
+      app.kubernetes.io/instance: prometheus-klipper-exporter
+      app.kubernetes.io/name: prometheus-klipper-exporter
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: prometheus-klipper-exporter
+        app.kubernetes.io/instance: prometheus-klipper-exporter
+        app.kubernetes.io/name: prometheus-klipper-exporter
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - -moonraker-url
+            - http://voron.internal:7125
+          image: ghcr.io/scross01/prometheus-klipper-exporter:v0.12.1
+          livenessProbe:
+            httpGet:
+              path: /
+              port: metrics
+          name: prometheus-klipper-exporter
+          ports:
+            - containerPort: 9101
+              name: metrics
+          readinessProbe:
+            httpGet:
+              path: /
+              port: metrics
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: prometheus-klipper-exporter

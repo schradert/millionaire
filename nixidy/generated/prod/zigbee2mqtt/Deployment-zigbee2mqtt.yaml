@@ -27,7 +27,7 @@ spec:
         app.kubernetes.io/instance: zigbee2mqtt
         app.kubernetes.io/name: zigbee2mqtt
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - env:
             - name: ZIGBEE2MQTT_CONFIG_FRONTEND_PORT
@@ -75,7 +75,7 @@ spec:
       hostPID: false
       nodeSelector:
         kubernetes.io/hostname: sirver
-      serviceAccountName: default
+      serviceAccountName: zigbee2mqtt
       volumes:
         - name: data
           persistentVolumeClaim:

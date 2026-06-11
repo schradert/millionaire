@@ -1,0 +1,15 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--baikal--baikal-dst
+  namespace: home
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: baikal-data
+    moverSecurityContext:
+      runAsGroup: 101
+      runAsUser: 101
+    repository: volsync--baikal--baikal
+  trigger:
+    manual: "1"

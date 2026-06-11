@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: webdav
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: webdav
+    app.kubernetes.io/service: webdav
+  name: webdav
+  namespace: home
+spec:
+  ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app.kubernetes.io/controller: webdav
+    app.kubernetes.io/instance: webdav
+    app.kubernetes.io/name: webdav
+  type: ClusterIP

@@ -1,0 +1,16 @@
+apiVersion: v1
+data:
+  BASE_URL: https://multi-scrobbler.trdos.me
+  CONFIG_DIR: /config
+  LOG_LEVEL: info
+  MALOJA_URL: http://maloja.media.svc.cluster.local:42010
+  PORT: "9078"
+  TZ: America/Los_Angeles
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: multi-scrobbler
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: multi-scrobbler
+  name: multi-scrobbler
+  namespace: media

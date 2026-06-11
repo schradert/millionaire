@@ -29,7 +29,7 @@ spec:
         app.kubernetes.io/instance: zwave-js-ui
         app.kubernetes.io/name: zwave-js-ui
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - image: zwavejs/zwave-js-ui:9.31.0
           livenessProbe:
@@ -71,7 +71,7 @@ spec:
       hostPID: false
       nodeSelector:
         kubernetes.io/hostname: sirver
-      serviceAccountName: default
+      serviceAccountName: zwave-js-ui
       volumes:
         - configMap:
             name: zwave-js-ui

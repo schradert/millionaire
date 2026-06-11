@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: maloja
+    app.kubernetes.io/instance: maloja
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: maloja
+  name: maloja
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: maloja
+      app.kubernetes.io/instance: maloja
+      app.kubernetes.io/name: maloja
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: b4a96244b3ec89101024148adac6f1c932aaf163fa2f05b272c54feb80f37a0c
+      labels:
+        app.kubernetes.io/controller: maloja
+        app.kubernetes.io/instance: maloja
+        app.kubernetes.io/name: maloja
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - envFrom:
+            - configMapRef:
+                name: maloja
+            - secretRef:
+                name: maloja
+          image: krateng/maloja:3.2.4@sha256:4ecea26058d2ca5168a8d53820279942d28f0606664cea6425f42371d5d88f95
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 42010
+            timeoutSeconds: 1
+          name: maloja
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 42010
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 42010
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /mljdata
+              name: data
+            - mountPath: /tmp
+              name: tmpfs
+              subPath: tmp
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: maloja
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: maloja
+        - emptyDir: {}
+          name: tmpfs

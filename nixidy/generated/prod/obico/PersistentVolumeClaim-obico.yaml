@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app.kubernetes.io/instance: obico
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: obico
+  name: obico
+  namespace: printing
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

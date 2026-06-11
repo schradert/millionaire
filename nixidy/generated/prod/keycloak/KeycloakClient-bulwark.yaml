@@ -1,0 +1,27 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: bulwark
+  namespace: identity
+spec:
+  clientSecretRef:
+    create: true
+    name: bulwark
+  definition:
+    clientId: bulwark
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Bulwark Webmail
+    protocol: openid-connect
+    publicClient: false
+    redirectUris:
+      - https://webmail.trdos.me/*
+    standardFlowEnabled: true
+    webOrigins:
+      - https://webmail.trdos.me
+  realmRef:
+    name: default

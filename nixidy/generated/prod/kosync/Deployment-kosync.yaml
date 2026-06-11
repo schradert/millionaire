@@ -25,7 +25,7 @@ spec:
         app.kubernetes.io/instance: kosync
         app.kubernetes.io/name: kosync
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - env:
             - name: KORROSYNC_DB_PATH
@@ -61,7 +61,7 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
-      serviceAccountName: default
+      serviceAccountName: kosync
       volumes:
         - name: data
           persistentVolumeClaim:

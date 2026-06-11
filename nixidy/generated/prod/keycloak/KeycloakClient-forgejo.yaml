@@ -1,0 +1,23 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: forgejo
+  namespace: identity
+spec:
+  definition:
+    clientId: forgejo
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Forgejo
+    protocol: openid-connect
+    redirectUris:
+      - https://git.trdos.me/user/oauth2/keycloak/callback
+    standardFlowEnabled: true
+    webOrigins:
+      - https://git.trdos.me
+  realmRef:
+    name: default

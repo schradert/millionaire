@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: windmill-extra
+    app.kubernetes.io/name: windmill-extra
+    chart: windmill-4.0.119
+    heritage: Helm
+    release: windmill
+  name: windmill-extra
+  namespace: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: windmill-extra
+  strategy:
+    rollingUpdate:
+      maxSurge: 3
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: windmill-extra
+        app.kubernetes.io/name: windmill-extra
+        container: windmill-extra
+    spec:
+      containers:
+        - env:
+            - name: DEBUGGER_PORT
+              value: "3003"
+            - name: ENABLE_LSP
+              value: "true"
+            - name: ENABLE_MULTIPLAYER
+              value: "false"
+            - name: ENABLE_DEBUGGER
+              value: "true"
+            - name: ENABLE_GATEWAY
+              value: "true"
+            - name: ENABLE_NSJAIL
+              value: "false"
+            - name: REQUIRE_SIGNED_DEBUG_REQUESTS
+              value: "true"
+            - name: WINDMILL_BASE_URL
+              value: http://windmill-app:8000
+          image: ghcr.io/windmill-labs/windmill-extra:1.672.0
+          imagePullPolicy: Always
+          name: windmill-extra
+          ports:
+            - containerPort: 3000
+              name: gateway
+            - containerPort: 3001
+              name: lsp
+            - containerPort: 3002
+              name: multiplayer
+            - containerPort: 3003
+              name: debugger
+          resources:
+            limits:
+              memory: 1Gi
+      securityContext:
+        runAsNonRoot: false
+        runAsUser: 0

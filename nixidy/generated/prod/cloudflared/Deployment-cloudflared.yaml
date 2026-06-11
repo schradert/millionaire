@@ -29,7 +29,7 @@ spec:
         app.kubernetes.io/instance: cloudflared
         app.kubernetes.io/name: cloudflared
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - args:
             - tunnel
@@ -76,7 +76,7 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
-      serviceAccountName: default
+      serviceAccountName: cloudflared
       volumes:
         - configMap:
             name: cloudflared

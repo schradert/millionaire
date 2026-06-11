@@ -27,7 +27,7 @@ spec:
         app.kubernetes.io/instance: firefly
         app.kubernetes.io/name: firefly
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - env:
             - name: APP_KEY_FILE
@@ -95,7 +95,7 @@ spec:
       hostPID: false
       securityContext:
         fsGroup: 33
-      serviceAccountName: default
+      serviceAccountName: firefly
       volumes:
         - name: secrets
           secret:

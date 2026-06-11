@@ -29,7 +29,7 @@ spec:
         app.kubernetes.io/instance: radarr
         app.kubernetes.io/name: radarr
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - envFrom:
             - secretRef:
@@ -74,7 +74,7 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
-      serviceAccountName: default
+      serviceAccountName: radarr
       volumes:
         - name: config
           persistentVolumeClaim:

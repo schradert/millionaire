@@ -1,0 +1,41 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: immich
+  namespace: media
+spec:
+  backup:
+    barmanObjectStore:
+      destinationPath: s3://trdos-me--volsync/cnpg/immich/
+      endpointURL: https://s3.us-west-004.backblazeb2.com
+      s3Credentials:
+        accessKeyId:
+          key: ACCESS_KEY_ID
+          name: immich-b2-postgres
+        secretAccessKey:
+          key: ACCESS_SECRET_KEY
+          name: immich-b2-postgres
+    retentionPolicy: 30d
+  bootstrap:
+    initdb:
+      database: immich
+      owner: immich
+      postInitApplicationSQL: []
+      postInitSQL:
+        - CREATE EXTENSION IF NOT EXISTS vector;
+        - CREATE EXTENSION IF NOT EXISTS vchord;
+        - CREATE EXTENSION IF NOT EXISTS cube;
+        - CREATE EXTENSION IF NOT EXISTS earthdistance;
+  imageName: ghcr.io/immich-app/postgres:17-vectorchord0.4.3-pgvectors0.3.0
+  instances: 1
+  monitoring:
+    enablePodMonitor: true
+  postgresql:
+    shared_preload_libraries:
+      - vchord.so
+  serviceAccountTemplate:
+    metadata:
+      name: immich-pg
+  storage:
+    size: 5Gi
+    storageClass: ceph-block

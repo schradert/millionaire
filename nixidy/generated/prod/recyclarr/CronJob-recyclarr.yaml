@@ -23,7 +23,7 @@ spec:
             app.kubernetes.io/instance: recyclarr
             app.kubernetes.io/name: recyclarr
         spec:
-          automountServiceAccountToken: true
+          automountServiceAccountToken: false
           containers:
             - args:
                 - sync
@@ -54,7 +54,7 @@ spec:
           hostNetwork: false
           hostPID: false
           restartPolicy: Never
-          serviceAccountName: default
+          serviceAccountName: recyclarr
           volumes:
             - name: config
               persistentVolumeClaim:

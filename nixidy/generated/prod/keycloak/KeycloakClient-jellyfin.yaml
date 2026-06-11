@@ -1,0 +1,28 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: jellyfin
+  namespace: identity
+spec:
+  clientSecretRef:
+    create: true
+    name: jellyfin
+  definition:
+    clientId: jellyfin
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+      - groups
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Jellyfin
+    protocol: openid-connect
+    publicClient: false
+    redirectUris:
+      - https://jellyfin.trdos.me/sso/OID/redirect/keycloak
+    standardFlowEnabled: true
+    webOrigins:
+      - https://jellyfin.trdos.me
+  realmRef:
+    name: default

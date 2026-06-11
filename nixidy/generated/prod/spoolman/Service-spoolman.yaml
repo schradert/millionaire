@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: spoolman
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: spoolman
+    app.kubernetes.io/service: spoolman
+  name: spoolman
+  namespace: printing
+spec:
+  ports:
+    - name: http
+      port: 8000
+      protocol: TCP
+      targetPort: 8000
+  selector:
+    app.kubernetes.io/controller: spoolman
+    app.kubernetes.io/instance: spoolman
+    app.kubernetes.io/name: spoolman
+  type: ClusterIP

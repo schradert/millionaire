@@ -29,7 +29,7 @@ spec:
         app.kubernetes.io/instance: stalwart
         app.kubernetes.io/name: stalwart
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - envFrom:
             - secretRef:
@@ -67,7 +67,7 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
-      serviceAccountName: default
+      serviceAccountName: stalwart
       volumes:
         - configMap:
             name: stalwart

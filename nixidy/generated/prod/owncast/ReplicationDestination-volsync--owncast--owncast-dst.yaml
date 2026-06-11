@@ -1,0 +1,15 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--owncast--owncast-dst
+  namespace: media
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: owncast
+    moverSecurityContext:
+      runAsGroup: 101
+      runAsUser: 101
+    repository: volsync--owncast--owncast
+  trigger:
+    manual: "1"

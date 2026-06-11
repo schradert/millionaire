@@ -17,7 +17,12 @@
     ./network/external-dns.nix
     ./network/external-dns-internal.nix
     ./network/cloudflared.nix
-    ./network/multus.nix
+    # STAGED — multus.nix documents its own prerequisites (NAD CRD
+    # registration, home-lan NAD, RKE2/cilium CNI path adaptation, br0
+    # verification) and cluster-wide CNI changes need separate testing.
+    # #26 claimed this was TODO-commented but merged it active; restore
+    # the documented staging until the prerequisites are done.
+    # ./network/multus.nix
     ./network/tailscale.nix
     ./observability/alertmanager.nix
     ./observability/gatus.nix

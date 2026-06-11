@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: web
+    app.kubernetes.io/instance: obico
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: obico
+  name: obico-web
+  namespace: printing
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: web
+      app.kubernetes.io/instance: obico
+      app.kubernetes.io/name: obico
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: web
+        app.kubernetes.io/instance: obico
+        app.kubernetes.io/name: obico
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: ACCOUNT_ALLOW_SIGN_UP
+              value: "False"
+            - name: DATABASE_URL
+              value: postgres://obico:$(DB_PASSWORD)@obico-rw:5432/obico
+            - name: DEBUG
+              value: "False"
+            - name: INTERNAL_MEDIA_HOST
+              value: http://obico-web:3334
+            - name: ML_API_HOST
+              value: http://obico-ml:3333
+            - name: REDIS_URL
+              value: redis://obico-redis:6379
+            - name: SITE_IS_QA
+              value: "False"
+            - name: SITE_USES_HTTPS
+              value: "True"
+          envFrom:
+            - secretRef:
+                name: obico
+          image: thespaghettidetective/web:latest
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 3334
+            timeoutSeconds: 1
+          name: web
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 3334
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 3334
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /app/static_build/media
+              name: media
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: obico
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: obico

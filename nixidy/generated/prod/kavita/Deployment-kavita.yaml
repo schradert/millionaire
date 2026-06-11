@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/controller: kavita
+    app.kubernetes.io/instance: kavita
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kavita
+  name: kavita
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: kavita
+      app.kubernetes.io/instance: kavita
+      app.kubernetes.io/name: kavita
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: kavita
+        app.kubernetes.io/instance: kavita
+        app.kubernetes.io/name: kavita
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - image: jvmilazz0/kavita:0.8.9@sha256:1f2acae7466d022f037ea09f7989eb7c487f916b881174c7a6de33dbfa8acb39
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 5000
+            timeoutSeconds: 1
+          name: kavita
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 5000
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 5000
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /kavita/config
+              name: config
+            - mountPath: /media/books
+              name: media-books
+              readOnly: true
+            - mountPath: /media/comics
+              name: media-comics
+              readOnly: true
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: kavita
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: kavita
+        - name: media-books
+          persistentVolumeClaim:
+            claimName: media-books
+        - name: media-comics
+          persistentVolumeClaim:
+            claimName: media-comics

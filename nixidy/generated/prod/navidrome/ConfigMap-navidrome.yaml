@@ -1,0 +1,27 @@
+apiVersion: v1
+data:
+  ND_BASEURL: https://navidrome.trdos.me
+  ND_DATAFOLDER: /data
+  ND_DEEZER_ENABLED: "false"
+  ND_ENABLEDOWNLOADS: "true"
+  ND_ENABLESHARING: "true"
+  ND_ENABLETRANSCODINGCONFIG: "true"
+  ND_LASTFM_ENABLED: "false"
+  ND_LISTENBRAINZ_BASEURL: http://maloja.media.svc.cluster.local:42010/apis/listenbrainz/1/
+  ND_LISTENBRAINZ_ENABLED: "true"
+  ND_LOGLEVEL: info
+  ND_MUSICFOLDER: /music
+  ND_PORT: "4533"
+  ND_REVERSEPROXYWHITELIST: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+  ND_SCANNER_GROUPALBUMRELEASES: "true"
+  ND_SCANSCHEDULE: '@every 1h'
+  ND_SPOTIFY_ID: ""
+  ND_SPOTIFY_SECRET: ""
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: navidrome
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: navidrome
+  name: navidrome
+  namespace: media
