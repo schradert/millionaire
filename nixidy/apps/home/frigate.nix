@@ -55,16 +55,21 @@
                 spec.failureThreshold = 10;
               };
               resources = {
-                requests = {cpu = "500m"; memory = "1Gi";};
+                requests = {
+                  cpu = "500m";
+                  memory = "1Gi";
+                };
                 limits.memory = "4Gi";
               };
             };
           };
           service.frigate = {
+            # No separate metrics port: it shares 5000 with http, and the
+            # bumped app-template chart rejects duplicate Service ports.
+            # The ServiceMonitor scrapes /api/metrics on "http" instead.
             ports.http.port = 5000;
             ports.rtsp.port = 8554;
             ports.webrtc-tcp.port = 8555;
-            ports.metrics.port = 5000;
           };
           configMaps.frigate-config.data."config.yml" = toYAML "config.yml" {
             mqtt = {
@@ -92,7 +97,11 @@
                     roles = ["detect"];
                   }
                 ];
-                detect = {width = 1280; height = 720; fps = 5;};
+                detect = {
+                  width = 1280;
+                  height = 720;
+                  fps = 5;
+                };
                 objects.track = ["person" "car" "dog" "cat"];
                 record = {
                   enabled = true;
@@ -116,7 +125,11 @@
                     roles = ["detect"];
                   }
                 ];
-                detect = {width = 1280; height = 720; fps = 5;};
+                detect = {
+                  width = 1280;
+                  height = 720;
+                  fps = 5;
+                };
                 objects.track = ["person" "car" "dog" "cat"];
                 record = {
                   enabled = true;
@@ -188,17 +201,44 @@
         };
       };
       resources.externalSecrets.frigate.spec = {
-        secretStoreRef = {name = "bitwarden"; kind = "ClusterSecretStore";};
+        secretStoreRef = {
+          name = "bitwarden";
+          kind = "ClusterSecretStore";
+        };
         data = [
-          {secretKey = "FRIGATE_RTSP_USER"; remoteRef = {key = "frigate/cameras"; property = "username";};}
-          {secretKey = "FRIGATE_RTSP_PASS"; remoteRef = {key = "frigate/cameras"; property = "password";};}
-          {secretKey = "FRIGATE_CAM_FRONT_IP"; remoteRef = {key = "frigate/cameras"; property = "front_ip";};}
-          {secretKey = "FRIGATE_CAM_BACK_IP"; remoteRef = {key = "frigate/cameras"; property = "back_ip";};}
+          {
+            secretKey = "FRIGATE_RTSP_USER";
+            remoteRef = {
+              key = "frigate/cameras";
+              property = "username";
+            };
+          }
+          {
+            secretKey = "FRIGATE_RTSP_PASS";
+            remoteRef = {
+              key = "frigate/cameras";
+              property = "password";
+            };
+          }
+          {
+            secretKey = "FRIGATE_CAM_FRONT_IP";
+            remoteRef = {
+              key = "frigate/cameras";
+              property = "front_ip";
+            };
+          }
+          {
+            secretKey = "FRIGATE_CAM_BACK_IP";
+            remoteRef = {
+              key = "frigate/cameras";
+              property = "back_ip";
+            };
+          }
         ];
       };
       resources.serviceMonitors.frigate.spec = {
         endpoints = lib.toList {
-          port = "metrics";
+          port = "http";
           path = "/api/metrics";
           interval = "30s";
         };

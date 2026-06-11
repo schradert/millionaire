@@ -149,10 +149,7 @@ mod tests {
                 "type": "file"
             }),
         };
-        assert_eq!(
-            extract_file_path(&event),
-            Some("org/notes.org".to_string())
-        );
+        assert_eq!(extract_file_path(&event), Some("org/notes.org".to_string()));
     }
 
     #[test]
