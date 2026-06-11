@@ -25,7 +25,7 @@ spec:
         app.kubernetes.io/instance: openviking
         app.kubernetes.io/name: openviking
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - env:
             - name: VIKING_PORT
@@ -58,7 +58,7 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
-      serviceAccountName: default
+      serviceAccountName: openviking
       volumes:
         - name: data
           persistentVolumeClaim:

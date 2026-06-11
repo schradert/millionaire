@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: ryot
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: ryot
+    app.kubernetes.io/service: ryot
+  name: ryot
+  namespace: media
+spec:
+  ports:
+    - name: http
+      port: 8000
+      protocol: TCP
+      targetPort: 8000
+  selector:
+    app.kubernetes.io/controller: ryot
+    app.kubernetes.io/instance: ryot
+    app.kubernetes.io/name: ryot
+  type: ClusterIP

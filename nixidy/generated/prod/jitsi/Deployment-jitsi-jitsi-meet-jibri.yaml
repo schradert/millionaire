@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: jibri
+    app.kubernetes.io/instance: jitsi
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: jitsi-meet
+  name: jitsi-jitsi-meet-jibri
+  namespace: media
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: jibri
+      app.kubernetes.io/instance: jitsi
+      app.kubernetes.io/name: jitsi-meet
+  template:
+    metadata:
+      annotations:
+        checksum/config: c60cef00064e29926549f0ace308f9e230e57ee7cf1158941549c421df18e00c
+        checksum/secret: 008d1cda15d551a4bd3574be0ae33749d6915e4efe0f1c481e2312fcf5a3ddb2
+      labels:
+        app.kubernetes.io/component: jibri
+        app.kubernetes.io/instance: jitsi
+        app.kubernetes.io/name: jitsi-meet
+    spec:
+      containers:
+        - envFrom:
+            - secretRef:
+                name: jitsi-prosody-jibri
+            - configMapRef:
+                name: jitsi-prosody-common
+            - configMapRef:
+                name: jitsi-jitsi-meet-jibri
+          image: jitsi/jibri:jibri-8.0-194-g71e6738-1@sha256:d757a5cb8a55d8e9afb9e53f27b558cade750eeeba89050435cc97af0aa5f902
+          imagePullPolicy: Never
+          livenessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - curl -sq localhost:2222/jibri/api/v1.0/health | jq '"\(.status.health.healthStatus) \(.status.busyStatus)"' | grep -qP 'HEALTHY (IDLE|BUSY)'
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          name: jitsi-meet
+          ports:
+            - containerPort: 3333
+              name: http-internal
+            - containerPort: 2222
+              name: http-api
+          readinessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - curl -sq localhost:2222/jibri/api/v1.0/health | jq '"\(.status.health.healthStatus) \(.status.busyStatus)"' | grep -qP 'HEALTHY (IDLE|BUSY)'
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources: {}
+          securityContext:
+            capabilities:
+              add:
+                - SYS_ADMIN
+          volumeMounts:
+            - mountPath: /config
+              name: config
+            - mountPath: /data
+              name: jibri-data
+            - mountPath: /dev/shm
+              name: dev-shm
+      serviceAccountName: jitsi-jitsi-meet
+      volumes:
+        - emptyDir: {}
+          name: config
+        - configMap:
+            defaultMode: 493
+            items:
+              - key: 10-config
+                path: 10-config
+            name: jitsi-jitsi-meet-jibri-cont-inits
+          name: custom-cont-inits
+        - configMap:
+            items:
+              - key: jibri.conf
+                path: jibri.conf
+              - key: logging.properties
+                path: logging.properties
+              - key: autoscaler-sidecar.config
+                path: autoscaler-sidecar.config
+              - key: xorg-video-dummy.conf
+                path: xorg-video-dummy.conf
+            name: jitsi-jitsi-meet-jibri-defaults
+          name: custom-defaults
+        - configMap:
+            defaultMode: 493
+            name: jitsi-jitsi-meet-jibri-other
+          name: custom-other
+        - name: jibri-data
+          persistentVolumeClaim:
+            claimName: jitsi-jitsi-meet-jibri
+        - hostPath:
+            path: /dev/shm
+          name: dev-shm

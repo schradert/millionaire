@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: controller-manager
+    app.kubernetes.io/instance: argo-events
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: argo-events-controller-manager-metrics
+    app.kubernetes.io/part-of: argo-events
+  name: argo-events-controller-manager-metrics
+  namespace: cicd
+spec:
+  ports:
+    - name: metrics
+      port: 8082
+      protocol: TCP
+      targetPort: metrics
+  selector:
+    app.kubernetes.io/instance: argo-events
+    app.kubernetes.io/name: argo-events-controller-manager

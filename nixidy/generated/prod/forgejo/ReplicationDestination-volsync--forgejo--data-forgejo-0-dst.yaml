@@ -1,0 +1,15 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--forgejo--data-forgejo-0-dst
+  namespace: development
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: data-forgejo-0
+    moverSecurityContext:
+      runAsGroup: 101
+      runAsUser: 101
+    repository: volsync--forgejo--data-forgejo-0
+  trigger:
+    manual: "1"

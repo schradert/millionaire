@@ -1,0 +1,13 @@
+apiVersion: argoproj.io/v1alpha1
+kind: EventBus
+metadata:
+  name: default
+  namespace: cicd
+spec:
+  jetstream:
+    persistence:
+      accessMode: ReadWriteOnce
+      storageClassName: ceph-block
+      volumeSize: 5Gi
+    replicas: 1
+    version: 2.10.24

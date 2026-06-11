@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: kavita
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kavita
+    app.kubernetes.io/service: kavita
+  name: kavita
+  namespace: media
+spec:
+  ports:
+    - name: http
+      port: 5000
+      protocol: TCP
+      targetPort: 5000
+  selector:
+    app.kubernetes.io/controller: kavita
+    app.kubernetes.io/instance: kavita
+    app.kubernetes.io/name: kavita
+  type: ClusterIP

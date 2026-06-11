@@ -20,7 +20,7 @@ spec:
         app.kubernetes.io/name: bitwarden-sdk-server
     spec:
       containers:
-        - image: ghcr.io/external-secrets/bitwarden-sdk-server:v0.5.2
+        - image: ghcr.io/external-secrets/bitwarden-sdk-server:v0.6.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:

@@ -23,13 +23,13 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: fa6aca59816d46040cfc35e0d02f1b5ca1d8809a68ebd6baf8c6db4be315945c
+        checksum/configMaps: da37fd0d6e4da1036e864b2ab22003caa1adff2c97ed63e328f48c9ce192e543
       labels:
         app.kubernetes.io/controller: oauth2-proxy
         app.kubernetes.io/instance: oauth2-proxy
         app.kubernetes.io/name: oauth2-proxy
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - args:
             - --http-address=0.0.0.0:4180
@@ -109,7 +109,7 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
-      serviceAccountName: default
+      serviceAccountName: oauth2-proxy
       volumes:
         - configMap:
             name: oauth2-proxy

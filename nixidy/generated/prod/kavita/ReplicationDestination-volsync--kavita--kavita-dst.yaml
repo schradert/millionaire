@@ -1,0 +1,15 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--kavita--kavita-dst
+  namespace: media
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: kavita
+    moverSecurityContext:
+      runAsGroup: 101
+      runAsUser: 101
+    repository: volsync--kavita--kavita
+  trigger:
+    manual: "1"

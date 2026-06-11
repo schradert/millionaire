@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    lbipam.cilium.io/ips: 192.168.50.251
+  labels:
+    app: forgejo
+    app.kubernetes.io/instance: forgejo
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: forgejo
+    version: 14.0.3
+  name: forgejo-ssh
+  namespace: development
+spec:
+  ports:
+    - name: ssh
+      port: 22
+      protocol: TCP
+      targetPort: ssh
+  selector:
+    app.kubernetes.io/instance: forgejo
+    app.kubernetes.io/name: forgejo
+  type: LoadBalancer

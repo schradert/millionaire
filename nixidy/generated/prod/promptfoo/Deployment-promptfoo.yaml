@@ -27,7 +27,7 @@ spec:
         app.kubernetes.io/instance: promptfoo
         app.kubernetes.io/name: promptfoo
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - args:
             - share
@@ -78,7 +78,7 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
-      serviceAccountName: default
+      serviceAccountName: promptfoo
       volumes:
         - name: data
           persistentVolumeClaim:

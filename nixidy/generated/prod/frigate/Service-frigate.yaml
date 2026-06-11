@@ -14,10 +14,6 @@ spec:
       port: 5000
       protocol: TCP
       targetPort: 5000
-    - name: metrics
-      port: 5000
-      protocol: TCP
-      targetPort: 5000
     - name: rtsp
       port: 8554
       protocol: TCP

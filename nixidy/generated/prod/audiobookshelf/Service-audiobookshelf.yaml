@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: audiobookshelf
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: audiobookshelf
+    app.kubernetes.io/service: audiobookshelf
+  name: audiobookshelf
+  namespace: media
+spec:
+  ports:
+    - name: http
+      port: 13378
+      protocol: TCP
+      targetPort: 13378
+  selector:
+    app.kubernetes.io/controller: audiobookshelf
+    app.kubernetes.io/instance: audiobookshelf
+    app.kubernetes.io/name: audiobookshelf
+  type: ClusterIP

@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: ryot
+    app.kubernetes.io/instance: ryot
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: ryot
+  name: ryot
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: ryot
+      app.kubernetes.io/instance: ryot
+      app.kubernetes.io/name: ryot
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: a0a98644508c2f3a93bc984c4b6e5eab4263c61739f148ed76432ab015578a46
+      labels:
+        app.kubernetes.io/controller: ryot
+        app.kubernetes.io/instance: ryot
+        app.kubernetes.io/name: ryot
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - envFrom:
+            - configMapRef:
+                name: ryot
+            - secretRef:
+                name: ryot
+          image: ignisda/ryot:v10.3.6@sha256:b3b30436bb272f5b7b6f9fd9f60af494cf4300bec61fc7b43daa5bb0b1f01c33
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8000
+            timeoutSeconds: 1
+          name: ryot
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8000
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8000
+            timeoutSeconds: 1
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: ryot

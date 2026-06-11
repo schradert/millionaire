@@ -1,0 +1,15 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--audiobookshelf--audiobookshelf-dst
+  namespace: media
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: audiobookshelf
+    moverSecurityContext:
+      runAsGroup: 101
+      runAsUser: 101
+    repository: volsync--audiobookshelf--audiobookshelf
+  trigger:
+    manual: "1"

@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: logseq
+    app.kubernetes.io/instance: logseq
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: logseq
+  name: logseq
+  namespace: home
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: logseq
+      app.kubernetes.io/instance: logseq
+      app.kubernetes.io/name: logseq
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: logseq
+        app.kubernetes.io/instance: logseq
+        app.kubernetes.io/name: logseq
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - image: ghcr.io/logseq/logseq-webapp:latest@sha256:de87c4a26986278b52f778d4d28c03e32d68a7c7f42bae128614bcaa3f26c231
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 80
+            timeoutSeconds: 1
+          name: logseq
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 80
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 80
+            timeoutSeconds: 1
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: logseq

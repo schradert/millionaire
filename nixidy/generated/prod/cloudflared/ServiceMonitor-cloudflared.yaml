@@ -14,7 +14,7 @@ spec:
       port: http
       scheme: http
       scrapeTimeout: 30s
-  jobLabel: cloudflared
+  jobLabel: app.kubernetes.io/name
   namespaceSelector:
     matchNames:
       - kube-system

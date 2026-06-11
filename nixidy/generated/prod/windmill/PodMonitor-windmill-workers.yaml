@@ -1,0 +1,12 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: windmill-workers
+  namespace: development
+spec:
+  podMetricsEndpoints:
+    - interval: 30s
+      port: metrics
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: windmill

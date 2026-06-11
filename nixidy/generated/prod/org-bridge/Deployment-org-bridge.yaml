@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: org-bridge
+    app.kubernetes.io/instance: org-bridge
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: org-bridge
+  name: org-bridge
+  namespace: home
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: org-bridge
+      app.kubernetes.io/instance: org-bridge
+      app.kubernetes.io/name: org-bridge
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: org-bridge
+        app.kubernetes.io/instance: org-bridge
+        app.kubernetes.io/name: org-bridge
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: CALDAV_URL
+              value: http://baikal.home.svc.cluster.local:80/dav.php/calendars/admin/org/
+            - name: ORG_DIR
+              value: /org
+            - name: RUST_LOG
+              value: info
+            - name: STATE_DB_PATH
+              value: /var/lib/org-bridge/state.db
+            - name: SYNCTHING_URL
+              value: http://syncthing.home.svc.cluster.local:8384
+          envFrom:
+            - secretRef:
+                name: org-bridge
+          image: ghcr.io/schradert/org-bridge:latest
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - test -f /var/lib/org-bridge/state.db
+          name: org-bridge
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - test -f /var/lib/org-bridge/state.db
+          startupProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - test -f /var/lib/org-bridge/state.db
+            failureThreshold: 30
+            periodSeconds: 10
+          volumeMounts:
+            - mountPath: /org
+              name: org-files
+              readOnly: true
+            - mountPath: /var/lib/org-bridge
+              name: state
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: org-bridge
+      volumes:
+        - name: org-files
+          persistentVolumeClaim:
+            claimName: org-files
+        - emptyDir: {}
+          name: state

@@ -13,7 +13,7 @@ spec:
       path: /metrics
       port: management
       scheme: http
-  jobLabel: keycloak
+  jobLabel: app.kubernetes.io/name
   namespaceSelector:
     matchNames:
       - identity

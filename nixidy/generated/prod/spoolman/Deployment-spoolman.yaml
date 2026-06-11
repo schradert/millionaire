@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: spoolman
+    app.kubernetes.io/instance: spoolman
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: spoolman
+  name: spoolman
+  namespace: printing
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: spoolman
+      app.kubernetes.io/instance: spoolman
+      app.kubernetes.io/name: spoolman
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: spoolman
+        app.kubernetes.io/instance: spoolman
+        app.kubernetes.io/name: spoolman
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: SPOOLMAN_DB_TYPE
+              value: sqlite
+            - name: SPOOLMAN_DIR
+              value: /data
+          image: ghcr.io/donkie/spoolman:v0.22.1
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8000
+            timeoutSeconds: 1
+          name: spoolman
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8000
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8000
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /data
+              name: data
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: spoolman
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: spoolman

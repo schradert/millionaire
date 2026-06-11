@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: jvb
+    app.kubernetes.io/instance: jitsi
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: jitsi-meet
+  name: jitsi-jitsi-meet-jvb
+  namespace: media
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: jvb
+      app.kubernetes.io/instance: jitsi
+      app.kubernetes.io/name: jitsi-meet
+  template:
+    metadata:
+      annotations:
+        checksum/config: 426fc8dce1f80cb770142dd3da65bf5fcaebac4792b7ab0c02bcaa16fd5881a3
+        checksum/secret: d5c609f3188abc6e7289051976f252fb103cfb75ced37488abb1efc093871607
+      labels:
+        app.kubernetes.io/component: jvb
+        app.kubernetes.io/instance: jitsi
+        app.kubernetes.io/name: jitsi-meet
+    spec:
+      containers:
+        - env:
+            - name: DOCKER_HOST_ADDRESS
+              value: 192.168.50.254
+            - name: JVB_ADVERTISE_IPS
+              value: 192.168.50.254
+            - name: JVB_WS_SERVER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          envFrom:
+            - secretRef:
+                name: jitsi-prosody-jvb
+            - configMapRef:
+                name: jitsi-prosody-common
+            - configMapRef:
+                name: jitsi-jitsi-meet-jvb
+          image: jitsi/jvb:jvb-2.3-280-g159a678e5-1@sha256:27d74c778b7215c51267bc140006fc4fe19d06275c00dc87783eb0cbb888884f
+          imagePullPolicy: Never
+          livenessProbe:
+            httpGet:
+              path: /about/health
+              port: 8080
+          name: jitsi-meet
+          ports:
+            - containerPort: 10000
+              name: rtp-udp
+              protocol: UDP
+            - containerPort: 9090
+              name: colibri-ws-tcp
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /about/health
+              port: 8080
+          resources: {}
+          securityContext: {}
+      securityContext: {}
+      serviceAccountName: jitsi-jitsi-meet

@@ -1,0 +1,24 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: windmill
+  namespace: identity
+spec:
+  definition:
+    clientId: windmill
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+      - groups
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Windmill
+    protocol: openid-connect
+    redirectUris:
+      - https://windmill.trdos.me/user/login_callback/keycloak
+    standardFlowEnabled: true
+    webOrigins:
+      - https://windmill.trdos.me
+  realmRef:
+    name: default

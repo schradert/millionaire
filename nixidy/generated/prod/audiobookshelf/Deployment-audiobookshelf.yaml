@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/controller: audiobookshelf
+    app.kubernetes.io/instance: audiobookshelf
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: audiobookshelf
+  name: audiobookshelf
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: audiobookshelf
+      app.kubernetes.io/instance: audiobookshelf
+      app.kubernetes.io/name: audiobookshelf
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: audiobookshelf
+        app.kubernetes.io/instance: audiobookshelf
+        app.kubernetes.io/name: audiobookshelf
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - image: advplyr/audiobookshelf:2.33.1@sha256:a4a5841bba093d81e5f4ad1eaedb4da3fda6dbb2528c552349da50ad1f7ae708
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 13378
+            timeoutSeconds: 1
+          name: audiobookshelf
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 13378
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 13378
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /config
+              name: config
+            - mountPath: /media/audiobooks
+              name: media-audiobooks
+            - mountPath: /media/podcasts
+              name: media-podcasts
+            - mountPath: /metadata
+              name: metadata
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: audiobookshelf
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: audiobookshelf-config
+        - name: media-audiobooks
+          persistentVolumeClaim:
+            claimName: media-audiobooks
+        - name: media-podcasts
+          persistentVolumeClaim:
+            claimName: media-podcasts
+        - name: metadata
+          persistentVolumeClaim:
+            claimName: audiobookshelf-metadata

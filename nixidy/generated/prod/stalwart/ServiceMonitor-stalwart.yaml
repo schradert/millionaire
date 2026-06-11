@@ -11,7 +11,7 @@ spec:
   endpoints:
     - path: /metrics/prometheus
       port: http
-  jobLabel: stalwart
+  jobLabel: app.kubernetes.io/name
   namespaceSelector:
     matchNames:
       - mail

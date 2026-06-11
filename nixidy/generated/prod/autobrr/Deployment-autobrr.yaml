@@ -29,7 +29,7 @@ spec:
         app.kubernetes.io/instance: autobrr
         app.kubernetes.io/name: autobrr
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - envFrom:
             - configMapRef:
@@ -74,7 +74,7 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
-      serviceAccountName: default
+      serviceAccountName: autobrr
       volumes:
         - name: config
           persistentVolumeClaim:

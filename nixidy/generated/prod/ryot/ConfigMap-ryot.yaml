@@ -1,0 +1,13 @@
+apiVersion: v1
+data:
+  SERVER_INSECURE_COOKIE: "false"
+  VIDEO_GAMES_TWITCH_CLIENT_ID: ""
+  VIDEO_GAMES_TWITCH_CLIENT_SECRET: ""
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: ryot
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: ryot
+  name: ryot
+  namespace: media

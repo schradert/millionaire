@@ -1,0 +1,15 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--obico--obico-dst
+  namespace: printing
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: obico
+    moverSecurityContext:
+      runAsGroup: 101
+      runAsUser: 101
+    repository: volsync--obico--obico
+  trigger:
+    manual: "1"

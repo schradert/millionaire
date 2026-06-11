@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: maloja
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: maloja
+    app.kubernetes.io/service: maloja
+  name: maloja
+  namespace: media
+spec:
+  ports:
+    - name: http
+      port: 42010
+      protocol: TCP
+      targetPort: 42010
+  selector:
+    app.kubernetes.io/controller: maloja
+    app.kubernetes.io/instance: maloja
+    app.kubernetes.io/name: maloja
+  type: ClusterIP

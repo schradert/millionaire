@@ -29,7 +29,7 @@ spec:
         app.kubernetes.io/instance: librechat
         app.kubernetes.io/name: librechat
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - env:
             - name: ALLOW_REGISTRATION
@@ -89,7 +89,7 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
-      serviceAccountName: default
+      serviceAccountName: librechat
       volumes:
         - configMap:
             name: librechat

@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: webdav
+    app.kubernetes.io/instance: webdav
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: webdav
+  name: webdav
+  namespace: home
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: webdav
+      app.kubernetes.io/instance: webdav
+      app.kubernetes.io/name: webdav
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 3b1fad86deab3e783bea0fef5af0843d1bbf77db7c8cb27d3624d480c834e531
+      labels:
+        app.kubernetes.io/controller: webdav
+        app.kubernetes.io/instance: webdav
+        app.kubernetes.io/name: webdav
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - --config
+            - /config/webdav.yml
+          image: hacdias/webdav:v5.11.3@sha256:ff21e4ed74fa70b8f06af3ad7cc488dab9678b5508838ca963abe621
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 1
+          name: webdav
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /config/webdav.yml
+              name: config
+              readOnly: true
+              subPath: webdav.yml
+            - mountPath: /data
+              name: data
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: webdav
+      volumes:
+        - configMap:
+            name: webdav
+          name: config
+        - name: data
+          persistentVolumeClaim:
+            claimName: org-files
