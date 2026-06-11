@@ -1,5 +1,9 @@
 {config, ...}: {
-  nixidy = {charts, lib, ...}: {
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: {
     applications.external-dns-internal = {
       namespace = "kube-system";
       resources.externalSecrets.external-dns-internal.spec = {
@@ -21,8 +25,11 @@
             env = [
               {
                 name = "ADGUARD_URL";
-                # AdGuard Home on hyena VPS, reachable via tailscale operator sidecar
-                # TODO: update with hyena's actual tailnet IP after headscale deployment
+                # AdGuard Home on hyena VPS — tailnet-only.
+                # TODO: no reachability path exists for this name yet. Once
+                # hyena is live, either add a tailscale-operator egress
+                # Service named "hyena" (tailscale.com/tailnet-ip annotation;
+                # MagicDNS is off) or point this at hyena's tailnet IP.
                 value = "http://hyena:3000";
               }
               {

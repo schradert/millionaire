@@ -157,6 +157,14 @@
       everything = [./options ./modules ./pulumi];
     } {
       imports = [./nixidy ./modules/images.nix];
+
+      # Hetzner Cloud golden image — minimal BIOS-bootable NixOS, standalone
+      # from the canivete node machinery (see static/hetzner-image.nix).
+      flake.nixosConfigurations.hetzner-image = inputs.nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [./static/hetzner-image.nix];
+      };
+
       canivete.meta = {
         domain = "trdos.me";
         root = "sirver";
@@ -299,6 +307,17 @@
         # `deploy '.#falcon'` flashes everything reachable; `deploy '.#falcon.<board>'`
         # flashes one. Disconnected boards print a "skipping" line and exit 0.
         falcon = import ./static/falcon.nix;
+
+        # Hetzner cx33 VPS — headscale + AdGuard Home outside the cluster.
+        # SSH hostname is overridden at deploy time via --hostname (the IP from
+        # pulumi); networking.hostName stays "hyena".
+        hyena = {
+          remoteBuild = true;
+          profiles.system.canivete.configuration = {
+            imports = [./static/hyena.nix];
+            disko.devices.disk.root.device = "/dev/sda";
+          };
+        };
 
         voron = {
           canivete.system = "aarch64-linux";
