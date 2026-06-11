@@ -13,7 +13,10 @@
         CONTEXT7_API_KEY = "$(cat ~/.secrets/context7)";
         OPENAI_API_KEY = "$(cat ~/.secrets/openai)";
       };
-      home.packages = [pkgs.opencode-desktop];
+      # opencode-claude-auth was previously programs.opencode.extraPackages,
+      # which home-manager removed; the plugin itself is still activated via
+      # settings.plugin below.
+      home.packages = [pkgs.opencode-desktop pkgs.opencode-claude-auth];
       programs = {
         claude-code.enable = true;
         mcp.enable = true;
@@ -29,7 +32,6 @@
         opencode = {
           enable = true;
           enableMcpIntegration = true;
-          extraPackages = [pkgs.opencode-claude-auth];
           agents = let
             # NOTE currently passing this to devenv-agents devenv.nix module
             inputs = {
@@ -41,12 +43,14 @@
             inherit ((import "${flake.inputs.devenv-agents}/devenv.nix" inputs).claude.code) agents;
           in
             builtins.mapAttrs (_: agent: agent.prompt) agents;
-          context = ''
+          # home-manager renamed context -> rules and dropped the dedicated
+          # tui option (tui config lives in settings/opencode.json now).
+          rules = ''
             When you need to search docs, use `context7` tools.
             If you are unsure how to do something, use `gh_grep` to search code examples from github.
           '';
-          tui.scroll_acceleration.enabled = true;
           settings = {
+            tui.scroll_acceleration.enabled = true;
             autoupdate = false;
             permission.edit = "ask";
             permission.bash = "ask";

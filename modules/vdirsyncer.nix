@@ -1,30 +1,23 @@
 {config, ...}: let
   inherit (config.canivete.meta) domain;
 in {
-  home = {
-    lib,
-    pkgs,
-    ...
-  }: {
+  home = {...}: {
+    # home-manager replaced programs.vdirsyncer.config with the shared
+    # accounts.calendar tree (same move as khal — see modules/khal.nix, which
+    # defines the org account's khal + local storage halves).
+    accounts.calendar.accounts.org = {
+      remote = {
+        type = "caldav";
+        url = "https://cal.${domain}/dav.php/calendars/admin/org/";
+      };
+      vdirsyncer = {
+        enable = true;
+        collections = ["from a" "from b"];
+      };
+    };
     programs.vdirsyncer = {
       enable = true;
-      config = {
-        general.status_path = "~/.local/share/vdirsyncer/status";
-        "pair org_calendar" = {
-          a = "org_calendar_local";
-          b = "org_calendar_remote";
-          collections = ["from a" "from b"];
-        };
-        "storage org_calendar_local" = {
-          type = "filesystem";
-          path = "~/.local/share/vdirsyncer/calendars";
-          fileext = ".ics";
-        };
-        "storage org_calendar_remote" = {
-          type = "caldav";
-          url = "https://cal.${domain}/dav.php/calendars/admin/org/";
-        };
-      };
+      statusPath = "~/.local/share/vdirsyncer/status";
     };
 
     # systemd timer for Linux
