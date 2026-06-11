@@ -1,0 +1,15 @@
+[target.thumbv7em-none-eabihf]
+# --probe disambiguates when several debug probes are attached to the host.
+runner = "probe-rs run --chip {{probe_rs_chip}} --probe {{probe_selector}}"
+
+[build]
+target = "thumbv7em-none-eabihf"
+rustflags = [
+  "-C", "link-arg=-Tlink.x",
+  "-C", "link-arg=-Tdefmt.x",
+]
+
+# Cortex-M targets need build-std because the esp-rs toolchain doesn't ship
+# prebuilt rust-std for them (it bundles Xtensa + RISC-V only).
+[unstable]
+build-std = ["core"]

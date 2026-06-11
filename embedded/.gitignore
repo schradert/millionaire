@@ -1,0 +1,5 @@
+target/
+# Excluded path-dep crates: no lockfiles (deps pinned via the workspace lock
+# or git revs); standalone cargo runs would otherwise litter untracked locks.
+apps/*/Cargo.lock
+shared/*/Cargo.lock

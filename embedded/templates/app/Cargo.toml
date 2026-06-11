@@ -1,0 +1,22 @@
+[package]
+name         = "homelab-{{project-name}}"
+edition      = "2024"
+version      = "0.1.0"
+rust-version = "1.88"
+license      = "MIT"
+description  = "{{description}}"
+
+# NOTE: apps are in the workspace `exclude` list, so they CANNOT inherit
+# `{ workspace = true }` deps (that requires membership). Pin versions
+# explicitly here, matching the workspace.dependencies entries.
+
+[features]
+default = []
+{% if runtime == "embassy" or runtime == "both" %}embassy  = ["dep:embassy-time"]
+{% endif %}{% if runtime == "blocking" or runtime == "both" %}blocking = []
+{% endif %}
+[dependencies]
+homelab-shared = { path = "../../shared/base" }
+embedded-hal   = "1.0"
+{% if runtime == "embassy" or runtime == "both" %}embassy-time   = { version = "0.5", default-features = false, optional = true }
+{% endif %}
