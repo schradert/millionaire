@@ -97,7 +97,8 @@ in {
       git-hooks.hooks = {
         lychee.toml.accept = [200 403 405 406];
         lychee.toml.exclude = [
-          "^.+\\.svc$"
+          # In-cluster service DNS (lychee normalizes with a trailing slash)
+          "\\.svc(:[0-9]+)?/?$"
           # Cluster-internal hostnames are unreachable from the dev machine
           "\\.svc\\.cluster\\.local"
           # Single-label hosts (sirver, harbor, keycloak, hyena…) are LAN/tailnet

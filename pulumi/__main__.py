@@ -221,6 +221,15 @@ class Millionaire:
                 capi_token,
                 "Hetzner millionaire-capi project token (CAPH + image upload)",
             )
+            # SSH key registered in the capi project — referenced by
+            # HetznerCluster.spec.sshKeys for rescue/debug access to workers.
+            capi_provider = hcloud.Provider("hcloud-capi", token=capi_token)
+            hcloud.SshKey(
+                "millionaire-capi",
+                name="millionaire-capi",
+                public_key="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFBq/GWgq0+wAbRS53AqDdgXhyqpQtvcwlsPEguTPzL9 tristan@millionaire",
+                opts=pulumi.ResourceOptions(provider=capi_provider),
+            )
             cloud_worker_toplevel = (
                 millionaire.Nix.attr(
                     "nixosConfigurations.cloud-worker.config.system.build.toplevel.outPath"
