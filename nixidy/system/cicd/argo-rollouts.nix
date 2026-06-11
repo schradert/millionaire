@@ -2,7 +2,11 @@
   inherit (config.canivete.meta) domain;
   hostname = "rollouts.${domain}";
 in {
-  nixidy = {lib, pkgs, ...}: {
+  nixidy = {
+    lib,
+    pkgs,
+    ...
+  }: {
     applications.argo-rollouts-crds.namespace = "kube-system";
     canivete.crds.argo-rollouts = {
       application = "argo-rollouts-crds";
@@ -38,10 +42,11 @@ in {
           controller = {
             metrics.enabled = true;
             metrics.serviceMonitor.enabled = true;
-          };
-          plugins.trafficRouterPlugins = lib.toList {
-            name = "argoproj-labs/gatewayAPI";
-            location = "https://github.com/argoproj-labs/rollouts-plugin-trafficrouter-gatewayapi/releases/download/v0.6.0/gateway-api-plugin-linux-amd64";
+            trafficRouterPlugins = lib.toList {
+              name = "argoproj-labs/gatewayAPI";
+              location = "https://github.com/argoproj-labs/rollouts-plugin-trafficrouter-gatewayapi/releases/download/v0.13.0/gatewayapi-plugin-linux-amd64";
+              sha256 = "9d908dcbb6cb0a37efa2b133e09c445fc789038a957628cf5473820b197fc27b";
+            };
           };
         };
       };
