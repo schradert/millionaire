@@ -93,7 +93,9 @@ in {
 
     {
       # Git hooks
-      git-hooks.excludes = ["nixidy/generated"];
+      # embedded/templates holds cargo-generate templates whose .rs/.toml
+      # files contain Liquid syntax — not parseable by rustfmt/taplo/etc.
+      git-hooks.excludes = ["nixidy/generated" "embedded/templates"];
       git-hooks.hooks = {
         lychee.toml.accept = [200 403 405 406];
         lychee.toml.exclude = [

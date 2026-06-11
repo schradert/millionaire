@@ -1,0 +1,6 @@
+# rustfmt config for the workspace. `edition` matters here because treefmt and
+# the `fmt` script invoke rustfmt per-file (no cargo context), and rustfmt would
+# otherwise default to the 2015 edition and mishandle 2024 syntax. All crates
+# are edition 2024 except boards/arduino-uno-r3 (2021); 2024-style formatting is
+# effectively identical for that crate's simple code.
+edition = "2024"

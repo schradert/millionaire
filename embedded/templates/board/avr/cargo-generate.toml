@@ -1,0 +1,35 @@
+# cargo-generate prompts for a new AVR (Arduino / avr-hal) board.
+#
+# Driven by `new-board`, which for AVR adds the crate to the workspace
+# `exclude` list (it needs the avr-rust toolchain, not esp-rs — see
+# ../../TARGETS.md). Mirrors boards/arduino-uno-r3.
+#
+# Note the two distinct names: arduino-hal's *feature* (e.g. "arduino-uno")
+# is not the same string as ravedude's *board* id (e.g. "uno").
+[template]
+cargo_generate_version = ">=0.20.0"
+
+[placeholders.hal_feature]
+type    = "string"
+prompt  = "arduino-hal board feature (e.g. arduino-uno, arduino-nano, arduino-mega2560)"
+default = "arduino-uno"
+
+[placeholders.ravedude_board]
+type    = "string"
+prompt  = "ravedude board id (e.g. uno, nano, mega2560)"
+default = "uno"
+
+[placeholders.target_cpu]
+type    = "string"
+prompt  = "AVR target-cpu (e.g. atmega328p, atmega2560)"
+default = "atmega328p"
+
+[placeholders.port]
+type    = "string"
+prompt  = "Serial port (/dev/serial/by-id/... — used by ravedude as RAVEDUDE_PORT)"
+default = "/dev/ttyACM0"
+
+[placeholders.app]
+type    = "string"
+prompt  = "App crate to run (without the homelab- prefix)"
+default = "hello-world"

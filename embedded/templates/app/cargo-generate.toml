@@ -1,0 +1,22 @@
+# cargo-generate prompts for a new app ("purpose").
+#
+# Driven by the `new-app` devenv script, which also handles workspace
+# bookkeeping (adding the crate to `exclude` and `[workspace.dependencies]`
+# in the root Cargo.toml). You normally won't invoke cargo-generate directly.
+#
+# Built-in placeholders cargo-generate provides:
+#   {{project-name}}  kebab-case, from --name (e.g. "humidity-sensor")
+#   {{crate_name}}    snake_case   (e.g. "humidity_sensor")
+[template]
+cargo_generate_version = ">=0.20.0"
+
+[placeholders.runtime]
+type    = "string"
+prompt  = "Runtime model — async (embassy), blocking (busy-wait Delay), or both?"
+choices = ["both", "embassy", "blocking"]
+default = "both"
+
+[placeholders.description]
+type    = "string"
+prompt  = "One-line description of what this app does"
+default = "TODO: describe this app"
