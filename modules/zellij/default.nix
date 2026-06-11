@@ -23,7 +23,9 @@
         {
           programs.zellij = {
             enable = true;
-            enableZshIntegration = true;
+            # Auto-starts a zellij session in every interactive zsh shell
+            # outside an existing session; start zellij explicitly instead.
+            enableZshIntegration = false;
             plugins = ps:
               (with ps; [
                 room
