@@ -1,0 +1,16 @@
+# Config for the `ty` git hook (runs from the repo root, so this must live
+# here — a [tool.ty] section in pulumi/pyproject.toml is never discovered).
+# Scoped to pulumi/: its Output[T] typing defeats ty's overload resolution —
+# every `.apply(...)` resolves to the module-level `apply` helper and reports
+# missing/invalid arguments, provider schemas type resource IDs as int while
+# the SDK hands back Output[str], and cloudflare's TypedDicts mark
+# practically-optional keys as required. These three rules are noise there;
+# unknown-argument and the rest stay active, and any future non-pulumi Python
+# gets full checking.
+[[overrides]]
+include = ["pulumi/**"]
+
+[overrides.rules]
+invalid-argument-type = "ignore"
+missing-argument = "ignore"
+missing-typed-dict-key = "ignore"
