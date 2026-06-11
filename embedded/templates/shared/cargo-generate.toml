@@ -1,0 +1,13 @@
+# cargo-generate prompts for a new shared capability ("tier") library.
+#
+# Driven by `new-shared`, which adds the crate to the workspace `exclude`
+# list (shared libs are consumed by path, not built as members — same as
+# shared/base and apps/*). See ../../TARGETS.md for the tier model: depend
+# only as high as the boards that use this can support.
+[template]
+cargo_generate_version = ">=0.20.0"
+
+[placeholders.description]
+type    = "string"
+prompt  = "One-line description of this shared capability"
+default = "TODO: describe this shared library"

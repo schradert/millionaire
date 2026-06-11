@@ -1,0 +1,23 @@
+[package]
+name = "homelab-web-request"
+edition = "2024"
+version = "0.1.0"
+rust-version = "1.88"
+license = "MIT"
+description = "HTTP GET over an embassy-net stack via reqwless (chip-agnostic)."
+
+# Excluded from workspace membership → pin versions explicitly. embassy-net
+# MUST match the version used by homelab-shared-wifi (0.9.1) so the `Stack`
+# type is identical across the two crates.
+[dependencies]
+embassy-net = { version = "0.9.1", features = [
+  "tcp",
+  "dns",
+  "dhcpv4",
+  "medium-ethernet",
+] }
+embassy-time = { version = "0.5" }
+embedded-io-async = { version = "0.7" }
+reqwless = { version = "0.14.0", default-features = false }
+static_cell = "2.1.1"
+log = "0.4"

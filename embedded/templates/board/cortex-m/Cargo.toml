@@ -1,0 +1,46 @@
+[package]
+name         = "homelab-{{project-name}}"
+edition      = "2024"
+version      = "0.1.0"
+rust-version = "1.88"
+license      = "MIT"
+description  = "{{chip_feature}} Cortex-M board binary (embassy + probe-rs)."
+
+[[bin]]
+name = "homelab-{{project-name}}"
+path = "src/main.rs"
+
+[dependencies]
+homelab-shared = { path = "../../shared/base" }
+homelab-{{app}} = { path = "../../apps/{{app}}", features = ["embassy"] }
+
+# ─────────────────────────────────────────────────────────────────────────
+# The chip feature below selects the whole MCU. Match it with memory.x and
+# the --chip flag in .cargo/config.toml. Other Nucleos: stm32f411re,
+# stm32l432kc, stm32g474re, … Full list:
+# https://docs.rs/embassy-stm32/latest/embassy_stm32/#feature-flags
+# ─────────────────────────────────────────────────────────────────────────
+embassy-stm32 = { version = "0.6", features = [
+  "{{chip_feature}}",
+  "memory-x",             # auto-generate linker memory layout from the chip
+  "time-driver-any",
+  "exti",
+  "defmt",
+] }
+
+embassy-executor = { version = "0.10", features = [
+  "platform-cortex-m",
+  "executor-thread",
+  "defmt",
+] }
+embassy-time = { version = "0.5", features = ["defmt", "defmt-timestamp-uptime", "tick-hz-32_768"] }
+embassy-sync = { version = "0.8", features = ["defmt"] }
+
+defmt        = "1"
+defmt-rtt    = "1"
+panic-probe  = { version = "1", features = ["print-defmt"] }
+
+cortex-m     = { version = "0.7.6", features = ["inline-asm", "critical-section-single-core"] }
+cortex-m-rt  = "0.7"
+
+critical-section = "1.2"
