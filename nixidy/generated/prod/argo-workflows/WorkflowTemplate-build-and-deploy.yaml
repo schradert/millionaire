@@ -1,0 +1,89 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: build-and-deploy
+  namespace: cicd
+spec:
+  arguments:
+    parameters:
+      - name: repo-url
+      - default: main
+        name: revision
+      - name: image-name
+      - name: image-tag
+      - name: rollout-name
+      - default: development
+        name: rollout-namespace
+  entrypoint: ci-pipeline
+  serviceAccountName: argo-workflows-ci
+  templates:
+    - name: ci-pipeline
+      steps:
+        - - name: clone
+            template: clone
+        - - name: build-push
+            template: build-push
+        - - name: deploy
+            template: deploy
+    - container:
+        args:
+          - git clone {{workflow.parameters.repo-url}} /workspace/src && cd /workspace/src && git checkout {{workflow.parameters.revision}}
+        command:
+          - sh
+          - -c
+        image: alpine/git:2.47.2
+        volumeMounts:
+          - mountPath: /workspace
+            name: workspace
+      name: clone
+    - container:
+        args:
+          - |
+            cd /workspace/src
+            mkdir -p /etc/nix
+            echo "experimental-features = nix-command flakes" > /etc/nix/nix.conf
+            echo "filter-syscalls = false" >> /etc/nix/nix.conf
+            result=$(nix build ".#legacyPackages.x86_64-linux.images.{{workflow.parameters.image-name}}.copyToRegistry" --no-pure-eval --print-out-paths -L)
+            $result/bin/copy-to-registry
+        command:
+          - sh
+          - -c
+        env:
+          - name: REGISTRY_AUTH_FILE
+            value: /registry-auth/config.json
+        image: nixos/nix:2.28.3
+        resources:
+          limits:
+            memory: 8Gi
+          requests:
+            cpu: "2"
+            memory: 4Gi
+        volumeMounts:
+          - mountPath: /workspace
+            name: workspace
+          - mountPath: /registry-auth
+            name: registry-auth
+            readOnly: true
+      name: build-push
+    - container:
+        args:
+          - kubectl argo rollouts set image {{workflow.parameters.rollout-name}} '*=harbor.trdos.me/library/{{workflow.parameters.image-name}}:{{workflow.parameters.image-tag}}' -n {{workflow.parameters.rollout-namespace}}
+        command:
+          - sh
+          - -c
+        image: bitnami/kubectl:1.32
+      name: deploy
+  volumeClaimTemplates:
+    - metadata:
+        name: workspace
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+        storageClassName: ceph-block
+  volumes:
+    - name: registry-auth
+      secret:
+        secretName: argo-workflows-harbor

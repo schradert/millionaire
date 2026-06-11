@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: mainsail
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mainsail
+    app.kubernetes.io/service: mainsail
+  name: mainsail
+  namespace: printing
+spec:
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    app.kubernetes.io/controller: mainsail
+    app.kubernetes.io/instance: mainsail
+    app.kubernetes.io/name: mainsail
+  type: ClusterIP

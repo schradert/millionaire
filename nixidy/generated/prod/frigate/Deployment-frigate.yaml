@@ -41,7 +41,7 @@ spec:
                       - chinchilla
                       - dingo
               weight: 100
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - env:
             - name: TZ
@@ -92,7 +92,7 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
-      serviceAccountName: default
+      serviceAccountName: frigate
       volumes:
         - configMap:
             name: frigate

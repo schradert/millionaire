@@ -44,7 +44,7 @@ in {
             metrics.enabled = true;
             metrics.serviceMonitor.enabled = true;
           };
-          plugins.trafficRouterPlugins = lib.toList {
+          controller.trafficRouterPlugins = lib.toList {
             name = "argoproj-labs/gatewayAPI";
             # Asset is "gatewayapi-plugin-…" upstream; the previous
             # "gateway-api-plugin-…" name 404s and would crashloop the controller.

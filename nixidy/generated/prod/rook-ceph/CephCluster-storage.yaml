@@ -95,6 +95,12 @@ spec:
       requests:
         cpu: 500m
         memory: 100Mi
+    cmd-reporter:
+      limits:
+        memory: 1Gi
+      requests:
+        cpu: 500m
+        memory: 100Mi
     crashcollector:
       limits:
         memory: 60Mi

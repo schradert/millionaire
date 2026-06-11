@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: syncthing
+    app.kubernetes.io/instance: syncthing
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: syncthing
+  name: syncthing
+  namespace: home
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: syncthing
+      app.kubernetes.io/instance: syncthing
+      app.kubernetes.io/name: syncthing
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: syncthing
+        app.kubernetes.io/instance: syncthing
+        app.kubernetes.io/name: syncthing
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: STGUIADDRESS
+              value: 0.0.0.0:8384
+            - name: STNODEFAULTFOLDER
+              value: "true"
+          envFrom:
+            - secretRef:
+                name: syncthing
+          image: syncthing/syncthing:1.29
+          livenessProbe:
+            httpGet:
+              path: /rest/noauth/health
+              port: http
+          name: syncthing
+          ports:
+            - containerPort: 8384
+              name: http
+            - containerPort: 22000
+              name: sync
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /rest/noauth/health
+              port: http
+          startupProbe:
+            failureThreshold: 30
+            httpGet:
+              path: /rest/noauth/health
+              port: http
+            periodSeconds: 10
+          volumeMounts:
+            - mountPath: /var/syncthing/org
+              name: org-files
+            - mountPath: /var/syncthing
+              name: state
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: syncthing
+      volumes:
+        - name: org-files
+          persistentVolumeClaim:
+            claimName: org-files
+        - name: state
+          persistentVolumeClaim:
+            claimName: syncthing

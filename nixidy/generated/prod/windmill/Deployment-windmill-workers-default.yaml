@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: windmill-workers
+    app.kubernetes.io/name: windmill-workers
+    chart: windmill-4.0.119
+    heritage: Helm
+    release: windmill
+    workerGroup: default
+  name: windmill-workers-default
+  namespace: development
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: windmill-workers
+      workerGroup: default
+  strategy:
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: windmill-workers
+        app.kubernetes.io/name: windmill-workers
+        release: windmill
+        workerGroup: default
+    spec:
+      containers:
+        - env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  key: DATABASE_URL
+                  name: windmill-db
+            - name: BASE_URL
+              value: https://windmill.trdos.me
+            - name: RUST_LOG
+              value: info
+            - name: MODE
+              value: worker
+            - name: JSON_FMT
+              value: "true"
+            - name: WORKER_GROUP
+              value: default
+          image: ghcr.io/windmill-labs/windmill:1.672.0
+          imagePullPolicy: Always
+          name: windmill-worker
+          ports:
+            - containerPort: 8001
+          resources:
+            limits:
+              memory: 2Gi
+            requests:
+              cpu: 500m
+              memory: 1Gi
+          securityContext:
+            privileged: true
+      serviceAccountName: windmill
+      terminationGracePeriodSeconds: 604800

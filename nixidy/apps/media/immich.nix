@@ -1,5 +1,9 @@
 {config, ...}: {
-  nixidy = {charts, lib, ...}: let
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "immich.${domain}";
     serverProbe = lib.recursiveUpdate {
@@ -60,7 +64,14 @@
       namespace = "media";
       postgres = {
         enable = true;
-        extensions = ["vectors" "cube" "earthdistance"];
+        # immich v2.x needs VectorChord; the stock CNPG operand image ships
+        # neither vchord nor the legacy pgvecto.rs "vectors" extension, so
+        # bootstrap would die on CREATE EXTENSION. Use immich's purpose-built
+        # operand image (bundles VectorChord + pgvecto.rs compat).
+        # "vector" must precede "vchord" (dependency; no CASCADE emitted).
+        image = "ghcr.io/immich-app/postgres:17-vectorchord0.4.3-pgvectors0.3.0";
+        extensions = ["vector" "vchord" "cube" "earthdistance"];
+        sharedPreloadLibraries = ["vchord.so"];
       };
       volsync.pvcs = {
         immich-server.title = "immich-server";

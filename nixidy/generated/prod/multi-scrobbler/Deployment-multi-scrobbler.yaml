@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: multi-scrobbler
+    app.kubernetes.io/instance: multi-scrobbler
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: multi-scrobbler
+  name: multi-scrobbler
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: multi-scrobbler
+      app.kubernetes.io/instance: multi-scrobbler
+      app.kubernetes.io/name: multi-scrobbler
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 567e037e1db31b912ebc6fb74c1546a39bd5c572b8ace3e564afe42619e9e565
+      labels:
+        app.kubernetes.io/controller: multi-scrobbler
+        app.kubernetes.io/instance: multi-scrobbler
+        app.kubernetes.io/name: multi-scrobbler
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - envFrom:
+            - configMapRef:
+                name: multi-scrobbler
+            - secretRef:
+                name: multi-scrobbler
+          image: ghcr.io/foxxmd/multi-scrobbler:0.13.1@sha256:1d9d3fd20c311016aa2daf10af2a17f56c1c9c9f1c5ee63792babb9b6d431447
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 9078
+            timeoutSeconds: 1
+          name: multi-scrobbler
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 9078
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 9078
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /config
+              name: config
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: multi-scrobbler
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: multi-scrobbler

@@ -25,7 +25,7 @@ spec:
         app.kubernetes.io/instance: maintainerr
         app.kubernetes.io/name: maintainerr
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - image: ghcr.io/jorenn92/maintainerr:2.19.0@sha256:bee84707edaf589cda3d18b6813cbfe3a137b52786210c3a28190e10910c1240
           livenessProbe:
@@ -61,7 +61,7 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
-      serviceAccountName: default
+      serviceAccountName: maintainerr
       volumes:
         - name: config
           persistentVolumeClaim:

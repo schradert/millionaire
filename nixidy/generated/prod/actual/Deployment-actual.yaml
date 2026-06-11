@@ -25,7 +25,7 @@ spec:
         app.kubernetes.io/instance: actual
         app.kubernetes.io/name: actual
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - image: actualbudget/actual-server:latest-alpine@sha256:f6614336ab80cb143e817f90409013332493207a0cdd5a78b22ab361bea60bd5
           livenessProbe:
@@ -58,7 +58,7 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
-      serviceAccountName: default
+      serviceAccountName: actual
       volumes:
         - name: data
           persistentVolumeClaim:

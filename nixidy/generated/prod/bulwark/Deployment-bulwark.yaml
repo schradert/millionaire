@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: bulwark
+    app.kubernetes.io/instance: bulwark
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: bulwark
+  name: bulwark
+  namespace: mail
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: bulwark
+      app.kubernetes.io/instance: bulwark
+      app.kubernetes.io/name: bulwark
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: bulwark
+        app.kubernetes.io/instance: bulwark
+        app.kubernetes.io/name: bulwark
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: APP_NAME
+              value: Homelab Mail
+            - name: JMAP_SERVER_URL
+              value: http://stalwart.mail.svc.cluster.local:8080
+            - name: LOG_FORMAT
+              value: json
+            - name: OAUTH_ENABLED
+              value: "true"
+            - name: OAUTH_ISSUER_URL
+              value: https://keycloak.trdos.me/realms/default
+            - name: SETTINGS_DATA_DIR
+              value: /data/settings
+            - name: SETTINGS_SYNC_ENABLED
+              value: "true"
+            - name: STALWART_FEATURES
+              value: "true"
+          envFrom:
+            - secretRef:
+                name: bulwark
+          image: ghcr.io/bulwarkmail/webmail:v1.4.9@sha256:9f5ef45ee046d6a33336e2963016538640589afbf8618cef61e340a57dbd8770
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          name: bulwark
+          ports:
+            - containerPort: 3000
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          startupProbe:
+            failureThreshold: 30
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+          volumeMounts:
+            - mountPath: /data
+              name: data
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: bulwark
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: bulwark

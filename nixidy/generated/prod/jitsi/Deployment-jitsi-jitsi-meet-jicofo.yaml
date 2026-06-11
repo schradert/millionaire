@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: jicofo
+    app.kubernetes.io/instance: jitsi
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: jitsi-meet
+  name: jitsi-jitsi-meet-jicofo
+  namespace: media
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: jicofo
+      app.kubernetes.io/instance: jitsi
+      app.kubernetes.io/name: jitsi-meet
+  template:
+    metadata:
+      annotations:
+        checksum/config: cd7c2cdd23207ad66e9bde1f009a1053be399b652708ab524f35a2d79695e97d
+        checksum/secret: 072f1562a6aecce599021711a03d9b9cd4c7a6f47d6186dcd236e898d84ca4b8
+      labels:
+        app.kubernetes.io/component: jicofo
+        app.kubernetes.io/instance: jitsi
+        app.kubernetes.io/name: jitsi-meet
+    spec:
+      containers:
+        - envFrom:
+            - secretRef:
+                name: jitsi-prosody-jicofo
+            - configMapRef:
+                name: jitsi-prosody-common
+            - configMapRef:
+                name: jitsi-jitsi-meet-jicofo
+          image: jitsi/jicofo:jicofo-1.0-1174-1@sha256:b4f9adfa4d752e87c82428aa7241a8a4e3aaafa9db370d57ba3c0e179d0d57da
+          imagePullPolicy: Never
+          livenessProbe:
+            tcpSocket:
+              port: 8888
+          name: jitsi-meet
+          ports:
+            - containerPort: 80
+              name: http
+              protocol: TCP
+          readinessProbe:
+            tcpSocket:
+              port: 8888
+          resources: {}
+          securityContext: {}
+          volumeMounts:
+            - mountPath: /config
+              name: config
+      securityContext: {}
+      serviceAccountName: jitsi-jitsi-meet
+      volumes:
+        - emptyDir: {}
+          name: config
+        - configMap:
+            defaultMode: 493
+            items:
+              - key: 10-config
+                path: 10-config
+            name: jitsi-jitsi-meet-jicofo-cont-inits
+          name: custom-cont-inits
+        - configMap:
+            items:
+              - key: jicofo.conf
+                path: jicofo.conf
+              - key: logging.properties
+                path: logging.properties
+            name: jitsi-jitsi-meet-jicofo-defaults
+          name: custom-defaults

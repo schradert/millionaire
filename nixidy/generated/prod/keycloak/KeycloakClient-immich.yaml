@@ -1,0 +1,29 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: immich
+  namespace: identity
+spec:
+  clientSecretRef:
+    create: true
+    name: immich
+  definition:
+    clientId: immich
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Immich
+    protocol: openid-connect
+    publicClient: false
+    redirectUris:
+      - https://immich.trdos.me/auth/login
+      - https://immich.trdos.me/user-settings
+      - app.immich:///oauth-callback
+    standardFlowEnabled: true
+    webOrigins:
+      - https://immich.trdos.me
+  realmRef:
+    name: default

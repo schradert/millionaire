@@ -27,7 +27,7 @@ spec:
         app.kubernetes.io/instance: sveltekit-demo
         app.kubernetes.io/name: sveltekit-demo
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - env:
             - name: HOST
@@ -58,4 +58,4 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
-      serviceAccountName: default
+      serviceAccountName: sveltekit-demo

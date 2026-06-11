@@ -25,6 +25,15 @@
           enableAuth = true;
           enableGuests = false;
           publicURL = hostname;
+          # Fixed dummies so the chart's checksum/secret pod annotations
+          # render deterministically (unset, the chart randAlphaNum's a new
+          # password every render, producing spurious diffs + pod restarts).
+          # The rendered Secret data is blanked below; real credentials
+          # arrive via ExternalSecrets.
+          jicofo.xmpp.password = "nixidy-rendered-dummy";
+          jvb.xmpp.password = "nixidy-rendered-dummy";
+          jibri.xmpp.password = "nixidy-rendered-dummy";
+          jigasi.xmpp.password = "nixidy-rendered-dummy";
           websockets.colibri.enabled = true;
           websockets.xmpp.enabled = true;
           jigasi.enabled = true;
@@ -94,8 +103,14 @@
             secretStoreRef.name = "bitwarden";
             secretStoreRef.kind = "ClusterSecretStore";
             data = [
-              {secretKey = "recorder"; remoteRef.key = "jitsi/recorder";}
-              {secretKey = "jibri"; remoteRef.key = "jitsi/jibri";}
+              {
+                secretKey = "recorder";
+                remoteRef.key = "jitsi/recorder";
+              }
+              {
+                secretKey = "jibri";
+                remoteRef.key = "jitsi/jibri";
+              }
             ];
             target.template.data = {
               JIBRI_RECORDER_PASSWORD = "{{ .recorder }}";
@@ -108,8 +123,14 @@
             secretStoreRef.name = "bitwarden";
             secretStoreRef.kind = "ClusterSecretStore";
             data = [
-              {secretKey = "jicofo"; remoteRef.key = "jitsi/jicofo";}
-              {secretKey = "component"; remoteRef.key = "jitsi/component";}
+              {
+                secretKey = "jicofo";
+                remoteRef.key = "jitsi/jicofo";
+              }
+              {
+                secretKey = "component";
+                remoteRef.key = "jitsi/component";
+              }
             ];
             target.template.data = {
               JICOFO_AUTH_PASSWORD = "{{ .jicofo }}";
@@ -120,7 +141,10 @@
           jitsi-prosody-jigasi.spec = {
             secretStoreRef.name = "bitwarden";
             secretStoreRef.kind = "ClusterSecretStore";
-            data = lib.toList {secretKey = "jigasi"; remoteRef.key = "jitsi/jigasi";};
+            data = lib.toList {
+              secretKey = "jigasi";
+              remoteRef.key = "jitsi/jigasi";
+            };
             target.template.data = {
               JIGASI_XMPP_PASSWORD = "{{ .jigasi }}";
               JIGASI_XMPP_USER = "jigasi";
@@ -129,7 +153,10 @@
           jitsi-prosody-jvb.spec = {
             secretStoreRef.name = "bitwarden";
             secretStoreRef.kind = "ClusterSecretStore";
-            data = lib.toList {secretKey = "jvb"; remoteRef.key = "jitsi/jvb";};
+            data = lib.toList {
+              secretKey = "jvb";
+              remoteRef.key = "jitsi/jvb";
+            };
             target.template.data = {
               JVB_AUTH_PASSWORD = "{{ .jvb }}";
               JVB_AUTH_USER = "jvb";

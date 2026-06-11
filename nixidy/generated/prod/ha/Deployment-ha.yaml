@@ -23,13 +23,13 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 5561b9cb7e67eb2f3ea8349c04004471cdcd59326311fa34bced4ecc053659de
+        checksum/configMaps: 2f13cc9cb7956d0c3b8e780842715336cd875f1bc9c0fb02cddebbdff65280e2
       labels:
         app.kubernetes.io/controller: ha
         app.kubernetes.io/instance: ha
         app.kubernetes.io/name: ha
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - envFrom:
             - secretRef:
@@ -111,7 +111,7 @@ spec:
           volumeMounts:
             - mountPath: /config
               name: config
-      serviceAccountName: default
+      serviceAccountName: ha
       volumes:
         - configMap:
             name: ha
