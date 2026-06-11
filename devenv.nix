@@ -49,18 +49,19 @@ in {
             case "$target" in
               --all)
                 ${builtins.concatStringsSep "\n" (map (name: ''
-                  echo "==> Publishing ${name}..."
-                  nix run "${imageBase}.${name}.copyToRegistry" --no-pure-eval
-                  tag=$(skopeo list-tags "docker://${registry}/library/${name}" 2>/dev/null | ${lib.getExe pkgs.jq} -r '.Tags[0] // empty')
-                  digest=$(skopeo inspect "docker://${registry}/library/${name}:$tag" 2>/dev/null | ${lib.getExe pkgs.jq} -r '.Digest // empty')
-                  if [ -n "$digest" ]; then
-                    echo "    Digest: $digest"
-                    echo "    Signing..."
-                    cosign sign --yes --key "$COSIGN_KEY" --signing-config "$COSIGN_SIGNING_CONFIG" "${registry}/library/${name}@$digest" \
-                      && echo "    Signed." \
-                      || echo "    Signing skipped (no COSIGN_KEY or signing failed)"
-                  fi
-                '') imageNames)}
+            echo "==> Publishing ${name}..."
+            nix run "${imageBase}.${name}.copyToRegistry" --no-pure-eval
+            tag=$(skopeo list-tags "docker://${registry}/library/${name}" 2>/dev/null | ${lib.getExe pkgs.jq} -r '.Tags[0] // empty')
+            digest=$(skopeo inspect "docker://${registry}/library/${name}:$tag" 2>/dev/null | ${lib.getExe pkgs.jq} -r '.Digest // empty')
+            if [ -n "$digest" ]; then
+              echo "    Digest: $digest"
+              echo "    Signing..."
+              cosign sign --yes --key "$COSIGN_KEY" --signing-config "$COSIGN_SIGNING_CONFIG" "${registry}/library/${name}@$digest" \
+                && echo "    Signed." \
+                || echo "    Signing skipped (no COSIGN_KEY or signing failed)"
+            fi
+          '')
+          imageNames)}
                 echo "Done."
                 ;;
               --help|-h|"")
@@ -97,13 +98,40 @@ in {
         lychee.toml.accept = [200 403 405 406];
         lychee.toml.exclude = [
           "^.+\\.svc$"
+          # Cluster-internal hostnames are unreachable from the dev machine
+          "\\.svc\\.cluster\\.local"
+          # Single-label hosts (sirver, harbor, keycloak, hyena…) are LAN/tailnet
+          # names or artifacts of ''${domain} interpolation — never public links.
+          # Tradeoff: a dotless typo of a public host (https://githubcom/…) is
+          # also skipped; acceptable since interpolation artifacts are far more
+          # common here than typos.
+          "^https?://[^./]+(:[0-9]+)?(/.*)?$"
           "https://kubernetes-sigs.github.io/descheduler"
           "https://api.bitwarden.com"
           "https://identity.bitwarden.com"
           "^.+/dns-query$"
         ];
         no-commit-to-branch.enable = lib.mkForce false;
-        ruff.excludes = ["pulumi/sdks/**"];
+        # Regex (search semantics), not a glob — the previous "pulumi/sdks/**"
+        # is an invalid pattern ("repeat of a repeat") and the hook runner
+        # refuses to parse the whole config, blocking every commit in the repo.
+        ruff.excludes = ["pulumi/sdks/"];
+        # statix walks the whole tree, so pre-existing findings anywhere block
+        # every commit. Keep the hook, but disable the two codes the existing
+        # codebase trips tree-wide (empty_pattern ×41, manual_inherit_from ×6)
+        # on top of canivete's repeated_keys, and skip .claude/ (agent
+        # worktrees hold stale tree copies). Re-enabling a code means fixing
+        # its findings tree-wide first (statix fix).
+        statix.entry = lib.mkForce "${lib.getExe pkgs.statix} check --config ${(pkgs.formats.toml {}).generate "statix.toml" {
+          disabled = ["repeated_keys" "empty_pattern" "manual_inherit_from"];
+          ignore = [".claude"];
+        }} --format errfmt";
+        # tagref: disabled — the repo uses no tag/ref annotations, and the
+        # generated tailscale CRDs contain literal bracketed tag:k8s strings
+        # that its whole-tree scan reads as duplicate tag definitions (it
+        # ignores the pre-commit exclude). If tag annotations are ever
+        # adopted, override tagref.entry with --path flags instead.
+        tagref.enable = lib.mkForce false;
       };
 
       # Scripts
@@ -148,62 +176,78 @@ in {
 
       # Pulumi / Python
       enterShell = ''
-        export PULUMI_ACCESS_TOKEN="$(cat "${config.devenv.root}/secrets/pulumi_token.txt")"
-        export CLOUDFLARE_API_TOKEN="$(cat "${config.devenv.root}/secrets/cloudflare_token.txt")"
-        export BWS_ACCESS_TOKEN="$(cd "${config.devenv.root}" && sops --decrypt --extract '["bitwarden"]' "secrets/sops/default.yaml")"
-        export B2_APPLICATION_KEY="$(cd "${config.devenv.root}" && sops --decrypt --extract '["b2"]["key"]' "secrets/sops/default.yaml")"
-        export B2_APPLICATION_KEY_ID="$(cd "${config.devenv.root}" && sops --decrypt --extract '["b2"]["id"]' "secrets/sops/default.yaml")"
-        (cd "${config.devenv.root}/pulumi" && pulumi stack select prod)
+                # Bootstrap creds from SOPS — needed before bws can be queried
+                export BWS_ACCESS_TOKEN="$(cd "${config.devenv.root}" && sops --decrypt --extract '["bitwarden"]' "secrets/sops/default.yaml")"
+                export B2_APPLICATION_KEY="$(cd "${config.devenv.root}" && sops --decrypt --extract '["b2"]["key"]' "secrets/sops/default.yaml")"
+                export B2_APPLICATION_KEY_ID="$(cd "${config.devenv.root}" && sops --decrypt --extract '["b2"]["id"]' "secrets/sops/default.yaml")"
 
-        # Personal attic cache (only in this project, not system-wide)
-        ATTIC_PUBKEY=$(cat "${config.devenv.root}/static/generated.json" 2>/dev/null | ${lib.getExe pkgs.jq} -r '.attic_pubkey // empty' 2>/dev/null)
-        if [ -n "$ATTIC_PUBKEY" ]; then
-          export NIX_CONFIG="extra-substituters = http://sirver:8199/main
-extra-trusted-public-keys = $ATTIC_PUBKEY"
-        fi
+                # Surface total fetch failure (offline, expired BWS token) loudly —
+                # otherwise the first symptom is a confusing pulumi auth error
+                # far from the cause.
+                if ! BWS_SECRETS=$(bws secret list 2>/dev/null); then
+                  echo "BWS: secret fetch failed — PULUMI/CLOUDFLARE/HCLOUD tokens unset"
+                  BWS_SECRETS=""
+                fi
 
-        # Project-local registry auth + cosign state
-        export REGISTRY_AUTH_FILE="${config.devenv.root}/.docker/auth.json"
-        export DOCKER_CONFIG="${config.devenv.root}/.docker"
-        mkdir -p "$(dirname "$REGISTRY_AUTH_FILE")"
-        [ -f "$REGISTRY_AUTH_FILE" ] || echo '{"auths":{}}' > "$REGISTRY_AUTH_FILE"
-        ln -sf auth.json "${config.devenv.root}/.docker/config.json"
+                # Tokens fetched from BWS
+                PULUMI_ACCESS_TOKEN=$(echo "$BWS_SECRETS" | ${lib.getExe pkgs.jq} -r '.[] | select(.key == "pulumi/access_token") | .value // empty' 2>/dev/null)
+                [ -n "$PULUMI_ACCESS_TOKEN" ] && export PULUMI_ACCESS_TOKEN
+                CLOUDFLARE_API_TOKEN=$(echo "$BWS_SECRETS" | ${lib.getExe pkgs.jq} -r '.[] | select(.key == "cloudflare/api_token") | .value // empty' 2>/dev/null)
+                [ -n "$CLOUDFLARE_API_TOKEN" ] && export CLOUDFLARE_API_TOKEN
+                HCLOUD_TOKEN=$(echo "$BWS_SECRETS" | ${lib.getExe pkgs.jq} -r '.[] | select(.key == "hcloud/token") | .value // empty' 2>/dev/null)
+                [ -n "$HCLOUD_TOKEN" ] && export HCLOUD_TOKEN
 
-        BWS_SECRETS=$(bws secret list 2>/dev/null || true)
+                # Doomed without a token — skip rather than hang on a network call
+                [ -n "$PULUMI_ACCESS_TOKEN" ] && (cd "${config.devenv.root}/pulumi" && pulumi stack select prod)
 
-        # Harbor auto-login
-        if curl -sf --connect-timeout 5 "https://harbor.${domain}/api/v2.0/health" &>/dev/null; then
-          if skopeo login --get-login harbor.${domain} &>/dev/null; then
-            echo "Harbor: authenticated as $(skopeo login --get-login harbor.${domain} 2>/dev/null)"
-          else
-            ROBOT_SECRET=$(echo "$BWS_SECRETS" | ${lib.getExe pkgs.jq} -r '.[] | select(.key == "harbor/robot/secret") | .value // empty' 2>/dev/null)
-            if [ -n "$ROBOT_SECRET" ]; then
-              echo "$ROBOT_SECRET" | skopeo login harbor.${domain} --username "robot\$push" --password-stdin &>/dev/null \
-                && echo "Harbor: logged in as robot\$push" \
-                || echo "Harbor: login failed (robot account may not exist yet)"
-            else
-              echo "Harbor: not logged in (could not fetch robot secret from Bitwarden)"
-            fi
-          fi
-        else
-          echo "Harbor: not reachable (skipping login)"
-        fi
+                # Personal attic cache (only in this project, not system-wide)
+                ATTIC_PUBKEY=$(cat "${config.devenv.root}/static/generated.json" 2>/dev/null | ${lib.getExe pkgs.jq} -r '.attic_pubkey // empty' 2>/dev/null)
+                if [ -n "$ATTIC_PUBKEY" ]; then
+                  export NIX_CONFIG="extra-substituters = http://sirver:8199/main
+        extra-trusted-public-keys = $ATTIC_PUBKEY"
+                fi
 
-        # Cosign signing key
-        COSIGN_KEY_B64=$(echo "$BWS_SECRETS" | ${lib.getExe pkgs.jq} -r '.[] | select(.key == "harbor/cosign/key") | .value // empty' 2>/dev/null)
-        COSIGN_PASSWORD_VAL=$(echo "$BWS_SECRETS" | ${lib.getExe pkgs.jq} -r '.[] | select(.key == "harbor/cosign/password") | .value // empty' 2>/dev/null)
-        if [ -n "$COSIGN_KEY_B64" ] && [ -n "$COSIGN_PASSWORD_VAL" ]; then
-          export COSIGN_KEY="${config.devenv.root}/.docker/cosign.key"
-          export COSIGN_DOCKER_MEDIA_TYPES="1"
-          COSIGN_SIGNING_CONFIG="${config.devenv.root}/.docker/cosign-signing-config.json"
-          cosign signing-config create > "$COSIGN_SIGNING_CONFIG" 2>/dev/null
-          export COSIGN_SIGNING_CONFIG
-          echo "$COSIGN_KEY_B64" | base64 -d > "$COSIGN_KEY"
-          export COSIGN_PASSWORD="$COSIGN_PASSWORD_VAL"
-          echo "Cosign: signing key loaded"
-        else
-          echo "Cosign: no signing key (images will not be signed)"
-        fi
+                # Project-local registry auth + cosign state
+                export REGISTRY_AUTH_FILE="${config.devenv.root}/.docker/auth.json"
+                export DOCKER_CONFIG="${config.devenv.root}/.docker"
+                mkdir -p "$(dirname "$REGISTRY_AUTH_FILE")"
+                [ -f "$REGISTRY_AUTH_FILE" ] || echo '{"auths":{}}' > "$REGISTRY_AUTH_FILE"
+                ln -sf auth.json "${config.devenv.root}/.docker/config.json"
+
+                # Harbor auto-login
+                if curl -sf --connect-timeout 5 "https://harbor.${domain}/api/v2.0/health" &>/dev/null; then
+                  if skopeo login --get-login harbor.${domain} &>/dev/null; then
+                    echo "Harbor: authenticated as $(skopeo login --get-login harbor.${domain} 2>/dev/null)"
+                  else
+                    ROBOT_SECRET=$(echo "$BWS_SECRETS" | ${lib.getExe pkgs.jq} -r '.[] | select(.key == "harbor/robot/secret") | .value // empty' 2>/dev/null)
+                    if [ -n "$ROBOT_SECRET" ]; then
+                      echo "$ROBOT_SECRET" | skopeo login harbor.${domain} --username "robot\$push" --password-stdin &>/dev/null \
+                        && echo "Harbor: logged in as robot\$push" \
+                        || echo "Harbor: login failed (robot account may not exist yet)"
+                    else
+                      echo "Harbor: not logged in (could not fetch robot secret from Bitwarden)"
+                    fi
+                  fi
+                else
+                  echo "Harbor: not reachable (skipping login)"
+                fi
+
+                # Cosign signing key
+                # The jq selector below is a BWS secret *name*, not a credential.
+                COSIGN_KEY_B64=$(echo "$BWS_SECRETS" | ${lib.getExe pkgs.jq} -r '.[] | select(.key == "harbor/cosign/key") | .value // empty' 2>/dev/null) # gitleaks:allow
+                COSIGN_PASSWORD_VAL=$(echo "$BWS_SECRETS" | ${lib.getExe pkgs.jq} -r '.[] | select(.key == "harbor/cosign/password") | .value // empty' 2>/dev/null)
+                if [ -n "$COSIGN_KEY_B64" ] && [ -n "$COSIGN_PASSWORD_VAL" ]; then
+                  export COSIGN_KEY="${config.devenv.root}/.docker/cosign.key"
+                  export COSIGN_DOCKER_MEDIA_TYPES="1"
+                  COSIGN_SIGNING_CONFIG="${config.devenv.root}/.docker/cosign-signing-config.json"
+                  cosign signing-config create > "$COSIGN_SIGNING_CONFIG" 2>/dev/null
+                  export COSIGN_SIGNING_CONFIG
+                  echo "$COSIGN_KEY_B64" | base64 -d > "$COSIGN_KEY"
+                  export COSIGN_PASSWORD="$COSIGN_PASSWORD_VAL"
+                  echo "Cosign: signing key loaded"
+                else
+                  echo "Cosign: no signing key (images will not be signed)"
+                fi
       '';
       languages.python.enable = true;
       languages.python.directory = "./pulumi";
@@ -222,6 +266,8 @@ extra-trusted-public-keys = $ATTIC_PUBKEY"
         argocd
         deploy-rs
         cilium-cli
+        hcloud
+        hcloud-upload-image
       ];
 
       # Home Assistant image
