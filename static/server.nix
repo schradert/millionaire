@@ -4,7 +4,7 @@
   pkgs,
   ...
 }: {
-  imports = with flake.inputs.srvos.nixosModules; [server roles-nix-remote-builder];
+  imports = [./tailnet.nix] ++ (with flake.inputs.srvos.nixosModules; [server roles-nix-remote-builder]);
   # TODO remove once nixpkgs merges https://github.com/NixOS/nixpkgs/pull/506579
   # Go 1.26 reports go1.26.1-X:boringcrypto which fails k8s version check.
   # Switch from GOEXPERIMENT=boringcrypto to native FIPS 140-3 mode.
@@ -26,6 +26,11 @@
     })
   ];
   canivete.kubernetes.enable = true;
+  # Join the cluster tailnet so cloud burst workers can reach the RKE2
+  # supervisor and pod traffic routes natively across sites (no MagicDNS,
+  # no accept-routes — see tailnet.nix for the routing rationale).
+  tailnet.enable = true;
+  tailnet.podSupernetRoute = true;
   # TODO how should I handle the scheduler from scratch?
   canivete.kubernetes.yaml.disable-scheduler = lib.mkForce false;
   environment.systemPackages = [pkgs.kubectl];
