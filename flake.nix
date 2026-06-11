@@ -294,6 +294,14 @@
           };
         };
 
+        # Cloud-burst worker image config — never deployed via pulumi or
+        # deploy-rs; defined as a node only so it gets the canivete.kubernetes
+        # module machinery. CAPI boots Hetzner VMs from its uploaded snapshot
+        # (static/cloud-worker.nix; upload command lives in pulumi).
+        cloud-worker.profiles.system.canivete.configuration = {
+          imports = [./static/cloud-worker.nix];
+        };
+
         # Hetzner cx33 VPS — headscale + AdGuard Home outside the cluster.
         # SSH hostname is overridden at deploy time via --hostname (the IP from
         # pulumi); networking.hostName stays "hyena".

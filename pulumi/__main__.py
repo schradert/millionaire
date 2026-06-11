@@ -207,6 +207,46 @@ class Millionaire:
             "RKE2 agent join token (mirror of SOPS passwords.k8s-token for cloud workers)",
         )
 
+        # --- Cloud-burst worker snapshot (CAPI machine image) ---
+        # Requires a DEDICATED hcloud project ("millionaire-capi") so the CAPI
+        # token can never touch hyena. Hetzner projects cannot be created via
+        # API: create the project in the console once, generate a token, then
+        #   pulumi config set --secret hcloudCapiToken <token>
+        # Everything downstream is automated. Snapshots are project-scoped, so
+        # the image upload must use this same token.
+        capi_token = pulumi.Config().get_secret("hcloudCapiToken")
+        if capi_token is not None:
+            Secret(
+                "hetzner/api-token/capi",
+                capi_token,
+                "Hetzner millionaire-capi project token (CAPH + image upload)",
+            )
+            cloud_worker_toplevel = (
+                millionaire.Nix.attr(
+                    "nixosConfigurations.cloud-worker.config.system.build.toplevel.outPath"
+                )
+                .impure()
+                .value()
+                .strip()
+            )
+            # Replace-on-change: triggers on the worker toplevel, so a config
+            # change rebuilds + re-uploads. CAPH matches snapshots by the
+            # caph-image-name label and errors on ambiguity — delete stale
+            # snapshots carrying the label before uploading the new one.
+            command.local.Command(
+                "cloud_worker_snapshot",
+                create=(
+                    "hcloud image list -t snapshot -l caph-image-name=cloud-worker -o json "
+                    "| jq -r '.[].id' | xargs -r -n1 hcloud image delete && "
+                    "IMG=$(nix build --no-pure-eval --no-link --print-out-paths "
+                    f'"{millionaire.Nix.root}#nixosConfigurations.cloud-worker.config.system.build.cloudWorkerImage") && '
+                    'hcloud-upload-image upload --architecture x86 --image-path "$IMG/nixos.img" '
+                    "--labels caph-image-name=cloud-worker --description cloud-worker"
+                ),
+                environment={"HCLOUD_TOKEN": capi_token},
+                triggers=[cloud_worker_toplevel],
+            )
+
         # --- Attic binary cache (must exist before sirver deploy) ---
         attic_server_key = command.local.Command(
             "attic_server_key",

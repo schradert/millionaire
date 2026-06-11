@@ -4,27 +4,7 @@
   pkgs,
   ...
 }: {
-  imports = [./tailnet.nix] ++ (with flake.inputs.srvos.nixosModules; [server roles-nix-remote-builder]);
-  # TODO remove once nixpkgs merges https://github.com/NixOS/nixpkgs/pull/506579
-  # Go 1.26 reports go1.26.1-X:boringcrypto which fails k8s version check.
-  # Switch from GOEXPERIMENT=boringcrypto to native FIPS 140-3 mode.
-  nixpkgs.overlays = [
-    (_final: prev: {
-      rke2 = prev.rke2.overrideAttrs (old: {
-        env =
-          (old.env or {})
-          // {
-            GOEXPERIMENT = "";
-            GODEBUG = "fips140=only";
-            GOFIPS140 = "latest";
-          };
-        installCheckPhase = ''
-          runHook preInstallCheck
-          runHook postInstallCheck
-        '';
-      });
-    })
-  ];
+  imports = [./tailnet.nix ./rke2-fips-overlay.nix] ++ (with flake.inputs.srvos.nixosModules; [server roles-nix-remote-builder]);
   canivete.kubernetes.enable = true;
   # Join the cluster tailnet so cloud burst workers can reach the RKE2
   # supervisor and pod traffic routes natively across sites (no MagicDNS,
