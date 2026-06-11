@@ -108,6 +108,10 @@ in {
           # also skipped; acceptable since interpolation artifacts are far more
           # common here than typos.
           "^https?://[^./]+(:[0-9]+)?(/.*)?$"
+          # Loopback proxy targets and link-local metadata endpoints in NixOS
+          # configs are wiring, not links — unreachable from the dev machine.
+          "^https?://127\\.0\\.0\\.1"
+          "^https?://169\\.254\\."
           "https://kubernetes-sigs.github.io/descheduler"
           "https://api.bitwarden.com"
           "https://identity.bitwarden.com"
