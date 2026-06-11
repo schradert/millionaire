@@ -71,6 +71,26 @@ in {
     };
   };
 
+  # Headscale default-allows only when NO policy is loaded; the acls entry
+  # preserves that behavior while adding tag/route automation for the
+  # cloud-burst cluster tailnet (see static/tailnet.nix).
+  services.headscale.settings.policy = {
+    mode = "file";
+    path = pkgs.writeText "headscale-policy.json" (builtins.toJSON {
+      acls = [
+        {
+          action = "accept";
+          src = ["*"];
+          dst = ["*:*"];
+        }
+      ];
+      tagOwners."tag:cluster" = ["default@"];
+      # Cluster nodes advertise their per-node pod /24s (tailnet.nix);
+      # auto-approve so CAPI worker scale-ups never wait on a human.
+      autoApprovers.routes."10.42.0.0/16" = ["tag:cluster"];
+    });
+  };
+
   # Hyena bootstraps its own headscale preauth key from the local CLI, so
   # tailscaled can join its own tailnet without external coordination. The
   # default user is shared with the K8s tailscale-operator's preauth key.
