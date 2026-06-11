@@ -1,0 +1,15 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--spoolman--spoolman-dst
+  namespace: printing
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: spoolman
+    moverSecurityContext:
+      runAsGroup: 101
+      runAsUser: 101
+    repository: volsync--spoolman--spoolman
+  trigger:
+    manual: "1"

@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: rollouts-dashboard
+    app.kubernetes.io/instance: argo-rollouts
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: argo-rollouts
+    app.kubernetes.io/part-of: argo-rollouts
+  name: argo-rollouts-dashboard
+  namespace: cicd
+spec:
+  ports:
+    - name: dashboard
+      port: 3100
+      protocol: TCP
+      targetPort: dashboard
+  selector:
+    app.kubernetes.io/component: rollouts-dashboard
+    app.kubernetes.io/instance: argo-rollouts
+    app.kubernetes.io/name: argo-rollouts
+  type: ClusterIP

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: navidrome
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: navidrome
+    app.kubernetes.io/service: navidrome
+  name: navidrome
+  namespace: media
+spec:
+  ports:
+    - name: http
+      port: 4533
+      protocol: TCP
+      targetPort: 4533
+  selector:
+    app.kubernetes.io/controller: navidrome
+    app.kubernetes.io/instance: navidrome
+    app.kubernetes.io/name: navidrome
+  type: ClusterIP

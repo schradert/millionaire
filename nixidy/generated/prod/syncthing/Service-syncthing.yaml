@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: syncthing
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: syncthing
+    app.kubernetes.io/service: syncthing
+  name: syncthing
+  namespace: home
+spec:
+  ports:
+    - name: http
+      port: 8384
+      protocol: TCP
+      targetPort: 8384
+    - name: sync
+      port: 22000
+      protocol: TCP
+      targetPort: 22000
+  selector:
+    app.kubernetes.io/controller: syncthing
+    app.kubernetes.io/instance: syncthing
+    app.kubernetes.io/name: syncthing
+  type: ClusterIP

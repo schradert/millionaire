@@ -27,7 +27,7 @@ spec:
         app.kubernetes.io/instance: vllm
         app.kubernetes.io/name: vllm
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - args:
             - --model
@@ -92,7 +92,7 @@ spec:
       securityContext:
         supplementalGroups:
           - 0
-      serviceAccountName: default
+      serviceAccountName: vllm
       tolerations:
         - effect: NoSchedule
           key: nvidia.com/gpu

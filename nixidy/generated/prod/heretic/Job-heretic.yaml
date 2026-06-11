@@ -18,7 +18,7 @@ spec:
         app.kubernetes.io/instance: heretic
         app.kubernetes.io/name: heretic
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - args:
             - --model
@@ -55,7 +55,7 @@ spec:
       nodeSelector:
         nvidia.com/gpu.present: "true"
       restartPolicy: Never
-      serviceAccountName: default
+      serviceAccountName: heretic
       tolerations:
         - effect: NoSchedule
           key: nvidia.com/gpu

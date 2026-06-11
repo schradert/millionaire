@@ -1,0 +1,17 @@
+apiVersion: v1
+data:
+  MALOJA_DATA_DIRECTORY: /mljdata
+  MALOJA_HOST: 0.0.0.0
+  MALOJA_NAME: tristan
+  MALOJA_PORT: "42010"
+  MALOJA_PUBLIC_DASHBOARD: "no"
+  MALOJA_SKIP_SETUP: "yes"
+  MALOJA_TIMEZONE: America/Los_Angeles
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: maloja
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: maloja
+  name: maloja
+  namespace: media

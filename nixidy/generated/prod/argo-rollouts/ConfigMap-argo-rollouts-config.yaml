@@ -1,0 +1,16 @@
+apiVersion: v1
+data:
+  trafficRouterPlugins: |-
+    - location: https://github.com/argoproj-labs/rollouts-plugin-trafficrouter-gatewayapi/releases/download/v0.6.0/gatewayapi-plugin-linux-amd64
+      name: argoproj-labs/gatewayAPI
+      sha256: e44baf9271d087466c7fec35e704758b9f3d26b32b490089a06e6be44bdc9978
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/component: rollouts-controller
+    app.kubernetes.io/instance: argo-rollouts
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: argo-rollouts
+    app.kubernetes.io/part-of: argo-rollouts
+  name: argo-rollouts-config
+  namespace: cicd

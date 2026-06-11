@@ -27,7 +27,7 @@ spec:
         app.kubernetes.io/instance: contextforge
         app.kubernetes.io/name: contextforge
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - env:
             - name: DATABASE_URL
@@ -71,4 +71,4 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
-      serviceAccountName: default
+      serviceAccountName: contextforge

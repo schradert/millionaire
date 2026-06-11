@@ -51,6 +51,7 @@ in {
           storageSize = can.str "PVC size per instance" {default = "5Gi";};
           storageClass = can.str "Storage class name" {default = "ceph-block";};
           version = can.str "PostgreSQL major version" {default = "17";};
+          image = can.str "CNPG operand image (overrides the stock image derived from version)" {default = "";};
           database = can.str "Database name" {default = name;};
           owner = can.str "Database owner" {default = name;};
           extensions = can.list.str "Extensions to CREATE EXTENSION" {default = [];};
@@ -88,7 +89,10 @@ in {
               };
               clusters.${name}.spec = {
                 inherit (db) instances;
-                imageName = "ghcr.io/cloudnative-pg/postgresql:${db.version}";
+                imageName =
+                  if db.image != ""
+                  then db.image
+                  else "ghcr.io/cloudnative-pg/postgresql:${db.version}";
                 serviceAccountTemplate.metadata.name = "${name}-pg";
                 storage = {
                   inherit (db) storageClass;

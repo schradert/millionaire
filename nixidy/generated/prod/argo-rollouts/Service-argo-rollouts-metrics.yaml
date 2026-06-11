@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: rollouts-controller
+    app.kubernetes.io/instance: argo-rollouts
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: argo-rollouts
+    app.kubernetes.io/part-of: argo-rollouts
+  name: argo-rollouts-metrics
+  namespace: cicd
+spec:
+  ports:
+    - name: metrics
+      port: 8090
+      protocol: TCP
+      targetPort: metrics
+  selector:
+    app.kubernetes.io/component: rollouts-controller
+    app.kubernetes.io/instance: argo-rollouts
+    app.kubernetes.io/name: argo-rollouts

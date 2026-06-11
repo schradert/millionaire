@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: windmill-extra
+  namespace: development
+spec:
+  ports:
+    - name: gateway
+      port: 3000
+      protocol: TCP
+      targetPort: 3000
+    - name: lsp
+      port: 3001
+      protocol: TCP
+      targetPort: 3001
+    - name: multiplayer
+      port: 3002
+      protocol: TCP
+      targetPort: 3002
+    - name: debugger
+      port: 3003
+      protocol: TCP
+      targetPort: 3003
+  selector:
+    app.kubernetes.io/name: windmill-extra
+  sessionAffinity: ClientIP
+  type: ClusterIP

@@ -1,0 +1,11 @@
+apiVersion: v1
+data:
+  config.json: '{"instances":[{"hostname":"voron.internal:7125","port":7125}],"instancesDB":"json"}'
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: mainsail
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mainsail
+  name: mainsail
+  namespace: printing

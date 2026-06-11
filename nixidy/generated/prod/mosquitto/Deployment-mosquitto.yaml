@@ -29,7 +29,7 @@ spec:
         app.kubernetes.io/instance: mosquitto
         app.kubernetes.io/name: mosquitto
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - image: eclipse-mosquitto:2.0
           livenessProbe:
@@ -54,7 +54,7 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
-      serviceAccountName: default
+      serviceAccountName: mosquitto
       volumes:
         - configMap:
             name: mosquitto

@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/controller: mobileraker-companion
+    app.kubernetes.io/instance: mobileraker-companion
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mobileraker-companion
+  name: mobileraker-companion
+  namespace: printing
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: mobileraker-companion
+      app.kubernetes.io/instance: mobileraker-companion
+      app.kubernetes.io/name: mobileraker-companion
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 58ff598620df8f6420df055d2709e701012f52fab01d66f2b8a9274632c681f5
+      labels:
+        app.kubernetes.io/controller: mobileraker-companion
+        app.kubernetes.io/instance: mobileraker-companion
+        app.kubernetes.io/name: mobileraker-companion
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - image: ghcr.io/clon1998/mobileraker_companion:latest
+          name: mobileraker-companion
+          volumeMounts:
+            - mountPath: /opt/printer_data/config/mobileraker.conf
+              name: config
+              readOnly: true
+              subPath: mobileraker.conf
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: mobileraker-companion
+      volumes:
+        - configMap:
+            name: mobileraker-companion
+          name: config

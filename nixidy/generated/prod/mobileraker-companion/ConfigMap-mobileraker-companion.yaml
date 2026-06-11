@@ -1,0 +1,17 @@
+apiVersion: v1
+data:
+  mobileraker.conf: |-
+    [general]
+    language=en
+
+    [printer voron]
+    moonraker_api_key=false
+    moonraker_uri=ws://voron.internal:7125/websocket
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: mobileraker-companion
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mobileraker-companion
+  name: mobileraker-companion
+  namespace: printing

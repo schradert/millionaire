@@ -27,7 +27,7 @@ spec:
         app.kubernetes.io/instance: keycloak
         app.kubernetes.io/name: keycloak
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - args:
             - start
@@ -82,5 +82,5 @@ spec:
       hostNetwork: false
       hostPID: false
       hostname: keycloak
-      serviceAccountName: default
+      serviceAccountName: keycloak
       subdomain: keycloak

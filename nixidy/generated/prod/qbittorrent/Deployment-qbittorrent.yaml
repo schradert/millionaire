@@ -27,7 +27,7 @@ spec:
         app.kubernetes.io/instance: qbittorrent
         app.kubernetes.io/name: qbittorrent
     spec:
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       containers:
         - env:
             - name: VPN_SERVICE_PROVIDER
@@ -83,7 +83,7 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
-      serviceAccountName: default
+      serviceAccountName: qbittorrent
       volumes:
         - name: config
           persistentVolumeClaim:

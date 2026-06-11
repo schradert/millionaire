@@ -1,0 +1,28 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: argo-workflows
+  namespace: identity
+spec:
+  clientSecretRef:
+    create: true
+    name: argo-workflows
+  definition:
+    clientId: argo-workflows
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+      - groups
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Argo Workflows
+    protocol: openid-connect
+    publicClient: false
+    redirectUris:
+      - https://workflows.trdos.me/oauth2/callback
+    standardFlowEnabled: true
+    webOrigins:
+      - https://workflows.trdos.me
+  realmRef:
+    name: default

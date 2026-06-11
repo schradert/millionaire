@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: jigasi
+    app.kubernetes.io/instance: jitsi
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: jitsi-meet
+  name: jitsi-jitsi-meet-jigasi
+  namespace: media
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: jigasi
+      app.kubernetes.io/instance: jitsi
+      app.kubernetes.io/name: jitsi-meet
+  template:
+    metadata:
+      annotations:
+        checksum/config: e349dd94942722fcac9fa4d94ff1e78b5570e61253ded46e690866b0a9e40d00
+        checksum/secret: 7def1eeb968bd2137c3937228d9ee6f0e60cf779446a71ade9e2e1108c5d5122
+      labels:
+        app.kubernetes.io/component: jigasi
+        app.kubernetes.io/instance: jitsi
+        app.kubernetes.io/name: jitsi-meet
+    spec:
+      containers:
+        - envFrom:
+            - secretRef:
+                name: jitsi-prosody-jigasi
+            - configMapRef:
+                name: jitsi-prosody-common
+            - configMapRef:
+                name: jitsi-jitsi-meet-jigasi
+          image: jitsi/jigasi:jigasi-1.1-407-g1e3a7ac-1@sha256:2f063da007903bacc756c79e751e189b339703f2f7a8e58492792e60c4984e72
+          imagePullPolicy: Never
+          livenessProbe:
+            httpGet:
+              httpHeaders:
+                - name: Accept
+                  value: application/json
+              path: /about/health
+              port: 8788
+          name: jitsi-meet
+          readinessProbe:
+            httpGet:
+              httpHeaders:
+                - name: Accept
+                  value: application/json
+              path: /about/health
+              port: 8788
+          resources: {}
+          securityContext: {}
+      securityContext: {}
+      serviceAccountName: jitsi-jitsi-meet

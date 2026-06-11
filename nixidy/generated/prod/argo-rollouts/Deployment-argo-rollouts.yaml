@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: rollouts-controller
+    app.kubernetes.io/instance: argo-rollouts
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: argo-rollouts
+    app.kubernetes.io/part-of: argo-rollouts
+  name: argo-rollouts
+  namespace: cicd
+spec:
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: rollouts-controller
+      app.kubernetes.io/instance: argo-rollouts
+      app.kubernetes.io/name: argo-rollouts
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/cm: 6e02ac6485d4d1b8fec26cd1343b90b468c0b6b62179fb581d25d0b653dc62b8
+      labels:
+        app.kubernetes.io/component: rollouts-controller
+        app.kubernetes.io/instance: argo-rollouts
+        app.kubernetes.io/name: argo-rollouts
+    spec:
+      containers:
+        - args:
+            - --healthzPort=8080
+            - --metricsport=8090
+            - --loglevel=info
+            - --logformat=text
+            - --kloglevel=0
+            - --leader-elect
+          image: quay.io/argoproj/argo-rollouts:v1.9.0
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            successThreshold: 1
+            timeoutSeconds: 10
+          name: argo-rollouts
+          ports:
+            - containerPort: 8090
+              name: metrics
+            - containerPort: 8080
+              name: healthz
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 4
+          resources: {}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /home/argo-rollouts/plugin-bin
+              name: plugin-bin
+            - mountPath: /tmp
+              name: tmp
+      securityContext:
+        runAsNonRoot: true
+      serviceAccountName: argo-rollouts
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - emptyDir: {}
+          name: plugin-bin
+        - emptyDir: {}
+          name: tmp

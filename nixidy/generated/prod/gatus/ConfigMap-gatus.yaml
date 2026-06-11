@@ -14,12 +14,6 @@ data:
       name: actual
       url: https://actual.trdos.me
     - conditions:
-      - '[STATUS] == any(200, 302, 401)'
-      group: internal
-      interval: 1m
-      name: adguard
-      url: https://adguard.trdos.me
-    - conditions:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
@@ -32,6 +26,24 @@ data:
       name: argo
       url: https://argocd.trdos.me
     - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: argo-rollouts
+      url: https://rollouts.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: argo-workflows
+      url: https://workflows.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: audiobookshelf
+      url: https://audiobookshelf.trdos.me
+    - conditions:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
@@ -41,14 +53,52 @@ data:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
+      name: baikal
+      url: https://cal.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
       name: bazarr
       url: https://bazarr.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: bifrost
+      url: https://bifrost.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: bulwark
+      url: https://webmail.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: chirpstack
+      url: https://chirpstack.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: contextforge
+      url: https://mcp.trdos.me
     - conditions:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
       name: firefly
       url: https://firefly.trdos.me
+    - client:
+        dns-resolver: tcp://1.1.1.1:53
+      conditions:
+      - '[STATUS] == 200'
+      group: external
+      interval: 1m
+      name: forgejo
+      url: https://git.trdos.me
     - conditions:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
@@ -85,8 +135,60 @@ data:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
+      name: homepage
+      url: https://home.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: immich
+      url: https://immich.trdos.me
+    - client:
+        dns-resolver: tcp://1.1.1.1:53
+      conditions:
+      - '[STATUS] == any(200, 302)'
+      group: external
+      interval: 1m
+      name: jellyfin
+      url: https://jellyfin.trdos.me
+    - client:
+        dns-resolver: tcp://1.1.1.1:53
+      conditions:
+      - '[STATUS] == any(200, 302)'
+      group: external
+      interval: 1m
+      name: jitsi
+      url: https://jitsi.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: kavita
+      url: https://kavita.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
       name: keycloak
       url: https://keycloak.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: komga
+      url: https://komga.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: kosync
+      url: https://kosync.trdos.me/healthcheck
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: librechat
+      url: https://chat.trdos.me
     - conditions:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
@@ -97,8 +199,28 @@ data:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
+      name: logseq
+      url: https://logseq.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: mainsail
+      url: https://mainsail.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
       name: maintainerr
       url: https://maintainerr.trdos.me
+    - client:
+        dns-resolver: tcp://1.1.1.1:53
+      conditions:
+      - '[STATUS] == any(200, 302)'
+      group: external
+      interval: 1m
+      name: maloja
+      url: https://maloja.trdos.me
     - conditions:
       - '[STATUS] == 200'
       group: internal
@@ -106,17 +228,57 @@ data:
       name: mealie
       url: https://mealie.trdos.me
     - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: multi-scrobbler
+      url: https://multi-scrobbler.trdos.me/health
+    - client:
+        dns-resolver: tcp://1.1.1.1:53
+      conditions:
+      - '[STATUS] == 200'
+      group: external
+      interval: 1m
+      name: navidrome
+      url: https://navidrome.trdos.me/ping
+    - conditions:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
       name: oauth2-proxy
       url: https://oauth2.trdos.me/ping
     - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: obico
+      url: https://obico.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: ollama
+      url: http://ollama.ai.svc.cluster.local:11434/
+    - client:
+        dns-resolver: tcp://1.1.1.1:53
+      conditions:
+      - '[STATUS] == any(200, 302)'
+      group: external
+      interval: 1m
+      name: owncast
+      url: https://owncast.trdos.me
+    - conditions:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
       name: prometheus
       url: https://prometheus.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: promptfoo
+      url: https://promptfoo.trdos.me
     - conditions:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
@@ -145,8 +307,26 @@ data:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
+      name: ryot
+      url: https://ryot.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
       name: seerr
       url: https://seerr.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: shoko
+      url: https://shoko.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: siyuan
+      url: https://siyuan.trdos.me
     - conditions:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
@@ -154,17 +334,41 @@ data:
       name: sonarr
       url: https://sonarr.trdos.me
     - conditions:
-      - '[STATUS] == 401'
+      - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
-      name: stalwart
-      url: https://mail.trdos.me
+      name: spoolman
+      url: https://spoolman.trdos.me
     - conditions:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
       name: sure
       url: https://sure.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: sveltekit-demo
+      url: https://demo.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: syncthing
+      url: https://sync.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: webdav
+      url: https://dav.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: windmill
+      url: https://windmill.trdos.me/api/version
     - conditions:
       - '[STATUS] == any(200, 302, 401)'
       group: internal

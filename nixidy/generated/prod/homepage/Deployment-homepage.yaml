@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/controller: homepage
+    app.kubernetes.io/instance: homepage
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: homepage
+  name: homepage
+  namespace: home
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: homepage
+      app.kubernetes.io/instance: homepage
+      app.kubernetes.io/name: homepage
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: bc0e5703e1c85d1382d5ba28f555abc31457ab710a7a74ce86db67dcd33a45c3
+      labels:
+        app.kubernetes.io/controller: homepage
+        app.kubernetes.io/instance: homepage
+        app.kubernetes.io/name: homepage
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - env:
+            - name: HOMEPAGE_ALLOWED_HOSTS
+              value: home.trdos.me
+          image: ghcr.io/gethomepage/homepage:v1.2.0
+          livenessProbe:
+            httpGet:
+              path: /api/healthcheck
+              port: http
+          name: homepage
+          ports:
+            - containerPort: 3000
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /api/healthcheck
+              port: http
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 3000
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /app/config
+              name: config
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: homepage
+      volumes:
+        - configMap:
+            name: homepage
+          name: config

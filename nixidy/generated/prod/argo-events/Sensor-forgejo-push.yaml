@@ -1,0 +1,56 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: forgejo-push
+  namespace: cicd
+spec:
+  dependencies:
+    - eventName: push
+      eventSourceName: forgejo
+      filters:
+        data:
+          - path: body.ref
+            type: string
+            value:
+              - refs/heads/main
+      name: push
+  template:
+    serviceAccountName: argo-events-sensor
+  triggers:
+    - template:
+        argoWorkflow:
+          operation: submit
+          parameters:
+            - dest: spec.arguments.parameters.0.value
+              src:
+                dataKey: body.repository.clone_url
+                dependencyName: push
+            - dest: spec.arguments.parameters.1.value
+              src:
+                dataKey: body.after
+                dependencyName: push
+            - dest: spec.arguments.parameters.3.value
+              src:
+                dataKey: body.after
+                dependencyName: push
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: build-deploy-
+              spec:
+                arguments:
+                  parameters:
+                    - name: repo-url
+                    - name: revision
+                    - name: image-name
+                      value: sveltekit-demo
+                    - name: image-tag
+                    - name: rollout-name
+                      value: sveltekit-demo
+                    - name: rollout-namespace
+                      value: development
+                workflowTemplateRef:
+                  name: build-and-deploy
+        name: build-and-deploy
