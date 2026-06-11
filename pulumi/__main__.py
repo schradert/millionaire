@@ -159,6 +159,67 @@ class Millionaire:
             "Headscale pre-auth key for the K8s tailscale-operator (reusable, ephemeral, 90d)",
         )
 
+        # --- Cluster tailnet keys (cloud-burst) ---
+        # Home nodes join headscale with a shared reusable key from SOPS;
+        # CAPI burst workers get a reusable+ephemeral key from BWS (ephemeral
+        # means headscale drops the peer when it goes offline — that is the
+        # scale-down cleanup story). Both carry tag:cluster so the headscale
+        # policy (static/hyena.nix) auto-approves their pod-CIDR subnet
+        # routes. Tagged key creation requires that policy to be live, hence
+        # depends_on hyena.refresh. headscale 0.28 takes --user by ID.
+        headscale_cluster_node_key = command.local.Command(
+            "headscale_preauthkey_cluster_node",
+            create=ssh_to_hyena.apply(
+                lambda s: (
+                    f"{s} 'headscale preauthkeys create --user 1 --reusable --tags tag:cluster --expiration 8760h -o json' | jq -r .key"
+                )
+            ),
+            triggers=[hyena_server.id],
+            opts=pulumi.ResourceOptions(depends_on=[headscale_user, hyena.refresh]),
+        )
+        headscale_cluster_node_key_sops = command.local.Command(
+            "headscale_cluster_node_key_sops",
+            create=(
+                f'cd "{millionaire.Nix.root}" && '
+                "printf '%s' \"$TS_AUTHKEY\" | jq -Rs . | "
+                'sops set secrets/sops/default.yaml \'["headscale"]["preauth-key"]["cluster-node"]\' --value-stdin'
+            ),
+            environment={
+                "TS_AUTHKEY": headscale_cluster_node_key.stdout.apply(str.strip)
+            },
+            opts=pulumi.ResourceOptions(depends_on=[headscale_cluster_node_key]),
+        )
+        headscale_worker_key = command.local.Command(
+            "headscale_preauthkey_cloud_worker",
+            create=ssh_to_hyena.apply(
+                lambda s: (
+                    f"{s} 'headscale preauthkeys create --user 1 --reusable --ephemeral --tags tag:cluster --expiration 8760h -o json' | jq -r .key"
+                )
+            ),
+            triggers=[hyena_server.id],
+            opts=pulumi.ResourceOptions(depends_on=[headscale_user, hyena.refresh]),
+        )
+        Secret(
+            "headscale/preauth-key/k8s-cloud-worker",
+            headscale_worker_key.stdout.apply(str.strip),
+            "Headscale pre-auth key for CAPI burst workers (reusable, ephemeral, tag:cluster)",
+        )
+
+        # RKE2 agent join token, mirrored from SOPS so the in-cluster
+        # ExternalSecrets stack can template it into worker bootstrap data.
+        rke2_agent_token = command.local.Command(
+            "rke2_agent_token_read",
+            create=(
+                f'cd "{millionaire.Nix.root}" && '
+                'sops --decrypt --extract \'["passwords"]["k8s-token"]\' secrets/sops/default.yaml'
+            ),
+        )
+        Secret(
+            "rke2/agent-token",
+            rke2_agent_token.stdout.apply(str.strip),
+            "RKE2 agent join token (mirror of SOPS passwords.k8s-token for cloud workers)",
+        )
+
         # --- Attic binary cache (must exist before sirver deploy) ---
         attic_server_key = command.local.Command(
             "attic_server_key",
@@ -182,10 +243,29 @@ class Millionaire:
         )
 
         # --- NixOS nodes (cluster) — all depend on hyena.refresh ---
+        # The cluster-node tailnet key must be in SOPS before any node deploy
+        # (tailnet.nix reads it via sops-nix at activation).
         sirver = millionaire.NixOS(
             "sirver",
             "root@nixos",
-            depends_on=[attic_sops_write, hyena.refresh],
+            depends_on=[
+                attic_sops_write,
+                hyena.refresh,
+                headscale_cluster_node_key_sops,
+            ],
+        )
+
+        # Cloud-burst workers pin `sirver` to its tailnet IP in /etc/hosts;
+        # capture it once sirver's deploy (tailnet.nix) brings tailscale up.
+        sirver_tailnet_ip = command.local.Command(
+            "sirver_tailnet_ip",
+            create="ssh -i ~/.ssh/personal sirver tailscale ip -4",
+            opts=pulumi.ResourceOptions(depends_on=[sirver.refresh]),
+        )
+        Secret(
+            "headscale/node-ip/sirver",
+            sirver_tailnet_ip.stdout.apply(str.strip),
+            "sirver tailnet IPv4 (pinned by cloud-burst workers)",
         )
 
         # --- Attic post-deploy setup (after sirver has atticd running) ---
@@ -267,7 +347,11 @@ class Millionaire:
 
         # Other nodes depend on attic being fully set up (auth token in SOPS + public key file)
         # plus hyena being up (for headscale to exist when ArgoCD syncs the operator).
-        other_node_deps = [attic_auth_sops_write, hyena.refresh]
+        other_node_deps = [
+            attic_auth_sops_write,
+            hyena.refresh,
+            headscale_cluster_node_key_sops,
+        ]
         millionaire.NixOS("octopus", "root@nixos", depends_on=other_node_deps)
         millionaire.NixOS("dingo", "root@nixos", depends_on=other_node_deps)
         millionaire.NixOS("bonobo", "root@nixos", depends_on=other_node_deps)
