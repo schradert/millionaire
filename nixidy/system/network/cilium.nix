@@ -21,7 +21,10 @@
     ...
   }: let
     chart = charts.cilium.cilium;
-    devices = ["br0" "eno1"];
+    # br0/eno1 = home LAN; eth0 = cloud-burst workers (their image forces
+    # net.ifnames=0). Per-node, cilium ignores listed devices that don't
+    # exist, so this is a no-op on hardware without eth0.
+    devices = ["br0" "eno1" "eth0"];
   in {
     applications.cilium-crds.namespace = "kube-system";
     canivete.crds.cilium = {
@@ -69,6 +72,12 @@
         inherit chart;
         values = {
           autoDirectNodeRoutes = true;
+          # Mixed L2/L3 topology (cloud-burst workers over the tailnet):
+          # skip direct-route installation for peers that are not
+          # L2-reachable instead of erroring — their pod CIDRs route via
+          # tailscale subnet routes (static/tailnet.nix). No-op while all
+          # nodes share the home LAN.
+          directRoutingSkipUnreachable = true;
           dashboards.enabled = true;
           inherit devices;
           envoy.rollOutPods = true;
@@ -103,6 +112,14 @@
         externalIPs = true;
         loadBalancerIPs = true;
         interfaces = devices;
+        # LAN VIP announcement is a home-node concern; cloud-burst workers
+        # must never hold announcement leases (their NICs are not on the LAN).
+        nodeSelector.matchExpressions = [
+          {
+            key = "node.trdos.me/burst";
+            operator = "DoesNotExist";
+          }
+        ];
       };
       resources.ciliumLoadBalancerIPPools.home-pool.spec = {
         blocks = lib.toList {
