@@ -28,6 +28,10 @@ pub struct Config {
     pub caldav_password: String,
 
     /// Path to the SQLite state database
-    #[arg(long, env = "STATE_DB_PATH", default_value = "/var/lib/org-bridge/state.db")]
+    #[arg(
+        long,
+        env = "STATE_DB_PATH",
+        default_value = "/var/lib/org-bridge/state.db"
+    )]
     pub state_db_path: String,
 }

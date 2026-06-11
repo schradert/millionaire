@@ -14,7 +14,7 @@
             src = flake.inputs.datadog-pup;
             cargoLock = {
               lockFile = "${flake.inputs.datadog-pup}/Cargo.lock";
-              outputHashes."datadog-api-client-0.29.0" = "sha256-ch27o26Z30UqlrRxzXOdltVpSuhJys66tfj3Ut99BAA=";
+              outputHashes."datadog-api-client-0.31.0" = "sha256-UzI8d1oYToULy0YZ9Rckk2m6sXxBq4IcOWd9bFuS8Gc=";
             };
             nativeBuildInputs = [prev.pkg-config];
             buildInputs =

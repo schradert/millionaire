@@ -19,7 +19,7 @@
   #
   #   2. Confirm `br0` exists on the target node (sirver) and is on the speaker VLAN.
   #      Update the macvlan `master` value in the NAD if a different bridge is needed.
-  nixidy = {charts, lib, ...}: {
+  nixidy = {lib, ...}: {
     applications.multus = {
       namespace = "kube-system";
       helm.releases.multus = {
@@ -27,14 +27,30 @@
           chart = "multus";
           version = "7.0.0";
           repo = "https://angelnu.github.io/helm-charts";
-          chartHash = "sha256-q/mAaYLr8idMWsqERsEDs/29B9FInANTbu08mMta76k=";
+          # Upstream republished the 7.0.0 tarball in place (old bytes are
+          # gone from the repo): newer embedded common library (5.0.1) and an
+          # appVersion bump 4.2.3 → 4.2.4 (so the rendered image becomes
+          # multus-cni:4.2.4-thick). Hash updated to match; values adapted
+          # below for the new common's behavior changes.
+          chartHash = "sha256-mrJV0KBu+BEhJCe2/d4vBqwFr0Qu1oT93ZKAv3ckcls=";
         };
         values = {
+          # The new common injects an implicit release-name SA on top of the
+          # chart's own "multus" SA, leaving every controller unable to
+          # auto-pick between two SAs. Disable the implicit one — render then
+          # matches the previous wiring (single "multus" SA on all
+          # controllers).
+          global.createDefaultServiceAccount = false;
           # The thick-plugin DaemonSet OOMs at the upstream default of 50Mi
           # (k8snetworkplumbingwg/multus-cni#1244). Bump to a sane size.
-          controllers.multus.containers.multus = {
-            resources.requests.memory = "100Mi";
-            resources.limits.memory = "200Mi";
+          controllers.multus = {
+            containers.multus = {
+              resources.requests.memory = "100Mi";
+              resources.limits.memory = "200Mi";
+            };
+            # The new common defaults this to false; the thick-plugin daemon
+            # needs its SA token to read NADs/pod annotations via the API.
+            pod.automountServiceAccountToken = true;
           };
         };
       };

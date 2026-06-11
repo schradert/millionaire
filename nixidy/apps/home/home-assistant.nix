@@ -147,7 +147,10 @@ in {
                 mini-media-player
                 multiple-entity-row
                 mushroom
-                navbar-card
+                # nixpkgs marks navbar-card linux-only, but it's plain
+                # npm-built JS and must evaluate on the darwin render host
+                # like its siblings
+                (navbar-card.overrideAttrs (o: {meta = o.meta // {platforms = lib.platforms.all;};}))
                 plotly-chart-card
                 restriction-card
                 sankey-chart

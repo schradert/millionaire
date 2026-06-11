@@ -31,7 +31,9 @@
       src = pkgs.fetchFromGitHub {
         owner = "cilium";
         repo = "cilium";
-        hash = "sha256-wswY4u2Z7Z8hvGVnLONxSD1Mu1RV1AglC4ijUHsCCW4=";
+        # rev tracks the chart's appVersion (below), so this hash must be
+        # re-pinned whenever nixhelm bumps cilium — 1.19.3 as of this lock.
+        hash = "sha256-DcDhBYowP755z7EQ45189GaFNnYAgfJb4rMLSFF113U=";
         rev = let
           chartJSON = pkgs.runCommand "Chart.json" {} "${pkgs.yq}/bin/yq -r '.' ${chart + "/Chart.yaml"} > $out";
         in

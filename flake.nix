@@ -15,6 +15,10 @@
       nixpkgs.follows = "nixpkgs";
       flake-parts.follows = "flake-parts";
     };
+    # Fallback: switch to release-26.05 if nixos-unstable jumps to 26.11pre
+    # before the next coordinated bump (home-manager below is pinned to
+    # release-26.05 and must stay paired with nixpkgs' version).
+    # nixpkgs.url = "github:nixos/nixpkgs/release-26.05";
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     devenv.url = "github:cachix/devenv";
     devenv-agents.url = "github:cachix/devenv-ai-agents";
@@ -26,14 +30,18 @@
 
     # Systems
     deploy-rs.url = "github:serokell/deploy-rs";
-    deploy-rs.inputs = {
-      flake-compat.follows = "flake-compat";
-      nixpkgs.follows = "nixpkgs";
-      utils.follows = "flake-utils";
-    };
+    # Deliberately NOT following our nixpkgs: deploy-rs is a self-contained
+    # Rust binary, and pinning it to our nixpkgs commit makes its activate-rs
+    # binary a cache miss everywhere (cache.nixos.org only caches the canonical
+    # upstream-pinned version). Letting deploy-rs use its own pinned nixpkgs
+    # means we get the prebuilt binary from cache, avoiding a ~10 min rustc
+    # bootstrap build on every fresh target (which has also been observed to
+    # exhaust sshd/nix-daemon resource limits mid-build and crash the deploy).
+    # The extra nixpkgs version costs a few hundred MB of disk on hosts that
+    # already deploy a lot — a fair trade for cache hits.
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
-    home-manager.url = "github:nix-community/home-manager";
+    home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     nix-darwin.url = "github:nix-darwin/nix-darwin";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
