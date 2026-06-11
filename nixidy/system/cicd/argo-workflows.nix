@@ -2,12 +2,18 @@
   inherit (config.canivete.meta) domain;
   hostname = "workflows.${domain}";
 in {
-  nixidy = {charts, lib, pkgs, ...}: {
+  nixidy = {
+    charts,
+    lib,
+    pkgs,
+    ...
+  }: {
     applications.argo-workflows-crds.namespace = "kube-system";
     canivete.crds.argo-workflows = {
       application = "argo-workflows-crds";
       install = true;
       prefix = "manifests/base/crds/minimal";
+      match = "argoproj\\.io_.*\\.yaml$"; # only the real CRD files, not kustomization.yaml
       src = pkgs.fetchFromGitHub {
         owner = "argoproj";
         repo = "argo-workflows";
@@ -66,6 +72,10 @@ in {
             };
           };
           controller = {
+            # RBAC-only: scopes the chart's per-namespace workflow Role (and
+            # avoids a duplicate Role render against the release namespace);
+            # the controller still watches cluster-wide.
+            workflowNamespaces = ["cicd"];
             persistence = {
               archive = true;
               postgresql = {
@@ -202,6 +212,15 @@ in {
             resources = ["rollouts"];
             verbs = ["get" "patch"];
           }
+          # The argo-workflows v4 executor (wait container) reports step
+          # results via WorkflowTaskResults; without this every workflow
+          # errors at runtime. The chart's own workflow Role only binds the
+          # default "argo-workflow" SA, which we don't use.
+          {
+            apiGroups = ["argoproj.io"];
+            resources = ["workflowtaskresults"];
+            verbs = ["create" "patch"];
+          }
         ];
         clusterRoleBindings.argo-workflows-ci = {
           roleRef = {
@@ -249,9 +268,24 @@ in {
             {
               name = "ci-pipeline";
               steps = [
-                [{name = "clone"; template = "clone";}]
-                [{name = "build-push"; template = "build-push";}]
-                [{name = "deploy"; template = "deploy";}]
+                [
+                  {
+                    name = "clone";
+                    template = "clone";
+                  }
+                ]
+                [
+                  {
+                    name = "build-push";
+                    template = "build-push";
+                  }
+                ]
+                [
+                  {
+                    name = "deploy";
+                    template = "deploy";
+                  }
+                ]
               ];
             }
             {
