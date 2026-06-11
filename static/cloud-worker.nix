@@ -4,9 +4,9 @@
 # runtime inputs are three small files delivered by Cluster API bootstrap
 # data (cloud-init user-data, see the capi-cluster PR) via write_files:
 #
-#   /run/cloud-worker/ts-authkey  — headscale pre-auth key (reusable+ephemeral)
-#   /run/cloud-worker/rke2-token  — RKE2 agent join token
-#   /run/cloud-worker/sirver-ip   — sirver's tailnet IPv4 (supervisor address)
+#   /var/lib/cloud-worker/ts-authkey  — headscale pre-auth key (reusable+ephemeral)
+#   /var/lib/cloud-worker/rke2-token  — RKE2 agent join token
+#   /var/lib/cloud-worker/sirver-ip   — sirver's tailnet IPv4 (supervisor address)
 #
 # Boot order: cloud-init writes the files -> tailscaled joins the tailnet ->
 # cloud-worker-rke2-config renders the runtime RKE2 drop-in (server URL from
@@ -71,14 +71,14 @@
   # canivete wires token-file to a sops secret path; this image has no age
   # key, so point at the cloud-init-delivered token instead (the mkForce also
   # keeps the discarded sops-path definition from evaluating).
-  canivete.kubernetes.yaml.token-file = lib.mkForce "/run/cloud-worker/rke2-token";
+  canivete.kubernetes.yaml.token-file = lib.mkForce "/var/lib/cloud-worker/rke2-token";
 
   # Tailnet membership: auth key comes from cloud-init, not sops. Workers
   # accept routes (they need every home node's pod /24 via table 52 — no LAN
   # conflict exists on a worker, unlike home nodes, so no supernet-route
   # workaround is needed here).
   tailnet.enable = true;
-  tailnet.authKeyFile = "/run/cloud-worker/ts-authkey";
+  tailnet.authKeyFile = "/var/lib/cloud-worker/ts-authkey";
   services.tailscale.extraUpFlags = ["--accept-routes"];
 
   # Render the runtime half of the RKE2 config once the tailnet is up.
@@ -94,7 +94,7 @@
     serviceConfig.RemainAfterExit = true;
     script = ''
       set -eu
-      d=/run/cloud-worker
+      d=/var/lib/cloud-worker
       for f in rke2-token sirver-ip; do
         [ -s "$d/$f" ] || { echo "missing $d/$f (cloud-init bootstrap data)" >&2; exit 1; }
       done
