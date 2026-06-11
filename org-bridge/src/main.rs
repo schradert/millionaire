@@ -39,8 +39,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state_db = state::StateDb::open(state_path)?;
 
     // Initialize CalDAV client
-    let caldav_client =
-        caldav::CalDavClient::new(&config.caldav_url, &config.caldav_username, &config.caldav_password);
+    let caldav_client = caldav::CalDavClient::new(
+        &config.caldav_url,
+        &config.caldav_username,
+        &config.caldav_password,
+    );
 
     // Initialize Syncthing client
     let syncthing_client =
@@ -96,11 +99,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     if let Some(path) = syncthing::extract_file_path(event) {
                         if syncthing::is_org_file(&path) {
-                            tracing::info!(
-                                "File changed: {} (event: {})",
-                                path,
-                                event.event_type
-                            );
+                            tracing::info!("File changed: {} (event: {})", path, event.event_type);
 
                             let file_path = org_dir.join(&path);
                             if file_path.exists() {
@@ -131,9 +130,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 match state_db.delete_file_entries(&path) {
                                     Ok(uids) => {
                                         for uid in &uids {
-                                            if let Err(e) =
-                                                caldav_client.delete_event(uid).await
-                                            {
+                                            if let Err(e) = caldav_client.delete_event(uid).await {
                                                 tracing::error!(
                                                     "Failed to delete CalDAV entry {}: {}",
                                                     uid,

@@ -2,3 +2,8 @@
 [default.extend-words]
 # nixos-facter (hardware detection tool), not a typo of "factor"/"faster"
 facter = "facter"
+# Eclipse Mosquitto (MQTT broker), not the insect
+mosquitto = "mosquitto"
+# Home Assistant (hass.* hostname, HASS env vars), not "hash"
+hass = "hass"
+HASS = "HASS"
