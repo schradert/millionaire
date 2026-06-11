@@ -95,8 +95,8 @@ in {
                   size = db.storageSize;
                 };
                 bootstrap.initdb = {
-                  database = db.database;
-                  owner = db.owner;
+                  inherit (db) database;
+                  inherit (db) owner;
                   postInitSQL =
                     (map (ext: "CREATE EXTENSION IF NOT EXISTS ${ext};") db.extensions)
                     ++ db.initSQL;
@@ -117,13 +117,13 @@ in {
                       };
                     };
                   };
-                  retentionPolicy = db.backup.retentionPolicy;
+                  inherit (db.backup) retentionPolicy;
                 };
                 monitoring.enablePodMonitor = db.monitoring;
                 postgresql.shared_preload_libraries = db.sharedPreloadLibraries;
               };
               scheduledBackups.${name}.spec = {
-                schedule = db.backup.schedule;
+                inherit (db.backup) schedule;
                 backupOwnerReference = "self";
                 cluster.name = name;
               };
@@ -131,7 +131,7 @@ in {
             (lib.mkIf db.pooler.enable {
               poolers.${name}.spec = {
                 cluster.name = name;
-                instances = db.pooler.instances;
+                inherit (db.pooler) instances;
                 type = "rw";
                 pgbouncer.poolMode = db.pooler.poolMode;
               };

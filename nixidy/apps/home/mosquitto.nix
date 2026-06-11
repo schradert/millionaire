@@ -2,7 +2,7 @@
 # in the home namespace connect via mosquitto.home.svc.cluster.local:1883.
 # Anonymous access is OK because the service is not exposed outside the cluster.
 # No gatus endpoint: raw MQTT doesn't speak HTTP.
-{...}: {
+_: {
   nixidy = {charts, ...}: let
     probe = {
       enabled = true;

@@ -1,4 +1,4 @@
-{...}: {
+_: {
   nixidy = {charts, ...}: {
     applications.flaresolverr = {
       namespace = "media";

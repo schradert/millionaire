@@ -1,4 +1,4 @@
-{...}: {
+_: {
   nixidy = {
     charts,
     lib,

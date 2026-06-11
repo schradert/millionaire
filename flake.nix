@@ -146,15 +146,9 @@
   outputs = inputs:
     inputs.canivete.lib.mkFlake {
       inherit inputs;
-      everything = [./options ./modules ./pulumi ./esp32-s3];
+      everything = [./options ./modules ./pulumi];
     } {
       imports = [./nixidy ./modules/images.nix];
-      devenv = {lib, ...}: {
-        git-hooks.hooks = {
-          lychee.toml.accept = [200 403 405 406];
-          no-commit-to-branch.enable = lib.mkForce false;
-        };
-      };
       canivete.meta = {
         domain = "trdos.me";
         root = "sirver";

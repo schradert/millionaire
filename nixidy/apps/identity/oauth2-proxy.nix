@@ -13,11 +13,9 @@ in {
     config,
     charts,
     lib,
-    pkgs,
     ...
   }: let
-    yaml = pkgs.formats.yaml {};
-    upstreams = config.oauth2Proxy.upstreams;
+    inherit (config.oauth2Proxy) upstreams;
     namespaces = lib.unique (lib.mapAttrsToList (_: cfg: cfg.namespace) upstreams);
     nginxConf = lib.concatStringsSep "\n" (
       [
@@ -45,16 +43,16 @@ in {
             proxy_set_header X-Auth-Request-Preferred-Username $http_x_forwarded_preferred_username;
             proxy_http_version 1.1;
             ${lib.optionalString cfg.websocket ''
-              proxy_set_header Upgrade $http_upgrade;
-              proxy_set_header Connection "upgrade";
-            ''}
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection "upgrade";
+        ''}
           }
         }
       '')
       upstreams
     );
   in {
-    options.oauth2Proxy.upstreams = can.attrs.submodule "Host-based upstream routes for oauth2-proxy" ({name, ...}: {
+    options.oauth2Proxy.upstreams = can.attrs.submodule "Host-based upstream routes for oauth2-proxy" (_: {
       options.url = can.str "Upstream service URL" {};
       options.namespace = can.str "Namespace where the HTTPRoute lives" {};
       options.websocket = can.bool "Enable WebSocket proxying" {default = false;};

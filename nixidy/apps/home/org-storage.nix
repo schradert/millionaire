@@ -1,5 +1,5 @@
-{...}: {
-  nixidy = {...}: {
+_: {
+  nixidy = _: {
     applications.org-storage = {
       namespace = "home";
       resources.persistentVolumeClaims.org-files.spec = {

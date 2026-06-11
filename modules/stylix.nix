@@ -3,7 +3,7 @@
     stylix.enable = true;
     stylix.base16Scheme = "${pkgs.base16-schemes}/share/themes/dracula.yaml";
   };
-  home = {...}: {
+  home = _: {
     gtk.gtk4.theme = null;
   };
   darwin = {flake, ...}: {

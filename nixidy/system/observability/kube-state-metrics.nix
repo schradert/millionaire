@@ -1,4 +1,4 @@
-{...}: {
+_: {
   nixidy = {lib, ...}: {
     applications.kube-state-metrics = {
       namespace = "observability";

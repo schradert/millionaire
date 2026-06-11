@@ -1,9 +1,15 @@
-{...}: {
-  nixidy = {lib, pkgs, ...}: {
+_: {
+  nixidy = {
+    lib,
+    pkgs,
+    ...
+  }: {
     applications.argo-events-crds.namespace = "kube-system";
     canivete.crds.argo-events = {
       application = "argo-events-crds";
       install = true;
+      # Exclude the kustomization.yaml that ships alongside the CRDs.
+      match = "argoproj\\.io_.+";
       prefix = "manifests/base/crds";
       src = pkgs.fetchFromGitHub {
         owner = "argoproj";

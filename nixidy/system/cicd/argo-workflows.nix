@@ -2,11 +2,18 @@
   inherit (config.canivete.meta) domain;
   hostname = "workflows.${domain}";
 in {
-  nixidy = {charts, lib, pkgs, ...}: {
+  nixidy = {
+    charts,
+    lib,
+    pkgs,
+    ...
+  }: {
     applications.argo-workflows-crds.namespace = "kube-system";
     canivete.crds.argo-workflows = {
       application = "argo-workflows-crds";
       install = true;
+      # Exclude the kustomization.yaml that ships alongside the CRDs.
+      match = "argoproj\\.io_.+";
       prefix = "manifests/base/crds/minimal";
       src = pkgs.fetchFromGitHub {
         owner = "argoproj";
@@ -66,6 +73,9 @@ in {
             };
           };
           controller = {
+            # Render workflow RBAC into the app namespace; the chart default
+            # ("default") conflicts with nixidy's namespace injection.
+            workflowNamespaces = ["cicd"];
             persistence = {
               archive = true;
               postgresql = {
@@ -249,9 +259,24 @@ in {
             {
               name = "ci-pipeline";
               steps = [
-                [{name = "clone"; template = "clone";}]
-                [{name = "build-push"; template = "build-push";}]
-                [{name = "deploy"; template = "deploy";}]
+                [
+                  {
+                    name = "clone";
+                    template = "clone";
+                  }
+                ]
+                [
+                  {
+                    name = "build-push";
+                    template = "build-push";
+                  }
+                ]
+                [
+                  {
+                    name = "deploy";
+                    template = "deploy";
+                  }
+                ]
               ];
             }
             {

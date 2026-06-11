@@ -156,8 +156,22 @@ in {
     bookmarks = [
       {
         "Developer" = [
-          {"GitHub" = [{icon = "github"; href = "https://github.com/schradert";}];}
-          {"Nixpkgs" = [{icon = "nixos"; href = "https://search.nixos.org/packages";}];}
+          {
+            "GitHub" = [
+              {
+                icon = "github";
+                href = "https://github.com/schradert";
+              }
+            ];
+          }
+          {
+            "Nixpkgs" = [
+              {
+                icon = "nixos";
+                href = "https://search.nixos.org/packages";
+              }
+            ];
+          }
         ];
       }
     ];
@@ -318,7 +332,10 @@ in {
       }
     '';
   in {
-    gatus.endpoints.homepage = {url = "https://${hostname}"; group = "internal";};
+    gatus.endpoints.homepage = {
+      url = "https://${hostname}";
+      group = "internal";
+    };
     applications.homepage = {
       namespace = "home";
       helm.releases.homepage = {
@@ -329,7 +346,10 @@ in {
               image.repository = "ghcr.io/gethomepage/homepage";
               image.tag = "v1.2.0";
               env.HOMEPAGE_ALLOWED_HOSTS = hostname;
-              ports = lib.toList {name = "http"; containerPort = 3000;};
+              ports = lib.toList {
+                name = "http";
+                containerPort = 3000;
+              };
               probes.liveness = {
                 enabled = true;
                 custom = true;
@@ -344,16 +364,19 @@ in {
               };
               probes.startup.enabled = true;
             };
-            pod.serviceAccountName = "homepage";
+            serviceAccount.identifier = "homepage";
           };
           service.homepage.ports.http.port = 3000;
-          serviceAccount.homepage.create = true;
+          serviceAccount.homepage.enabled = true;
           configMaps.homepage.data = {
             "settings.yaml" = toYAML "settings.yaml" settings;
             "services.yaml" = toYAML "services.yaml" services;
             "widgets.yaml" = toYAML "widgets.yaml" widgets;
             "bookmarks.yaml" = toYAML "bookmarks.yaml" bookmarks;
-            "kubernetes.yaml" = toYAML "kubernetes.yaml" {mode = "cluster"; gateway = true;};
+            "kubernetes.yaml" = toYAML "kubernetes.yaml" {
+              mode = "cluster";
+              gateway = true;
+            };
             "custom.css" = draculaCSS;
             "custom.js" = "";
             "docker.yaml" = "";
@@ -367,10 +390,26 @@ in {
       };
 
       resources.clusterRoles.homepage-discovery.rules = [
-        {apiGroups = [""]; resources = ["namespaces" "pods" "nodes"]; verbs = ["get" "list"];}
-        {apiGroups = ["networking.k8s.io"]; resources = ["ingresses"]; verbs = ["get" "list"];}
-        {apiGroups = ["gateway.networking.k8s.io"]; resources = ["httproutes" "gateways"]; verbs = ["get" "list"];}
-        {apiGroups = ["metrics.k8s.io"]; resources = ["nodes" "pods"]; verbs = ["get" "list"];}
+        {
+          apiGroups = [""];
+          resources = ["namespaces" "pods" "nodes"];
+          verbs = ["get" "list"];
+        }
+        {
+          apiGroups = ["networking.k8s.io"];
+          resources = ["ingresses"];
+          verbs = ["get" "list"];
+        }
+        {
+          apiGroups = ["gateway.networking.k8s.io"];
+          resources = ["httproutes" "gateways"];
+          verbs = ["get" "list"];
+        }
+        {
+          apiGroups = ["metrics.k8s.io"];
+          resources = ["nodes" "pods"];
+          verbs = ["get" "list"];
+        }
       ];
       resources.clusterRoleBindings.homepage-discovery = {
         roleRef = {

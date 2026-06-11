@@ -1,5 +1,5 @@
-{...}: {
-  nixidy = {...}: {
+_: {
+  nixidy = _: {
     applications.media-storage = {
       namespace = "media";
       resources.persistentVolumeClaims = let

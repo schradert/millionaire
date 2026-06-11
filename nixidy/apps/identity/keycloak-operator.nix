@@ -104,7 +104,7 @@ in {
         realmRef.name = "default";
         definition = {
           username = people.me;
-          email = people.my.profiles.personal.email;
+          inherit (people.my.profiles.personal) email;
           emailVerified = true;
           enabled = true;
           groups = ["admin" "family"];

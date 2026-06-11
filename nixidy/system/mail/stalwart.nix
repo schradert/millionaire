@@ -83,108 +83,93 @@ in {
               ];
             };
           };
-          configMaps.stalwart.data."config.toml" = builtins.readFile ((pkgs.formats.toml {}).generate "stalwart.toml" {
-            # Keys matching these patterns are authoritative from TOML, not overridden by RocksDB defaults
-            config.local-keys = [
-              "store.*"
-              "storage.*"
-              "server.*"
-              "directory.*"
-              "authentication.fallback-admin.*"
-              "tracer.*"
-              "metrics.prometheus.*"
-              "session.*"
-              "queue.*"
-              "config.local-keys.*"
-            ];
+          configMaps.stalwart.data."config.toml" =
+            builtins.readFile ((pkgs.formats.toml {}).generate "stalwart.toml" {
+              # Keys matching these patterns are authoritative from TOML, not overridden by RocksDB defaults
+              config.local-keys = [
+                "store.*"
+                "storage.*"
+                "server.*"
+                "directory.*"
+                "authentication.fallback-admin.*"
+                "tracer.*"
+                "metrics.prometheus.*"
+                "session.*"
+                "queue.*"
+                "config.local-keys.*"
+              ];
 
-            server.listener = {
-              smtp = {
+              server.listener = {
+                smtp = {
+                  protocol = "smtp";
+                  bind = ["[::]:${toString ports.smtp}"];
+                };
+                management = {
+                  protocol = "http";
+                  bind = ["[::]:${toString ports.http}"];
+                };
+              };
+
+              store.rocksdb = {
+                type = "rocksdb";
+                path = "/data";
+                compression = "lz4";
+              };
+              directory.internal = {
+                type = "internal";
+                store = "rocksdb";
+              };
+              storage = {
+                data = "rocksdb";
+                fts = "rocksdb";
+                blob = "rocksdb";
+                lookup = "rocksdb";
+                directory = "internal";
+              };
+
+              tracer.stdout = {
+                enable = true;
+                type = "stdout";
+                level = "info";
+                ansi = false;
+              };
+              authentication.fallback-admin = {
+                user = "admin";
+                secret = "%{env:ADMIN_SECRET}%";
+              };
+              metrics.prometheus.enable = true;
+              session.rcpt.relay = true;
+
+              queue.strategy.route = "'relay'";
+              queue.route.relay = {
+                type = "relay";
+                address = "smtp.protonmail.ch";
+                port = 587;
                 protocol = "smtp";
-                bind = ["[::]:${toString ports.smtp}"];
+                tls.implicit = false;
+                tls.allow-invalid-certs = false;
+                auth.username = "noreply@${domain}";
+                auth.secret = "%{env:SMTP_TOKEN}%";
               };
-              management = {
-                protocol = "http";
-                bind = ["[::]:${toString ports.http}"];
-              };
-            };
-
-            store.rocksdb = {
-              type = "rocksdb";
-              path = "/data";
-              compression = "lz4";
-            };
-            directory.internal = {
-              type = "internal";
-              store = "rocksdb";
-            };
-            storage = {
-              data = "rocksdb";
-              fts = "rocksdb";
-              blob = "rocksdb";
-              lookup = "rocksdb";
-              directory = "internal";
-            };
-
-            tracer.stdout = {
-              enable = true;
-              type = "stdout";
-              level = "info";
-              ansi = false;
-            };
-            authentication.fallback-admin = {
-              user = "admin";
-              secret = "%{env:ADMIN_SECRET}%";
-            };
-            metrics.prometheus.enable = true;
-            session.rcpt.relay = true;
-
-            queue.strategy.route = "'relay'";
-            queue.route.relay = {
-              type = "relay";
-              address = "smtp.protonmail.ch";
-              port = 587;
-              protocol = "smtp";
-              tls.implicit = false;
-              tls.allow-invalid-certs = false;
-              auth.username = "noreply@${domain}";
-              auth.secret = "%{env:SMTP_TOKEN}%";
-            };
-            # Trailing newline required to avoid Stalwart "Unexpected EOF" parse error.
-          }) + "\n";
+              # Trailing newline required to avoid Stalwart "Unexpected EOF" parse error.
+            })
+            + "\n";
         };
       };
-      resources = {
-        externalSecrets.stalwart.spec.data = [
-          {
-            secretKey = "SMTP_TOKEN";
-            remoteRef.key = "stalwart/smtp/token";
-            sourceRef.storeRef.name = "bitwarden";
-            sourceRef.storeRef.kind = "ClusterSecretStore";
-          }
-          {
-            secretKey = "ADMIN_SECRET";
-            remoteRef.key = "stalwart/admin/password";
-            sourceRef.storeRef.name = "bitwarden";
-            sourceRef.storeRef.kind = "ClusterSecretStore";
-          }
-        ];
-        httpRoutes.stalwart.spec = {
-          hostnames = [hostname];
-          parentRefs = lib.toList {
-            name = "internal";
-            namespace = "kube-system";
-            sectionName = "https";
-          };
-          rules = lib.toList {
-            backendRefs = lib.toList {
-              name = "oathkeeper-proxy";
-              namespace = "identity";
-              port = 4455;
-            };
-          };
-        };
-      };
+      resources.externalSecrets.stalwart.spec.data = [
+        {
+          secretKey = "SMTP_TOKEN";
+          remoteRef.key = "stalwart/smtp/token";
+          sourceRef.storeRef.name = "bitwarden";
+          sourceRef.storeRef.kind = "ClusterSecretStore";
+        }
+        {
+          secretKey = "ADMIN_SECRET";
+          remoteRef.key = "stalwart/admin/password";
+          sourceRef.storeRef.name = "bitwarden";
+          sourceRef.storeRef.kind = "ClusterSecretStore";
+        }
+      ];
     };
   };
 }

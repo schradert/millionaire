@@ -1,4 +1,4 @@
-{...}: {
+_: {
   nixidy = {lib, ...}: {
     applications.descheduler = {
       namespace = "cicd";
