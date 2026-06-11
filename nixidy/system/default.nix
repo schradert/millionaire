@@ -6,6 +6,7 @@
     ./cicd/argo-workflows.nix
     ./ai
     ./cicd/argocd.nix
+    ./cicd/capi-cluster.nix
     ./cicd/capi-operator.nix
     ./cicd/descheduler.nix
     ./cicd/harbor.nix
