@@ -1,0 +1,19 @@
+# AVR is a Tier 3 target. Recent Rust nightly accepts `avr-none` as a
+# built-in triple (no custom JSON spec needed). Adapted from
+# https://github.com/Rahix/avr-hal-template
+
+[build]
+target = "avr-none"
+rustflags = ["-C", "target-cpu={{target_cpu}}"]
+
+[target.'cfg(target_arch = "avr")']
+runner = "ravedude"
+
+[env]
+# ravedude reads these to know which board + serial port to flash.
+RAVEDUDE_BOARD = "{{ravedude_board}}"
+RAVEDUDE_PORT  = "{{port}}"
+
+[unstable]
+build-std        = ["core"]
+build-std-features = ["panic_immediate_abort"]

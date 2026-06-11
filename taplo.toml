@@ -1,0 +1,6 @@
+# taplo (TOML) config. Only purpose: keep taplo from trying to parse the
+# embedded cargo-generate templates, whose .toml files contain Liquid syntax
+# ({{ }}, {% %}) and are therefore not valid TOML. The git-hooks `taplo` hook
+# runs from the repo root, so this root-level config is what it discovers.
+# (Formatting/lint rules stay at taplo defaults — this only adds an exclude.)
+exclude = ["embedded/templates/**"]

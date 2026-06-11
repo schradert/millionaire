@@ -1,0 +1,21 @@
+# cargo-generate prompts for a new ESP32 board crate.
+#
+# Driven by `new-board` (which also adds the crate to `members` in the root
+# Cargo.toml). Mirrors the existing boards/esp32-c3 + boards/esp32-s3 crates.
+#
+# Only the two ESP variants we actually run are offered. Other ESP families
+# (C6, S2, H2, P4, …) need their own target triple wired into
+# `.cargo/config.toml` — start from this and edit the triple/token.
+[template]
+cargo_generate_version = ">=0.20.0"
+
+[placeholders.mcu]
+type    = "string"
+prompt  = "ESP32 variant"
+choices = ["esp32-c3", "esp32-s3"]
+default = "esp32-c3"
+
+[placeholders.app]
+type    = "string"
+prompt  = "App crate to run (without the homelab- prefix)"
+default = "hello-world"

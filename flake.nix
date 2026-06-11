@@ -286,6 +286,12 @@
           };
         };
 
+        # x86_64-linux box that hosts all the USB-connected microcontrollers.
+        # Each profile flashes one physical board (see ./static/falcon.nix).
+        # `deploy '.#falcon'` flashes everything reachable; `deploy '.#falcon.<board>'`
+        # flashes one. Disconnected boards print a "skipping" line and exit 0.
+        falcon = import ./static/falcon.nix;
+
         voron = {
           canivete.system = "aarch64-linux";
           profiles.system = {config, ...}: {
