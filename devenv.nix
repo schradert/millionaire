@@ -106,6 +106,9 @@ in {
           # also skipped; acceptable since interpolation artifacts are far more
           # common here than typos.
           "^https?://[^./]+(:[0-9]+)?(/.*)?$"
+          # Loopback proxy targets in NixOS configs (nginx proxyPass etc.)
+          # are wiring, not links — unreachable from the dev machine.
+          "^https?://127\\.0\\.0\\.1"
           "https://kubernetes-sigs.github.io/descheduler"
           "https://api.bitwarden.com"
           "https://identity.bitwarden.com"
@@ -116,6 +119,10 @@ in {
         # is an invalid pattern ("repeat of a repeat") and the hook runner
         # refuses to parse the whole config, blocking every commit in the repo.
         ruff.excludes = ["pulumi/sdks/"];
+        # ty cannot model pulumi's Input/Output unions — Output[str] passed to
+        # typed SDK params and `.apply(str.strip)` against the overload union
+        # produce dozens of false positives on idiomatic resource declarations.
+        ty.excludes = ["pulumi/"];
         # statix walks the whole tree, so pre-existing findings anywhere block
         # every commit. Keep the hook, but disable the two codes the existing
         # codebase trips tree-wide (empty_pattern ×41, manual_inherit_from ×6)

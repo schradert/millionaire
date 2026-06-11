@@ -149,6 +149,14 @@
       everything = [./options ./modules ./pulumi];
     } {
       imports = [./nixidy ./modules/images.nix];
+
+      # Hetzner Cloud golden image — minimal BIOS-bootable NixOS, standalone
+      # from the canivete node machinery (see static/hetzner-image.nix).
+      flake.nixosConfigurations.hetzner-image = inputs.nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [./static/hetzner-image.nix];
+      };
+
       canivete.meta = {
         domain = "trdos.me";
         root = "sirver";
@@ -283,6 +291,17 @@
           profiles.system.canivete.configuration = {
             imports = [./static/facter ./static/server.nix];
             disko.devices.disk.root.device = "/dev/disk/by-id/ata-MTFDDAK256TBN-1AR1ZABHA_UGXVK01J7BDCER";
+          };
+        };
+
+        # Hetzner cx33 VPS — headscale + AdGuard Home outside the cluster.
+        # SSH hostname is overridden at deploy time via --hostname (the IP from
+        # pulumi); networking.hostName stays "hyena".
+        hyena = {
+          remoteBuild = true;
+          profiles.system.canivete.configuration = {
+            imports = [./static/hyena.nix];
+            disko.devices.disk.root.device = "/dev/sda";
           };
         };
 

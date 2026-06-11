@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pathlib
 import shlex
-import time
 import typing
 
 import pulumi
@@ -113,6 +112,7 @@ class NixOS:
         name: str,
         target: str | pulumi.Output[str],
         *flags: str,
+        deploy_hostname: str | pulumi.Output[str] | None = None,
         depends_on: list[pulumi.Resource] | None = None,
     ):
         nixos_anywhere = Nix.bin(
@@ -135,7 +135,10 @@ class NixOS:
                 chmod 600 "$DECRYPTED"
 
                 NA="{nixos_anywhere}"
-                NA_ARGS=(--extra-files "$EXTRA_DIR" --flake "{Nix.root}#{name}" {" ".join(flags)})
+                # --build-on remote: have the target machine build its own closure.
+                # The local linux-builder VM only has 3GB and was OOMing on big closures;
+                # remote-build avoids the VM bottleneck entirely.
+                NA_ARGS=(--extra-files "$EXTRA_DIR" --build-on remote --flake "{Nix.root}#{name}" {" ".join(flags)})
 
                 # Phase 1: kexec into the NixOS installer
                 "$NA" "${{NA_ARGS[@]}}" --phases kexec {resolved_target}
@@ -156,18 +159,45 @@ class NixOS:
             else _make_install_cmd(target)
         )
 
+        # Install runs once. Re-running on a live NixOS box would kexec it
+        # back to the installer — ignore_changes makes any drift a no-op.
         self.command = command.local.Command(
             f"nixos-{name}-install",
-            # FIXME prevent retriggering!
             create=create_cmd,
-            opts=pulumi.ResourceOptions(depends_on=depends_on or []),
+            opts=pulumi.ResourceOptions(
+                depends_on=depends_on or [],
+                ignore_changes=["create"],
+            ),
         )
 
+        # Deploy replaces iff the rendered system toplevel changes — `triggers`
+        # is the sole signal; `create` is ignored to prevent store-path drift
+        # in deploy-rs from forcing replacements.
+        toplevel = (
+            Nix.attr(f"nixosConfigurations.{name}.config.system.build.toplevel.outPath")
+            .impure()
+            .value()
+            .strip()
+        )
+        # TODO re-enable rollback once RKE2 restart handling is fixed
+        # RKE2 transiently fails on config switch (port conflicts), triggering rollback loops
+        deploy_bin = Nix.bin(
+            f"canivete.inputs.deploy-rs.packages.{Nix.system()}.default"
+        )
+        deploy_base = f"{deploy_bin} .#{name}.system --remote-build --skip-checks --auto-rollback false --magic-rollback false"
+        deploy_cmd = (
+            pulumi.Output.from_input(deploy_hostname).apply(
+                lambda h: f"{deploy_base} --hostname {h}"
+            )
+            if deploy_hostname is not None
+            else deploy_base
+        )
         self.refresh = command.local.Command(
             f"nixos-{name}-deploy",
-            triggers=[Nix.attr(f"nixosConfigurations.{name}.config.system.build.toplevel.outPath").impure().value()],
-            # TODO re-enable rollback once RKE2 restart handling is fixed
-            # RKE2 transiently fails on config switch (port conflicts), triggering rollback loops
-            create=f"{Nix.bin(f'canivete.inputs.deploy-rs.packages.{Nix.system()}.default')} .#{name}.system --skip-checks --auto-rollback false --magic-rollback false",
-            opts=pulumi.ResourceOptions(depends_on=[self.command]),
+            triggers=[toplevel],
+            create=deploy_cmd,
+            opts=pulumi.ResourceOptions(
+                depends_on=[self.command],
+                ignore_changes=["create"],
+            ),
         )
