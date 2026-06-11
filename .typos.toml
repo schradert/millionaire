@@ -1,0 +1,4 @@
+# Config for the `typos` git hook.
+[default.extend-words]
+# nixos-facter (hardware detection tool), not a typo of "factor"/"faster"
+facter = "facter"
