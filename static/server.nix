@@ -32,6 +32,14 @@
   roles.nix-remote-builder.schedulerPublicKeys = [flake.config.canivete.meta.people.my.profiles.personal.sshPubKey];
   # TODO use 9345 supervisor port upstream for RKE2
   canivete.kubernetes.yaml.server = lib.mkForce "https://sirver:9345";
+  # kubelet copies the node's resolv.conf search domains into pods, so tailscale's
+  # ts.trdos.me collides with CoreDNS's *.trdos.me wildcard (coredns.nix) and pods
+  # resolve external names to the gateway VIP. Give kubelet a tailnet-search-free resolv.conf.
+  environment.etc."rke2-resolv.conf".text = ''
+    nameserver 1.1.1.1
+    nameserver 1.0.0.1
+  '';
+  canivete.kubernetes.yaml.kubelet-arg = ["resolv-conf=/etc/rke2-resolv.conf"];
   # TODO should this be a default?
   # Allows nodes to reach others on the same network by names like `sirver`, etc.
   services.resolved.settings.Resolve.ResolveUnicastSingleLabel = true;
