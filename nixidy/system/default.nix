@@ -6,9 +6,17 @@
     ./cicd/argo-workflows.nix
     ./ai
     ./cicd/argocd.nix
-    ./cicd/capi-cluster.nix
-    ./cicd/capi-operator.nix
-    ./cicd/cluster-autoscaler.nix
+    # STAGED — cloud-burst CAPI autoscaling. The modules are complete and
+    # render, but activating them needs prerequisites NOT yet done: a
+    # dedicated Hetzner "millionaire-capi" project + token (pulumi config
+    # set --secret hcloudCapiToken), the cloud-worker snapshot uploaded, and
+    # a cross-site datapath spike. Deploying them now would stand up CAPI
+    # controllers that can't provision (no token/image) and is untested infra.
+    # Uncomment all three together once the prerequisites are met + tested
+    # (see docs/cloud-burst.md and project_cloud_burst_capi memory).
+    # ./cicd/capi-cluster.nix
+    # ./cicd/capi-operator.nix
+    # ./cicd/cluster-autoscaler.nix
     ./cicd/descheduler.nix
     ./cicd/harbor.nix
     ./cicd/reloader.nix

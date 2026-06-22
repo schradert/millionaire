@@ -25,12 +25,16 @@
             env = [
               {
                 name = "ADGUARD_URL";
-                # AdGuard Home on hyena VPS — tailnet-only.
-                # TODO: no reachability path exists for this name yet. Once
-                # hyena is live, either add a tailscale-operator egress
-                # Service named "hyena" (tailscale.com/tailnet-ip annotation;
-                # MagicDNS is off) or point this at hyena's tailnet IP.
-                value = "http://hyena:3000";
+                # AdGuard Home on hyena VPS, reached over the tailnet. The
+                # single-label `hyena` only resolved by accident via the
+                # leaked ts.trdos.me MagicDNS search domain (removed by the
+                # kubelet resolv-conf fix in static/server.nix), so address
+                # hyena by its stable headscale-assigned tailnet IP. Pods
+                # reach it now that the cluster nodes are on the tailnet
+                # (verified: curl http://100.64.0.1:3000 → 302 from a pod).
+                # TODO(cleaner): a tailscale-operator egress Service named
+                # "hyena" would let this stay a name instead of an IP.
+                value = "http://100.64.0.1:3000";
               }
               {
                 name = "ADGUARD_USER";
