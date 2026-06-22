@@ -76,6 +76,10 @@ class Millionaire:
             location="nbg1",
             ssh_keys=[ssh_key.id],
             firewall_ids=[hyena_firewall.id],
+            # The live VM was rebuilt onto the golden BIOS snapshot (image id
+            # 396270192) 2026-06-11; `image` only matters at creation, so ignore
+            # its drift rather than let an untargeted `up` rebuild headscale's host.
+            opts=pulumi.ResourceOptions(ignore_changes=["image"]),
         )
         # AdGuard admin password — bcrypt hash must be in SOPS before hyena
         # deploys, so its sops-templated AdGuardHome.yaml renders correctly.
