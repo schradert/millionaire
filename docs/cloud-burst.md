@@ -17,11 +17,18 @@ fabric).
 
 ## One-time prerequisites
 
-1. Create the **millionaire-capi** Hetzner project in the console (projects
-   have no create API), generate an API token, then:
-   `pulumi config set --secret hcloudCapiToken <token>`
-2. Merge order: the nixidy switch requires main to render — PR #32's
-   app-template fixes must land before the capi PRs are switch-applied.
+1. CAPH reuses the **existing `dotfiles` hcloud project** (same as hyena) and
+   the existing `hcloud/token` in Bitwarden — **no new project or token to
+   create.** Just build + upload the worker snapshot to it:
+   `pulumi config set millionaire:uploadCloudWorkerImage true && (cd pulumi && pulumi up)`
+   — TODO(blast-radius): this RW token can reach hyena in principle; CAPH only
+   deletes its own HCloudMachine-backed servers so it won't, but for true
+   least-privilege isolation move to a dedicated `millionaire-capi` project +
+   token later (Hetzner tokens are project-scoped RW only). See the matching
+   notes in `pulumi/__main__.py` and `nixidy/system/cicd/capi-cluster.nix`.
+2. Uncomment the 3 CAPI apps in `nixidy/system/default.nix`.
+3. Merge order: the nixidy switch requires main to render — PR #32's
+   app-template fixes must land before the capi apps are switch-applied.
 
 ## Phase rollout (each independently verifiable)
 
