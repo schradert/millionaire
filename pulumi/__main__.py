@@ -28,6 +28,10 @@ class Millionaire:
         # by the time other consumers (e.g. the K8s tailscale-operator) need it.
         ssh_key = hcloud.SshKey(
             "millionaire",
+            # Pin the hcloud key name (was auto-suffixed "millionaire-0c6e13f")
+            # so CAPH can reference it by a stable name. hyena uses it by ID,
+            # so the in-place rename on next `pulumi up` is safe.
+            name="millionaire",
             public_key="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFBq/GWgq0+wAbRS53AqDdgXhyqpQtvcwlsPEguTPzL9 tristan@millionaire",
         )
         hyena_firewall = hcloud.Firewall(
@@ -225,28 +229,23 @@ class Millionaire:
         )
 
         # --- Cloud-burst worker snapshot (CAPI machine image) ---
-        # Requires a DEDICATED hcloud project ("millionaire-capi") so the CAPI
-        # token can never touch hyena. Hetzner projects cannot be created via
-        # API: create the project in the console once, generate a token, then
-        #   pulumi config set --secret hcloudCapiToken <token>
-        # Everything downstream is automated. Snapshots are project-scoped, so
-        # the image upload must use this same token.
-        capi_token = pulumi.Config().get_secret("hcloudCapiToken")
-        if capi_token is not None:
-            Secret(
-                "hetzner/api-token/capi",
-                capi_token,
-                "Hetzner millionaire-capi project token (CAPH + image upload)",
-            )
-            # SSH key registered in the capi project — referenced by
-            # HetznerCluster.spec.sshKeys for rescue/debug access to workers.
-            capi_provider = hcloud.Provider("hcloud-capi", token=capi_token)
-            hcloud.SshKey(
-                "millionaire-capi",
-                name="millionaire-capi",
-                public_key="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFBq/GWgq0+wAbRS53AqDdgXhyqpQtvcwlsPEguTPzL9 tristan@millionaire",
-                opts=pulumi.ResourceOptions(provider=capi_provider),
-            )
+        # Lives in the SAME hcloud project as hyena (the default "dotfiles"
+        # project); CAPH reuses the existing `hcloud/token` (BWS) and the
+        # existing "millionaire" SSH key above — no separate project/token.
+        #
+        # TODO(blast-radius): the shared project means CAPH's read+write token
+        # can, in theory, also reach hyena (the headscale host). In practice
+        # CAPH only ever deletes servers backed by its own HCloudMachine CRs,
+        # so it won't touch hyena even on a buggy reconcile — the real exposure
+        # is a token leak. Hetzner Cloud tokens are scoped per-PROJECT with
+        # Read or Read+Write only (no per-resource scoping), so genuine
+        # least-privilege isolation = a dedicated "millionaire-capi" project
+        # with its own RW token (was the original design). Revisit if/when
+        # that isolation is worth the extra project + manual setup.
+        #
+        # Opt-in: building + uploading the worker image is heavy, so gate it
+        # behind `pulumi config set millionaire:uploadCloudWorkerImage true`.
+        if pulumi.Config().get_bool("uploadCloudWorkerImage"):
             cloud_worker_toplevel = (
                 millionaire.Nix.attr(
                     "nixosConfigurations.cloud-worker.config.system.build.toplevel.outPath"
@@ -259,6 +258,8 @@ class Millionaire:
             # change rebuilds + re-uploads. CAPH matches snapshots by the
             # caph-image-name label and errors on ambiguity — delete stale
             # snapshots carrying the label before uploading the new one.
+            # Inherits the ambient HCLOUD_TOKEN (devenv sources it from BWS
+            # hcloud/token = the dotfiles project), same project as hyena.
             command.local.Command(
                 "cloud_worker_snapshot",
                 create=(
@@ -269,7 +270,6 @@ class Millionaire:
                     'hcloud-upload-image upload --architecture x86 --image-path "$IMG/nixos.img" '
                     "--labels caph-image-name=cloud-worker --description cloud-worker"
                 ),
-                environment={"HCLOUD_TOKEN": capi_token},
                 triggers=[cloud_worker_toplevel],
             )
 

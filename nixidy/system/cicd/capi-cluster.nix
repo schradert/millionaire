@@ -63,13 +63,23 @@
 
       resources = {
         # --- Secrets from Bitwarden ---
+        # CAPH reuses the shared `dotfiles` project token (same project as
+        # hyena) — the existing hcloud/token in BWS, not a dedicated capi
+        # token. TODO(blast-radius): a read+write token on the shared project
+        # can in theory reach hyena (the headscale host). CAPH only deletes
+        # servers backed by its own HCloudMachine CRs, so it won't touch hyena
+        # even on a buggy reconcile; the real exposure is a token leak.
+        # Hetzner tokens are scoped per-PROJECT (Read or Read+Write only — no
+        # per-resource scoping), so true least-privilege = a dedicated
+        # "millionaire-capi" project + its own RW token. Revisit if isolation
+        # is worth the extra project. (pulumi/__main__.py mirrors this note.)
         externalSecrets.capi-hetzner.spec = {
           secretStoreRef.name = "bitwarden";
           secretStoreRef.kind = "ClusterSecretStore";
           target.name = "hetzner";
           data = lib.toList {
             secretKey = "hcloud";
-            remoteRef.key = "hetzner/api-token/capi";
+            remoteRef.key = "hcloud/token";
           };
         };
         # CAPI bootstrap data: a complete cloud-init document. Workers consume
@@ -274,7 +284,9 @@
               name = "hetzner";
               key.hcloudToken = "hcloud";
             };
-            sshKeys.hcloud = lib.toList {name = "millionaire-capi";};
+            # Reuse the existing "millionaire" SSH key (already registered in
+            # the dotfiles project for hyena) — no separate capi key.
+            sshKeys.hcloud = lib.toList {name = "millionaire";};
           };
         };
 
