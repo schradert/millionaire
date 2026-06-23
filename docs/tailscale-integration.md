@@ -1,5 +1,15 @@
 # Tailscale Integration for Multi-Cluster (Phase 2)
 
+> **Status (2026-06): aspirational / future — not built.** This is the original
+> planning sketch for connecting to a second (Tokyo) cluster, which has not been
+> implemented. What was actually built on the tailnet is different and documented
+> elsewhere: cloud-burst autoscaling ([`cloud-burst.md`](cloud-burst.md)) and
+> AdGuard DNS + internal services over the tailnet
+> ([`internal-services-over-tailnet.md`](internal-services-over-tailnet.md)).
+> Also note the specifics below are stale — e.g. Cilium's pod pool is
+> `10.0.0.0/8` (its `ipv4NativeRoutingCIDR`), **not** the `10.42.0.0/16` used
+> below (that's the vestigial RKE2 `Node.podCIDR`). Treat this as a sketch.
+
 ## Current State (Phase 1 ✅)
 
 Your cluster uses:
