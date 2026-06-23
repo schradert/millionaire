@@ -48,7 +48,12 @@ in {
         if cfg.authKeyFile != ""
         then cfg.authKeyFile
         else config.sops.secrets.tailscale-authkey.path;
-      extraUpFlags = ["--login-server=https://headscale.${domain}"];
+      # --accept-dns=false: cluster nodes must NOT adopt the tailnet's pushed
+      # resolver (AdGuard at 100.64.0.1, set in hyena.nix headscale dns). Routing
+      # node + CoreDNS-upstream resolution through a remote VPS over the tailnet
+      # would couple cluster DNS to hyena's availability, and a pushed search
+      # domain is what hijacked pod DNS before. Client devices still get AdGuard.
+      extraUpFlags = ["--login-server=https://headscale.${domain}" "--accept-dns=false"];
       useRoutingFeatures = "server";
     };
     sops.secrets = lib.mkIf (cfg.authKeyFile == "") {
