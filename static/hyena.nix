@@ -108,9 +108,15 @@ in {
         }
       ];
       tagOwners."tag:cluster" = ["default@"];
-      # Cluster nodes advertise their per-node pod /24s (tailnet.nix);
-      # auto-approve so CAPI worker scale-ups never wait on a human.
-      autoApprovers.routes."10.42.0.0/16" = ["tag:cluster"];
+      # Auto-approve advertised subnet routes so cross-site routing never waits on
+      # a human. Cluster nodes register under user `default` (untagged); future
+      # CAPI workers register tagged `tag:cluster` — cover both. Pods come from
+      # Cilium's pool (ipv4NativeRoutingCIDR 10.0.0.0/8), NOT the vestigial RKE2
+      # Node.podCIDR (10.42/16); that mismatch left the advertised /24s unapproved.
+      autoApprovers.routes = {
+        "10.0.0.0/8" = ["tag:cluster" "default@"]; # Cilium pod /24s
+        "192.168.50.241/32" = ["tag:cluster" "default@"]; # internal gateway VIP (off-LAN access)
+      };
     });
   };
 

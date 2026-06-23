@@ -83,7 +83,10 @@ in {
           sleep 10
         done
         [ -n "$cidr" ] || { echo "no cilium_host pod CIDR after 20m" >&2; exit 1; }
-        tailscale set --advertise-routes="$cidr"
+        # Advertise this node's pod /24 plus the internal-gateway VIP (192.168.50.241)
+        # so off-LAN tailnet clients can reach cluster-hosted internal services.
+        # headscale auto-approves both (hyena.nix autoApprovers).
+        tailscale set --advertise-routes="$cidr,192.168.50.241/32"
         ${lib.optionalString cfg.podSupernetRoute "ip route replace ${cfg.podSupernet} dev tailscale0"}
       '';
     };
