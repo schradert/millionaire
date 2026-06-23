@@ -16,16 +16,15 @@ in {
 
   networking.hostName = "hyena";
 
-  # Hetzner x86 VMs boot legacy BIOS only — the fleet default
-  # (systemd-boot + ESP, via srvos) can never boot here. GRUB with MBR
-  # boot code matches the golden image (static/hetzner-image.nix).
-  # KNOWN GAP (tracked by the in-flight disko-image work): the fleet
-  # disko layout inherited via vps.nix still describes GPT+ESP+ZFS,
-  # which does not match the image's MBR+ext4 disk; deploy-rs switches
-  # against an image-booted hyena need the disko layout aligned (or the
-  # image built from this very config via system.build.diskoImages)
-  # before the first switch is safe across a reboot. The same flow must
-  # deliver the sops age key before secrets render.
+  # Hetzner x86 VMs boot legacy BIOS only — the fleet default (systemd-boot +
+  # ESP, via srvos) can never boot here, so force GRUB. The live host is
+  # GPT + ESP + ZFS (BIOS-boot partition + GRUB on /dev/sda), matching the disko
+  # layout from vps.nix. Verified 2026-06-22 that the flake config generates this
+  # exact fileSystems + bootloader (root = root/system/root zfs, /boot vfat) and
+  # the sops age key is present, so deploy-rs switches against hyena are
+  # reboot-safe. (An earlier note here claimed an MBR+ext4 golden image that was
+  # undeployable until a disko-image alignment — stale; hyena is already on the
+  # aligned ZFS layout.)
   boot.loader.systemd-boot.enable = lib.mkForce false;
   boot.loader.efi.canTouchEfiVariables = lib.mkForce false;
   boot.loader.grub = {
@@ -81,9 +80,16 @@ in {
         region_name = "Hyena DERP";
         stun_listen_addr = "0.0.0.0:3478";
       };
+      # Push AdGuard (hyena's tailnet IP) to tailnet CLIENTS as their resolver —
+      # ad-blocking + internal *.trdos.me names for laptop/PC/mobile. magic_dns
+      # stays false so no base_domain search domain is pushed (that search-domain
+      # leak is what hijacked pod DNS before). Cluster nodes opt out via
+      # --accept-dns=false (static/tailnet.nix) so their resolution never routes
+      # through hyena/the tailnet.
       dns = {
         magic_dns = false;
-        override_local_dns = false;
+        override_local_dns = true;
+        nameservers.global = ["100.64.0.1"];
       };
     };
   };
