@@ -49,10 +49,11 @@ in {
         then cfg.authKeyFile
         else config.sops.secrets.tailscale-authkey.path;
       # --accept-dns=false: cluster nodes must NOT adopt the tailnet's pushed
-      # resolver (AdGuard at 100.64.0.1, set in hyena.nix headscale dns). Routing
-      # node + CoreDNS-upstream resolution through a remote VPS over the tailnet
-      # would couple cluster DNS to hyena's availability, and a pushed search
-      # domain is what hijacked pod DNS before. Client devices still get AdGuard.
+      # resolver (AdGuard at 100.64.0.1, set in hyena.nix headscale dns) — that
+      # would route node + CoreDNS-upstream DNS through a remote VPS over the
+      # tailnet (availability coupling) and re-expose pods to a pushed search
+      # domain. This flag only covers the FIRST `tailscale up`; the oneshot below
+      # re-asserts it via `tailscale set` on already-running/rebooted nodes.
       extraUpFlags = ["--login-server=https://headscale.${domain}" "--accept-dns=false"];
       useRoutingFeatures = "server";
     };
@@ -70,6 +71,11 @@ in {
       serviceConfig.Type = "oneshot";
       serviceConfig.RemainAfterExit = true;
       script = ''
+        # Enforce accept-dns=false now (see extraUpFlags note): the autoconnect
+        # unit exits early when already Running, so a running node never re-applies
+        # the up-flag. Idempotent; do it before the (up to 20-min) pod-CIDR wait.
+        tailscale set --accept-dns=false
+
         cidr=""
         for _ in $(seq 120); do
           cidr=$(ip -json route show dev cilium_host | jq -r 'first(.[].dst | select(test("/"))) // empty')
