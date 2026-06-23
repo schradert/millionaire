@@ -34,11 +34,14 @@ fabric).
 
 ### 1. Tailnet (PR #38) — `pulumi up` from the LAN
 
-Pulumi ordering is wired: hyena deploy (policy) → tagged preauth keys →
+Pulumi ordering is wired: hyena deploy (policy) → preauth keys →
 SOPS write → node deploys → sirver IP capture.
 
 - [ ] `ssh sirver tailscale status` — logged in; `headscale nodes list` on
-      hyena shows 5 cluster peers, tagged `tag:cluster`
+      hyena shows 5 cluster peers (user `default`, **untagged** — the headscale
+      autoApprover approves their routes by user `default@`, not by tag; the
+      `tag:cluster` owner is kept for future CAPI workers). Pod CIDRs are
+      Cilium's `10.0.0.0/8` pool, not the vestigial RKE2 `10.42.0.0/16`.
 - [ ] each node advertises its pod /24 and it is auto-approved
       (`headscale nodes list-routes`)
 - [ ] home↔home pod traffic still on the LAN: `tcpdump -i tailscale0` quiet
