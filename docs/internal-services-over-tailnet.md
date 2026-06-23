@@ -89,10 +89,13 @@ into pods.
 - **Off-LAN datapath** (device → cluster node → Cilium L2 VIP) interacts with the
   Cilium L2 source-IP behaviour and subnet-route SNAT — validate from a real
   off-LAN client. See `project_cilium_l2_native_routing_bug`.
-- **`tailnet.podSupernet`** is still `10.42.0.0/16` (inert — no 10.42 pod
-  traffic). Cloud-burst cross-site pod routing needs it to become `10.0.0.0/8`;
-  that's a home-node route change — validate it during the cloud-burst datapath
-  spike (`kubeProxyReplacement` should keep services unaffected).
+- **`tailnet.podSupernet` is now `10.0.0.0/8`** (Cilium's pool) and the supernet
+  route is deployed on all home nodes — verified it does **not** divert home↔home
+  pod traffic (LAN `/24`s win by longest-prefix) or services (eBPF socket-LB
+  intercepts before the route table). The *cross-site* path itself (home pod ↔
+  worker pod over the tailnet) still needs a real cloud worker to exercise — that
+  is the cloud-burst datapath spike. (A stale `10.42.0.0/16` route lingers on
+  already-running nodes from the old value; it's inert and self-clears on reboot.)
 
 ## Deploying changes
 

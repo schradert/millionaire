@@ -23,8 +23,16 @@ in {
     };
     podSupernet = lib.mkOption {
       type = lib.types.str;
-      default = "10.42.0.0/16";
-      description = "Cluster pod CIDR (RKE2 default).";
+      default = "10.0.0.0/8";
+      description = ''
+        Cilium pod-pool supernet (its ipv4NativeRoutingCIDR) — NOT the vestigial
+        RKE2 Node.podCIDR (10.42/16), which Cilium ignores. podSupernetRoute sends
+        this whole range to tailscale0; per-node /24s (Cilium autoDirectNodeRoutes
+        for LAN peers, cilium_host locally) are more specific and win, and
+        ClusterIP services (10.43/16) are eBPF-handled by kubeProxyReplacement
+        before the route table — so only non-local pod CIDRs (cloud workers)
+        actually fall through to the tailnet.
+      '';
     };
     podSupernetRoute = lib.mkOption {
       type = lib.types.bool;
