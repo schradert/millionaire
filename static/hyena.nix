@@ -187,6 +187,15 @@ in {
 
   services.adguardhome.enable = true;
 
+  # AdGuard's seed binds the tailnet IP (100.64.0.1), not 0.0.0.0: 0.0.0.0 would
+  # also claim 127.0.0.53:53, which systemd-resolved (hyena's own resolver) holds,
+  # and AdGuard treats that bind clash as fatal. The catch is 100.64.0.1 only
+  # exists once tailscaled has joined headscale, so allow binding it before it is
+  # assigned rather than ordering AdGuard behind the whole join chain — the
+  # listener just starts serving when tailscale0 comes up (the floating-VIP trick
+  # keepalived/HAProxy use).
+  boot.kernel.sysctl."net.ipv4.ip_nonlocal_bind" = 1;
+
   sops.secrets.adguard-password-hash = {
     key = "adguard/admin/password-hash";
     owner = "adguardhome";
@@ -208,7 +217,7 @@ in {
         address: 0.0.0.0:3000
       dns:
         bind_hosts:
-          - 0.0.0.0
+          - 100.64.0.1
         port: 53
         bootstrap_dns:
           - 1.1.1.1
