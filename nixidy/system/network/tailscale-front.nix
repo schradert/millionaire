@@ -68,9 +68,11 @@ in {
               "80".TCPForward = "${gateway}:80";
             };
           };
+          # bjw-s app-template names this configMap after the release
+          # ("tailscale-front"), not the configMaps.serve key — reference that.
           persistence.serve = {
             type = "configMap";
-            name = "serve";
+            name = "tailscale-front";
             globalMounts = lib.toList {
               path = "/config/serve.json";
               subPath = "serve.json";
