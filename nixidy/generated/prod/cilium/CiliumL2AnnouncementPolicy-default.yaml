@@ -7,4 +7,9 @@ spec:
   interfaces:
     - br0
     - eno1
+    - eth0
   loadBalancerIPs: true
+  nodeSelector:
+    matchExpressions:
+      - key: node.trdos.me/burst
+        operator: DoesNotExist
