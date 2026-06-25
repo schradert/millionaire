@@ -22,6 +22,8 @@ spec:
     type: Recreate
   template:
     metadata:
+      annotations:
+        checksum/configMaps: 76a5472b53e35510bc58887a1b5a37b31a7b188732b1a306d751df95ef762663
       labels:
         app.kubernetes.io/controller: tailscale-front
         app.kubernetes.io/instance: tailscale-front
@@ -35,29 +37,25 @@ spec:
                 secretKeyRef:
                   key: TS_AUTHKEY
                   name: tailscale-front-authkey
-            - name: TS_DEBUG_FIREWALL_MODE
-              value: nftables
-            - name: TS_DEST_IP
-              value: 192.168.50.241
             - name: TS_EXTRA_ARGS
               value: --login-server=https://headscale.trdos.me
             - name: TS_HOSTNAME
               value: internal-gateway
             - name: TS_KUBE_SECRET
               value: ""
+            - name: TS_SERVE_CONFIG
+              value: /config/serve.json
             - name: TS_STATE_DIR
               value: /var/lib/tailscale
             - name: TS_USERSPACE
-              value: "false"
+              value: "true"
           image: ghcr.io/tailscale/tailscale:v1.98.4
           name: tailscale
-          securityContext:
-            capabilities:
-              add:
-                - NET_ADMIN
           volumeMounts:
-            - mountPath: /dev/net/tun
-              name: dev-net-tun
+            - mountPath: /config/serve.json
+              name: serve
+              readOnly: true
+              subPath: serve.json
             - mountPath: /var/lib/tailscale
               name: state
       dnsPolicy: ClusterFirst
@@ -71,9 +69,9 @@ spec:
       hostPID: false
       serviceAccountName: tailscale-front
       volumes:
-        - hostPath:
-            path: /dev/net/tun
-          name: dev-net-tun
+        - configMap:
+            name: serve
+          name: serve
         - name: state
           persistentVolumeClaim:
             claimName: tailscale-front
