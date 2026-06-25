@@ -22,7 +22,7 @@
             annotations."reloader.stakater.com/auto" = "true";
             containers.spoolman = {
               image.repository = "ghcr.io/donkie/spoolman";
-              image.tag = "v0.22.1";
+              image.tag = "0.23.1";
               env.SPOOLMAN_DB_TYPE = "sqlite";
               env.SPOOLMAN_DIR = "/data";
               probes.liveness.enabled = true;
