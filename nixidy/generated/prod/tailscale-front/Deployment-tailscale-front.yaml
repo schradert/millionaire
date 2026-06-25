@@ -60,6 +60,10 @@ spec:
               name: state
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
+      hostAliases:
+        - hostnames:
+            - headscale.trdos.me
+          ip: 178.104.61.137
       hostIPC: false
       hostNetwork: false
       hostPID: false

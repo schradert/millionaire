@@ -71,6 +71,14 @@ in {
             size = "1Gi";
             globalMounts = lib.toList {path = "/var/lib/tailscale";};
           };
+          # Cluster DNS resolves headscale.${domain} to the internal gateway VIP
+          # (the *.${domain} internal records), not hyena's real IP — so a pod
+          # can't reach headscale to register. Pin it to hyena's public IP (the
+          # address the public A record points at) so the front can register.
+          defaultPodOptions.hostAliases = lib.toList {
+            ip = "178.104.61.137";
+            hostnames = ["headscale.${domain}"];
+          };
         };
       };
     };
