@@ -1,7 +1,11 @@
 {config, ...}: {
   # TODO enable OIDC via jellyfin-plugin-sso with the Keycloak client below
   # https://github.com/9p4/jellyfin-plugin-sso
-  nixidy = {charts, lib, ...}: let
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "jellyfin.${domain}";
   in {
@@ -52,7 +56,10 @@
             config = {
               type = "persistentVolumeClaim";
               accessMode = "ReadWriteOnce";
-              size = "1Gi";
+              # jellyfin 10.11 refuses to start unless its data path (/config)
+              # has >=2GiB free (StorageHelper startup check) — 1Gi gave only
+              # 957MiB free and crashed even with no media. 5Gi clears it + DB room.
+              size = "5Gi";
             };
             cache = {
               type = "persistentVolumeClaim";
@@ -63,40 +70,79 @@
             tmpfs = {
               type = "emptyDir";
               globalMounts = [
-                {path = "/cache"; subPath = "cache";}
-                {path = "/config/log"; subPath = "log";}
-                {path = "/tmp"; subPath = "tmp";}
+                {
+                  path = "/cache";
+                  subPath = "cache";
+                }
+                {
+                  path = "/config/log";
+                  subPath = "log";
+                }
+                {
+                  path = "/tmp";
+                  subPath = "tmp";
+                }
               ];
             };
             media-movies = {
               type = "persistentVolumeClaim";
               existingClaim = "media-movies";
-              advancedMounts.jellyfin.jellyfin = [{path = "/media/movies"; readOnly = true;}];
+              advancedMounts.jellyfin.jellyfin = [
+                {
+                  path = "/media/movies";
+                  readOnly = true;
+                }
+              ];
             };
             media-tv = {
               type = "persistentVolumeClaim";
               existingClaim = "media-tv";
-              advancedMounts.jellyfin.jellyfin = [{path = "/media/tv"; readOnly = true;}];
+              advancedMounts.jellyfin.jellyfin = [
+                {
+                  path = "/media/tv";
+                  readOnly = true;
+                }
+              ];
             };
             media-music = {
               type = "persistentVolumeClaim";
               existingClaim = "media-music";
-              advancedMounts.jellyfin.jellyfin = [{path = "/media/music"; readOnly = true;}];
+              advancedMounts.jellyfin.jellyfin = [
+                {
+                  path = "/media/music";
+                  readOnly = true;
+                }
+              ];
             };
             media-books = {
               type = "persistentVolumeClaim";
               existingClaim = "media-books";
-              advancedMounts.jellyfin.jellyfin = [{path = "/media/books"; readOnly = true;}];
+              advancedMounts.jellyfin.jellyfin = [
+                {
+                  path = "/media/books";
+                  readOnly = true;
+                }
+              ];
             };
             media-audiobooks = {
               type = "persistentVolumeClaim";
               existingClaim = "media-audiobooks";
-              advancedMounts.jellyfin.jellyfin = [{path = "/media/audiobooks"; readOnly = true;}];
+              advancedMounts.jellyfin.jellyfin = [
+                {
+                  path = "/media/audiobooks";
+                  readOnly = true;
+                }
+              ];
             };
             media-comics = {
               type = "persistentVolumeClaim";
               existingClaim = "media-comics";
-              advancedMounts.jellyfin.jellyfin = [{path = "/media/comics"; readOnly = true;}];
+              advancedMounts.jellyfin.jellyfin = [
+                {
+                  path = "/media/comics";
+                  readOnly = true;
+                }
+              ];
             };
           };
           route.jellyfin = {

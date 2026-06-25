@@ -34,7 +34,7 @@ spec:
         - args:
             - --config
             - /config/webdav.yml
-          image: hacdias/webdav:v5.11.3@sha256:ff21e4ed74fa70b8f06af3ad7cc488dab9678b5508838ca963abe621
+          image: hacdias/webdav:v5.11.3
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0
