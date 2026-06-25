@@ -25,14 +25,17 @@
           enableAuth = true;
           enableGuests = false;
           publicURL = hostname;
-          # Fixed dummies so the chart's checksum/secret pod annotations
-          # render deterministically (unset, the chart randAlphaNum's a new
-          # password every render, producing spurious diffs + pod restarts).
-          # The rendered Secret data is blanked below; real credentials
-          # arrive via ExternalSecrets.
+          # Fixed dummies for every secret field the chart would otherwise
+          # randAlphaNum (all six live in templates/*/xmpp-secret.yaml). Unset,
+          # each render mints a fresh value, drifting the deployments'
+          # checksum/secret annotation -> spurious diffs + pod restarts on every
+          # sync. The rendered Secret data is blanked below; real credentials
+          # arrive via ExternalSecrets, so these dummies never reach runtime.
           jicofo.xmpp.password = "nixidy-rendered-dummy";
+          jicofo.xmpp.componentSecret = "nixidy-rendered-dummy";
           jvb.xmpp.password = "nixidy-rendered-dummy";
           jibri.xmpp.password = "nixidy-rendered-dummy";
+          jibri.recorder.password = "nixidy-rendered-dummy";
           jigasi.xmpp.password = "nixidy-rendered-dummy";
           websockets.colibri.enabled = true;
           websockets.xmpp.enabled = true;

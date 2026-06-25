@@ -19,7 +19,7 @@ spec:
     metadata:
       annotations:
         checksum/config: cd7c2cdd23207ad66e9bde1f009a1053be399b652708ab524f35a2d79695e97d
-        checksum/secret: 072f1562a6aecce599021711a03d9b9cd4c7a6f47d6186dcd236e898d84ca4b8
+        checksum/secret: aaa08e19a4b41c8d8840efaea6735c71f9f82de5315b20ae07eb497a653cfe55
       labels:
         app.kubernetes.io/component: jicofo
         app.kubernetes.io/instance: jitsi
