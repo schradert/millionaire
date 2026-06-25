@@ -42,12 +42,23 @@ spec:
             - name: TS_HOSTNAME
               value: internal-gateway
             - name: TS_USERSPACE
-              value: "true"
+              value: "false"
           image: ghcr.io/tailscale/tailscale:v1.98.4
           name: tailscale
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+          volumeMounts:
+            - mountPath: /dev/net/tun
+              name: dev-net-tun
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
       hostIPC: false
       hostNetwork: false
       hostPID: false
       serviceAccountName: tailscale-front
+      volumes:
+        - hostPath:
+            path: /dev/net/tun
+          name: dev-net-tun
