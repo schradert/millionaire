@@ -3,7 +3,11 @@
 # USB stick); securityContext.privileged is needed for the serial device.
 # External access is gated by oauth2-proxy — Zigbee2MQTT has no built-in auth.
 {config, ...}: {
-  nixidy = {charts, lib, ...}: let
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "zigbee.${domain}";
     # TODO: Replace with actual Zigbee coordinator /dev/serial/by-id path once the
@@ -28,7 +32,7 @@
             };
             containers.zigbee2mqtt = {
               image.repository = "koenkk/zigbee2mqtt";
-              image.tag = "1.43.0";
+              image.tag = "2.12.0";
               env = {
                 ZIGBEE2MQTT_CONFIG_MQTT_SERVER = "mqtt://mosquitto.home.svc.cluster.local:1883";
                 ZIGBEE2MQTT_CONFIG_SERIAL_PORT = serialPort;

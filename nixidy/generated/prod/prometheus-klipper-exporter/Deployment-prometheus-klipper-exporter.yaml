@@ -30,7 +30,7 @@ spec:
         - args:
             - -moonraker-url
             - http://voron.internal:7125
-          image: ghcr.io/scross01/prometheus-klipper-exporter:v0.12.1
+          image: ghcr.io/scross01/prometheus-klipper-exporter:v0.15.0
           livenessProbe:
             httpGet:
               path: /
