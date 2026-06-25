@@ -49,6 +49,9 @@ in {
                 TS_KUBE_SECRET = "";
                 TS_STATE_DIR = "/var/lib/tailscale";
                 TS_DEST_IP = "192.168.50.241";
+                # Nodes run nftables (no legacy iptable_nat module), so force the
+                # container's firewall backend to nftables or the DNAT install fails.
+                TS_DEBUG_FIREWALL_MODE = "nftables";
                 TS_HOSTNAME = "internal-gateway";
                 TS_EXTRA_ARGS = "--login-server=https://headscale.${domain}";
                 TS_AUTHKEY.valueFrom.secretKeyRef = {
