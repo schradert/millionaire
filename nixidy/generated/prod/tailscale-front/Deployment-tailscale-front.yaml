@@ -70,7 +70,7 @@ spec:
       serviceAccountName: tailscale-front
       volumes:
         - configMap:
-            name: serve
+            name: tailscale-front
           name: serve
         - name: state
           persistentVolumeClaim:
