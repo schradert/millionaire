@@ -34,7 +34,7 @@ spec:
             - configMapRef:
                 name: jitsi-jitsi-meet-jicofo
           image: jitsi/jicofo:jicofo-1.0-1174-1@sha256:b4f9adfa4d752e87c82428aa7241a8a4e3aaafa9db370d57ba3c0e179d0d57da
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           livenessProbe:
             tcpSocket:
               port: 8888

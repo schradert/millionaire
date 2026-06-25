@@ -51,7 +51,9 @@
           jvb.publicIPs = ["192.168.50.254"];
           prosody.enabled = true;
           prosody.persistence.enabled = true;
-          image.pullPolicy = "Never";
+          # The jitsi/* images below are public + digest-pinned; "Never" can't pull
+          # them on a node that lacks them -> ErrImageNeverPull (jitsi never ran).
+          image.pullPolicy = "IfNotPresent";
           jibri.image = {
             repository = "jitsi/jibri";
             tag = "jibri-8.0-194-g71e6738-1@sha256:d757a5cb8a55d8e9afb9e53f27b558cade750eeeba89050435cc97af0aa5f902";
