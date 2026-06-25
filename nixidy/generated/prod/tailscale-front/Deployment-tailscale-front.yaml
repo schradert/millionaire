@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: tailscale-front
+    app.kubernetes.io/instance: tailscale-front
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: tailscale-front
+  name: tailscale-front
+  namespace: tailscale
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: tailscale-front
+      app.kubernetes.io/instance: tailscale-front
+      app.kubernetes.io/name: tailscale-front
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: tailscale-front
+        app.kubernetes.io/instance: tailscale-front
+        app.kubernetes.io/name: tailscale-front
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  key: TS_AUTHKEY
+                  name: tailscale-front-authkey
+            - name: TS_DEST_IP
+              value: 192.168.50.241
+            - name: TS_EXTRA_ARGS
+              value: --login-server=https://headscale.trdos.me
+            - name: TS_HOSTNAME
+              value: internal-gateway
+            - name: TS_USERSPACE
+              value: "true"
+          image: ghcr.io/tailscale/tailscale:v1.98.4
+          name: tailscale
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: tailscale-front
