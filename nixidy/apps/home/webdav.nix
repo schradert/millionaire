@@ -1,5 +1,9 @@
 {config, ...}: {
-  nixidy = {charts, lib, ...}: let
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "dav.${domain}";
   in {
@@ -16,10 +20,11 @@
           controllers.webdav = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.webdav = {
+              # NOTE: prior digest was corrupt (56 hex chars, not 64) -> InvalidImageName.
+              # Pinned by tag until a correct digest is re-added.
               image = {
                 repository = "hacdias/webdav";
                 tag = "v5.11.3";
-                digest = "sha256:ff21e4ed74fa70b8f06af3ad7cc488dab9678b5508838ca963abe621";
               };
               args = ["--config" "/config/webdav.yml"];
               probes.liveness.enabled = true;

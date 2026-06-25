@@ -31,7 +31,7 @@ spec:
             - configMapRef:
                 name: jitsi-prosody-common
           image: jitsi/web:web-1.0.9126-1@sha256:2092fd409c0c9ec7f9325d88df1c8e8ee092a26e98931ae3954d4dc02f07de41
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:
               path: /

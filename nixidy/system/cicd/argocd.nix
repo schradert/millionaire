@@ -27,7 +27,10 @@ in {
       };
     };
 
-    gatus.endpoints.argo = {url = "https://argocd.${domain}"; group = "internal";};
+    gatus.endpoints.argo = {
+      url = "https://argocd.${domain}";
+      group = "internal";
+    };
     applications.argo = {
       canivete.bootstrap.enable = true;
       namespace = "cicd";
@@ -52,6 +55,44 @@ in {
               clientID = "$oidc.argocd.clientID";
               clientSecret = "$oidc.argocd.clientSecret";
               requestedScopes = ["openid" "profile" "email"];
+            };
+          };
+          # ServerSideApply can't strip controller-/apiserver-defaulted fields,
+          # so ExternalSecret + HTTPRoute render minimal in git but gain defaults
+          # live -> perpetual OutOfSync across nearly every app (self-heal then
+          # backs off). Ignore the defaulted fields cluster-wide via argocd-cm.
+          # NOTE: configs.cm, NOT server.config — server.config is a no-op in this
+          # chart version (the server.config."oidc.config" above likewise never
+          # reaches the rendered argocd-cm; flagged for separate follow-up). One
+          # place covers every current + future app; resources are functional, so
+          # this is cosmetic diff-suppression, not a behaviour change.
+          configs.cm = {
+            "resource.customizations.ignoreDifferences.external-secrets.io_ExternalSecret" = builtins.toJSON {
+              jqPathExpressions = [
+                ".spec.refreshInterval"
+                ".spec.target.creationPolicy"
+                ".spec.target.deletionPolicy"
+                ".spec.target.template.engineVersion"
+                ".spec.target.template.mergePolicy"
+                ".spec.data[]?.remoteRef.conversionStrategy"
+                ".spec.data[]?.remoteRef.decodingStrategy"
+                ".spec.data[]?.remoteRef.metadataPolicy"
+              ];
+            };
+            # gateway-api apiserver defaults parentRefs.group/kind,
+            # backendRefs.group/kind/weight, and injects a PathPrefix "/" match
+            # when a route omits matches. Trade-off: a real change to .matches on
+            # a route that omits them won't diff — acceptable (routes that set
+            # matches explicitly never drifted).
+            "resource.customizations.ignoreDifferences.gateway.networking.k8s.io_HTTPRoute" = builtins.toJSON {
+              jqPathExpressions = [
+                ".spec.parentRefs[]?.group"
+                ".spec.parentRefs[]?.kind"
+                ".spec.rules[]?.backendRefs[]?.group"
+                ".spec.rules[]?.backendRefs[]?.kind"
+                ".spec.rules[]?.backendRefs[]?.weight"
+                ".spec.rules[]?.matches"
+              ];
             };
           };
         };

@@ -4,6 +4,8 @@ data:
   application.instanceLabelKey: argocd.argoproj.io/instance
   application.sync.impersonation.enabled: "false"
   exec.enabled: "false"
+  resource.customizations.ignoreDifferences.external-secrets.io_ExternalSecret: '{"jqPathExpressions":[".spec.refreshInterval",".spec.target.creationPolicy",".spec.target.deletionPolicy",".spec.target.template.engineVersion",".spec.target.template.mergePolicy",".spec.data[]?.remoteRef.conversionStrategy",".spec.data[]?.remoteRef.decodingStrategy",".spec.data[]?.remoteRef.metadataPolicy"]}'
+  resource.customizations.ignoreDifferences.gateway.networking.k8s.io_HTTPRoute: '{"jqPathExpressions":[".spec.parentRefs[]?.group",".spec.parentRefs[]?.kind",".spec.rules[]?.backendRefs[]?.group",".spec.rules[]?.backendRefs[]?.kind",".spec.rules[]?.backendRefs[]?.weight",".spec.rules[]?.matches"]}'
   resource.customizations.ignoreResourceUpdates.ConfigMap: |
     jqPathExpressions:
       # Ignore the cluster-autoscaler status

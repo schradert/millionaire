@@ -253,12 +253,6 @@ data:
       interval: 1m
       name: obico
       url: https://obico.trdos.me
-    - conditions:
-      - '[STATUS] == 200'
-      group: internal
-      interval: 1m
-      name: ollama
-      url: http://ollama.ai.svc.cluster.local:11434/
     - client:
         dns-resolver: tcp://1.1.1.1:53
       conditions:
