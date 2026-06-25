@@ -17,9 +17,10 @@ in {
     # external-dns-internal points *.trdos.me at this node's tailnet IP
     # (gateway.nix), and the gateway still terminates TLS + Host-routes as before.
     #
-    # Userspace mode (TS_USERSPACE=true) needs no NET_ADMIN/tun. Reuses the
-    # existing headscale k8s preauth key (the configured tailscale-operator never
-    # registered with headscale, so the key is free).
+    # Kernel mode (TS_USERSPACE=false) is required: TS_DEST_IP L3-forwarding is
+    # NOT supported in userspace, so the container needs NET_ADMIN + /dev/net/tun
+    # to bring up the tunnel. Reuses the existing headscale k8s preauth key (the
+    # configured tailscale-operator never registered with headscale, so it's free).
     applications.tailscale-front = {
       namespace = "tailscale";
       resources.externalSecrets.tailscale-front.spec = {
@@ -41,7 +42,7 @@ in {
               image.repository = "ghcr.io/tailscale/tailscale";
               image.tag = "v1.98.4";
               env = {
-                TS_USERSPACE = "true";
+                TS_USERSPACE = "false";
                 TS_DEST_IP = "192.168.50.241";
                 TS_HOSTNAME = "internal-gateway";
                 TS_EXTRA_ARGS = "--login-server=https://headscale.${domain}";
@@ -50,7 +51,14 @@ in {
                   key = "TS_AUTHKEY";
                 };
               };
+              # Kernel-mode forwarding needs NET_ADMIN + the tun device.
+              securityContext.capabilities.add = ["NET_ADMIN"];
             };
+          };
+          persistence.dev-net-tun = {
+            type = "hostPath";
+            hostPath = "/dev/net/tun";
+            globalMounts = lib.toList {path = "/dev/net/tun";};
           };
         };
       };
