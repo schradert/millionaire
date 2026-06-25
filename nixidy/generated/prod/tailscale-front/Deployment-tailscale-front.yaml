@@ -41,6 +41,10 @@ spec:
               value: --login-server=https://headscale.trdos.me
             - name: TS_HOSTNAME
               value: internal-gateway
+            - name: TS_KUBE_SECRET
+              value: ""
+            - name: TS_STATE_DIR
+              value: /var/lib/tailscale
             - name: TS_USERSPACE
               value: "false"
           image: ghcr.io/tailscale/tailscale:v1.98.4
@@ -52,6 +56,8 @@ spec:
           volumeMounts:
             - mountPath: /dev/net/tun
               name: dev-net-tun
+            - mountPath: /var/lib/tailscale
+              name: state
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
       hostIPC: false
@@ -62,3 +68,6 @@ spec:
         - hostPath:
             path: /dev/net/tun
           name: dev-net-tun
+        - name: state
+          persistentVolumeClaim:
+            claimName: tailscale-front

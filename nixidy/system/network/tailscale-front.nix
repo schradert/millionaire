@@ -19,8 +19,11 @@ in {
     #
     # Kernel mode (TS_USERSPACE=false) is required: TS_DEST_IP L3-forwarding is
     # NOT supported in userspace, so the container needs NET_ADMIN + /dev/net/tun
-    # to bring up the tunnel. Reuses the existing headscale k8s preauth key (the
-    # configured tailscale-operator never registered with headscale, so it's free).
+    # to bring up the tunnel. TS_KUBE_SECRET="" disables containerboot's default
+    # kube-secret state backend (it would need a mounted SA token + RBAC); state
+    # instead lives on a PVC at TS_STATE_DIR, keeping the tailnet IP stable across
+    # restarts. Reuses the existing headscale k8s preauth key (the configured
+    # tailscale-operator never registered with headscale, so it's free).
     applications.tailscale-front = {
       namespace = "tailscale";
       resources.externalSecrets.tailscale-front.spec = {
@@ -43,6 +46,8 @@ in {
               image.tag = "v1.98.4";
               env = {
                 TS_USERSPACE = "false";
+                TS_KUBE_SECRET = "";
+                TS_STATE_DIR = "/var/lib/tailscale";
                 TS_DEST_IP = "192.168.50.241";
                 TS_HOSTNAME = "internal-gateway";
                 TS_EXTRA_ARGS = "--login-server=https://headscale.${domain}";
@@ -59,6 +64,12 @@ in {
             type = "hostPath";
             hostPath = "/dev/net/tun";
             globalMounts = lib.toList {path = "/dev/net/tun";};
+          };
+          persistence.state = {
+            type = "persistentVolumeClaim";
+            accessMode = "ReadWriteOnce";
+            size = "1Gi";
+            globalMounts = lib.toList {path = "/var/lib/tailscale";};
           };
         };
       };
