@@ -1,29 +1,31 @@
 {config, ...}: let
   inherit (config.canivete.meta) domain;
+  # The internal gateway's in-cluster (ClusterIP) service — a CoreDNS name, the
+  # same kind of target cloudflared forwards to for the external gateway.
+  gateway = "cilium-gateway-internal.kube-system.svc.cluster.local";
 in {
   nixidy = {
     charts,
     lib,
     ...
   }: {
-    # A tailscale node that joins the headscale tailnet and forwards all inbound
-    # tailnet traffic to the internal Cilium gateway (LB VIP 192.168.50.241).
-    # In-cluster that VIP is reached via Cilium's eBPF service LB, NOT the L2
-    # announcement path, so the L2 source-IP bug does not apply. This gives the
-    # internal gateway a NATIVE tailnet IP — off-LAN tailnet clients reach
-    # *.trdos.me directly (no subnet routes, no LAN-IP-on-Wi-Fi caveat). It is the
-    # tailnet mirror of cloudflared (the external gateway's tunnel):
+    # A tailscale node that joins the headscale tailnet and forwards inbound
+    # tailnet traffic to the internal Cilium gateway, giving it a NATIVE tailnet
+    # IP. Off-LAN tailnet clients then reach *.trdos.me directly (no subnet
+    # routes). The tailnet mirror of cloudflared (the external gateway's tunnel):
     #   Cloudflare : external gateway :: tailscale-front : internal gateway.
-    # external-dns-internal points *.trdos.me at this node's tailnet IP
-    # (gateway.nix), and the gateway still terminates TLS + Host-routes as before.
+    # external-dns-internal points *.trdos.me at this node's tailnet IP.
     #
-    # Kernel mode (TS_USERSPACE=false) is required: TS_DEST_IP L3-forwarding is
-    # NOT supported in userspace, so the container needs NET_ADMIN + /dev/net/tun
-    # to bring up the tunnel. TS_KUBE_SECRET="" disables containerboot's default
-    # kube-secret state backend (it would need a mounted SA token + RBAC); state
-    # instead lives on a PVC at TS_STATE_DIR, keeping the tailnet IP stable across
-    # restarts. Reuses the existing headscale k8s preauth key (the configured
-    # tailscale-operator never registered with headscale, so it's free).
+    # USERSPACE mode + `tailscale serve` (TCP passthrough), NOT kernel-mode
+    # TS_DEST_IP. Kernel-mode tailscale's netfilter conflicts with Cilium's eBPF
+    # L7/envoy tproxy redirect (the Gateway API data plane), so a kernel-mode pod
+    # cannot reach the gateway at all (it reaches normal-LB ClusterIPs + the
+    # internet, but not the envoy-backed gateway). A userspace serve-forward is a
+    # plain pod socket to the gateway's ClusterIP service — exactly cloudflared's
+    # path, which works. TCPForward without TerminateTLS passes the TLS stream
+    # through untouched, so envoy still sees the SNI and Host-routes. Reuses the
+    # headscale k8s preauth key (the configured tailscale-operator never
+    # registered with headscale, so it's free).
     applications.tailscale-front = {
       namespace = "tailscale";
       resources.externalSecrets.tailscale-front.spec = {
@@ -45,13 +47,10 @@ in {
               image.repository = "ghcr.io/tailscale/tailscale";
               image.tag = "v1.98.4";
               env = {
-                TS_USERSPACE = "false";
+                TS_USERSPACE = "true";
                 TS_KUBE_SECRET = "";
                 TS_STATE_DIR = "/var/lib/tailscale";
-                TS_DEST_IP = "192.168.50.241";
-                # Nodes run nftables (no legacy iptable_nat module), so force the
-                # container's firewall backend to nftables or the DNAT install fails.
-                TS_DEBUG_FIREWALL_MODE = "nftables";
+                TS_SERVE_CONFIG = "/config/serve.json";
                 TS_HOSTNAME = "internal-gateway";
                 TS_EXTRA_ARGS = "--login-server=https://headscale.${domain}";
                 TS_AUTHKEY.valueFrom.secretKeyRef = {
@@ -59,14 +58,24 @@ in {
                   key = "TS_AUTHKEY";
                 };
               };
-              # Kernel-mode forwarding needs NET_ADMIN + the tun device.
-              securityContext.capabilities.add = ["NET_ADMIN"];
             };
           };
-          persistence.dev-net-tun = {
-            type = "hostPath";
-            hostPath = "/dev/net/tun";
-            globalMounts = lib.toList {path = "/dev/net/tun";};
+          # tailscale serve: accept tailnet TCP on 80/443 and forward (TLS
+          # passthrough) to the internal gateway's ClusterIP service.
+          configMaps.serve.data."serve.json" = builtins.toJSON {
+            TCP = {
+              "443".TCPForward = "${gateway}:443";
+              "80".TCPForward = "${gateway}:80";
+            };
+          };
+          persistence.serve = {
+            type = "configMap";
+            name = "serve";
+            globalMounts = lib.toList {
+              path = "/config/serve.json";
+              subPath = "serve.json";
+              readOnly = true;
+            };
           };
           persistence.state = {
             type = "persistentVolumeClaim";
@@ -74,10 +83,8 @@ in {
             size = "1Gi";
             globalMounts = lib.toList {path = "/var/lib/tailscale";};
           };
-          # Cluster DNS resolves headscale.${domain} to the internal gateway VIP
-          # (the *.${domain} internal records), not hyena's real IP — so a pod
-          # can't reach headscale to register. Pin it to hyena's public IP (the
-          # address the public A record points at) so the front can register.
+          # Cluster DNS resolves headscale.${domain} to the internal gateway VIP,
+          # not hyena's real IP — pin it so the front can reach headscale.
           defaultPodOptions.hostAliases = lib.toList {
             ip = "178.104.61.137";
             hostnames = ["headscale.${domain}"];
