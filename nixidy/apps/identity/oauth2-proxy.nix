@@ -35,7 +35,13 @@ in {
           listen 8080;
           server_name ${host};
           location / {
-            proxy_pass ${cfg.url};
+            # Resolve the upstream at request time via cluster DNS, not at nginx
+            # config-load. Otherwise a single missing/Down backend (an app that
+            # hasn't deployed yet) fails the whole config with "host not found in
+            # upstream" and takes the entire SSO proxy offline for every service.
+            resolver 10.43.0.10 valid=30s ipv6=off;
+            set $upstream ${cfg.url};
+            proxy_pass $upstream$request_uri;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -45,9 +51,9 @@ in {
             proxy_set_header X-Auth-Request-Preferred-Username $http_x_forwarded_preferred_username;
             proxy_http_version 1.1;
             ${lib.optionalString cfg.websocket ''
-              proxy_set_header Upgrade $http_upgrade;
-              proxy_set_header Connection "upgrade";
-            ''}
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection "upgrade";
+        ''}
           }
         }
       '')
