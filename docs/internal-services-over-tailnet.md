@@ -11,8 +11,8 @@ public exposure. This rides the same headscale tailnet that cloud-burst uses
 device (tailnet) ──DNS──▶ AdGuard @ 100.64.0.1:53 (hyena)
                             ▲ records written by
                             │ external-dns-internal (in-cluster → AdGuard :3000 API)
-device ──HTTP──▶ 192.168.50.241 (internal gateway VIP) ──▶ Service ──▶ Pod
-        (reached over the tailnet via a cluster node advertising 192.168.50.241/32)
+device ──HTTP──▶ 100.64.0.4 (bonobo tailnet IP) ──relay──▶ 192.168.50.241 ──▶ Service ──▶ Pod
+        (systemd-socket-proxyd on bonobo forwards :80/:443 to the gateway VIP)
 ```
 
 1. **AdGuard on hyena** is the resolver for tailnet devices: headscale pushes it
@@ -21,14 +21,21 @@ device ──HTTP──▶ 192.168.50.241 (internal gateway VIP) ──▶ Servi
    `magic_dns = false` — no MagicDNS search domain is pushed (a leaked search
    domain previously hijacked pod DNS; keep it false).
 2. **`external-dns-internal`** (nixidy) watches internal-gateway HTTPRoutes and
-   writes `<name>.trdos.me → 192.168.50.241` into AdGuard's `:3000` API. (The
-   public `external-dns` writes the same names to Cloudflare for non-excluded
-   routes.)
-3. **The internal gateway VIP `192.168.50.241`** (Cilium L2 LB-IPAM, `home-pool`)
-   is where services actually live. Cluster nodes advertise `192.168.50.241/32`
-   as an auto-approved tailnet subnet route, so an off-LAN device routes to it
-   over the tailnet via a cluster node. The DNS answer is the gateway VIP, **not**
-   hyena's IP — hyena hosts DNS, not the services.
+   writes `<name>.trdos.me → 100.64.0.4` (bonobo's tailnet IP) into AdGuard's
+   `:3000` API. (The public `external-dns` writes the same names to Cloudflare
+   for non-excluded routes.)
+3. **The gateway relay on bonobo** gives the internal gateway a *native* tailnet
+   IP. A host-level `systemd-socket-proxyd` (`static/tailnet.nix` `gatewayRelay`,
+   scoped to bonobo) binds bonobo's tailnet IP `100.64.0.4:80/:443` and forwards
+   raw TCP to the gateway VIP `192.168.50.241` — TLS/SNI pass through untouched,
+   so Cilium's envoy still Host-routes. A tailnet device reaches `100.64.0.4`
+   natively over the mesh (on-LAN or off-LAN, identically), so there is **no**
+   dependence on a `192.168.50.241/32` subnet route or the Cilium L2 source-IP
+   datapath. Why a host relay and not a tailscale node or a pod: headscale denies
+   `tailscale serve` (no serve/funnel capability), and Cilium's eBPF L7LB tproxy
+   refuses in-cluster pod connections to the gateway — so the front must be a
+   plain host socket. The DNS answer is bonobo's tailnet IP, **not** hyena's —
+   hyena hosts DNS, not the services.
 
 ## hyena (headscale + AdGuard)
 
@@ -81,14 +88,20 @@ into pods.
 1. `tailscale up --login-server=https://headscale.trdos.me` on the device;
    approve it (`headscale nodes list` on hyena).
 2. The device picks up AdGuard automatically (override_local_dns) → ad-blocking +
-   `*.trdos.me`. On the home LAN it reaches `192.168.50.241` directly; off-LAN it
-   uses the advertised `192.168.50.241/32` route via a cluster node.
+   `*.trdos.me` → `100.64.0.4`, reached natively over the tailnet (the same path
+   on-LAN and off-LAN) → bonobo's relay → gateway. Nothing else to configure.
 
 ## Known gaps / TODO
 
-- **Off-LAN datapath** (device → cluster node → Cilium L2 VIP) interacts with the
-  Cilium L2 source-IP behaviour and subnet-route SNAT — validate from a real
-  off-LAN client. See `project_cilium_l2_native_routing_bug`.
+- **Off-LAN datapath is now the bonobo relay**, not the `192.168.50.241/32`
+  subnet route — this sidesteps the Cilium L2 source-IP / subnet-route SNAT
+  fragility (`project_cilium_l2_native_routing_bug`). Verified end-to-end:
+  octopus/off-LAN → `100.64.0.4` → gateway returns the gateway's own responses
+  (byte-identical to hitting `192.168.50.241` directly). Tradeoff: the relay is a
+  single node (bonobo); if bonobo is down, internal services are unreachable over
+  the tailnet until DNS is repointed or a second relay is added. The
+  `192.168.50.241/32` route is still advertised by `tailnet.nix` but is now
+  vestigial for tailnet clients — drop it in a future all-node deploy.
 - **`tailnet.podSupernet` is now `10.0.0.0/8`** (Cilium's pool) and the supernet
   route is deployed on all home nodes — verified it does **not** divert home↔home
   pod traffic (LAN `/24`s win by longest-prefix) or services (eBPF socket-LB
