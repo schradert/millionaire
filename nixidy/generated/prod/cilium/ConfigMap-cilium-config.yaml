@@ -27,7 +27,7 @@ data:
   clustermesh-enable-endpoint-sync: "false"
   clustermesh-enable-mcs-api: "false"
   clustermesh-mcs-api-install-crds: "true"
-  cni-exclusive: "true"
+  cni-exclusive: "false"
   cni-log-file: /var/run/cilium/cilium-cni.log
   controller-group-metrics: write-cni-file sync-host-ips sync-lb-maps-with-k8s-services
   custom-cni-conf: "false"
