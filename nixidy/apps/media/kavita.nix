@@ -1,7 +1,11 @@
 {config, ...}: {
   # NOTE: Kavita does not support Postgres — it uses an embedded SQLite DB
   # backed up via volsync on the config PVC.
-  nixidy = {charts, lib, ...}: let
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "kavita.${domain}";
   in {
@@ -34,12 +38,22 @@
           persistence.media-books = {
             type = "persistentVolumeClaim";
             existingClaim = "media-books";
-            advancedMounts.kavita.kavita = [{path = "/media/books"; readOnly = true;}];
+            advancedMounts.kavita.kavita = [
+              {
+                path = "/media/books";
+                readOnly = true;
+              }
+            ];
           };
           persistence.media-comics = {
             type = "persistentVolumeClaim";
             existingClaim = "media-comics";
-            advancedMounts.kavita.kavita = [{path = "/media/comics"; readOnly = true;}];
+            advancedMounts.kavita.kavita = [
+              {
+                path = "/media/comics";
+                readOnly = true;
+              }
+            ];
           };
           route.kavita = {
             hostnames = [hostname];
@@ -53,6 +67,37 @@
                 name = "oauth2-proxy";
                 namespace = "identity";
                 port = 4180;
+              };
+            };
+          };
+          # OPDS clients (e-readers) can't complete OIDC, so these paths skip
+          # oauth2-proxy. Kavita enforces its per-user API key on /api/opds
+          # (feed, downloads, page streaming); /api/image only serves covers.
+          route.kavita-opds = {
+            hostnames = [hostname];
+            parentRefs = lib.toList {
+              name = "internal";
+              namespace = "kube-system";
+              sectionName = "https";
+            };
+            rules = lib.toList {
+              matches = [
+                {
+                  path = {
+                    type = "PathPrefix";
+                    value = "/api/opds";
+                  };
+                }
+                {
+                  path = {
+                    type = "PathPrefix";
+                    value = "/api/image";
+                  };
+                }
+              ];
+              backendRefs = lib.toList {
+                name = "kavita";
+                port = 5000;
               };
             };
           };
