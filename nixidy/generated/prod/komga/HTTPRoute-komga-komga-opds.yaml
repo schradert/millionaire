@@ -1,0 +1,30 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  labels:
+    app.kubernetes.io/instance: komga
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: komga
+  name: komga-komga-opds
+  namespace: media
+spec:
+  hostnames:
+    - komga.trdos.me
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: internal
+      namespace: kube-system
+      sectionName: https
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: komga
+          namespace: media
+          port: 25600
+          weight: 1
+      matches:
+        - path:
+            type: PathPrefix
+            value: /opds
