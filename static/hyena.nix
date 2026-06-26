@@ -115,7 +115,9 @@ in {
       # Node.podCIDR (10.42/16); that mismatch left the advertised /24s unapproved.
       autoApprovers.routes = {
         "10.0.0.0/8" = ["tag:cluster" "default@"]; # Cilium pod /24s
-        "192.168.50.241/32" = ["tag:cluster" "default@"]; # internal gateway VIP (off-LAN access)
+        # The internal-gateway VIP is no longer reached via a /32 subnet route —
+        # off-LAN clients hit the gateway relays' native tailnet IPs (bonobo/
+        # chinchilla, static/tailnet.nix gatewayRelay), so no autoApprover needed.
       };
     });
   };
