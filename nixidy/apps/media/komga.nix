@@ -1,7 +1,11 @@
 {config, ...}: {
   # NOTE: Komga uses an embedded H2/SQLite DB by default, no Postgres support.
   # The config PVC (which contains the DB) is backed up via volsync.
-  nixidy = {charts, lib, ...}: let
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "komga.${domain}";
   in {
@@ -34,7 +38,12 @@
           persistence.media-comics = {
             type = "persistentVolumeClaim";
             existingClaim = "media-comics";
-            advancedMounts.komga.komga = [{path = "/media/comics"; readOnly = true;}];
+            advancedMounts.komga.komga = [
+              {
+                path = "/media/comics";
+                readOnly = true;
+              }
+            ];
           };
           route.komga = {
             hostnames = [hostname];
@@ -48,6 +57,29 @@
                 name = "oauth2-proxy";
                 namespace = "identity";
                 port = 4180;
+              };
+            };
+          };
+          # OPDS clients (e-readers) can't complete OIDC, so /opds skips
+          # oauth2-proxy. All v1.2/v2 feed links stay under /opds and Komga
+          # enforces HTTP Basic / X-API-Key auth on every one of them.
+          route.komga-opds = {
+            hostnames = [hostname];
+            parentRefs = lib.toList {
+              name = "internal";
+              namespace = "kube-system";
+              sectionName = "https";
+            };
+            rules = lib.toList {
+              matches = lib.toList {
+                path = {
+                  type = "PathPrefix";
+                  value = "/opds";
+                };
+              };
+              backendRefs = lib.toList {
+                name = "komga";
+                port = 25600;
               };
             };
           };

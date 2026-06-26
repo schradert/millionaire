@@ -1,0 +1,33 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  labels:
+    app.kubernetes.io/instance: kavita
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kavita
+  name: kavita-kavita-opds
+  namespace: media
+spec:
+  hostnames:
+    - kavita.trdos.me
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: internal
+      namespace: kube-system
+      sectionName: https
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: kavita
+          namespace: media
+          port: 5000
+          weight: 1
+      matches:
+        - path:
+            type: PathPrefix
+            value: /api/opds
+        - path:
+            type: PathPrefix
+            value: /api/image
