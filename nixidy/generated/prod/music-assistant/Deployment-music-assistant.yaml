@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: music-assistant
+    app.kubernetes.io/instance: music-assistant
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: music-assistant
+  name: music-assistant
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: music-assistant
+      app.kubernetes.io/instance: music-assistant
+      app.kubernetes.io/name: music-assistant
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        k8s.v1.cni.cncf.io/networks: home-lan
+      labels:
+        app.kubernetes.io/controller: music-assistant
+        app.kubernetes.io/instance: music-assistant
+        app.kubernetes.io/name: music-assistant
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: LOG_LEVEL
+              value: info
+          image: ghcr.io/music-assistant/server:2.8.6@sha256:400697b305e45bd1712c019e67d22681219e91deb41afe88939f921b5fae137f
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8095
+            timeoutSeconds: 1
+          name: music-assistant
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8095
+            timeoutSeconds: 1
+          securityContext:
+            privileged: true
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8095
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /data
+              name: data
+            - mountPath: /media/music
+              name: media-music
+              readOnly: true
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      nodeSelector:
+        kubernetes.io/hostname: sirver
+      serviceAccountName: music-assistant
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: music-assistant
+        - name: media-music
+          persistentVolumeClaim:
+            claimName: media-music

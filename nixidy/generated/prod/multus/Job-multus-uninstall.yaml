@@ -1,0 +1,60 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    helm.sh/hook: pre-delete
+    helm.sh/hook-delete-policy: hook-succeeded
+    helm.sh/hook-weight: "-5"
+  labels:
+    app.kubernetes.io/controller: uninstall
+    app.kubernetes.io/instance: multus
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: multus
+  name: multus-uninstall
+  namespace: kube-system
+spec:
+  backoffLimit: 6
+  suspend: false
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: a8f91b9c0002d0f14fd3af7a58b42ab21fb014d847191fafe295412e727828a4
+      labels:
+        app.kubernetes.io/controller: uninstall
+        app.kubernetes.io/instance: multus
+        app.kubernetes.io/name: multus
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - |
+              rm -rf /host/etc/cni/net.d/*multus*
+              rm -rf /host/opt/cni/bin/*multus*
+          command:
+            - /bin/sh
+            - -c
+          image: alpine:latest
+          name: main
+          volumeMounts:
+            - mountPath: /host/etc/cni/net.d
+              name: cni
+            - mountPath: /host/opt/cni/bin
+              name: cnibin
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      nodeSelector:
+        kubernetes.io/hostname: sirver
+      restartPolicy: Never
+      serviceAccountName: multus
+      volumes:
+        - hostPath:
+            path: /etc/cni/net.d
+            type: DirectoryOrCreate
+          name: cni
+        - hostPath:
+            path: /opt/cni/bin
+            type: DirectoryOrCreate
+          name: cnibin
