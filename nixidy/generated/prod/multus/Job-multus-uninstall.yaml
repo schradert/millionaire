@@ -45,8 +45,6 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
-      nodeSelector:
-        kubernetes.io/hostname: sirver
       restartPolicy: Never
       serviceAccountName: multus
       volumes:
