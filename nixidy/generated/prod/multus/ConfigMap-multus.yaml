@@ -1,0 +1,22 @@
+apiVersion: v1
+data:
+  daemon-config.json: |-
+    {
+        "chrootDir": "/hostroot",
+        "multusConfigFile": "auto",
+        "multusAutoconfigDir": "/etc/cni/net.d",
+        "confDir": "/etc/cni/net.d",
+        "cniConfigDir": "/etc/cni/net.d",
+        "binDir": "/opt/cni/bin",
+        "logLevel": "verbose",
+        "cniVersion": "0.3.1",
+        "socketDir": "/host/run/multus/"
+    }
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: multus
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: multus
+  name: multus
+  namespace: kube-system
