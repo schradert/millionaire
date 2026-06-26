@@ -127,6 +127,17 @@
           # (k8snetworkplumbingwg/multus-cni#1244). Bump to a sane size.
           controllers.multus = {
             containers.multus = {
+              # The chart derives the image tag from appVersion
+              # ({{.Chart.AppVersion}}-thick), but multus-cni publishes NO
+              # versioned 4.x -thick image (the re-published chart's appVersion
+              # 4.3.0 → multus-cni:4.3.0-thick is a 404). Pin the project's
+              # rolling stable-thick by digest; the chart's multus-installer
+              # init container reuses .tag, resolving to the same image.
+              image = {
+                repository = "ghcr.io/k8snetworkplumbingwg/multus-cni";
+                tag = "stable-thick";
+                digest = "sha256:2b9671447f3ea4e7e56730843dbf59445b9307246f393b61386b896d56ae51c9";
+              };
               resources.requests.memory = "100Mi";
               resources.limits.memory = "200Mi";
             };
