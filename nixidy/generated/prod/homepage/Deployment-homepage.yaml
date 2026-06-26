@@ -35,6 +35,9 @@ spec:
           image: ghcr.io/gethomepage/homepage:v1.2.0
           livenessProbe:
             httpGet:
+              httpHeaders:
+                - name: Host
+                  value: home.trdos.me
               path: /api/healthcheck
               port: http
           name: homepage
@@ -43,6 +46,9 @@ spec:
               name: http
           readinessProbe:
             httpGet:
+              httpHeaders:
+                - name: Host
+                  value: home.trdos.me
               path: /api/healthcheck
               port: http
           startupProbe:

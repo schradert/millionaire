@@ -62,7 +62,9 @@
     ./printing/mainsail.nix
     ./printing/spoolman.nix
     ./printing/obico.nix
-    ./printing/mooncord.nix
+    # mooncord: no published image (ghcr.io/eliteschwein/mooncord doesn't exist).
+    # Build from the repo Dockerfile + push to a registry to re-enable.
+    # ./printing/mooncord.nix
     ./printing/mobileraker-companion.nix
     ./printing/prometheus-klipper-exporter.nix
   ];

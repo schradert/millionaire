@@ -18,9 +18,12 @@
         values = {
           controllers.prometheus-klipper-exporter.containers.prometheus-klipper-exporter = {
             image.repository = "ghcr.io/scross01/prometheus-klipper-exporter";
-            image.tag = "v0.12.1";
+            image.tag = "v0.15.0";
             args = ["-moonraker-url" "http://voron.internal:7125"];
-            ports = lib.toList {name = "metrics"; containerPort = 9101;};
+            ports = lib.toList {
+              name = "metrics";
+              containerPort = 9101;
+            };
             probes.liveness = metricsProbe;
             probes.readiness = metricsProbe;
           };

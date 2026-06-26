@@ -34,7 +34,7 @@ spec:
             - configMapRef:
                 name: jitsi-jitsi-meet-jibri
           image: jitsi/jibri:jibri-8.0-194-g71e6738-1@sha256:d757a5cb8a55d8e9afb9e53f27b558cade750eeeba89050435cc97af0aa5f902
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           livenessProbe:
             exec:
               command:

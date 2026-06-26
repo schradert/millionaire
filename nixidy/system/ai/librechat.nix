@@ -58,7 +58,10 @@ in {
       };
     };
 
-    gatus.endpoints.librechat = {url = "https://${hostname}"; group = "internal";};
+    gatus.endpoints.librechat = {
+      url = "https://${hostname}";
+      group = "internal";
+    };
     applications.librechat = {
       namespace = "ai";
       helm.releases.librechat = {
@@ -68,7 +71,7 @@ in {
             annotations."reloader.stakater.com/auto" = "true";
             containers.librechat = {
               image.repository = "ghcr.io/danny-avila/librechat";
-              image.tag = "v0.7.70";
+              image.tag = "v0.8.7";
               env = {
                 HOST = "0.0.0.0";
                 PORT = "3080";
@@ -83,7 +86,10 @@ in {
                 MONGO_URI = "mongodb://librechat-mongodb:27017/librechat";
               };
               envFrom = lib.toList {secretRef.name = "librechat";};
-              ports = lib.toList {name = "http"; containerPort = 3080;};
+              ports = lib.toList {
+                name = "http";
+                containerPort = 3080;
+              };
               probes.liveness = {
                 enabled = true;
                 custom = true;
@@ -104,7 +110,10 @@ in {
             containers.mongodb = {
               image.repository = "mongo";
               image.tag = "7";
-              ports = lib.toList {name = "mongodb"; containerPort = 27017;};
+              ports = lib.toList {
+                name = "mongodb";
+                containerPort = 27017;
+              };
             };
             statefulset.volumeClaimTemplates = lib.toList {
               name = "data";
@@ -168,9 +177,18 @@ in {
           OPENID_CLIENT_SECRET = "{{ .oidc_secret }}";
         };
         data = [
-          {secretKey = "session_secret"; remoteRef.key = "ai/librechat/session-secret";}
-          {secretKey = "session_iv"; remoteRef.key = "ai/librechat/session-iv";}
-          {secretKey = "jwt_secret"; remoteRef.key = "ai/librechat/jwt-secret";}
+          {
+            secretKey = "session_secret";
+            remoteRef.key = "ai/librechat/session-secret";
+          }
+          {
+            secretKey = "session_iv";
+            remoteRef.key = "ai/librechat/session-iv";
+          }
+          {
+            secretKey = "jwt_secret";
+            remoteRef.key = "ai/librechat/jwt-secret";
+          }
           {
             secretKey = "oidc_secret";
             # TODO: switch to keycloak-operator synced secret once available

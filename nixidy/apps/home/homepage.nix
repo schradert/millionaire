@@ -350,17 +350,28 @@ in {
                 name = "http";
                 containerPort = 3000;
               };
+              # homepage v1 validates the Host header against HOMEPAGE_ALLOWED_HOSTS;
+              # kubelet probes hit the pod IP (host != allowed) and 400, crash-looping
+              # the pod. Send the allowed host explicitly on the probes.
               probes.liveness = {
                 enabled = true;
                 custom = true;
                 spec.httpGet.path = "/api/healthcheck";
                 spec.httpGet.port = "http";
+                spec.httpGet.httpHeaders = lib.toList {
+                  name = "Host";
+                  value = hostname;
+                };
               };
               probes.readiness = {
                 enabled = true;
                 custom = true;
                 spec.httpGet.path = "/api/healthcheck";
                 spec.httpGet.port = "http";
+                spec.httpGet.httpHeaders = lib.toList {
+                  name = "Host";
+                  value = hostname;
+                };
               };
               probes.startup.enabled = true;
             };
