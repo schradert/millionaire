@@ -63,16 +63,17 @@ in {
         };
       in {
         internal = lib.recursiveUpdate gateway {
-          # Target is bonobo's NATIVE tailnet IP, where a host-level relay
-          # (systemd-socket-proxyd, static/tailnet.nix gatewayRelay) forwards
-          # :80/:443 to the gateway VIP. external-dns-internal writes this into
-          # hyena's tailnet AdGuard (100.64.0.1), so tailnet devices reach
-          # internal services over the mesh natively — no .241/32 subnet route,
-          # no Cilium L2 source-IP fragility. Must be a bare IP, not a hostname:
-          # external-dns creates A records and CNAME targets don't chain locally
-          # in AdGuard (https://github.com/AdguardTeam/AdGuardHome/issues/3350).
-          # No hostname set, to avoid wildcard creation in AdGuard.
-          metadata.annotations."external-dns.alpha.kubernetes.io/target" = "100.64.0.4";
+          # Comma-separated NATIVE tailnet IPs of the gateway relays (bonobo
+          # 100.64.0.4, chinchilla 100.64.0.5), each a host-level systemd-socket-proxyd
+          # (static/tailnet.nix gatewayRelay) forwarding :80/:443 to the gateway VIP.
+          # external-dns splits the targets into one AdGuard rewrite per IP, AdGuard
+          # returns all A records → client-side round-robin / node-loss resilience.
+          # Records go to hyena's tailnet AdGuard (100.64.0.1); no .241/32 subnet
+          # route, no Cilium L2 source-IP fragility. Must be bare IPs, not a hostname:
+          # external-dns creates A records and CNAME targets don't chain locally in
+          # AdGuard (https://github.com/AdguardTeam/AdGuardHome/issues/3350). No
+          # hostname set, to avoid wildcard creation in AdGuard.
+          metadata.annotations."external-dns.alpha.kubernetes.io/target" = "100.64.0.4,100.64.0.5";
         };
         external = lib.recursiveUpdate gateway {
           metadata.annotations."external-dns.alpha.kubernetes.io/target" = "external.${domain}";

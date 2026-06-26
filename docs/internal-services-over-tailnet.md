@@ -8,11 +8,12 @@ public exposure. This rides the same headscale tailnet that cloud-burst uses
 ## How it fits together
 
 ```
-device (tailnet) ──DNS──▶ AdGuard @ 100.64.0.1:53 (hyena)
+device (tailnet) ──DNS──▶ AdGuard @ 100.64.0.1:53 (hyena)   [returns BOTH relay IPs]
                             ▲ records written by
                             │ external-dns-internal (in-cluster → AdGuard :3000 API)
-device ──HTTP──▶ 100.64.0.4 (bonobo tailnet IP) ──relay──▶ 192.168.50.241 ──▶ Service ──▶ Pod
-        (systemd-socket-proxyd on bonobo forwards :80/:443 to the gateway VIP)
+device ──HTTP──▶ {100.64.0.4 bonobo | 100.64.0.5 chinchilla} ──relay──▶ 192.168.50.241 ──▶ Service ──▶ Pod
+        (systemd-socket-proxyd on each relay node forwards :80/:443 to the gateway VIP;
+         two A records ⇒ client-side round-robin + survives one relay node down)
 ```
 
 1. **AdGuard on hyena** is the resolver for tailnet devices: headscale pushes it
@@ -21,20 +22,23 @@ device ──HTTP──▶ 100.64.0.4 (bonobo tailnet IP) ──relay──▶ 1
    `magic_dns = false` — no MagicDNS search domain is pushed (a leaked search
    domain previously hijacked pod DNS; keep it false).
 2. **`external-dns-internal`** (nixidy) watches internal-gateway HTTPRoutes and
-   writes `<name>.trdos.me → 100.64.0.4` (bonobo's tailnet IP) into AdGuard's
-   `:3000` API. (The public `external-dns` writes the same names to Cloudflare
-   for non-excluded routes.)
-3. **The gateway relay on bonobo** gives the internal gateway a *native* tailnet
-   IP. A host-level `systemd-socket-proxyd` (`static/tailnet.nix` `gatewayRelay`,
-   scoped to bonobo) binds bonobo's tailnet IP `100.64.0.4:80/:443` and forwards
-   raw TCP to the gateway VIP `192.168.50.241` — TLS/SNI pass through untouched,
-   so Cilium's envoy still Host-routes. A tailnet device reaches `100.64.0.4`
-   natively over the mesh (on-LAN or off-LAN, identically), so there is **no**
+   writes `<name>.trdos.me → 100.64.0.4,100.64.0.5` into AdGuard's `:3000` API.
+   external-dns splits the comma-separated target into one AdGuard rewrite per IP;
+   AdGuard returns both A records. (The public `external-dns` writes the same names
+   to Cloudflare for non-excluded routes.)
+3. **The gateway relays** (bonobo `100.64.0.4`, chinchilla `100.64.0.5`) give the
+   internal gateway *native* tailnet IPs. Each is a host-level `systemd-socket-proxyd`
+   (`static/tailnet.nix` `gatewayRelay`, set per-node in flake.nix) binding its tailnet
+   IP `:80/:443` and forwarding raw TCP to the gateway VIP `192.168.50.241` — TLS/SNI
+   pass through untouched, so Cilium's envoy still Host-routes. AdGuard hands out both
+   IPs, so clients round-robin and survive one relay node going down (they retry the
+   other IP — see the health-checked-DNS TODO for true failover). A device reaches a
+   relay natively over the mesh (on-LAN or off-LAN, identically), so there is **no**
    dependence on a `192.168.50.241/32` subnet route or the Cilium L2 source-IP
-   datapath. Why a host relay and not a tailscale node or a pod: headscale denies
+   datapath. Why host relays and not a tailscale node or a pod: headscale denies
    `tailscale serve` (no serve/funnel capability), and Cilium's eBPF L7LB tproxy
-   refuses in-cluster pod connections to the gateway — so the front must be a
-   plain host socket. The DNS answer is bonobo's tailnet IP, **not** hyena's —
+   refuses in-cluster pod connections to the gateway — so the front must be a plain
+   host socket. The DNS answers are the relays' tailnet IPs, **not** hyena's —
    hyena hosts DNS, not the services.
 
 ## hyena (headscale + AdGuard)
@@ -88,20 +92,25 @@ into pods.
 1. `tailscale up --login-server=https://headscale.trdos.me` on the device;
    approve it (`headscale nodes list` on hyena).
 2. The device picks up AdGuard automatically (override_local_dns) → ad-blocking +
-   `*.trdos.me` → `100.64.0.4`, reached natively over the tailnet (the same path
-   on-LAN and off-LAN) → bonobo's relay → gateway. Nothing else to configure.
+   `*.trdos.me` → `100.64.0.4` / `100.64.0.5` (round-robin), reached natively over
+   the tailnet (the same path on-LAN and off-LAN) → a relay node → gateway. Nothing
+   else to configure.
 
 ## Known gaps / TODO
 
-- **Off-LAN datapath is now the bonobo relay**, not the `192.168.50.241/32`
-  subnet route — this sidesteps the Cilium L2 source-IP / subnet-route SNAT
-  fragility (`project_cilium_l2_native_routing_bug`). Verified end-to-end:
-  octopus/off-LAN → `100.64.0.4` → gateway returns the gateway's own responses
-  (byte-identical to hitting `192.168.50.241` directly). Tradeoff: the relay is a
-  single node (bonobo); if bonobo is down, internal services are unreachable over
-  the tailnet until DNS is repointed or a second relay is added. The
-  `192.168.50.241/32` route is still advertised by `tailnet.nix` but is now
-  vestigial for tailnet clients — drop it in a future all-node deploy.
+- **Off-LAN datapath is the bonobo + chinchilla relays** (round-robin), not the
+  `192.168.50.241/32` subnet route — sidesteps the Cilium L2 source-IP / subnet-route
+  SNAT fragility (`project_cilium_l2_native_routing_bug`). Verified end-to-end:
+  octopus → `100.64.0.4` → gateway returns the gateway's own responses (byte-identical
+  to hitting `192.168.50.241` directly). The `.241/32` advertise has been **removed**
+  from `tailnet.nix` (the hyena.nix autoApprover entry for it is left as a harmless
+  no-op).
+- **TODO: health-checked DNS for true relay failover.** Two A records give clients
+  round-robin and survival of one relay node going down *by client retry only* — a
+  dead relay's IP stays in AdGuard (external-dns has no relay health check), so some
+  requests hit the dead IP first and must retry. True failover needs a liveness-gated
+  record (e.g. a small controller that pulls a relay node's IP from the gateway target
+  when its `gateway-relay-*.socket` is down, or a health-checked DNS front).
 - **`tailnet.podSupernet` is now `10.0.0.0/8`** (Cilium's pool) and the supernet
   route is deployed on all home nodes — verified it does **not** divert home↔home
   pod traffic (LAN `/24`s win by longest-prefix) or services (eBPF socket-LB

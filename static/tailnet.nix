@@ -125,10 +125,11 @@ in {
             sleep 10
           done
           [ -n "$cidr" ] || { echo "no cilium_host pod CIDR after 20m" >&2; exit 1; }
-          # Advertise this node's pod /24 plus the internal-gateway VIP (192.168.50.241)
-          # so off-LAN tailnet clients can reach cluster-hosted internal services.
-          # headscale auto-approves both (hyena.nix autoApprovers).
-          tailscale set --advertise-routes="$cidr,192.168.50.241/32"
+          # Advertise only this node's pod /24 (headscale auto-approves it).
+          # The internal-gateway VIP is NO LONGER advertised as a /32 subnet
+          # route: off-LAN clients reach internal services via the gateway relay's
+          # native tailnet IP (gatewayRelay above), not by routing to the VIP.
+          tailscale set --advertise-routes="$cidr"
           ${lib.optionalString cfg.podSupernetRoute "ip route replace ${cfg.podSupernet} dev tailscale0"}
         '';
       };
