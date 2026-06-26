@@ -34,7 +34,6 @@
     # #26 claimed this was TODO-commented but merged it active; restore
     # the documented staging until the prerequisites are done.
     # ./network/multus.nix
-    ./network/tailscale.nix
     ./observability/alertmanager.nix
     ./observability/gatus.nix
     ./observability/grafana.nix
