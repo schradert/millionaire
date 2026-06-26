@@ -302,6 +302,9 @@
           profiles.system.canivete.configuration = {
             imports = [./static/facter ./static/server.nix];
             disko.devices.disk.root.device = "/dev/disk/by-id/ata-MTFDDAK256TBN-1AR1ZABHA_UGXVK01J7BDCER";
+            # Second gateway relay (round-robin with bonobo) on chinchilla's
+            # tailnet IP; external-dns-internal lists both A records. See tailnet.nix.
+            tailnet.gatewayRelay = "100.64.0.5";
           };
         };
 
