@@ -28,7 +28,7 @@ spec:
       containers:
         - command:
             - /usr/src/multus-cni/bin/multus-daemon
-          image: ghcr.io/k8snetworkplumbingwg/multus-cni:4.3.0-thick
+          image: ghcr.io/k8snetworkplumbingwg/multus-cni:stable-thick@sha256:2b9671447f3ea4e7e56730843dbf59445b9307246f393b61386b896d56ae51c9
           imagePullPolicy: IfNotPresent
           name: multus
           resources:
@@ -82,7 +82,7 @@ spec:
             - -f
             - /usr/src/multus-cni/bin/multus-shim
             - /host/opt/cni/bin/multus-shim
-          image: ghcr.io/k8snetworkplumbingwg/multus-cni:4.3.0-thick
+          image: ghcr.io/k8snetworkplumbingwg/multus-cni:stable-thick
           imagePullPolicy: IfNotPresent
           name: multus-installer
           resources:
