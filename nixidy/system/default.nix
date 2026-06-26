@@ -35,7 +35,6 @@
     # the documented staging until the prerequisites are done.
     # ./network/multus.nix
     ./network/tailscale.nix
-    ./network/tailscale-front.nix
     ./observability/alertmanager.nix
     ./observability/gatus.nix
     ./observability/grafana.nix
