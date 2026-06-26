@@ -94,8 +94,6 @@ spec:
           volumeMounts:
             - mountPath: /host/opt/cni/bin
               name: cnibin
-      nodeSelector:
-        kubernetes.io/hostname: sirver
       priorityClassName: system-node-critical
       serviceAccountName: multus
       tolerations:

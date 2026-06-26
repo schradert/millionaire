@@ -4,14 +4,15 @@
   # currently just Music Assistant (mDNS speaker discovery), but the same
   # NetworkAttachmentDefinition can serve future apps with the same need.
   #
-  # ROLLOUT — phase 1 gates the DaemonSet, the uninstall hook Job, AND the
-  # cni-dhcp node daemon (below) to sirver, the node with `br0` where
-  # music-assistant is pinned; the cluster has a history of CNI-related outages,
-  # so prove it out on one node before dropping the nodeSelectors / hostname gate
-  # to go cluster-wide (phase 2 = remove all three together). Rollback that
-  # doesn't depend on the cluster: `rm /etc/cni/net.d/00-multus.conf` on the node
-  # restores pure-cilium CNI for all new pod sandboxes (running pods are
-  # unaffected either way).
+  # ROLLOUT — phase 1 proved multus on sirver alone; phase 2 (2026-06-26)
+  # widened the DaemonSet + uninstall Job cluster-wide so multus runs on every
+  # node and any node can host pods that attach NADs. The `cni-dhcp` node daemon
+  # (below) deliberately STAYS sirver-only: the sole DHCP-IPAM NAD (home-lan) is
+  # `master: br0`, and only sirver has br0 — running the daemon elsewhere is dead
+  # weight plus an extra etcd-server node touch. Extend it (drop the hostname
+  # gate) only when a NAD targets another node's NIC. Rollback that doesn't
+  # depend on the cluster: `rm /etc/cni/net.d/00-multus.conf` on a node restores
+  # pure-cilium CNI for new pod sandboxes (running pods unaffected either way).
   #
   # Why this is safe to merge given the 2026-06-11 etcd pipe-freeze outage: that
   # outage was armed by a CNI-involved deploy (#40) restarting all three RKE2
@@ -38,10 +39,10 @@
     pkgs,
     ...
   }: {
-    # Phase 1: only sirver runs multus + the macvlan pod, so only sirver needs
-    # the dhcp daemon. Gating it here (not just the DaemonSet) keeps phase 1 a
-    # true single-node change — the pulumi switch is a no-op on every other node.
-    # Phase 2: widen to all cluster nodes alongside the DaemonSet nodeSelector.
+    # Scoped to sirver: the only DHCP-IPAM NAD (home-lan) is a macvlan on `br0`,
+    # which only sirver has. multus itself is cluster-wide (phase 2), but the
+    # dhcp daemon is only useful where such a NAD is consumed — so it stays here
+    # until a NAD targets another node's NIC (then drop this hostname gate).
     config = lib.mkIf (config.canivete.kubernetes.enable && config.networking.hostName == "sirver") {
       # The home-lan NAD uses `ipam.type = "dhcp"`, and that CNI plugin is only a
       # thin client: a persistent `dhcp daemon` must serve /run/cni/dhcp.sock on
@@ -145,8 +146,7 @@
               # The new common defaults this to false; the thick-plugin daemon
               # needs its SA token to read NADs/pod annotations via the API.
               automountServiceAccountToken = true;
-              # Phase 1: single-node rollout (see ROLLOUT above).
-              nodeSelector."kubernetes.io/hostname" = "sirver";
+              # Phase 2: cluster-wide — no nodeSelector, multus on every node.
             };
           };
           # Helm test hooks never run under ArgoCD, and the chart's test NAD
@@ -154,10 +154,9 @@
           # while the rawResource is named "multus").
           controllers.test.enabled = false;
           rawResources.test.enabled = false;
-          # The uninstall Job stays: ArgoCD honors helm.sh/hook pre-delete, so
-          # deleting the app cleans multus's files off the node — but it must
-          # land on the node multus actually ran on.
-          controllers.uninstall.pod.nodeSelector."kubernetes.io/hostname" = "sirver";
+          # The uninstall Job stays (ArgoCD honors helm.sh/hook pre-delete, so
+          # deleting the app sweeps multus's files off a node). Single Job, not a
+          # DaemonSet, so cleanup is best-effort one-node — acceptable.
         };
       };
       # Secondary-NIC definition for pods on the home LAN: macvlan subinterface
