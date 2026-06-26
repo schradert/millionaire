@@ -22,7 +22,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/cm: 6e02ac6485d4d1b8fec26cd1343b90b468c0b6b62179fb581d25d0b653dc62b8
+        checksum/cm: 227b93f17ed8192c00b8f7c921587cae731ccb07eaba4dc721755c54ed5c740f
       labels:
         app.kubernetes.io/component: rollouts-controller
         app.kubernetes.io/instance: argo-rollouts
