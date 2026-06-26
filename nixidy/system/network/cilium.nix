@@ -74,6 +74,10 @@
         inherit chart;
         values = {
           autoDirectNodeRoutes = true;
+          # Cilium reaps foreign CNI configs in /etc/cni/net.d by default
+          # (cni.exclusive); multus writes 00-multus.conf there
+          # (network/multus.nix) — keep it. No-op on nodes without multus.
+          cni.exclusive = false;
           # Mixed L2/L3 topology (cloud-burst workers over the tailnet):
           # skip direct-route installation for peers that are not
           # L2-reachable instead of erroring — their pod CIDRs route via
