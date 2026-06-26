@@ -233,6 +233,12 @@ data:
       interval: 1m
       name: multi-scrobbler
       url: https://multi-scrobbler.trdos.me/health
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: music-assistant
+      url: https://music-assistant.trdos.me
     - client:
         dns-resolver: tcp://1.1.1.1:53
       conditions:
