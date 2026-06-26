@@ -29,10 +29,7 @@
     ./media/maloja.nix
     ./media/multi-scrobbler.nix
     ./media/navidrome.nix
-    # STAGED — depends on the multus home-lan NAD (its pod annotation
-    # references a NetworkAttachmentDefinition that doesn't exist yet);
-    # enable together with ./network/multus.nix once tested.
-    # ./media/music-assistant.nix
+    ./media/music-assistant.nix
     ./media/arr/autobrr.nix
     ./media/arr/bazarr.nix
     ./media/arr/chaptarr.nix
