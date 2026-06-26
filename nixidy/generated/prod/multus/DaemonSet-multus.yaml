@@ -1,0 +1,134 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/controller: multus
+    app.kubernetes.io/instance: multus
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: multus
+  name: multus
+  namespace: kube-system
+spec:
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: multus
+      app.kubernetes.io/instance: multus
+      app.kubernetes.io/name: multus
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: a8f91b9c0002d0f14fd3af7a58b42ab21fb014d847191fafe295412e727828a4
+      labels:
+        app.kubernetes.io/controller: multus
+        app.kubernetes.io/instance: multus
+        app.kubernetes.io/name: multus
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - command:
+            - /usr/src/multus-cni/bin/multus-daemon
+          image: ghcr.io/k8snetworkplumbingwg/multus-cni:4.3.0-thick
+          imagePullPolicy: IfNotPresent
+          name: multus
+          resources:
+            limits:
+              memory: 200Mi
+            requests:
+              memory: 100Mi
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+              drop:
+                - ALL
+            privileged: true
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /etc/cni/net.d
+              name: cni
+            - mountPath: /opt/cni/bin
+              name: cnibin
+            - mountPath: /etc/cni/net.d/multus.d
+              name: config
+            - mountPath: /host/run
+              name: host-run
+            - mountPath: /run/k8s.cni.cncf.io
+              name: host-run-k8s-cni-cncf-io
+            - mountPath: /run/netns/
+              mountPropagation: HostToContainer
+              name: host-run-netns
+            - mountPath: /var/lib/cni/multus
+              name: host-var-lib-cni-multus
+            - mountPath: /var/lib/kubelet
+              name: host-var-lib-kubelet
+            - mountPath: /hostroot
+              mountPropagation: HostToContainer
+              name: hostroot
+      dnsPolicy: ClusterFirstWithHostNet
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: true
+      hostPID: true
+      initContainers:
+        - image: ghcr.io/angelnu/cni-plugins:1.9.1
+          imagePullPolicy: IfNotPresent
+          name: cni-installer
+          volumeMounts:
+            - mountPath: /host/opt/cni/bin
+              name: cnibin
+        - command:
+            - cp
+            - -f
+            - /usr/src/multus-cni/bin/multus-shim
+            - /host/opt/cni/bin/multus-shim
+          image: ghcr.io/k8snetworkplumbingwg/multus-cni:4.3.0-thick
+          imagePullPolicy: IfNotPresent
+          name: multus-installer
+          resources:
+            requests:
+              cpu: 10m
+              memory: 15Mi
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /host/opt/cni/bin
+              name: cnibin
+      nodeSelector:
+        kubernetes.io/hostname: sirver
+      priorityClassName: system-node-critical
+      serviceAccountName: multus
+      tolerations:
+        - key: CriticalAddonsOnly
+          operator: Exists
+      volumes:
+        - hostPath:
+            path: /etc/cni/net.d
+            type: DirectoryOrCreate
+          name: cni
+        - hostPath:
+            path: /opt/cni/bin
+            type: DirectoryOrCreate
+          name: cnibin
+        - configMap:
+            name: multus
+          name: config
+        - hostPath:
+            path: /run
+          name: host-run
+        - hostPath:
+            path: /run/k8s.cni.cncf.io
+          name: host-run-k8s-cni-cncf-io
+        - hostPath:
+            path: /run/netns/
+          name: host-run-netns
+        - hostPath:
+            path: /var/lib/cni/multus
+          name: host-var-lib-cni-multus
+        - hostPath:
+            path: /var/lib/kubelet
+          name: host-var-lib-kubelet
+        - hostPath:
+            path: /
+            type: Directory
+          name: hostroot
