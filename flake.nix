@@ -292,6 +292,9 @@
           profiles.system.canivete.configuration = {
             imports = [./static/facter ./static/server.nix];
             disko.devices.disk.root.device = "/dev/disk/by-id/ata-Micron_1100_SATA_256GB_165015496CBD";
+            # Host-level TCP relay fronting the internal Cilium gateway on bonobo's
+            # tailnet IP (external-dns-internal points *.trdos.me here). See tailnet.nix.
+            tailnet.gatewayRelay = "100.64.0.4";
           };
         };
         chinchilla = {
