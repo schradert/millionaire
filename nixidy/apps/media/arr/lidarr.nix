@@ -1,5 +1,9 @@
 {config, ...}: {
-  nixidy = {charts, lib, ...}: let
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "lidarr.${domain}";
     port = 80;
@@ -37,7 +41,10 @@
             };
             tmpfs = {
               type = "emptyDir";
-              globalMounts = lib.toList {path = "/tmp"; subPath = "tmp";};
+              globalMounts = lib.toList {
+                path = "/tmp";
+                subPath = "tmp";
+              };
             };
             media-music = {
               type = "persistentVolumeClaim";

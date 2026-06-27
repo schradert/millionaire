@@ -2,7 +2,11 @@
 # has its own OIDC integration against Keycloak). Postgres via CNPG, Redis via
 # DragonflyDB. MQTT integration talks to the mosquitto broker in this namespace.
 {config, ...}: {
-  nixidy = {charts, lib, ...}: let
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "chirpstack.${domain}";
     probe = {

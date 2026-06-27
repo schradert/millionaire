@@ -1,4 +1,4 @@
-{config, ...}: {
+{...}: {
   nixidy = {lib, ...}: let
     chart = lib.helm.downloadHelmChart {
       chart = "gpu-operator";

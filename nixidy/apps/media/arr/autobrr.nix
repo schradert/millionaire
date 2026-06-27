@@ -1,5 +1,9 @@
 {config, ...}: {
-  nixidy = {charts, lib, ...}: let
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "autobrr.${domain}";
   in {
@@ -36,13 +40,22 @@
           persistence.secrets = {
             type = "secret";
             name = "autobrr";
-            globalMounts = lib.toList {path = "/secrets"; readOnly = true;};
+            globalMounts = lib.toList {
+              path = "/secrets";
+              readOnly = true;
+            };
           };
           persistence.tmpfs = {
             type = "emptyDir";
             globalMounts = [
-              {path = "/config/log"; subPath = "log";}
-              {path = "/tmp"; subPath = "tmp";}
+              {
+                path = "/config/log";
+                subPath = "log";
+              }
+              {
+                path = "/tmp";
+                subPath = "tmp";
+              }
             ];
           };
           configMaps.autobrr.data = {

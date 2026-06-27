@@ -1,5 +1,9 @@
 {config, ...}: {
-  nixidy = {charts, lib, ...}: let
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "shoko.${domain}";
   in {
@@ -32,7 +36,12 @@
           persistence.media-tv = {
             type = "persistentVolumeClaim";
             existingClaim = "media-tv";
-            advancedMounts.shoko.shoko = [{path = "/media/tv"; readOnly = true;}];
+            advancedMounts.shoko.shoko = [
+              {
+                path = "/media/tv";
+                readOnly = true;
+              }
+            ];
           };
           route.shoko = {
             hostnames = [hostname];

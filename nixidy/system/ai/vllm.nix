@@ -1,4 +1,4 @@
-{config, ...}: {
+{...}: {
   nixidy = {
     charts,
     lib,
@@ -42,7 +42,10 @@
                   key = "hf_token";
                 };
               };
-              ports = lib.toList {name = "http"; containerPort = 8000;};
+              ports = lib.toList {
+                name = "http";
+                containerPort = 8000;
+              };
               resources = {
                 requests = {
                   cpu = "4";

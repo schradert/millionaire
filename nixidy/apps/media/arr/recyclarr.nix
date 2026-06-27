@@ -1,6 +1,10 @@
-{config, ...}: {
-  nixidy = {charts, lib, pkgs, ...}: let
-    inherit (config.canivete.meta) domain;
+{...}: {
+  nixidy = {
+    charts,
+    lib,
+    pkgs,
+    ...
+  }: let
     yaml = pkgs.formats.yaml {};
     toYAML = name: yamlObj: builtins.readFile (yaml.generate name yamlObj);
     recyclarrConfig = {
@@ -112,9 +116,18 @@
           persistence.tmpfs = {
             type = "emptyDir";
             globalMounts = [
-              {path = "/config/logs"; subPath = "logs";}
-              {path = "/config/repositories"; subPath = "repositories";}
-              {path = "/tmp"; subPath = "tmp";}
+              {
+                path = "/config/logs";
+                subPath = "logs";
+              }
+              {
+                path = "/config/repositories";
+                subPath = "repositories";
+              }
+              {
+                path = "/tmp";
+                subPath = "tmp";
+              }
             ];
           };
           configMaps.recyclarr.data."recyclarr.yml" = toYAML "recyclarr.yml" recyclarrConfig;
@@ -124,8 +137,14 @@
         secretStoreRef.name = "bitwarden";
         secretStoreRef.kind = "ClusterSecretStore";
         data = [
-          {secretKey = "radarr"; remoteRef.key = "radarr";}
-          {secretKey = "sonarr"; remoteRef.key = "sonarr";}
+          {
+            secretKey = "radarr";
+            remoteRef.key = "radarr";
+          }
+          {
+            secretKey = "sonarr";
+            remoteRef.key = "sonarr";
+          }
         ];
         target.template.data."secrets.yml" = toYAML "secrets.yml" secretsTemplate;
       };

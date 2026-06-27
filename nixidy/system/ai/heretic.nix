@@ -1,7 +1,7 @@
 # Heretic: one-shot model abliteration (removes safety guardrails)
 # Runs as a k8s Job on falcon GPU, not a persistent service.
 # Workflow: promptfoo baseline → heretic job → promptfoo comparison
-{config, ...}: {
+{...}: {
   nixidy = {
     charts,
     lib,

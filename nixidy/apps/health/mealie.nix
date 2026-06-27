@@ -12,7 +12,10 @@
     inherit (config.canivete.meta) domain;
     hostname = "mealie.${domain}";
   in {
-    gatus.endpoints.mealie = { url = "https://${hostname}"; group = "internal"; };
+    gatus.endpoints.mealie = {
+      url = "https://${hostname}";
+      group = "internal";
+    };
 
     # Keycloak OIDC client — Hostzero operator syncs secret to K8s
     applications.keycloak.resources.keycloakClients.mealie.spec = {

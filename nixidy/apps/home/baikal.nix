@@ -2,7 +2,11 @@
   inherit (config.canivete.meta) domain;
   hostname = "cal.${domain}";
 in {
-  nixidy = {charts, lib, ...}: {
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: {
     gatus.endpoints.baikal = {
       url = "https://${hostname}";
       group = "internal";
@@ -23,7 +27,12 @@ in {
                 tag = "0.10.1-nginx";
               };
               envFrom = [{secretRef.name = "baikal";}];
-              ports = [{name = "http"; containerPort = 80;}];
+              ports = [
+                {
+                  name = "http";
+                  containerPort = 80;
+                }
+              ];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
               probes.startup = {

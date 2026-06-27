@@ -19,7 +19,10 @@ in {
       };
     };
 
-    gatus.endpoints.bifrost = {url = "https://${hostname}"; group = "internal";};
+    gatus.endpoints.bifrost = {
+      url = "https://${hostname}";
+      group = "internal";
+    };
     applications.bifrost = {
       namespace = "ai";
       helm.releases.bifrost = {

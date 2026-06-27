@@ -13,10 +13,8 @@ in {
     config,
     charts,
     lib,
-    pkgs,
     ...
   }: let
-    yaml = pkgs.formats.yaml {};
     upstreams = config.oauth2Proxy.upstreams;
     namespaces = lib.unique (lib.mapAttrsToList (_: cfg: cfg.namespace) upstreams);
     nginxConf = lib.concatStringsSep "\n" (
@@ -60,7 +58,7 @@ in {
       upstreams
     );
   in {
-    options.oauth2Proxy.upstreams = can.attrs.submodule "Host-based upstream routes for oauth2-proxy" ({name, ...}: {
+    options.oauth2Proxy.upstreams = can.attrs.submodule "Host-based upstream routes for oauth2-proxy" ({...}: {
       options.url = can.str "Upstream service URL" {};
       options.namespace = can.str "Namespace where the HTTPRoute lives" {};
       options.websocket = can.bool "Enable WebSocket proxying" {default = false;};

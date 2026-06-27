@@ -13,7 +13,10 @@
       install = true;
       src = chart;
     };
-    gatus.endpoints.prometheus = { url = "https://prometheus.${config.canivete.meta.domain}"; group = "internal"; };
+    gatus.endpoints.prometheus = {
+      url = "https://prometheus.${config.canivete.meta.domain}";
+      group = "internal";
+    };
     applications.prometheus = {
       namespace = "observability";
       canivete.bootstrap.enable = true;

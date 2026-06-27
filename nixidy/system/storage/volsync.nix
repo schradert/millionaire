@@ -33,7 +33,11 @@ in {
     };
     # Attaches VolSync replication mechanisms to target PVCs and back up to Backblaze B2
     nixidy.applicationImports = [
-      ({config, name, ...}: {
+      ({
+        config,
+        name,
+        ...
+      }: {
         options.volsync = {
           enable = can.enable "Volsync replication of PVCs" {default = config.volsync.pvcs != null;};
           pvcs = can.attrs.submodule "Name of PVCs to replicate and back up" ({config, ...}: {

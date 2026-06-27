@@ -1,4 +1,8 @@
-{can, config, ...}: let
+{
+  can,
+  config,
+  ...
+}: let
   inherit (config.canivete.meta) domain;
   hostname = "gatus.${domain}";
 in {
@@ -19,7 +23,10 @@ in {
       };
     });
     config = {
-      gatus.endpoints.gatus = { url = "https://${hostname}"; group = "external"; };
+      gatus.endpoints.gatus = {
+        url = "https://${hostname}";
+        group = "external";
+      };
       applications.gatus = {
         namespace = "observability";
         postgres.enable = true;
@@ -49,10 +56,12 @@ in {
               ui.header = "Status";
               connectivity.checker.target = "1.1.1.1:53";
               connectivity.checker.interval = "1m";
-              endpoints = map (ep:
-                ep // lib.optionalAttrs (ep.group == "external") {
-                  client.dns-resolver = "tcp://1.1.1.1:53";
-                }
+              endpoints = map (
+                ep:
+                  ep
+                  // lib.optionalAttrs (ep.group == "external") {
+                    client.dns-resolver = "tcp://1.1.1.1:53";
+                  }
               ) (builtins.attrValues config.gatus.endpoints);
             };
           };

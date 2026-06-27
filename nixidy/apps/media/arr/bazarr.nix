@@ -1,5 +1,9 @@
 {config, ...}: {
-  nixidy = {charts, lib, ...}: let
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "bazarr.${domain}";
   in {
@@ -31,20 +35,39 @@
           persistence.tmpfs = {
             type = "emptyDir";
             globalMounts = [
-              {path = "/config/cache"; subPath = "cache";}
-              {path = "/config/log"; subPath = "log";}
-              {path = "/tmp"; subPath = "tmp";}
+              {
+                path = "/config/cache";
+                subPath = "cache";
+              }
+              {
+                path = "/config/log";
+                subPath = "log";
+              }
+              {
+                path = "/tmp";
+                subPath = "tmp";
+              }
             ];
           };
           persistence.media-movies = {
             type = "persistentVolumeClaim";
             existingClaim = "media-movies";
-            advancedMounts.bazarr.bazarr = [{path = "/media/movies"; readOnly = true;}];
+            advancedMounts.bazarr.bazarr = [
+              {
+                path = "/media/movies";
+                readOnly = true;
+              }
+            ];
           };
           persistence.media-tv = {
             type = "persistentVolumeClaim";
             existingClaim = "media-tv";
-            advancedMounts.bazarr.bazarr = [{path = "/media/tv"; readOnly = true;}];
+            advancedMounts.bazarr.bazarr = [
+              {
+                path = "/media/tv";
+                readOnly = true;
+              }
+            ];
           };
           route.bazarr = {
             hostnames = [hostname];

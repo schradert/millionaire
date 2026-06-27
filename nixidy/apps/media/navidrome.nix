@@ -1,5 +1,9 @@
 {config, ...}: {
-  nixidy = {charts, lib, ...}: let
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "navidrome.${domain}";
     port = 4533;
@@ -42,7 +46,12 @@
             media-music = {
               type = "persistentVolumeClaim";
               existingClaim = "media-music";
-              advancedMounts.navidrome.navidrome = [{path = "/music"; readOnly = true;}];
+              advancedMounts.navidrome.navidrome = [
+                {
+                  path = "/music";
+                  readOnly = true;
+                }
+              ];
             };
           };
           configMaps.navidrome.data = {

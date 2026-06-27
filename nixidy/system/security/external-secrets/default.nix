@@ -15,7 +15,7 @@
       application = "external-secrets-crds";
       install = true;
       prefix = "config/crds/bases";
-      match = ".*_.*\\.yaml$";  # CRD files contain underscores, kustomization.yaml doesn't
+      match = ".*_.*\\.yaml$"; # CRD files contain underscores, kustomization.yaml doesn't
       src = pkgs.fetchFromGitHub {
         owner = "external-secrets";
         repo = "external-secrets";
