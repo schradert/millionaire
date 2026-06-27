@@ -1,0 +1,17 @@
+[target.xtensa-esp32s3-none-elf]
+runner = "espflash flash --monitor --chip esp32s3"
+
+[env]
+ESP_LOG = "info"
+
+[build]
+rustflags = [
+  "-C", "force-frame-pointers",
+]
+target = "xtensa-esp32s3-none-elf"
+
+# `alloc` (not just `core`) is required by esp-radio / the WiFi + embassy-net
+# stack. esp-generate's WiFi template uses the same. Harmless for non-heap
+# firmware (alloc just gets built too).
+[unstable]
+build-std = ["alloc", "core"]

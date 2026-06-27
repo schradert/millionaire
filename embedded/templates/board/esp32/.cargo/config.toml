@@ -1,0 +1,17 @@
+{%- assign chip = mcu | replace: "-", "" -%}
+{%- if mcu == "esp32-c3" -%}{%- assign triple = "riscv32imc-unknown-none-elf" -%}{%- else -%}{%- assign triple = "xtensa-esp32s3-none-elf" -%}{%- endif -%}
+[target.{{triple}}]
+runner = "espflash flash --monitor --chip {{chip}}"
+
+[env]
+ESP_LOG = "info"
+
+[build]
+rustflags = [
+  # Required for esp-backtrace to produce useful traces
+  "-C", "force-frame-pointers",
+]
+target = "{{triple}}"
+
+[unstable]
+build-std = ["core"]

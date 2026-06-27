@@ -1,0 +1,15 @@
+[target.riscv32imc-unknown-none-elf]
+runner = "espflash flash --monitor --chip esp32c3"
+
+[env]
+ESP_LOG = "info"
+
+[build]
+rustflags = [
+  # Required for esp-backtrace to produce useful traces
+  "-C", "force-frame-pointers",
+]
+target = "riscv32imc-unknown-none-elf"
+
+[unstable]
+build-std = ["core"]

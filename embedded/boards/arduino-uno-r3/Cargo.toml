@@ -1,0 +1,32 @@
+[package]
+name         = "homelab-arduino-uno-r3"
+edition      = "2021"
+version      = "0.1.0"
+rust-version = "1.88"
+license      = "MIT"
+description  = "Arduino Uno R3 board binary (AVR ATmega328P, 16 MHz, 32 KB flash / 2 KB SRAM)."
+
+[[bin]]
+name  = "homelab-arduino-uno-r3"
+path  = "src/main.rs"
+test  = false
+bench = false
+
+[dependencies]
+homelab-shared      = { path = "../../shared/base" }
+homelab-hello-world = { path = "../../apps/hello-world", default-features = false, features = ["blocking"] }
+
+# arduino-hal isn't on crates.io; pin to the same commit avr-hal-template uses.
+arduino-hal = { git = "https://github.com/rahix/avr-hal", rev = "e5c8f37fe48419956e722490a82b9ca9b9fc61a2", features = ["arduino-uno"] }
+
+panic-halt   = "1.0"
+embedded-hal = "1.0"
+ufmt         = "0.2"
+
+[profile.release]
+opt-level = "s"
+lto       = true
+panic     = "abort"  # required by build-std-features = ["panic_immediate_abort"]
+
+[profile.dev]
+panic = "abort"

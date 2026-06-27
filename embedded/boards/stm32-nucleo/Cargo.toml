@@ -1,0 +1,45 @@
+[package]
+name         = "homelab-stm32-nucleo"
+edition      = "2024"
+version      = "0.1.0"
+rust-version = "1.88"
+license      = "MIT"
+description  = "STM32 Nucleo board binary. Default config: Nucleo-F446RE."
+
+[[bin]]
+name = "homelab-stm32-nucleo"
+path = "src/main.rs"
+
+[dependencies]
+homelab-shared      = { path = "../../shared/base" }
+homelab-hello-world = { path = "../../apps/hello-world", features = ["embassy"] }
+
+# ─────────────────────────────────────────────────────────────────────────
+# Pick ONE chip feature for your Nucleo. Default is stm32f446re.
+# Other common Nucleos: stm32f411re, stm32f446re, stm32l432kc, stm32g474re.
+# Full list: https://docs.rs/embassy-stm32/latest/embassy_stm32/#feature-flags
+# ─────────────────────────────────────────────────────────────────────────
+embassy-stm32 = { version = "0.6", features = [
+  "stm32f446re",          # ← change to your chip
+  "memory-x",             # auto-generate linker memory layout
+  "time-driver-any",
+  "exti",
+  "defmt",
+] }
+
+embassy-executor = { version = "0.10", features = [
+  "platform-cortex-m",
+  "executor-thread",
+  "defmt",
+] }
+embassy-time = { version = "0.5", features = ["defmt", "defmt-timestamp-uptime", "tick-hz-32_768"] }
+embassy-sync = { version = "0.8", features = ["defmt"] }
+
+defmt        = "1"
+defmt-rtt    = "1"
+panic-probe  = { version = "1", features = ["print-defmt"] }
+
+cortex-m     = { version = "0.7.6", features = ["inline-asm", "critical-section-single-core"] }
+cortex-m-rt  = "0.7"
+
+critical-section = "1.2"

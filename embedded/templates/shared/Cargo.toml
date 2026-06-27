@@ -1,0 +1,17 @@
+[package]
+name         = "homelab-shared-{{project-name}}"
+edition      = "2024"
+version      = "0.1.0"
+rust-version = "1.88"
+license      = "MIT"
+description  = "{{description}}"
+
+# Shared capability ("tier") library. Like apps and shared/base, it is
+# EXCLUDED from workspace membership, so it CANNOT inherit `{ workspace = true }`
+# deps — pin versions explicitly. Add only the dependencies the capability
+# needs, and keep that floor no higher than the boards that use it can
+# support (e.g. an ESP-only WiFi tier may depend on esp-radio; an AVR-safe
+# tier must stay within homelab-shared's constraints). See ../../TARGETS.md.
+
+[dependencies]
+homelab-shared = { path = "../base" }

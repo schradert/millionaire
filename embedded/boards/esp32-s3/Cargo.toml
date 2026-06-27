@@ -1,0 +1,30 @@
+[package]
+name         = "homelab-esp32-s3"
+edition.workspace      = true
+version.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+description  = "ESP32-S3 board binary."
+
+[[bin]]
+name = "homelab-esp32-s3"
+path = "src/main.rs"
+
+[dependencies]
+homelab-shared      = { path = "../../shared/base" }
+homelab-shared-wifi = { path = "../../shared/wifi" }
+homelab-web-request = { path = "../../apps/web-request" }
+
+esp-hal                = { workspace = true, features = ["esp32s3", "log-04", "unstable"] }
+esp-rtos               = { workspace = true, features = ["esp32s3", "embassy", "esp-radio", "esp-alloc", "log-04"] }
+esp-radio              = { workspace = true, features = ["esp32s3", "wifi", "log-04", "unstable", "esp-alloc"] }
+esp-alloc              = { workspace = true }
+esp-bootloader-esp-idf = { workspace = true, features = ["esp32s3", "log-04"] }
+esp-println            = { workspace = true, features = ["esp32s3", "log-04", "auto"] }
+esp-backtrace          = { workspace = true, features = ["esp32s3", "panic-handler", "println"] }
+critical-section.workspace = true
+static_cell.workspace      = true
+log.workspace              = true
+
+embassy-executor = { workspace = true, features = ["log"] }
+embassy-time     = { workspace = true, features = ["log"] }

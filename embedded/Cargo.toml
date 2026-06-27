@@ -1,0 +1,67 @@
+[workspace]
+resolver = "2"
+# Only board (binary) crates are members. Libraries (shared/*, apps/*) are
+# consumed via path deps but excluded from membership so cargo doesn't try
+# to feature-unify them against board crates that target different chips.
+members = [
+  "boards/esp32-c3",
+  "boards/esp32-s3",
+  "boards/stm32-nucleo",
+  "boards/teensy-4.1",
+  # marker: new-board(esp32/cortex-m): members — `new-board` inserts above
+  # Arduino is intentionally NOT a workspace member: it requires a different
+  # Rust toolchain (upstream nightly with AVR LLVM backend, vs esp-rs for the
+  # rest). Building from inside boards/arduino-uno-r3/ picks up its .envrc
+  # which switches PATH to the AVR toolchain. From the workspace root, it's
+  # invisible to `cargo build --workspace`.
+]
+exclude = [
+  "shared/base",
+  "apps/hello-world",
+  "boards/arduino-uno-r3",
+  "shared/wifi",
+  "apps/web-request",
+  # marker: new-app/new-board(avr): excluded — `new-app`/`new-board` inserts above
+]
+
+# Each board's .cargo/config.toml owns target/runner; workspace root sets
+# nothing so cargo picks up the per-board config when you `-p` it.
+
+[workspace.package]
+edition      = "2024"
+version      = "0.1.0"
+rust-version = "1.88"
+license      = "MIT"
+
+# Only deps that member crates actually inherit via `{ workspace = true }`
+# live here — currently just the ESP boards. Excluded crates (shared/*, apps/*,
+# the AVR board) can't inherit workspace deps, and the Cortex-M boards pin their
+# own (cortex-m, defmt, embassy-stm32, …), so those versions live at their use
+# sites. Keeping this list to what's genuinely centralized avoids dead entries.
+[workspace.dependencies]
+# Embassy — versions match esp-generate's current template (so they work
+# with esp-rtos out of the box).
+embassy-executor = { version = "0.10", default-features = false }
+embassy-time     = { version = "0.5",  default-features = false }
+
+# ESP family — versions and feature set match esp-generate's current template.
+esp-hal                = { version = "~1.1" }
+esp-rtos               = { version = "0.3" }
+esp-bootloader-esp-idf = { version = "0.5" }
+esp-println            = { version = "0.17", default-features = false }
+esp-backtrace          = { version = "0.19", default-features = false }
+esp-radio              = { version = "0.18" }
+esp-alloc              = "0.10"
+critical-section       = "1.2"
+static_cell            = "2.1"
+log                    = "0.4"
+
+# ─── Profiles apply to every member ────────────────────────────────────
+[profile.dev]
+opt-level = "s"
+
+[profile.release]
+codegen-units = 1
+debug         = 2
+lto           = "fat"
+opt-level     = "s"

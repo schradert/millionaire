@@ -1,0 +1,25 @@
+[package]
+name         = "homelab-teensy-4-1"
+edition      = "2024"
+version      = "0.1.0"
+rust-version = "1.88"
+license      = "MIT"
+description  = "Teensy 4.1 board binary (i.MX RT1062, Cortex-M7 @ 600 MHz)."
+
+[[bin]]
+name = "homelab-teensy-4-1"
+path = "src/main.rs"
+
+[dependencies]
+homelab-shared      = { path = "../../shared/base" }
+homelab-hello-world = { path = "../../apps/hello-world", default-features = false, features = ["blocking"] }
+
+teensy4-bsp   = { version = "0.5", features = ["rt"] }
+teensy4-panic = "0.2"
+
+embedded-hal = "1.0"
+cortex-m     = { version = "0.7", features = ["inline-asm", "critical-section-single-core"] }
+cortex-m-rt  = "0.7"
+
+[profile.release.build-override]
+opt-level = 0

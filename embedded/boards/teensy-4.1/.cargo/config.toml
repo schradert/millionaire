@@ -1,0 +1,31 @@
+# Teensy 4.1 flash flow:
+#   1. cargo build  → ELF
+#   2. rust-objcopy → Intel HEX (HalfKay bootloader expects HEX, not ELF)
+#   3. teensy_loader_cli uploads the HEX via USB HID
+#
+# `cargo run` triggers the runner below. You MUST press the Teensy's white
+# button to enter HalfKay before the upload completes.
+
+[target.thumbv7em-none-eabihf]
+runner = """
+sh -c '
+  set -e
+  IN="$0"
+  HEX="$(dirname "$IN")/$(basename "$IN" .elf).hex"
+  rust-objcopy -O ihex "$IN" "$HEX"
+  echo "Flash size: $(stat -c%s "$HEX" 2>/dev/null || stat -f%z "$HEX") bytes"
+  echo "Press the Teensy white button to enter HalfKay..."
+  teensy_loader_cli --mcu=TEENSY41 -w -v "$HEX"
+'
+"""
+
+[build]
+target = "thumbv7em-none-eabihf"
+rustflags = [
+  "-C", "link-arg=-Tt4link.x",
+]
+
+# Cortex-M targets need build-std because the esp-rs toolchain doesn't ship
+# prebuilt rust-std for them.
+[unstable]
+build-std = ["core"]

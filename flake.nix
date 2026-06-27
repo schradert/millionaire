@@ -26,11 +26,13 @@
 
     # Systems
     deploy-rs.url = "github:serokell/deploy-rs";
-    deploy-rs.inputs = {
-      flake-compat.follows = "flake-compat";
-      nixpkgs.follows = "nixpkgs";
-      utils.follows = "flake-utils";
-    };
+    # Deliberately NOT following our nixpkgs: deploy-rs is a self-contained
+    # Rust binary, and pinning it to our nixpkgs commit makes its activate-rs
+    # binary a cache miss everywhere (cache.nixos.org only caches the canonical
+    # upstream-pinned version). Letting deploy-rs use its own pinned nixpkgs
+    # means we get the prebuilt binary from cache, avoiding a ~10 min rustc
+    # bootstrap build on every fresh target (which has also been observed to
+    # exhaust sshd/nix-daemon resource limits mid-build and crash the deploy).
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
     home-manager.url = "github:nix-community/home-manager";
@@ -146,7 +148,7 @@
   outputs = inputs:
     inputs.canivete.lib.mkFlake {
       inherit inputs;
-      everything = [./options ./modules ./pulumi ./esp32-s3];
+      everything = [./options ./modules ./pulumi];
     } {
       imports = [./nixidy ./modules/images.nix];
       devenv = {lib, ...}: {
@@ -291,6 +293,12 @@
             disko.devices.disk.root.device = "/dev/disk/by-id/ata-MTFDDAK256TBN-1AR1ZABHA_UGXVK01J7BDCER";
           };
         };
+
+        # x86_64-linux box that hosts all the USB-connected microcontrollers.
+        # Each profile flashes one physical board (see ./static/falcon.nix).
+        # `deploy '.#falcon'` flashes everything reachable; `deploy '.#falcon.<board>'`
+        # flashes one. Disconnected boards print a "skipping" line and exit 0.
+        falcon = import ./static/falcon.nix;
 
         voron = {
           canivete.system = "aarch64-linux";

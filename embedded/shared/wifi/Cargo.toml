@@ -1,0 +1,23 @@
+[package]
+name         = "homelab-shared-wifi"
+edition      = "2024"
+version      = "0.1.0"
+rust-version = "1.88"
+license      = "MIT"
+description  = "ESP WiFi STA + embassy-net stack helper (ESP-only capability tier)."
+
+# Excluded from workspace membership → cannot inherit `{ workspace = true }`.
+# esp-hal / esp-radio are declared WITHOUT a chip feature on purpose: the
+# board crate that consumes this supplies the chip (e.g. esp32s3) and cargo
+# feature-unification merges it in. This crate is only ever built as a
+# dependency of such a board, never standalone. See ../../TARGETS.md.
+[dependencies]
+esp-hal   = { version = "1.1", features = ["log-04", "unstable"] }
+esp-radio = { version = "0.18", features = ["wifi", "log-04", "unstable"] }
+
+embassy-executor = { version = "0.10", features = ["log"] }
+embassy-net      = { version = "0.9.1", features = ["dhcpv4", "medium-ethernet", "tcp", "udp", "dns"] }
+embassy-time     = { version = "0.5", features = ["log"] }
+
+static_cell = "2.1.1"
+log         = "0.4"

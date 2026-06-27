@@ -1,0 +1,44 @@
+# cargo-generate prompts for a new Cortex-M (STM32 + embassy + probe-rs) board.
+#
+# Driven by `new-board` (which adds the crate to `members` in the root
+# Cargo.toml). Mirrors boards/stm32-nucleo. Defaults target the Nucleo-F446RE.
+#
+# For a non-STM32 Cortex-M part you'll need to swap the HAL (embassy-stm32 →
+# e.g. embassy-nrf / embassy-rp) by hand — this template assumes STM32.
+[template]
+cargo_generate_version = ">=0.20.0"
+
+[placeholders.chip_feature]
+type    = "string"
+prompt  = "embassy-stm32 chip feature (e.g. stm32f446re, stm32f411re, stm32g474re)"
+default = "stm32f446re"
+
+[placeholders.probe_rs_chip]
+type    = "string"
+prompt  = "probe-rs chip name (e.g. STM32F446RETx)"
+default = "STM32F446RETx"
+
+[placeholders.probe_selector]
+type    = "string"
+prompt  = "Debug-probe VID:PID (disambiguates when several probes are attached)"
+default = "0483:374b"
+
+[placeholders.flash_kb]
+type    = "string"
+prompt  = "FLASH size in KB"
+default = "512"
+
+[placeholders.ram_kb]
+type    = "string"
+prompt  = "RAM size in KB"
+default = "128"
+
+[placeholders.led_pin]
+type    = "string"
+prompt  = "User-LED pin (e.g. PA5 on the Nucleo-F446RE)"
+default = "PA5"
+
+[placeholders.app]
+type    = "string"
+prompt  = "App crate to run (without the homelab- prefix)"
+default = "hello-world"

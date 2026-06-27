@@ -1,0 +1,15 @@
+[package]
+name         = "homelab-shared"
+edition      = "2024"
+version      = "0.1.0"
+rust-version = "1.88"
+license      = "MIT"
+description  = "AVR-safe core: pure embedded-hal traits, types, and capability descriptors."
+
+[dependencies]
+embedded-hal       = "1.0"
+embedded-hal-async = "1.0"
+# heapless temporarily removed: it pulls portable-atomic with
+# unsafe-assume-single-core enabled, which fails to build for some target
+# architectures (e.g. riscv32imc). Re-add behind a feature flag when needed
+# and ensure portable-atomic is configured per-target.

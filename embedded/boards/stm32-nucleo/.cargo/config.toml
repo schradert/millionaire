@@ -1,0 +1,18 @@
+[target.thumbv7em-none-eabihf]
+# Default targets the Nucleo-F446RE; change --chip for your variant.
+# The --probe arg disambiguates when multiple debug probes are present on
+# the host (e.g. ST-Link + multiple ESP-JTAGs). VID:PID alone is enough
+# because there's typically only one ST-Link plugged in.
+runner = "probe-rs run --chip STM32F446RETx --probe 0483:374b"
+
+[build]
+target = "thumbv7em-none-eabihf"
+rustflags = [
+  "-C", "link-arg=-Tlink.x",
+  "-C", "link-arg=-Tdefmt.x",
+]
+
+# Cortex-M targets need build-std because the esp-rs toolchain doesn't ship
+# prebuilt rust-std for them (it bundles Xtensa + RISC-V only).
+[unstable]
+build-std = ["core"]
