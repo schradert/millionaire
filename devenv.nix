@@ -95,7 +95,17 @@ in {
       # Git hooks
       # embedded/templates holds cargo-generate templates whose .rs/.toml
       # files contain Liquid syntax — not parseable by rustfmt/taplo/etc.
-      git-hooks.excludes = ["nixidy/generated" "embedded/templates"];
+      # pulumi/sdks (pulumi-bitwarden) and apps/sveltekit-demo/bun.nix are
+      # code-generated (pulumi-language-python / bun2nix). Linting them is
+      # noise (dict()-vs-{}, unused lambda args, README heading style, an
+      # upstream comment typo) and any hand-edit is overwritten on regen,
+      # so exclude them tree-wide like nixidy/generated.
+      git-hooks.excludes = [
+        "nixidy/generated"
+        "embedded/templates"
+        "pulumi/sdks"
+        "apps/sveltekit-demo/bun.nix"
+      ];
       git-hooks.hooks = {
         lychee.toml.accept = [200 403 405 406];
         lychee.toml.exclude = [

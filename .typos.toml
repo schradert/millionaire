@@ -1,4 +1,15 @@
 # Config for the `typos` git hook.
+[files]
+# static/facter/*.json are machine-generated nixos-facter hardware reports.
+# They faithfully capture vendor BIOS/DMI strings ("DislayPort", "PnP",
+# "snd_hda_intel") that typos misreads as misspellings — none are editable
+# without misrepresenting the detected hardware, so skip the directory.
+extend-exclude = ["static/facter/"]
+
+[default.extend-identifiers]
+# Universal Plug and Play — the "Pn" in "UPnP" is not a typo of "On".
+UPnP = "UPnP"
+
 [default.extend-words]
 # nixos-facter (hardware detection tool), not a typo of "factor"/"faster"
 facter = "facter"
@@ -7,3 +18,5 @@ mosquitto = "mosquitto"
 # Home Assistant (hass.* hostname, HASS env vars), not "hash"
 hass = "hass"
 HASS = "HASS"
+# Navidrome config env vars are all `ND_`-prefixed, not a typo of "AND"
+ND = "ND"
