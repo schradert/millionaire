@@ -412,5 +412,5 @@ Instead:
 
 - [Cilium LB-IPAM docs](https://docs.cilium.io/en/stable/network/lb-ipam/)
 - [Tailscale subnet routers](https://tailscale.com/kb/1019/subnets)
-- [RKE2 networking](https://docs.rke2.io/networking)
+- [RKE2 networking](https://docs.rke2.io/networking/basic_network_options)
 - [Kubernetes multi-cluster](https://kubernetes.io/docs/concepts/cluster-administration/networking/#multi-cluster-networking)

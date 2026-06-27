@@ -123,7 +123,17 @@ in {
           # configs are wiring, not links — unreachable from the dev machine.
           "^https?://127\\.0\\.0\\.1"
           "^https?://169\\.254\\."
+          # RFC1918 private ranges and *.internal hosts are LAN/cluster wiring
+          # (router admin UIs, moonraker, etc.) — unreachable from the dev box.
+          "^https?://10\\."
+          "^https?://192\\.168\\."
+          "^https?://172\\.(1[6-9]|2[0-9]|3[01])\\."
+          "^https?://[^/]+\\.internal(:[0-9]+)?"
+          # Helm chart repos serve index.yaml, not the bare repo URL, so a plain
+          # GET 404s even though the repo is valid (same as descheduler below).
           "https://kubernetes-sigs.github.io/descheduler"
+          "https://helm.ngc.nvidia.com/nvidia"
+          "https://maximhq.github.io/bifrost/helm-charts"
           "https://api.bitwarden.com"
           "https://identity.bitwarden.com"
           "^.+/dns-query$"
