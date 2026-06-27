@@ -7,7 +7,7 @@ public exposure. This rides the same headscale tailnet that cloud-burst uses
 
 ## How it fits together
 
-```
+```text
 device (tailnet) ──DNS──▶ AdGuard @ 100.64.0.1:53 (hyena)   [returns BOTH relay IPs]
                             ▲ records written by
                             │ external-dns-internal (in-cluster → AdGuard :3000 API)
@@ -74,12 +74,14 @@ into pods.
   **vestigial** — Cilium ignores it. So the headscale **autoApprover** keys on
   `10.0.0.0/8`, and the cluster nodes register as user **`default` (untagged)**, so
   the approver covers `default@` (plus `tag:cluster` for future cloud workers):
+
   ```nix
   autoApprovers.routes = {
     "10.0.0.0/8"        = ["tag:cluster" "default@"];   # Cilium pod /24s
     "192.168.50.241/32" = ["tag:cluster" "default@"];   # internal gateway VIP
   };
   ```
+
 - `kubeProxyReplacement = true`, so ClusterIP service traffic (`10.43.0.0/16`) is
   eBPF-handled and never hits the host route table.
 - autoApprover-approved routes can show a blank "Approved" column in

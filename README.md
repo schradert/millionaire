@@ -9,6 +9,7 @@
 ## 3D Printing Stack (Voron 2.4 LDO)
 
 ### After first boot
+
 - [ ] Update `mcu.serial` in `static/printer.nix` with actual USB serial path (`ls /dev/serial/by-id/`)
 - [ ] Generate `static/facter/voron.json` via nixos-facter
 - [ ] PID tune extruder: `PID_CALIBRATE HEATER=extruder TARGET=245`
@@ -18,11 +19,13 @@
 - [ ] Verify quad gantry level: `QUAD_GANTRY_LEVEL`
 
 ### Bitwarden secrets to create
+
 - [ ] `printing/obico/ml-api-token`
 - [ ] `printing/obico/secret-key`
 - [ ] `printing/mooncord/discord-token`
 
 ### k8s post-deploy
+
 - [ ] Verify `ClusterSecretStore` `kubernetes-printing` exists (or create it)
 - [ ] Configure moonraker-obico on the Pi after Obico server is up
 - [ ] Set up Mobileraker app on phone, connect to `voron:7125`
@@ -30,6 +33,7 @@
 - [ ] Configure Home Assistant moonraker integration (`http://voron:7125`)
 
 ### Future
+
 - [ ] ERCF V2 multi-material + Happy Hare firmware
 - [ ] Klipper plugins: KAMP, klipper-z_calibration, klipper-led_effect (package or overlay)
 - [ ] moonraker-obico systemd service on Pi (currently commented out)

@@ -7,11 +7,11 @@
 
 ## Extender Health
 
-| Metric        | Value       |
-|---------------|-------------|
-| Packet loss   | 0%          |
-| Avg latency   | 7.5 ms      |
-| Min/Max       | 4.5 / 11.3 ms |
+| Metric        | Value           |
+|---------------|-----------------|
+| Packet loss   | 0%              |
+| Avg latency   | 7.5 ms          |
+| Min/Max       | 4.5 / 11.3 ms   |
 | Web interface | HTTP 200, 162ms |
 
 Extender is healthy. No connectivity issues from the LAN side.
@@ -55,6 +55,6 @@ Full /24 ping sweep + ARP scan found **zero** devices with August's registered O
 
 1. Check August app for WiFi status on the lock
 2. Re-run WiFi setup on the lock through the August app while nearby
-3. Log into extender admin at http://192.168.50.125 to check client history
+3. Log into extender admin at <http://192.168.50.125> to check client history
 4. Check for 2.4GHz channel congestion — many neighbor networks detected on channels 1, 6, 8, 10, 11
 5. Consider setting extender to a less congested 2.4GHz channel if the lock connects on 2.4GHz
