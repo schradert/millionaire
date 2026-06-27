@@ -7,7 +7,10 @@
     inherit (config.canivete.meta) domain;
     hostname = "grafana.${domain}";
   in {
-    gatus.endpoints.grafana = { url = "https://${hostname}"; group = "internal"; };
+    gatus.endpoints.grafana = {
+      url = "https://${hostname}";
+      group = "internal";
+    };
     applications.grafana = {
       namespace = "observability";
       volsync.pvcs.grafana = {

@@ -95,7 +95,17 @@ in {
       # Git hooks
       # embedded/templates holds cargo-generate templates whose .rs/.toml
       # files contain Liquid syntax — not parseable by rustfmt/taplo/etc.
-      git-hooks.excludes = ["nixidy/generated" "embedded/templates"];
+      # pulumi/sdks (pulumi-bitwarden) and apps/sveltekit-demo/bun.nix are
+      # code-generated (pulumi-language-python / bun2nix). Linting them is
+      # noise (dict()-vs-{}, unused lambda args, README heading style, an
+      # upstream comment typo) and any hand-edit is overwritten on regen,
+      # so exclude them tree-wide like nixidy/generated.
+      git-hooks.excludes = [
+        "nixidy/generated"
+        "embedded/templates"
+        "pulumi/sdks"
+        "apps/sveltekit-demo/bun.nix"
+      ];
       git-hooks.hooks = {
         lychee.toml.accept = [200 403 405 406];
         lychee.toml.exclude = [
@@ -113,7 +123,17 @@ in {
           # configs are wiring, not links — unreachable from the dev machine.
           "^https?://127\\.0\\.0\\.1"
           "^https?://169\\.254\\."
+          # RFC1918 private ranges and *.internal hosts are LAN/cluster wiring
+          # (router admin UIs, moonraker, etc.) — unreachable from the dev box.
+          "^https?://10\\."
+          "^https?://192\\.168\\."
+          "^https?://172\\.(1[6-9]|2[0-9]|3[01])\\."
+          "^https?://[^/]+\\.internal(:[0-9]+)?"
+          # Helm chart repos serve index.yaml, not the bare repo URL, so a plain
+          # GET 404s even though the repo is valid (same as descheduler below).
           "https://kubernetes-sigs.github.io/descheduler"
+          "https://helm.ngc.nvidia.com/nvidia"
+          "https://maximhq.github.io/bifrost/helm-charts"
           "https://api.bitwarden.com"
           "https://identity.bitwarden.com"
           "^.+/dns-query$"

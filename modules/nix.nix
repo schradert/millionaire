@@ -1,10 +1,5 @@
 {
-  system = {
-    flake,
-    lib,
-    node,
-    ...
-  }: {
+  system = {flake, ...}: {
     nix.gc.automatic = true;
     nixpkgs.overlays = [flake.inputs.nix-index-database.overlays.nix-index];
     # FIXME infinite recursion

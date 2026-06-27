@@ -1,4 +1,4 @@
-{config, ...}: {
+{...}: {
   nixidy = {
     charts,
     lib,
@@ -14,7 +14,10 @@
             image.repository = "ghcr.io/volcengine/openviking";
             image.tag = "latest";
             env.VIKING_PORT = "8080";
-            ports = lib.toList {name = "http"; containerPort = 8080;};
+            ports = lib.toList {
+              name = "http";
+              containerPort = 8080;
+            };
             probes.liveness = {
               enabled = true;
               custom = true;

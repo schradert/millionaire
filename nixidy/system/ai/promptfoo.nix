@@ -23,7 +23,10 @@ in {
       };
     };
 
-    gatus.endpoints.promptfoo = {url = "https://${hostname}"; group = "internal";};
+    gatus.endpoints.promptfoo = {
+      url = "https://${hostname}";
+      group = "internal";
+    };
     applications.promptfoo = {
       namespace = "ai";
       helm.releases.promptfoo = {
@@ -42,7 +45,10 @@ in {
                 OPENAI_BASE_URL = "http://bifrost.ai.svc.cluster.local:8000/v1";
               };
               envFrom = lib.toList {secretRef.name = "promptfoo";};
-              ports = lib.toList {name = "http"; containerPort = 3000;};
+              ports = lib.toList {
+                name = "http";
+                containerPort = 3000;
+              };
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
               probes.startup.enabled = true;
@@ -82,8 +88,14 @@ in {
           OPENAI_API_KEY = "{{ .openai_key }}";
         };
         data = [
-          {secretKey = "anthropic_key"; remoteRef.key = "ai/anthropic/api-key";}
-          {secretKey = "openai_key"; remoteRef.key = "ai/openai/api-key";}
+          {
+            secretKey = "anthropic_key";
+            remoteRef.key = "ai/anthropic/api-key";
+          }
+          {
+            secretKey = "openai_key";
+            remoteRef.key = "ai/openai/api-key";
+          }
         ];
       };
     };

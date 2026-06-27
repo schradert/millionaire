@@ -1,5 +1,9 @@
 {config, ...}: {
-  nixidy = {charts, lib, ...}: let
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "qbittorrent.${domain}";
     port = 8080;
@@ -80,8 +84,14 @@
         secretStoreRef.name = "bitwarden";
         secretStoreRef.kind = "ClusterSecretStore";
         data = [
-          {secretKey = "WIREGUARD_PRIVATE_KEY"; remoteRef.key = "vpn/wireguard/private-key";}
-          {secretKey = "WIREGUARD_ADDRESSES"; remoteRef.key = "vpn/wireguard/addresses";}
+          {
+            secretKey = "WIREGUARD_PRIVATE_KEY";
+            remoteRef.key = "vpn/wireguard/private-key";
+          }
+          {
+            secretKey = "WIREGUARD_ADDRESSES";
+            remoteRef.key = "vpn/wireguard/addresses";
+          }
         ];
       };
     };

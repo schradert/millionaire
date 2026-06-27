@@ -1,6 +1,6 @@
 # OpenClaw: multi-channel AI messaging gateway (Discord only initially)
 # Deployed in isolated ai-sandbox namespace with strict NetworkPolicy
-{config, ...}: {
+{...}: {
   nixidy = {
     charts,
     lib,
@@ -30,7 +30,10 @@
                 ALLOW_DEVICE_ACTIONS = "false";
               };
               envFrom = lib.toList {secretRef.name = "openclaw";};
-              ports = lib.toList {name = "ws"; containerPort = 18789;};
+              ports = lib.toList {
+                name = "ws";
+                containerPort = 18789;
+              };
             };
           };
           service.openclaw.ports.ws.port = 18789;
@@ -44,21 +47,45 @@
         egress = [
           # DNS
           {
-            ports = [{port = 53; protocol = "UDP";} {port = 53; protocol = "TCP";}];
+            ports = [
+              {
+                port = 53;
+                protocol = "UDP";
+              }
+              {
+                port = 53;
+                protocol = "TCP";
+              }
+            ];
           }
           # Bifrost (LLM gateway) in ai namespace
           {
             to = [{namespaceSelector.matchLabels."kubernetes.io/metadata.name" = "ai";}];
-            ports = [{port = 8000; protocol = "TCP";}];
+            ports = [
+              {
+                port = 8000;
+                protocol = "TCP";
+              }
+            ];
           }
           # ContextForge (MCP gateway) in ai namespace
           {
             to = [{namespaceSelector.matchLabels."kubernetes.io/metadata.name" = "ai";}];
-            ports = [{port = 8080; protocol = "TCP";}];
+            ports = [
+              {
+                port = 8080;
+                protocol = "TCP";
+              }
+            ];
           }
           # Discord API (external HTTPS)
           {
-            ports = [{port = 443; protocol = "TCP";}];
+            ports = [
+              {
+                port = 443;
+                protocol = "TCP";
+              }
+            ];
             to = [{ipBlock.cidr = "0.0.0.0/0";}];
           }
         ];

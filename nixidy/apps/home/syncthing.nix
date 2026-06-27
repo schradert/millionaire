@@ -2,7 +2,11 @@
   inherit (config.canivete.meta) domain;
   hostname = "sync.${domain}";
 in {
-  nixidy = {charts, lib, ...}: {
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: {
     gatus.endpoints.syncthing = {
       url = "https://${hostname}";
       group = "internal";
@@ -28,8 +32,15 @@ in {
               };
               envFrom = [{secretRef.name = "syncthing";}];
               ports = [
-                {name = "http"; containerPort = 8384;}
-                {name = "sync"; containerPort = 22000; protocol = "TCP";}
+                {
+                  name = "http";
+                  containerPort = 8384;
+                }
+                {
+                  name = "sync";
+                  containerPort = 22000;
+                  protocol = "TCP";
+                }
               ];
               probes.liveness = {
                 enabled = true;

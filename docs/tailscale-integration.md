@@ -13,6 +13,7 @@
 ## Current State (Phase 1 ✅)
 
 Your cluster uses:
+
 - **Pod Network**: Cilium on `10.42.0.0/16` (managed by Cilium CNI)
 - **Service Network**: `10.43.0.0/16` (Kubernetes ClusterIP services)
 - **LoadBalancer IPs**: `192.168.50.240-254` (Cilium LB-IPAM, home network)
@@ -21,6 +22,7 @@ Your cluster uses:
 ## Goal (Phase 2)
 
 Connect to brother's Tokyo cluster:
+
 - Each cluster remains independent (separate control planes)
 - Clusters can expose specific services to each other
 - Use Tailscale for cross-cluster connectivity
@@ -30,11 +32,13 @@ Connect to brother's Tokyo cluster:
 ### Dragon 1: Network Interface Confusion
 
 **The Problem:**
+
 - RKE2 needs to know which interface to use for node communication
 - Cilium needs to know which interface to use for pod routing
 - Tailscale creates a new interface (`tailscale0`)
 
 **The Solution:**
+
 ```nix
 # RKE2 uses home network for intra-cluster (low latency)
 # Tailscale used ONLY for cross-cluster gateway IPs
@@ -45,17 +49,20 @@ node-external-ip: 100.64.1.X  # Tailscale IP (for cross-cluster)
 ```
 
 **Why:**
+
 - Local pod-to-pod stays on fast home network
 - Cross-cluster traffic uses Tailscale (slower but encrypted)
 
 ### Dragon 2: MTU Mismatch
 
 **The Problem:**
+
 - Home network MTU: 1500
 - Tailscale overhead: ~80 bytes
 - If pods try to send 1500 byte packets through Tailscale → fragmentation
 
 **The Solution:**
+
 ```nix
 # Cilium detects MTU automatically, but can override:
 nixidy.system.network.cilium.helm.values = {
@@ -71,12 +78,14 @@ nixidy.system.network.cilium.helm.values = {
 ### Dragon 3: IP Range Conflicts
 
 **The Problem:**
+
 - Your pod CIDR: `10.42.0.0/16`
 - Your service CIDR: `10.43.0.0/16`
 - Tailscale CIDR: `100.64.0.0/10`
 - Brother's pod CIDR: Must not overlap!
 
 **The Solution:**
+
 ```nix
 # Coordinate with brother:
 # Your cluster:  10.42.0.0/16 (pods), 10.43.0.0/16 (services)
@@ -89,12 +98,14 @@ nixidy.system.network.cilium.helm.values = {
 ### Dragon 4: DNS Resolution
 
 **The Problem:**
+
 - Tailscale MagicDNS: `node.tailnet.ts.net`
 - Kubernetes CoreDNS: `service.namespace.svc.cluster.local`
 - Your domain: `*.trdos.me`
 - Brother's domain: `*.tokyo.something`
 
 **The Solution:**
+
 ```nix
 # Use separate DNS zones:
 # 1. Intra-cluster: CoreDNS handles *.svc.cluster.local
@@ -109,11 +120,13 @@ nixidy.system.network.cilium.helm.values = {
 ### Dragon 5: Firewall Rules
 
 **The Problem:**
+
 - NixOS firewall might block Tailscale
 - Cilium has eBPF firewall
 - Need both to allow cross-cluster traffic
 
 **The Solution:**
+
 ```nix
 # NixOS config for each node
 networking.firewall = {
@@ -136,11 +149,13 @@ services.tailscale.enable = true;
 ### Dragon 6: Routing Tables
 
 **The Problem:**
+
 - Cilium manages routes for pod network
 - Tailscale adds routes for its network
 - Linux kernel needs to know which route to use
 
 **The Solution:**
+
 ```bash
 # After enabling Tailscale, check routing:
 ip route show
@@ -245,7 +260,7 @@ resources.httpRoutes.shared-service = {
 
 ## Recommended Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────┐
 │           Your Cluster (Home)                   │
 │                                                 │
@@ -283,7 +298,8 @@ resources.httpRoutes.shared-service = {
 ## Traffic Flows
 
 **Intra-cluster (fast, local):**
-```
+
+```text
 Pod A → Pod B (same cluster)
   ↓
 Cilium routing on home network (192.168.50.0/24)
@@ -292,14 +308,16 @@ Direct, ~1ms latency
 ```
 
 **External users → Your services:**
-```
+
+```text
 Internet → Cloudflare → Tunnel → External Gateway (192.168.50.241)
   ↓
 Gateway → HTTPRoute → Service → Pod
 ```
 
 **Cross-cluster (slow, encrypted):**
-```
+
+```text
 Your Pod → Brother's Service
   ↓
 Cross-Cluster Gateway (100.64.1.240)
@@ -349,11 +367,13 @@ kubectl get nodes
 ## When NOT to Use Tailscale
 
 Don't use Tailscale cross-cluster gateway if:
+
 - Services need low latency (<50ms)
 - High throughput required (>100MB/s sustained)
 - Real-time applications (gaming, video calls)
 
 Instead:
+
 - Run those services locally in each cluster
 - Use CDN/edge caching
 - Replicate data instead of live cross-cluster calls
@@ -392,5 +412,5 @@ Instead:
 
 - [Cilium LB-IPAM docs](https://docs.cilium.io/en/stable/network/lb-ipam/)
 - [Tailscale subnet routers](https://tailscale.com/kb/1019/subnets)
-- [RKE2 networking](https://docs.rke2.io/networking)
+- [RKE2 networking](https://docs.rke2.io/networking/basic_network_options)
 - [Kubernetes multi-cluster](https://kubernetes.io/docs/concepts/cluster-administration/networking/#multi-cluster-networking)

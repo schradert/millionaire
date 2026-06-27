@@ -15,7 +15,6 @@ from pulumi.dynamic import (
 )
 
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
 
 
 def _int_to_base64url(n: int) -> str:
@@ -61,7 +60,9 @@ class _OryJwksProvider(ResourceProvider):
     def read(self, id_: str, props: dict[str, Any]) -> ReadResult:
         return ReadResult(id_=id_, outs=props)
 
-    def diff(self, _id: str, _old: dict[str, Any], _new: dict[str, Any]) -> DiffResult:
+    def diff(
+        self, _id: str, _olds: dict[str, Any], _news: dict[str, Any]
+    ) -> DiffResult:
         # Never replace — JWKS is stable once created.
         return DiffResult(changes=False)
 
@@ -76,5 +77,3 @@ class OryJwks(Resource):
 
     def __init__(self, name: str, opts: pulumi.ResourceOptions | None = None):
         super().__init__(_OryJwksProvider(), name, {"jwks_json": None}, opts)
-
-

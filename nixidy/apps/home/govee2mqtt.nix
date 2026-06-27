@@ -6,10 +6,7 @@
 {config, ...}: let
   inherit (config.canivete.meta) domain;
 in {
-  nixidy = {
-    charts,
-    ...
-  }: let
+  nixidy = {charts, ...}: let
     tag = "2025.11.25-60a39bcc";
   in {
     applications.govee2mqtt = {

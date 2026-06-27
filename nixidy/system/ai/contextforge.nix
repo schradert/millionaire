@@ -23,7 +23,10 @@ in {
       };
     };
 
-    gatus.endpoints.contextforge = {url = "https://${hostname}"; group = "internal";};
+    gatus.endpoints.contextforge = {
+      url = "https://${hostname}";
+      group = "internal";
+    };
     applications.contextforge = {
       namespace = "ai";
       postgres.enable = true;
@@ -46,7 +49,10 @@ in {
                 TOOLHIVE_VMCP_URL = "http://homelab-vmcp.ai.svc.cluster.local:8080";
               };
               envFrom = lib.toList {secretRef.name = "contextforge";};
-              ports = lib.toList {name = "http"; containerPort = 8080;};
+              ports = lib.toList {
+                name = "http";
+                containerPort = 8080;
+              };
               probes.liveness = {
                 enabled = true;
                 custom = true;

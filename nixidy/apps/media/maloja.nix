@@ -7,7 +7,11 @@
   # No oauth2-proxy: Maloja's API endpoint at /apis/ accepts API-key auth per-request,
   # and the dashboard has its own admin login. Putting oauth2-proxy in front would
   # break Pano Scrobbler / multi-scrobbler / Navidrome's scrobble POSTs.
-  nixidy = {charts, lib, ...}: let
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "maloja.${domain}";
     port = 42010;
@@ -48,7 +52,12 @@
             };
             tmpfs = {
               type = "emptyDir";
-              globalMounts = [{path = "/tmp"; subPath = "tmp";}];
+              globalMounts = [
+                {
+                  path = "/tmp";
+                  subPath = "tmp";
+                }
+              ];
             };
           };
           configMaps.maloja.data = {

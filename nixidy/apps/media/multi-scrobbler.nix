@@ -5,7 +5,11 @@
   #   - Jellyfin webhook ingestion (Jellyfin plays → Maloja)
   #   - Spotify OAuth polling (future, kept disabled until Spotify creds are provisioned)
   # Sink is always Maloja (one canonical sink). Maloja proxy-forwards to pseudonymous LB.
-  nixidy = {charts, lib, ...}: let
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "multi-scrobbler.${domain}";
     port = 9078;

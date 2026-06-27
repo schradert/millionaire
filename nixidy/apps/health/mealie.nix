@@ -1,5 +1,5 @@
 {config, ...}: {
-  # TODO AI features https://docs.mealie.io/documentation/getting-started/installation/open-ai/
+  # TODO AI features https://docs.mealie.io/documentation/getting-started/installation/ai-providers/
   # TODO bulk import some recipes https://docs.mealie.io/documentation/community-guide/bulk-url-import/
   # TODO bookmarklet https://docs.mealie.io/documentation/community-guide/import-recipe-bookmarklet/
   # TODO theme dracula / stylix
@@ -12,7 +12,10 @@
     inherit (config.canivete.meta) domain;
     hostname = "mealie.${domain}";
   in {
-    gatus.endpoints.mealie = { url = "https://${hostname}"; group = "internal"; };
+    gatus.endpoints.mealie = {
+      url = "https://${hostname}";
+      group = "internal";
+    };
 
     # Keycloak OIDC client — Hostzero operator syncs secret to K8s
     applications.keycloak.resources.keycloakClients.mealie.spec = {

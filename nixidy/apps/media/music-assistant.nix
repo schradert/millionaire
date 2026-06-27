@@ -11,7 +11,11 @@
   #
   # Inbound HTTP for the web UI uses the regular cluster service via the gateway. The
   # macvlan interface is purely for outbound mDNS/UPnP discovery + speaker control.
-  nixidy = {charts, lib, ...}: let
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "music-assistant.${domain}";
     port = 8095;
@@ -65,7 +69,12 @@
           persistence.media-music = {
             type = "persistentVolumeClaim";
             existingClaim = "media-music";
-            advancedMounts.music-assistant.music-assistant = [{path = "/media/music"; readOnly = true;}];
+            advancedMounts.music-assistant.music-assistant = [
+              {
+                path = "/media/music";
+                readOnly = true;
+              }
+            ];
           };
           route.music-assistant = {
             hostnames = [hostname];

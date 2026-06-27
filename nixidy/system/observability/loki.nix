@@ -1,5 +1,9 @@
 {...}: {
-  nixidy = {charts, lib, ...}: {
+  nixidy = {
+    charts,
+    lib,
+    ...
+  }: {
     applications.loki = {
       namespace = "observability";
       helm.releases.loki = {
