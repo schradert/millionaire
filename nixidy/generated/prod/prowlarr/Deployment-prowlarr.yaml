@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 6f5f995f394290026038f9475ef2d9e43a1bfaa2c9332051d3314f4a54fa55fe
+        checksum/configMaps: ffa9fe15483de48f2ee04d1e443e2d06f05bb0cd3f566d543e77252db676b9e9
       labels:
         app.kubernetes.io/controller: prowlarr
         app.kubernetes.io/instance: prowlarr

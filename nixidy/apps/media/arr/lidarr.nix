@@ -15,7 +15,10 @@
     };
     applications.lidarr = {
       namespace = "media";
-      postgres.enable = true;
+      postgres = {
+        enable = true;
+        extraDatabases = ["lidarr-log"];
+      };
       volsync.pvcs.lidarr.title = "lidarr";
       helm.releases.lidarr = {
         chart = charts.bjw-s-labs.app-template-patched;
@@ -73,6 +76,8 @@
             LIDARR__SERVER__PORT = builtins.toString port;
             LIDARR__UPDATE__BRANCH = "develop";
             LIDARR__POSTGRES__USER = "lidarr";
+            LIDARR__POSTGRES__MAINDB = "lidarr";
+            LIDARR__POSTGRES__LOGDB = "lidarr-log";
             LIDARR__POSTGRES__HOST = "lidarr-rw";
           };
           route.lidarr = {

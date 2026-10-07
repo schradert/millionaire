@@ -15,7 +15,10 @@
     };
     applications.radarr = {
       namespace = "media";
-      postgres.enable = true;
+      postgres = {
+        enable = true;
+        extraDatabases = ["radarr-log"];
+      };
       volsync.pvcs.radarr.title = "radarr";
       helm.releases.radarr = {
         chart = charts.bjw-s-labs.app-template-patched;
@@ -73,6 +76,8 @@
             RADARR__SERVER__PORT = builtins.toString port;
             RADARR__UPDATE__BRANCH = "develop";
             RADARR__POSTGRES__USER = "radarr";
+            RADARR__POSTGRES__MAINDB = "radarr";
+            RADARR__POSTGRES__LOGDB = "radarr-log";
             RADARR__POSTGRES__HOST = "radarr-rw";
           };
           route.radarr = {

@@ -15,7 +15,10 @@
     };
     applications.prowlarr = {
       namespace = "media";
-      postgres.enable = true;
+      postgres = {
+        enable = true;
+        extraDatabases = ["prowlarr-log"];
+      };
       volsync.pvcs.prowlarr.title = "prowlarr";
       helm.releases.prowlarr = {
         chart = charts.bjw-s-labs.app-template-patched;
@@ -57,6 +60,8 @@
             PROWLARR__SERVER__PORT = builtins.toString port;
             PROWLARR__UPDATE__BRANCH = "develop";
             PROWLARR__POSTGRES__USER = "prowlarr";
+            PROWLARR__POSTGRES__MAINDB = "prowlarr";
+            PROWLARR__POSTGRES__LOGDB = "prowlarr-log";
             PROWLARR__POSTGRES__HOST = "prowlarr-rw";
           };
           route.prowlarr = {
