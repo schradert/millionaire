@@ -124,8 +124,9 @@
           # matches the previous wiring (single "multus" SA on all
           # controllers).
           global.createDefaultServiceAccount = false;
-          # The thick-plugin DaemonSet OOMs at the upstream default of 50Mi
-          # (k8snetworkplumbingwg/multus-cni#1244). Bump to a sane size.
+          # The thick-plugin daemon serves every CNI ADD on its node; a node
+          # restart replays all pending sandboxes at once and OOMed it at 200Mi
+          # (k8snetworkplumbingwg/multus-cni#1244, #1346).
           controllers.multus = {
             containers.multus = {
               # The chart derives the image tag from appVersion
@@ -140,7 +141,7 @@
                 digest = "sha256:2b9671447f3ea4e7e56730843dbf59445b9307246f393b61386b896d56ae51c9";
               };
               resources.requests.memory = "100Mi";
-              resources.limits.memory = "200Mi";
+              resources.limits.memory = "1Gi";
             };
             pod = {
               # The new common defaults this to false; the thick-plugin daemon
