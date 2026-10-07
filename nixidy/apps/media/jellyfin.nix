@@ -36,7 +36,7 @@
     };
     applications.jellyfin = {
       namespace = "media";
-      volsync.pvcs.jellyfin.title = "jellyfin";
+      volsync.pvcs.jellyfin.title = "jellyfin-config";
       helm.releases.jellyfin = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
