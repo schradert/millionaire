@@ -158,7 +158,7 @@
           route.jellyfin = {
             hostnames = [hostname];
             parentRefs = lib.toList {
-              name = "external";
+              name = "internal";
               namespace = "kube-system";
               sectionName = "https";
             };
