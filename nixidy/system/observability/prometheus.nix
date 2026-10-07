@@ -32,9 +32,13 @@
           kubelet.enabled = true;
           kubeApiServer.enabled = true;
           prometheus = {
-            prometheusSpec.storageSpec.volumeClaimTemplate.spec = {
-              accessModes = ["ReadWriteOnce"];
-              resources.requests.storage = "10Gi";
+            prometheusSpec = {
+              # Size cap below the volume, or a full disk crashloops WAL replay.
+              retentionSize = "25GB";
+              storageSpec.volumeClaimTemplate.spec = {
+                accessModes = ["ReadWriteOnce"];
+                resources.requests.storage = "30Gi";
+              };
             };
           };
           prometheusOperator.admissionWebhooks.deployment.enabled = true;

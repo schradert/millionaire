@@ -50,6 +50,7 @@ spec:
       release: prometheus
   replicas: 1
   retention: 10d
+  retentionSize: 25GB
   routePrefix: /
   ruleNamespaceSelector: {}
   ruleSelector:
@@ -79,7 +80,7 @@ spec:
           - ReadWriteOnce
         resources:
           requests:
-            storage: 10Gi
+            storage: 30Gi
   tsdb:
     outOfOrderTimeWindow: 0s
   version: v3.12.0-distroless
