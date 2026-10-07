@@ -6,7 +6,7 @@ metadata:
 spec:
   restic:
     copyMethod: Direct
-    destinationPVC: jellyfin
+    destinationPVC: jellyfin-config
     moverSecurityContext:
       runAsGroup: 101
       runAsUser: 101
