@@ -85,11 +85,36 @@
           };
         };
       };
+      # Random once, never refreshed: the app persists it as its own key.
+      resources.passwords.lidarr-apikey.spec = {
+        length = 32;
+        digits = 10;
+        symbols = 0;
+        noUpper = true;
+        allowRepeat = true;
+      };
+      resources.externalSecrets.lidarr-apikey.spec = {
+        refreshPolicy = "CreatedOnce";
+        dataFrom = lib.toList {
+          sourceRef.generatorRef = {
+            apiVersion = "generators.external-secrets.io/v1alpha1";
+            kind = "Password";
+            name = "lidarr-apikey";
+          };
+          rewrite = lib.toList {
+            regexp = {
+              source = "password";
+              target = "apikey";
+            };
+          };
+        };
+      };
       resources.externalSecrets.lidarr.spec.data = [
         {
           secretKey = "LIDARR__AUTH__APIKEY";
-          remoteRef.key = "lidarr";
-          sourceRef.storeRef.name = "bitwarden";
+          remoteRef.key = "lidarr-apikey";
+          remoteRef.property = "apikey";
+          sourceRef.storeRef.name = "kubernetes-media";
           sourceRef.storeRef.kind = "ClusterSecretStore";
         }
         {
