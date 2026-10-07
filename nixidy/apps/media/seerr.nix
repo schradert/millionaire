@@ -18,6 +18,11 @@
       helm.releases.seerr = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
+          # The image runs as node (1000); the volume mounts root-owned.
+          controllers.seerr.pod.securityContext = {
+            fsGroup = 1000;
+            fsGroupChangePolicy = "OnRootMismatch";
+          };
           controllers.seerr.containers.seerr = {
             image.repository = "ghcr.io/seerr-team/seerr";
             image.tag = "develop";
