@@ -104,7 +104,7 @@
           # after since content can shift. Currently: common library 5.0.1,
           # appVersion 4.3.0 (rendered image multus-cni:4.3.0-thick). Values
           # below are adapted for common 5.x behavior.
-          chartHash = "sha256-PeTWH+uuuTzurk2fV2ewhqOPHindpmL3OE1gIY4XgsM=";
+          chartHash = "sha256-8zIVmWsA1Sd3P/fNGXuhEYadA47uZtEdb0cEIvy6gtA=";
         };
         # The CRD is owned by the multus-crds application above.
         includeCRDs = false;
