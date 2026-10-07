@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 9b5757ae6cf3a6649a097b3e64ac0cc840f0b8515ff551e71cb855c4abd45d6b
+        checksum/configMaps: 5a66198ee43224df338b85c034decb3d37819a1363bb1346aef561165b8bf4ab
       labels:
         app.kubernetes.io/controller: radarr
         app.kubernetes.io/instance: radarr

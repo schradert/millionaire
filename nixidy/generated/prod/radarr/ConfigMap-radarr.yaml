@@ -6,6 +6,8 @@ data:
   RADARR__LOG__DBENABLED: "False"
   RADARR__LOG__LEVEL: info
   RADARR__POSTGRES__HOST: radarr-rw
+  RADARR__POSTGRES__LOGDB: radarr-log
+  RADARR__POSTGRES__MAINDB: radarr
   RADARR__POSTGRES__USER: radarr
   RADARR__SERVER__PORT: "80"
   RADARR__UPDATE__BRANCH: develop

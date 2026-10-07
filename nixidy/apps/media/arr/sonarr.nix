@@ -15,7 +15,10 @@
     };
     applications.sonarr = {
       namespace = "media";
-      postgres.enable = true;
+      postgres = {
+        enable = true;
+        extraDatabases = ["sonarr-log"];
+      };
       volsync.pvcs.sonarr.title = "sonarr";
       helm.releases.sonarr = {
         chart = charts.bjw-s-labs.app-template-patched;
@@ -73,6 +76,8 @@
             SONARR__SERVER__PORT = builtins.toString port;
             SONARR__UPDATE__BRANCH = "develop";
             SONARR__POSTGRES__USER = "sonarr";
+            SONARR__POSTGRES__MAINDB = "sonarr";
+            SONARR__POSTGRES__LOGDB = "sonarr-log";
             SONARR__POSTGRES__HOST = "sonarr-rw";
           };
           route.sonarr = {

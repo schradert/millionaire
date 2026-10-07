@@ -6,6 +6,8 @@ data:
   LIDARR__LOG__DBENABLED: "False"
   LIDARR__LOG__LEVEL: info
   LIDARR__POSTGRES__HOST: lidarr-rw
+  LIDARR__POSTGRES__LOGDB: lidarr-log
+  LIDARR__POSTGRES__MAINDB: lidarr
   LIDARR__POSTGRES__USER: lidarr
   LIDARR__SERVER__PORT: "80"
   LIDARR__UPDATE__BRANCH: develop
