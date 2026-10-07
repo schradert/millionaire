@@ -54,6 +54,7 @@ in {
           image = can.str "CNPG operand image (overrides the stock image derived from version)" {default = "";};
           database = can.str "Database name" {default = name;};
           owner = can.str "Database owner" {default = name;};
+          extraDatabases = can.list.str "Additional databases owned by the owner" {default = [];};
           extensions = can.list.str "Extensions to CREATE EXTENSION" {default = [];};
           sharedPreloadLibraries = can.list.str "shared_preload_libraries" {default = [];};
           initSQL = can.list.str "Post-init SQL statements (superuser)" {default = [];};
@@ -126,6 +127,15 @@ in {
                 monitoring.enablePodMonitor = db.monitoring;
                 postgresql.shared_preload_libraries = db.sharedPreloadLibraries;
               };
+              databases = lib.listToAttrs (map (d:
+                lib.nameValuePair "${name}-${d}" {
+                  spec = {
+                    name = d;
+                    inherit (db) owner;
+                    cluster.name = name;
+                  };
+                })
+              db.extraDatabases);
               scheduledBackups.${name}.spec = {
                 schedule = db.backup.schedule;
                 backupOwnerReference = "self";
