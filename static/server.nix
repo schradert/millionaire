@@ -25,14 +25,6 @@
     nameserver 1.0.0.1
   '';
   canivete.kubernetes.yaml.kubelet-arg = ["resolv-conf=/etc/rke2-resolv.conf"];
-  # etcd logs to a rotated file, not the static pod's stderr pipe: if rke2-server
-  # dies, containerd dies with it, nothing drains the pipe, and etcd blocks on a
-  # log write with quorum stuck behind it.
-  canivete.kubernetes.yaml.etcd-arg = [
-    "log-outputs=/var/lib/rancher/rke2/server/db/etcd/etcd.log"
-    "enable-log-rotation=true"
-    ''log-rotation-config-json={"maxsize":100,"maxbackups":5,"compress":true}''
-  ];
   # TODO should this be a default?
   # Allows nodes to reach others on the same network by names like `sirver`, etc.
   services.resolved.settings.Resolve.ResolveUnicastSingleLabel = true;
