@@ -69,11 +69,36 @@
           };
         };
       };
+      # Random once, never refreshed: the app persists it as its own key.
+      resources.passwords.prowlarr-apikey.spec = {
+        length = 32;
+        digits = 10;
+        symbols = 0;
+        noUpper = true;
+        allowRepeat = true;
+      };
+      resources.externalSecrets.prowlarr-apikey.spec = {
+        refreshPolicy = "CreatedOnce";
+        dataFrom = lib.toList {
+          sourceRef.generatorRef = {
+            apiVersion = "generators.external-secrets.io/v1alpha1";
+            kind = "Password";
+            name = "prowlarr-apikey";
+          };
+          rewrite = lib.toList {
+            regexp = {
+              source = "password";
+              target = "apikey";
+            };
+          };
+        };
+      };
       resources.externalSecrets.prowlarr.spec.data = [
         {
           secretKey = "PROWLARR__AUTH__APIKEY";
-          remoteRef.key = "prowlarr";
-          sourceRef.storeRef.name = "bitwarden";
+          remoteRef.key = "prowlarr-apikey";
+          remoteRef.property = "apikey";
+          sourceRef.storeRef.name = "kubernetes-media";
           sourceRef.storeRef.kind = "ClusterSecretStore";
         }
         {

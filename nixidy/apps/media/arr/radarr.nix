@@ -85,11 +85,36 @@
           };
         };
       };
+      # Random once, never refreshed: the app persists it as its own key.
+      resources.passwords.radarr-apikey.spec = {
+        length = 32;
+        digits = 10;
+        symbols = 0;
+        noUpper = true;
+        allowRepeat = true;
+      };
+      resources.externalSecrets.radarr-apikey.spec = {
+        refreshPolicy = "CreatedOnce";
+        dataFrom = lib.toList {
+          sourceRef.generatorRef = {
+            apiVersion = "generators.external-secrets.io/v1alpha1";
+            kind = "Password";
+            name = "radarr-apikey";
+          };
+          rewrite = lib.toList {
+            regexp = {
+              source = "password";
+              target = "apikey";
+            };
+          };
+        };
+      };
       resources.externalSecrets.radarr.spec.data = [
         {
           secretKey = "RADARR__AUTH__APIKEY";
-          remoteRef.key = "radarr";
-          sourceRef.storeRef.name = "bitwarden";
+          remoteRef.key = "radarr-apikey";
+          remoteRef.property = "apikey";
+          sourceRef.storeRef.name = "kubernetes-media";
           sourceRef.storeRef.kind = "ClusterSecretStore";
         }
         {

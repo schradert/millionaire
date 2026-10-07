@@ -86,11 +86,36 @@
           };
         };
       };
+      # Random once, never refreshed: the app persists it as its own key.
+      resources.passwords.autobrr-apikey.spec = {
+        length = 32;
+        digits = 10;
+        symbols = 0;
+        noUpper = true;
+        allowRepeat = true;
+      };
+      resources.externalSecrets.autobrr-apikey.spec = {
+        refreshPolicy = "CreatedOnce";
+        dataFrom = lib.toList {
+          sourceRef.generatorRef = {
+            apiVersion = "generators.external-secrets.io/v1alpha1";
+            kind = "Password";
+            name = "autobrr-apikey";
+          };
+          rewrite = lib.toList {
+            regexp = {
+              source = "password";
+              target = "apikey";
+            };
+          };
+        };
+      };
       resources.externalSecrets.autobrr.spec.data = [
         {
           secretKey = "session_secret.txt";
-          remoteRef.key = "autobrr";
-          sourceRef.storeRef.name = "bitwarden";
+          remoteRef.key = "autobrr-apikey";
+          remoteRef.property = "apikey";
+          sourceRef.storeRef.name = "kubernetes-media";
           sourceRef.storeRef.kind = "ClusterSecretStore";
         }
         {

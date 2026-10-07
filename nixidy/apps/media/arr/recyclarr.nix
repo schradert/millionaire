@@ -134,16 +134,18 @@
         };
       };
       resources.externalSecrets.recyclarr.spec = {
-        secretStoreRef.name = "bitwarden";
+        secretStoreRef.name = "kubernetes-media";
         secretStoreRef.kind = "ClusterSecretStore";
         data = [
           {
             secretKey = "radarr";
-            remoteRef.key = "radarr";
+            remoteRef.key = "radarr-apikey";
+            remoteRef.property = "apikey";
           }
           {
             secretKey = "sonarr";
-            remoteRef.key = "sonarr";
+            remoteRef.key = "sonarr-apikey";
+            remoteRef.property = "apikey";
           }
         ];
         target.template.data."secrets.yml" = toYAML "secrets.yml" secretsTemplate;
