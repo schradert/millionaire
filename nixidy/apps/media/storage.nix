@@ -4,6 +4,8 @@
       namespace = "media";
       resources.persistentVolumeClaims = let
         cephfsPVC = size: {
+          # Never let a sync or app removal delete library data.
+          metadata.annotations."argocd.argoproj.io/sync-options" = "Prune=false,Delete=false";
           spec = {
             accessModes = ["ReadWriteMany"];
             storageClassName = "ceph-filesystem";
