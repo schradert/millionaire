@@ -66,6 +66,9 @@ spec:
             - mountPath: /media/comics
               name: media-comics
               readOnly: true
+            - mountPath: /media/dvd
+              name: media-dvd
+              readOnly: true
             - mountPath: /media/movies
               name: media-movies
               readOnly: true
@@ -106,6 +109,9 @@ spec:
         - name: media-comics
           persistentVolumeClaim:
             claimName: media-comics
+        - name: media-dvd
+          persistentVolumeClaim:
+            claimName: media-dvd
         - name: media-movies
           persistentVolumeClaim:
             claimName: media-movies

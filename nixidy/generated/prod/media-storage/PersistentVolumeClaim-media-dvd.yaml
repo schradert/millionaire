@@ -3,12 +3,12 @@ kind: PersistentVolumeClaim
 metadata:
   annotations:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
-  name: media-movies
+  name: media-dvd
   namespace: media
 spec:
   accessModes:
     - ReadWriteMany
   resources:
     requests:
-      storage: 500Gi
+      storage: 1Ti
   storageClassName: ceph-filesystem
