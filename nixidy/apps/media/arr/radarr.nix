@@ -22,6 +22,13 @@
         values = {
           controllers.radarr = {
             annotations."reloader.stakater.com/auto" = "true";
+            # Rootless image; the volume mounts root-owned.
+            pod.securityContext = {
+              runAsUser = 65534;
+              runAsGroup = 65534;
+              fsGroup = 65534;
+              fsGroupChangePolicy = "OnRootMismatch";
+            };
             containers.radarr = {
               image.repository = "ghcr.io/home-operations/radarr";
               image.tag = "6.1.1.10317";

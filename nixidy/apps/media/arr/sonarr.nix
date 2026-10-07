@@ -22,6 +22,13 @@
         values = {
           controllers.sonarr = {
             annotations."reloader.stakater.com/auto" = "true";
+            # Rootless image; the volume mounts root-owned.
+            pod.securityContext = {
+              runAsUser = 65534;
+              runAsGroup = 65534;
+              fsGroup = 65534;
+              fsGroupChangePolicy = "OnRootMismatch";
+            };
             containers.sonarr = {
               image.repository = "ghcr.io/home-operations/sonarr";
               image.tag = "4.0.17.2950";
