@@ -21,6 +21,11 @@
         values = {
           controllers.autobrr = {
             annotations."reloader.stakater.com/auto" = "true";
+            # Image runs as 1000; the volume mounts root-owned.
+            pod.securityContext = {
+              fsGroup = 1000;
+              fsGroupChangePolicy = "OnRootMismatch";
+            };
             containers.autobrr = {
               image.repository = "ghcr.io/autobrr/autobrr";
               image.tag = "v1.74.0";
