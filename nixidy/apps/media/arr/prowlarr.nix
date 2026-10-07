@@ -22,6 +22,13 @@
         values = {
           controllers.prowlarr = {
             annotations."reloader.stakater.com/auto" = "true";
+            # Rootless image; the volume mounts root-owned.
+            pod.securityContext = {
+              runAsUser = 65534;
+              runAsGroup = 65534;
+              fsGroup = 65534;
+              fsGroupChangePolicy = "OnRootMismatch";
+            };
             containers.prowlarr = {
               image.repository = "ghcr.io/home-operations/prowlarr";
               image.tag = "2.3.4.5307";
