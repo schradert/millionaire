@@ -1,0 +1,15 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--media-storage--media-dvd-dst
+  namespace: media
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: media-dvd
+    moverSecurityContext:
+      runAsGroup: 101
+      runAsUser: 101
+    repository: volsync--media-storage--media-dvd
+  trigger:
+    manual: "1"

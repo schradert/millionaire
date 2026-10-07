@@ -94,6 +94,16 @@
                 }
               ];
             };
+            media-dvd = {
+              type = "persistentVolumeClaim";
+              existingClaim = "media-dvd";
+              advancedMounts.jellyfin.jellyfin = [
+                {
+                  path = "/media/dvd";
+                  readOnly = true;
+                }
+              ];
+            };
             media-tv = {
               type = "persistentVolumeClaim";
               existingClaim = "media-tv";
