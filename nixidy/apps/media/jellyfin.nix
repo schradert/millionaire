@@ -197,6 +197,57 @@
           };
         };
       };
+      # Idempotent post-sync bootstrap: runs the startup wizard if needed, creates
+      # the admin user and any missing libraries (apps/jellyfin-bootstrap). Reruns
+      # after every sync, so it must stay a no-op once everything exists.
+      # Image: `image publish jellyfin-bootstrap` (modules/images.nix) -> Harbor.
+      resources.jobs.jellyfin-bootstrap = {
+        metadata.annotations = {
+          "argocd.argoproj.io/hook" = "PostSync";
+          "argocd.argoproj.io/hook-delete-policy" = "BeforeHookCreation";
+        };
+        spec = {
+          backoffLimit = 6;
+          activeDeadlineSeconds = 1200;
+          template.spec = {
+            restartPolicy = "OnFailure";
+            securityContext = {
+              runAsNonRoot = true;
+              runAsUser = 65534;
+              runAsGroup = 65534;
+              seccompProfile.type = "RuntimeDefault";
+            };
+            containers = lib.toList {
+              name = "bootstrap";
+              image = "harbor.${domain}/library/jellyfin-bootstrap:0.1.0";
+              env = [
+                {
+                  name = "JELLYFIN_URL";
+                  value = "http://jellyfin.media.svc.cluster.local:8096";
+                }
+                {
+                  name = "ADMIN_PASSWORD_FILE";
+                  value = "/secrets/admin/password";
+                }
+              ];
+              volumeMounts = lib.toList {
+                name = "admin";
+                mountPath = "/secrets/admin";
+                readOnly = true;
+              };
+              securityContext = {
+                allowPrivilegeEscalation = false;
+                readOnlyRootFilesystem = true;
+                capabilities.drop = ["ALL"];
+              };
+            };
+            volumes = lib.toList {
+              name = "admin";
+              secret.secretName = "jellyfin-admin";
+            };
+          };
+        };
+      };
     };
   };
 }

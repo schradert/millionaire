@@ -121,6 +121,27 @@
           ];
         };
 
+      # Post-sync bootstrap Job for jellyfin (wizard, admin user, libraries).
+      # Pinned to x86_64: every cluster node is amd64, but linuxPkgs above follows
+      # the build host (aarch64-linux on the Mac), which would give an arm64 image.
+      jellyfin-bootstrap = let
+        amd64Pkgs = import inputs.nixpkgs {system = "x86_64-linux";};
+        src = ../apps/jellyfin-bootstrap;
+        pkg = amd64Pkgs.rustPlatform.buildRustPackage {
+          pname = "jellyfin-bootstrap";
+          version = "0.1.0";
+          inherit src;
+          cargoLock.lockFile = "${src}/Cargo.lock";
+        };
+      in
+        n2c.buildImage {
+          name = "${registry}/library/jellyfin-bootstrap";
+          tag = pkg.version;
+          arch = "amd64";
+          config.Entrypoint = ["${pkg}/bin/jellyfin-bootstrap"];
+          layers = [(n2c.buildLayer {deps = [pkg];})];
+        };
+
       govee2mqtt = n2c.buildImage {
         name = "${registry}/library/govee2mqtt";
         tag = linuxPkgs.govee2mqtt.version;
