@@ -11,11 +11,16 @@
     # Keycloak OIDC client — keycloak-operator syncs secret to K8s
     applications.keycloak.resources.keycloakClients.forgejo.spec = {
       realmRef.name = "default";
+      clientSecretRef = {
+        name = "forgejo";
+        create = true;
+      };
       definition = {
         clientId = "forgejo";
         name = "Forgejo";
         enabled = true;
         protocol = "openid-connect";
+        publicClient = false;
         standardFlowEnabled = true;
         directAccessGrantsEnabled = false;
         redirectUris = ["https://${hostname}/user/oauth2/keycloak/callback"];
@@ -26,6 +31,7 @@
 
     applications.forgejo = {
       namespace = "development";
+      generatedSecrets.forgejo-admin-password.key = "password";
       postgres.enable = true;
       # Forgejo chart deploys a StatefulSet; default PVC is `data-forgejo-0`
       volsync.pvcs.data-forgejo-0.title = "data-forgejo-0";
@@ -150,20 +156,31 @@
             };
           };
 
-          # Admin credentials from Bitwarden
+          # Admin username from Bitwarden; password generated in-cluster
           forgejo-admin.spec = {
-            secretStoreRef = {
-              name = "bitwarden";
-              kind = "ClusterSecretStore";
+            target.template.data = {
+              username = "{{ .username }}";
+              password = "{{ .password }}";
             };
             data = [
               {
                 secretKey = "username";
                 remoteRef.key = "forgejo/admin/username";
+                sourceRef.storeRef = {
+                  name = "bitwarden";
+                  kind = "ClusterSecretStore";
+                };
               }
               {
                 secretKey = "password";
-                remoteRef.key = "forgejo/admin/password";
+                remoteRef = {
+                  key = "forgejo-admin-password";
+                  property = "password";
+                };
+                sourceRef.storeRef = {
+                  name = "kubernetes-development";
+                  kind = "ClusterSecretStore";
+                };
               }
             ];
           };
@@ -179,7 +196,7 @@
                 secretKey = "clientId";
                 remoteRef = {
                   key = "forgejo";
-                  property = "CLIENT_ID";
+                  property = "client-id";
                 };
                 sourceRef.storeRef = {
                   name = "kubernetes-identity";
@@ -190,7 +207,7 @@
                 secretKey = "clientSecret";
                 remoteRef = {
                   key = "forgejo";
-                  property = "CLIENT_SECRET";
+                  property = "client-secret";
                 };
                 sourceRef.storeRef = {
                   name = "kubernetes-identity";

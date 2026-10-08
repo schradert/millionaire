@@ -4,6 +4,9 @@ metadata:
   name: forgejo
   namespace: identity
 spec:
+  clientSecretRef:
+    create: true
+    name: forgejo
   definition:
     clientId: forgejo
     defaultClientScopes:
@@ -14,6 +17,7 @@ spec:
     enabled: true
     name: Forgejo
     protocol: openid-connect
+    publicClient: false
     redirectUris:
       - https://git.trdos.me/user/oauth2/keycloak/callback
     standardFlowEnabled: true

@@ -4,6 +4,9 @@ metadata:
   name: windmill
   namespace: identity
 spec:
+  clientSecretRef:
+    create: true
+    name: windmill
   definition:
     clientId: windmill
     defaultClientScopes:
@@ -15,6 +18,7 @@ spec:
     enabled: true
     name: Windmill
     protocol: openid-connect
+    publicClient: false
     redirectUris:
       - https://windmill.trdos.me/user/login_callback/keycloak
     standardFlowEnabled: true
