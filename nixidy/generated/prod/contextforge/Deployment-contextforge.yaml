@@ -55,6 +55,8 @@ spec:
                 name: contextforge-basic-auth
             - secretRef:
                 name: contextforge-admin
+            - secretRef:
+                name: contextforge-default-user
           image: ghcr.io/ibm/mcp-context-forge:latest
           livenessProbe:
             httpGet:

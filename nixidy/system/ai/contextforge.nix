@@ -37,10 +37,27 @@ in {
       postgres.enable = true;
       # The gateway rejects placeholder secrets at startup.
       generatedSecrets = {
-        contextforge-jwt.key = "JWT_SECRET_KEY";
-        contextforge-auth-encryption.key = "AUTH_ENCRYPTION_SECRET";
-        contextforge-basic-auth.key = "BASIC_AUTH_PASSWORD";
-        contextforge-admin.key = "PLATFORM_ADMIN_PASSWORD";
+        contextforge-jwt = {
+          key = "JWT_SECRET_KEY";
+          length = 48;
+        };
+        contextforge-auth-encryption = {
+          key = "AUTH_ENCRYPTION_SECRET";
+          length = 48;
+        };
+        # Password fields must be at least 12 characters (22 for privileged).
+        contextforge-basic-auth = {
+          key = "BASIC_AUTH_PASSWORD";
+          length = 24;
+        };
+        contextforge-admin = {
+          key = "PLATFORM_ADMIN_PASSWORD";
+          length = 24;
+        };
+        contextforge-default-user = {
+          key = "DEFAULT_USER_PASSWORD";
+          length = 24;
+        };
       };
       helm.releases.contextforge = {
         chart = charts.bjw-s-labs.app-template-patched;
@@ -66,6 +83,7 @@ in {
                 "contextforge-auth-encryption"
                 "contextforge-basic-auth"
                 "contextforge-admin"
+                "contextforge-default-user"
               ];
               ports = lib.toList {
                 name = "http";
