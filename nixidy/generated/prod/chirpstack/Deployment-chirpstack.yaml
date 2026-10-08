@@ -33,7 +33,7 @@ spec:
       containers:
         - args:
             - -c
-            - /etc/chirpstack/chirpstack.toml
+            - /etc/chirpstack
           envFrom:
             - secretRef:
                 name: chirpstack

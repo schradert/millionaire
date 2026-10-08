@@ -30,6 +30,10 @@ spec:
       automountServiceAccountToken: false
       containers:
         - env:
+            - name: PGID
+              value: "1000"
+            - name: PUID
+              value: "1000"
             - name: SIYUAN_ACCESS_AUTH_CODE_BYPASS
               value: "true"
             - name: TZ
@@ -50,9 +54,6 @@ spec:
             tcpSocket:
               port: 6806
             timeoutSeconds: 1
-          securityContext:
-            runAsGroup: 1000
-            runAsUser: 1000
           startupProbe:
             failureThreshold: 30
             initialDelaySeconds: 0

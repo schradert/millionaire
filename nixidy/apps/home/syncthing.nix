@@ -15,6 +15,8 @@ in {
     applications.syncthing = {
       namespace = "home";
       volsync.pvcs.syncthing.title = "syncthing-state";
+      # GUI API key; org-bridge reads the same Secret.
+      generatedSecrets.syncthing.key = "STGUIAPIKEY";
 
       helm.releases.syncthing = {
         chart = charts.bjw-s-labs.app-template-patched;
@@ -108,14 +110,6 @@ in {
         };
       };
 
-      resources.externalSecrets.syncthing.spec.data = [
-        {
-          secretKey = "STGUIAPIKEY";
-          remoteRef.key = "syncthing/api-key";
-          sourceRef.storeRef.name = "bitwarden";
-          sourceRef.storeRef.kind = "ClusterSecretStore";
-        }
-      ];
     };
     oauth2Proxy.upstreams.${hostname} = {
       url = "http://syncthing.home.svc.cluster.local:8384";

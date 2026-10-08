@@ -27,7 +27,9 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - env:
+        - args:
+            - serve
+          env:
             - name: KORROSYNC_DB_PATH
               value: /data/db.redb
             - name: KORROSYNC_SERVER_ADDRESS
