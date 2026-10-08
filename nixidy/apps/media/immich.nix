@@ -110,7 +110,7 @@
           };
           persistence.secrets = {
             type = "secret";
-            name = "immich-server";
+            name = "immich-db-password";
           };
           persistence.library = {
             type = "persistentVolumeClaim";
@@ -178,7 +178,9 @@
         resources.limits.memory = "1Gi";
       };
 
-      resources.externalSecrets.immich-server.spec.data = [
+      # Not "immich-server": CNPG owns a Secret of that name (the cluster's
+      # server TLS cert), so ESO could never take ownership of it.
+      resources.externalSecrets.immich-db-password.spec.data = [
         {
           secretKey = "db_password.txt";
           remoteRef.key = "immich-app";
