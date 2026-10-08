@@ -78,15 +78,29 @@
           };
         };
       };
+      # Random once, never refreshed. Maloja must have this value registered as an
+      # API key (Maloja settings -> API keys) for scrobbles to be accepted.
+      resources.passwords.multi-scrobbler.spec = {
+        length = 32;
+        digits = 10;
+        symbols = 0;
+        noUpper = true;
+        allowRepeat = true;
+      };
       resources.externalSecrets.multi-scrobbler.spec = {
-        secretStoreRef.name = "bitwarden";
-        secretStoreRef.kind = "ClusterSecretStore";
-        target.template.data = {
-          MALOJA_API_KEY = "{{ .maloja_api_key }}";
-        };
-        data = lib.toList {
-          secretKey = "maloja_api_key";
-          remoteRef.key = "maloja/api-key";
+        refreshPolicy = "CreatedOnce";
+        dataFrom = lib.toList {
+          sourceRef.generatorRef = {
+            apiVersion = "generators.external-secrets.io/v1alpha1";
+            kind = "Password";
+            name = "multi-scrobbler";
+          };
+          rewrite = lib.toList {
+            regexp = {
+              source = "password";
+              target = "MALOJA_API_KEY";
+            };
+          };
         };
       };
     };

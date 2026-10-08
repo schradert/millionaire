@@ -82,29 +82,37 @@
           };
         };
       };
+      # Random once, never refreshed: the admin password lives only in this secret.
+      resources.passwords.maloja-admin.spec = {
+        length = 32;
+        digits = 10;
+        symbols = 0;
+        noUpper = false;
+        allowRepeat = true;
+      };
+      resources.externalSecrets.maloja-admin.spec = {
+        refreshPolicy = "CreatedOnce";
+        dataFrom = lib.toList {
+          sourceRef.generatorRef = {
+            apiVersion = "generators.external-secrets.io/v1alpha1";
+            kind = "Password";
+            name = "maloja-admin";
+          };
+        };
+      };
       resources.externalSecrets.maloja.spec = {
-        secretStoreRef.name = "bitwarden";
+        secretStoreRef.name = "kubernetes-media";
         secretStoreRef.kind = "ClusterSecretStore";
         target.template.data = {
-          # Admin password seeded from Bitwarden — change later via the UI if needed.
           MALOJA_FORCE_PASSWORD = "{{ .admin_password }}";
-          # Forward every accepted scrobble to pseudonymous ListenBrainz for the
-          # recommendation graph + Fresh Releases.
-          MALOJA_SCROBBLE_LASTFM_KEY = "";
-          MALOJA_SCROBBLE_LASTFM_SECRET = "";
-          MALOJA_SCROBBLE_LISTENBRAINZ_TOKEN = "{{ .listenbrainz_token }}";
+          # TODO(user): forwarding to ListenBrainz needs a token only the user can
+          # supply; add MALOJA_SCROBBLE_LISTENBRAINZ_TOKEN from Bitwarden once it exists.
         };
-        data = [
-          {
-            secretKey = "admin_password";
-            remoteRef.key = "maloja/admin-password";
-          }
-          {
-            secretKey = "listenbrainz_token";
-            remoteRef.key = "listenbrainz-pseudonymous";
-            remoteRef.property = "token";
-          }
-        ];
+        data = lib.toList {
+          secretKey = "admin_password";
+          remoteRef.key = "maloja-admin";
+          remoteRef.property = "password";
+        };
       };
     };
   };

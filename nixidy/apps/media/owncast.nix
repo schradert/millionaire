@@ -63,12 +63,29 @@
           };
         };
       };
+      # Random once, never refreshed: read it from the secret to configure the
+      # streaming client.
+      resources.passwords.owncast.spec = {
+        length = 32;
+        digits = 10;
+        symbols = 0;
+        noUpper = false;
+        allowRepeat = true;
+      };
       resources.externalSecrets.owncast.spec = {
-        secretStoreRef.name = "bitwarden";
-        secretStoreRef.kind = "ClusterSecretStore";
-        data = lib.toList {
-          secretKey = "OWNCAST_STREAM_KEY";
-          remoteRef.key = "owncast/stream-key";
+        refreshPolicy = "CreatedOnce";
+        dataFrom = lib.toList {
+          sourceRef.generatorRef = {
+            apiVersion = "generators.external-secrets.io/v1alpha1";
+            kind = "Password";
+            name = "owncast";
+          };
+          rewrite = lib.toList {
+            regexp = {
+              source = "password";
+              target = "OWNCAST_STREAM_KEY";
+            };
+          };
         };
       };
     };
