@@ -39,7 +39,7 @@ spec:
             failureThreshold: 3
             httpGet:
               path: /api/server/ping
-              port: http
+              port: 2283
             initialDelaySeconds: 0
             periodSeconds: 10
             timeoutSeconds: 1
@@ -48,7 +48,7 @@ spec:
             failureThreshold: 3
             httpGet:
               path: /api/server/ping
-              port: http
+              port: 2283
             initialDelaySeconds: 0
             periodSeconds: 10
             timeoutSeconds: 1
@@ -56,7 +56,7 @@ spec:
             failureThreshold: 30
             httpGet:
               path: /api/server/ping
-              port: http
+              port: 2283
             initialDelaySeconds: 0
             periodSeconds: 10
             timeoutSeconds: 1
@@ -75,7 +75,7 @@ spec:
       serviceAccountName: immich-server
       volumes:
         - configMap:
-            name: immich-server-files
+            name: immich-server-immich-server-files
           name: config
         - name: library
           persistentVolumeClaim:

@@ -4,9 +4,12 @@ metadata:
   name: immich-dragonfly
   namespace: media
 spec:
+  args:
+    - --proactor_threads
+    - "2"
   replicas: 1
   resources:
     limits:
-      memory: 512Mi
+      memory: 1Gi
     requests:
-      memory: 256Mi
+      memory: 512Mi

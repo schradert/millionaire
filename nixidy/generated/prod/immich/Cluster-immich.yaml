@@ -30,6 +30,8 @@ spec:
   instances: 1
   monitoring:
     enablePodMonitor: true
+  postgresGID: 999
+  postgresUID: 999
   postgresql:
     shared_preload_libraries:
       - vchord.so

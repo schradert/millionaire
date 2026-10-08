@@ -34,7 +34,7 @@ spec:
             failureThreshold: 3
             httpGet:
               path: /ping
-              port: http
+              port: 3003
             initialDelaySeconds: 0
             periodSeconds: 10
             timeoutSeconds: 1
@@ -43,7 +43,7 @@ spec:
             failureThreshold: 3
             httpGet:
               path: /ping
-              port: http
+              port: 3003
             initialDelaySeconds: 0
             periodSeconds: 10
             timeoutSeconds: 1
@@ -51,7 +51,7 @@ spec:
             failureThreshold: 60
             httpGet:
               path: /ping
-              port: http
+              port: 3003
             initialDelaySeconds: 0
             periodSeconds: 10
             timeoutSeconds: 1
