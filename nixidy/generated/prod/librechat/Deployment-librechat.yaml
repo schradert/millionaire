@@ -57,6 +57,12 @@ spec:
           envFrom:
             - secretRef:
                 name: librechat
+            - secretRef:
+                name: librechat-creds-key
+            - secretRef:
+                name: librechat-creds-iv
+            - secretRef:
+                name: librechat-jwt
           image: ghcr.io/danny-avila/librechat:v0.8.7
           livenessProbe:
             httpGet:

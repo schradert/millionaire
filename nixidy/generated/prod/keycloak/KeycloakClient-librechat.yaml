@@ -4,6 +4,9 @@ metadata:
   name: librechat
   namespace: identity
 spec:
+  clientSecretRef:
+    create: true
+    name: librechat
   definition:
     clientId: librechat
     defaultClientScopes:
@@ -14,6 +17,7 @@ spec:
     enabled: true
     name: LibreChat
     protocol: openid-connect
+    publicClient: false
     redirectUris:
       - https://chat.trdos.me/oauth/openid/callback
     standardFlowEnabled: true

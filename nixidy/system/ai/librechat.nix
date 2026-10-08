@@ -45,11 +45,16 @@ in {
     # Keycloak OIDC client for LibreChat
     applications.keycloak.resources.keycloakClients.librechat.spec = {
       realmRef.name = "default";
+      clientSecretRef = {
+        name = "librechat";
+        create = true;
+      };
       definition = {
         clientId = "librechat";
         name = "LibreChat";
         enabled = true;
         protocol = "openid-connect";
+        publicClient = false;
         standardFlowEnabled = true;
         directAccessGrantsEnabled = false;
         redirectUris = ["https://${hostname}/oauth/openid/callback"];
@@ -64,6 +69,23 @@ in {
     };
     applications.librechat = {
       namespace = "ai";
+      # LibreChat parses the creds key/IV as hex (32 and 16 bytes), hence digits only.
+      generatedSecrets = {
+        librechat-creds-key = {
+          key = "CREDS_KEY";
+          length = 64;
+          numeric = true;
+        };
+        librechat-creds-iv = {
+          key = "CREDS_IV";
+          length = 32;
+          numeric = true;
+        };
+        librechat-jwt = {
+          key = "JWT_SECRET";
+          length = 64;
+        };
+      };
       helm.releases.librechat = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
@@ -85,7 +107,12 @@ in {
                 OPENID_BUTTON_LABEL = "Login with Keycloak";
                 MONGO_URI = "mongodb://librechat-mongodb:27017/librechat";
               };
-              envFrom = lib.toList {secretRef.name = "librechat";};
+              envFrom = [
+                {secretRef.name = "librechat";}
+                {secretRef.name = "librechat-creds-key";}
+                {secretRef.name = "librechat-creds-iv";}
+                {secretRef.name = "librechat-jwt";}
+              ];
               ports = lib.toList {
                 name = "http";
                 containerPort = 3080;
@@ -167,34 +194,16 @@ in {
         };
       };
 
+      # OIDC client secret from the keycloak-operator
       resources.externalSecrets.librechat.spec = {
-        secretStoreRef.name = "bitwarden";
+        secretStoreRef.name = "kubernetes-identity";
         secretStoreRef.kind = "ClusterSecretStore";
-        target.template.data = {
-          CREDS_KEY = "{{ .session_secret }}";
-          CREDS_IV = "{{ .session_iv }}";
-          JWT_SECRET = "{{ .jwt_secret }}";
-          OPENID_CLIENT_SECRET = "{{ .oidc_secret }}";
+        target.template.data.OPENID_CLIENT_SECRET = "{{ .oidc_secret }}";
+        data = lib.toList {
+          secretKey = "oidc_secret";
+          remoteRef.key = "librechat";
+          remoteRef.property = "client-secret";
         };
-        data = [
-          {
-            secretKey = "session_secret";
-            remoteRef.key = "ai/librechat/session-secret";
-          }
-          {
-            secretKey = "session_iv";
-            remoteRef.key = "ai/librechat/session-iv";
-          }
-          {
-            secretKey = "jwt_secret";
-            remoteRef.key = "ai/librechat/jwt-secret";
-          }
-          {
-            secretKey = "oidc_secret";
-            # TODO: switch to keycloak-operator synced secret once available
-            remoteRef.key = "ai/librechat/client-secret";
-          }
-        ];
       };
     };
 

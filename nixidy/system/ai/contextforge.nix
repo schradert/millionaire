@@ -10,11 +10,16 @@ in {
     # Keycloak OIDC client for ContextForge admin UI
     applications.keycloak.resources.keycloakClients.contextforge.spec = {
       realmRef.name = "default";
+      clientSecretRef = {
+        name = "contextforge";
+        create = true;
+      };
       definition = {
         clientId = "contextforge";
         name = "ContextForge MCP Gateway";
         enabled = true;
         protocol = "openid-connect";
+        publicClient = false;
         standardFlowEnabled = true;
         directAccessGrantsEnabled = false;
         redirectUris = ["https://${hostname}/*"];
@@ -112,9 +117,9 @@ in {
           }
           {
             secretKey = "oidc_secret";
-            # TODO: switch to keycloak-operator synced secret once available
-            remoteRef.key = "ai/contextforge/client-secret";
-            sourceRef.storeRef.name = "bitwarden";
+            remoteRef.key = "contextforge";
+            remoteRef.property = "client-secret";
+            sourceRef.storeRef.name = "kubernetes-identity";
             sourceRef.storeRef.kind = "ClusterSecretStore";
           }
         ];
