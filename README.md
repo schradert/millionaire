@@ -15,6 +15,9 @@
 9. TODO move pod/service CIDR routing off the node tailscaled (no `--advertise-routes` on hosts) to Tailscale operator Connector replicas, then drop the 1.96.4 pin in `static/tailnet.nix`
 10. TODO Jellyfin availability and throughput for remote users (Japan): offline sync, bitrate caps, or a regional replica
 11. TODO remove the `net.ipv4.conf.all.src_valid_mark=1` workaround once Tailscale fixes it upstream (tailscale/tailscale#19796): Tailscale 1.98 sets it, which breaks Cilium's Envoy proxy. Currently handled by the 1.96.4 pin in `static/tailnet.nix`
+12. TODO port `apps/sveltekit-demo` to the current bun2nix so its image builds in the `image-publish` workflow
+13. TODO add an `org-bridge` image to `modules/images.nix` (and track `org-bridge/Cargo.lock`) so `nixidy/apps/home/org-bridge.nix` has something to pull
+14. TODO build a mooncord image in `modules/images.nix` (no upstream image exists) and re-enable it in `nixidy/apps/default.nix`
 
 ## 3D Printing Stack (Voron 2.4 LDO)
 
