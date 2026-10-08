@@ -10,7 +10,7 @@
   in {
     gatus.endpoints.navidrome = {
       url = "https://${hostname}/ping";
-      group = "external";
+      group = "internal";
       conditions = ["[STATUS] == 200"];
     };
     applications.navidrome = {
@@ -85,7 +85,7 @@
           route.navidrome = {
             hostnames = [hostname];
             parentRefs = lib.toList {
-              name = "external";
+              name = "internal";
               namespace = "kube-system";
               sectionName = "https";
             };

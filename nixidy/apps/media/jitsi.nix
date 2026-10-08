@@ -5,7 +5,7 @@
   in {
     gatus.endpoints.jitsi = {
       url = "https://${hostname}";
-      group = "external";
+      group = "internal";
       conditions = ["[STATUS] == any(200, 302)"];
     };
     applications.jitsi = {
@@ -85,7 +85,7 @@
           hostnames = [hostname];
           # Public rooms — exposed via external gateway, no oauth2-proxy.
           parentRefs = lib.toList {
-            name = "external";
+            name = "internal";
             namespace = "kube-system";
             sectionName = "https";
           };

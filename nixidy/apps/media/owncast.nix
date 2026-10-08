@@ -9,7 +9,7 @@
   in {
     gatus.endpoints.owncast = {
       url = "https://${hostname}";
-      group = "external";
+      group = "internal";
       conditions = ["[STATUS] == any(200, 302)"];
     };
     applications.owncast = {
@@ -49,7 +49,7 @@
           route.owncast = {
             hostnames = [hostname];
             parentRefs = lib.toList {
-              name = "external";
+              name = "internal";
               namespace = "kube-system";
               sectionName = "https";
             };

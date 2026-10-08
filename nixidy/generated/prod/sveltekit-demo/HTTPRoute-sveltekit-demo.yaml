@@ -7,7 +7,7 @@ spec:
   hostnames:
     - demo.trdos.me
   parentRefs:
-    - name: external
+    - name: internal
       namespace: kube-system
       sectionName: https
   rules:

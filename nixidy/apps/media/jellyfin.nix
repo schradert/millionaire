@@ -11,7 +11,7 @@
   in {
     gatus.endpoints.jellyfin = {
       url = "https://${hostname}";
-      group = "external";
+      group = "internal";
       conditions = ["[STATUS] == any(200, 302)"];
     };
     # Keycloak OIDC client for Jellyfin SSO plugin (configured via admin UI).
