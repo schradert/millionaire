@@ -5,6 +5,8 @@ metadata:
   namespace: media
 spec:
   restic:
+    cacheAccessModes:
+      - ReadWriteOnce
     copyMethod: Direct
     destinationPVC: media-dvd
     moverSecurityContext:

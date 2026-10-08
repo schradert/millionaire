@@ -2,7 +2,10 @@
   nixidy = {...}: {
     applications.media-storage = {
       namespace = "media";
-      volsync.pvcs.media-dvd.title = "media-dvd";
+      volsync.pvcs.media-dvd = {
+        title = "media-dvd";
+        cacheAccessModes = ["ReadWriteOnce"];
+      };
       resources.persistentVolumeClaims = let
         cephfsPVC = size: {
           # Never let a sync or app removal delete library data.
