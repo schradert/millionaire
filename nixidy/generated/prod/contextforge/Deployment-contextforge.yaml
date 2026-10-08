@@ -27,6 +27,15 @@ spec:
         app.kubernetes.io/instance: contextforge
         app.kubernetes.io/name: contextforge
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values:
+                      - octopus
       automountServiceAccountToken: false
       containers:
         - env:

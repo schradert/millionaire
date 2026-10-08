@@ -64,6 +64,14 @@ in {
         values = {
           controllers.contextforge = {
             annotations."reloader.stakater.com/auto" = "true";
+            # The image needs x86-64-v3; octopus (Xeon E5-2670, Sandy Bridge) lacks it.
+            pod.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms = lib.toList {
+              matchExpressions = lib.toList {
+                key = "kubernetes.io/hostname";
+                operator = "NotIn";
+                values = ["octopus"];
+              };
+            };
             containers.contextforge = {
               image.repository = "ghcr.io/ibm/mcp-context-forge";
               image.tag = "latest";
