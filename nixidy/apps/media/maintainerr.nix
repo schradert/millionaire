@@ -18,6 +18,13 @@
       helm.releases.maintainerr = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
+          controllers.maintainerr.pod.securityContext = {
+            # Image runs as node (1000) since 2.0; the volume mounts root-owned.
+            runAsUser = 1000;
+            runAsGroup = 1000;
+            fsGroup = 1000;
+            fsGroupChangePolicy = "OnRootMismatch";
+          };
           controllers.maintainerr.containers.maintainerr = {
             image.repository = "ghcr.io/jorenn92/maintainerr";
             image.tag = "2.19.0";
