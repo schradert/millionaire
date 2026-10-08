@@ -7,6 +7,40 @@
 }: let
   inherit (flake.config.canivete.meta) domain;
   user = flake.config.canivete.meta.people.users.tristan;
+  tailnetIP = "100.64.0.1";
+  # Tailnet-only vhosts: no public DNS record, cert via ACME DNS-01.
+  ntfyHost = "ntfy.${domain}";
+  statusHost = "status.${domain}";
+  tailnetVhost = port: {
+    useACMEHost = ntfyHost;
+    forceSSL = true;
+    # Bind only the tailnet IP (nonlocal_bind is set below, so this is safe
+    # before tailscale0 is up), so nothing answers on the public interface.
+    listen = [
+      {
+        addr = tailnetIP;
+        port = 443;
+        ssl = true;
+      }
+      {
+        addr = tailnetIP;
+        port = 80;
+      }
+    ];
+    # Belt and braces if the listen address ever widens.
+    extraConfig = ''
+      allow 100.64.0.0/10;
+      allow 127.0.0.1;
+      deny all;
+    '';
+    locations."/" = {
+      proxyPass = "http://127.0.0.1:${toString port}";
+      proxyWebsockets = true;
+    };
+  };
+  # AdGuard user rules (the live config is external-dns-managed, so these are
+  # merged in on every start rather than living in the first-boot seed only).
+  tailnetRewrites = map (host: "|${host}^$dnsrewrite=NOERROR;A;${tailnetIP},important") [ntfyHost statusHost];
 in {
   imports = [./vps.nix];
 
@@ -51,7 +85,23 @@ in {
   security.acme = {
     acceptTerms = true;
     defaults.email = user.profiles.personal.email;
+    # DNS-01 via Cloudflare so tailnet-only names get real certs. One cert
+    # covers both names.
+    certs.${ntfyHost} = {
+      domain = ntfyHost;
+      extraDomainNames = [statusHost];
+      dnsProvider = "cloudflare";
+      credentialFiles.CLOUDFLARE_DNS_API_TOKEN_FILE = config.sops.secrets.cloudflare-account-token.path;
+      # Check propagation against a public resolver, not hyena's own.
+      dnsResolver = "1.1.1.1:53";
+      group = config.services.nginx.group;
+      reloadServices = ["nginx.service"];
+    };
   };
+
+  # Provisioned by pulumi (cloudflare_token_sops_write) from BWS
+  # cloudflare/account/token, the same token cert-manager uses.
+  sops.secrets.cloudflare-account-token.key = "cloudflare/account/token";
 
   services.nginx = {
     enable = true;
@@ -65,6 +115,8 @@ in {
         proxyWebsockets = true;
       };
     };
+    virtualHosts.${ntfyHost} = tailnetVhost 2586;
+    virtualHosts.${statusHost} = tailnetVhost 8081;
   };
 
   services.headscale = {
@@ -187,6 +239,14 @@ in {
         chown adguardhome:adguardhome /var/lib/AdGuardHome/AdGuardHome.yaml
         chmod 600 /var/lib/AdGuardHome/AdGuardHome.yaml
       fi
+      # Idempotently ensure our tailnet rewrites exist; leaves everything else
+      # (external-dns rules, UI changes) untouched.
+      ${lib.concatMapStringsSep "\n" (rule: ''
+          RULE='${rule}' ${lib.getExe pkgs.yq-go} -i \
+            '.user_rules = ((.user_rules // []) + [strenv(RULE)] | unique)' \
+            /var/lib/AdGuardHome/AdGuardHome.yaml
+        '')
+        tailnetRewrites}
     '';
   };
   systemd.tmpfiles.rules = [
@@ -244,8 +304,9 @@ in {
   services.ntfy-sh = {
     enable = true;
     settings = {
-      base-url = "http://100.64.0.1:2586";
+      base-url = "https://${ntfyHost}";
       listen-http = ":2586";
+      behind-proxy = true;
     };
   };
 

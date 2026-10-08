@@ -1,4 +1,4 @@
-import pulumi
+import millionaire
 import pulumi_bitwarden as bw
 import pulumi_cloudflare as cf
 import pulumi_command as command
@@ -6,7 +6,9 @@ import pulumi_hcloud as hcloud
 import pulumi_random as rand
 import pulumi_tls as tls
 
-import millionaire
+import pulumi
+
+BW_ORGANIZATION_ID = "ce96e43f-f2ce-4cd7-a36f-b30e0149eeaf"
 
 
 def Secret(key: str, value: pulumi.Input[str], note: str = "") -> bw.Secret:
@@ -15,7 +17,7 @@ def Secret(key: str, value: pulumi.Input[str], note: str = "") -> bw.Secret:
         key=key,
         value=value,
         note=note,
-        organization_id="ce96e43f-f2ce-4cd7-a36f-b30e0149eeaf",
+        organization_id=BW_ORGANIZATION_ID,
         project_id="baf88382-abda-41b2-8d0f-b30e014c2db9",
     )
 
@@ -106,11 +108,32 @@ class Millionaire:
             environment={"ADGUARD_HASH": adguard_admin_password.bcrypt_hash},
         )
 
+        # Cloudflare DNS-edit token for hyena's ACME DNS-01 (ntfy/status are
+        # tailnet-only, so HTTP-01 can't work). Reuses the token cert-manager
+        # already uses (BWS cloudflare/account/token) instead of minting another;
+        # hyena reads it via sops-nix, so it must be in SOPS before hyena deploys.
+        cloudflare_account_token = bw.get_secret_output(
+            key="cloudflare/account/token", organization_id=BW_ORGANIZATION_ID
+        )
+        cloudflare_token_sops_write = command.local.Command(
+            "cloudflare_token_sops_write",
+            create=(
+                f'cd "{millionaire.Nix.root}" && '
+                "printf '%s' \"$CF_TOKEN\" | jq -Rs . | "
+                'sops set secrets/sops/default.yaml \'["cloudflare"]["account"]["token"]\' --value-stdin'
+            ),
+            environment={"CF_TOKEN": cloudflare_account_token.value},
+        )
+
         hyena = millionaire.NixOS(
             "hyena",
             hyena_server.ipv4_address.apply(lambda ip: f"root@{ip}"),
             deploy_hostname=hyena_server.ipv4_address,
-            depends_on=[hyena_server, adguard_password_hash_sops_write],
+            depends_on=[
+                hyena_server,
+                adguard_password_hash_sops_write,
+                cloudflare_token_sops_write,
+            ],
         )
 
         # Public DNS for headscale (the only hyena service that needs to be
