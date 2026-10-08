@@ -55,7 +55,7 @@ spec:
               port: 6806
             timeoutSeconds: 1
           startupProbe:
-            failureThreshold: 30
+            failureThreshold: 120
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:

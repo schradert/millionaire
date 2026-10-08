@@ -105,7 +105,7 @@ in {
                 OPENID_CALLBACK_URL = "https://${hostname}/oauth/openid/callback";
                 OPENID_SCOPE = "openid profile email";
                 OPENID_BUTTON_LABEL = "Login with Keycloak";
-                MONGO_URI = "mongodb://librechat-mongodb:27017/librechat";
+                MONGO_URI = "mongodb://librechat-librechat-mongodb:27017/librechat";
               };
               envFrom = [
                 {secretRef.name = "librechat";}

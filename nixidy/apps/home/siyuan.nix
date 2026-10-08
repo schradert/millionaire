@@ -38,7 +38,8 @@
               probes.readiness.enabled = true;
               probes.startup = {
                 enabled = true;
-                spec.failureThreshold = 30;
+                # The entrypoint chowns the workspace on every start.
+                spec.failureThreshold = 120;
                 spec.periodSeconds = 10;
               };
             };
