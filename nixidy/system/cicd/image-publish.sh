@@ -29,6 +29,12 @@ if [ -e "$STATE/done-$rev" ] && [ "$FORCE" != "true" ] && [ -z "$ONLY" ]; then
   exit 0
 fi
 
+tries=$(cat "$STATE/tries-$rev" 2>/dev/null || echo 0)
+if [ "$FORCE" != "true" ] && [ -z "$ONLY" ] && [ "$tries" -ge 3 ]; then
+  echo "giving up on $rev after $tries failed attempts (run with force=true to retry)"
+  exit 0
+fi
+
 work=$(mktemp -d)
 cd "$work"
 git init -q .
@@ -46,7 +52,7 @@ while read -r name repo tag; do
   if [ -n "$ONLY" ] && ! echo ",$ONLY," | grep -q ",$name,"; then continue; fi
   # repo = <registry>/<project>/<repository>
   registry=${repo%%/*}; path=${repo#*/}; project=${path%%/*}; rname=${path#*/}
-  code=$(curl -s -o /dev/null -w '%{http_code}' \
+  code=$(curl -s -m 30 -o /dev/null -w '%{http_code}' \
     "https://$registry/api/v2.0/projects/$project/repositories/$rname/artifacts/$tag")
   if [ "$code" = 200 ]; then echo "[$name] $tag already in registry, skipping"; continue; fi
   if [ "$code" != 404 ]; then echo "[$name] registry check returned HTTP $code" >&2; failed=1; continue; fi
@@ -61,6 +67,10 @@ done <<LIST
 $list
 LIST
 
-[ "$failed" = 0 ] || { echo "some images failed" >&2; exit 1; }
+if [ "$failed" != 0 ]; then
+  [ -n "$ONLY" ] || echo $((tries + 1)) > "$STATE/tries-$rev"
+  echo "some images failed" >&2
+  exit 1
+fi
 [ -n "$ONLY" ] || touch "$STATE/done-$rev"
 echo done
