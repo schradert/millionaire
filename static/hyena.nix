@@ -236,14 +236,85 @@ in {
     '';
   };
 
+  # Thin out-of-cluster alerting, independent of the cluster it watches.
+  # ntfy takes pushes (tailnet-only, so no auth); Gatus probes the cluster over
+  # the tailnet and alerts through ntfy. The cluster's Alertmanager posts real
+  # alerts to ntfy and its always-firing Watchdog to Gatus as a dead-man's
+  # switch (nixidy/system/observability/alertmanager.nix).
+  services.ntfy-sh = {
+    enable = true;
+    settings = {
+      base-url = "http://100.64.0.1:2586";
+      listen-http = ":2586";
+    };
+  };
+
+  services.gatus = {
+    enable = true;
+    # headscale already holds 8080.
+    settings = {
+      web.port = 8081;
+      alerting.ntfy = {
+        url = "http://127.0.0.1:2586";
+        topic = "alerts";
+        priority = 4;
+        default-alert = {
+          enabled = true;
+          failure-threshold = 3;
+          success-threshold = 2;
+          send-on-resolved = true;
+        };
+      };
+      endpoints = let
+        probe = name: url: conditions: {
+          inherit name url conditions;
+          group = "cluster";
+          interval = "1m";
+          client.insecure = true;
+          alerts = [{type = "ntfy";}];
+        };
+      in
+        [
+          # Internal gateway via bonobo's relay; an unrouted host answers 404
+          # from Envoy, which proves the relay and the gateway without
+          # depending on any app behind it.
+          (probe "internal-gateway" "https://100.64.0.4" ["[STATUS] == 404"])
+        ]
+        # etcd metrics only listen on the nodes' LAN IPs, so probe each server's
+        # apiserver instead (401 = serving; anonymous auth is off).
+        ++ lib.mapAttrsToList (node: ip: probe "apiserver-${node}" "https://${ip}:6443/readyz" ["[STATUS] == 401"]) {
+          sirver = "100.64.0.2";
+          octopus = "100.64.0.3";
+          dingo = "100.64.0.6";
+        };
+      # Heartbeat from the cluster's Alertmanager Watchdog; alerts if it stops.
+      external-endpoints = [
+        {
+          name = "watchdog";
+          group = "cluster";
+          # Not secret: only reachable on the tailnet. Must match the credential
+          # in nixidy/system/observability/alertmanager.nix.
+          token = "cluster-watchdog-heartbeat";
+          heartbeat.interval = "6m";
+          alerts = [
+            {
+              type = "ntfy";
+              failure-threshold = 1;
+            }
+          ];
+        }
+      ];
+    };
+  };
+
   # External: SSH (22), ACME (80), nginx (443), DERP STUN (3478/udp),
   # WireGuard (41641/udp — lets tailnet peers reach hyena directly instead of
-  # relaying every DNS query through DERP). AdGuard web UI + DNS tailnet-only.
+  # relaying every DNS query through DERP). AdGuard web UI + DNS, ntfy (2586) and Gatus (8081) tailnet-only.
   networking.firewall = {
     allowedTCPPorts = [22 80 443];
     allowedUDPPorts = [3478 41641];
     interfaces.tailscale0 = {
-      allowedTCPPorts = [3000 53];
+      allowedTCPPorts = [3000 53 2586 8081];
       allowedUDPPorts = [53];
     };
   };
