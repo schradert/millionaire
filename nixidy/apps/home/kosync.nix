@@ -9,13 +9,14 @@
     probe = lib.recursiveUpdate {
       enabled = true;
       custom = true;
-      spec.httpGet.path = "/healthcheck";
-      spec.httpGet.port = "http";
+      # /healthcheck answers 401 (auth middleware), so check the port.
+      spec.tcpSocket.port = "http";
     };
   in {
     gatus.endpoints.kosync = {
       url = "https://${hostname}/healthcheck";
       group = "internal";
+      conditions = ["[STATUS] == any(200, 401)"];
     };
     applications.kosync = {
       namespace = "home";

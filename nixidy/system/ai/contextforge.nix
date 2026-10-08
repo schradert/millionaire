@@ -35,6 +35,13 @@ in {
     applications.contextforge = {
       namespace = "ai";
       postgres.enable = true;
+      # The gateway rejects placeholder secrets at startup.
+      generatedSecrets = {
+        contextforge-jwt.key = "JWT_SECRET_KEY";
+        contextforge-auth-encryption.key = "AUTH_ENCRYPTION_SECRET";
+        contextforge-basic-auth.key = "BASIC_AUTH_PASSWORD";
+        contextforge-admin.key = "PLATFORM_ADMIN_PASSWORD";
+      };
       helm.releases.contextforge = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
@@ -53,7 +60,13 @@ in {
                 # ToolHive vMCP as upstream MCP source
                 TOOLHIVE_VMCP_URL = "http://homelab-vmcp.ai.svc.cluster.local:8080";
               };
-              envFrom = lib.toList {secretRef.name = "contextforge";};
+              envFrom = map (name: {secretRef = {inherit name;};}) [
+                "contextforge"
+                "contextforge-jwt"
+                "contextforge-auth-encryption"
+                "contextforge-basic-auth"
+                "contextforge-admin"
+              ];
               ports = lib.toList {
                 name = "http";
                 containerPort = 8080;

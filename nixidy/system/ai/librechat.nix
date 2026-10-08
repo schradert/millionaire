@@ -129,7 +129,11 @@ in {
                 spec.httpGet.path = "/api/health";
                 spec.httpGet.port = "http";
               };
-              probes.startup.enabled = true;
+              probes.startup = {
+                enabled = true;
+                spec.failureThreshold = 30;
+                spec.periodSeconds = 10;
+              };
             };
           };
           controllers.mongodb = {
