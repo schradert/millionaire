@@ -5,6 +5,8 @@
       volsync.pvcs.media-dvd = {
         title = "media-dvd";
         cacheAccessModes = ["ReadWriteOnce"];
+        # Restores of the ISO library are deliberate, never automatic.
+        restore = false;
       };
       resources.persistentVolumeClaims = let
         cephfsPVC = size: {

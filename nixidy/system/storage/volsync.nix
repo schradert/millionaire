@@ -49,13 +49,14 @@ in {
               uid = can.int "UID for podSecurityContext" {default = 101;};
               gid = can.int "GID for podSecurityContext" {default = 101;};
               inject = can.enable "Inject dataSourceRef into a PVC" {};
+              restore = can.enable "ReplicationDestination that restores the latest snapshot into the PVC" {default = true;};
               cacheAccessModes = can.list.str "Mover cache access modes (RWX sources need ReadWriteOnce on ceph-block)" {default = [];};
             };
           });
         };
         config = lib.mkIf config.volsync.enable {
           resources = lib.mkMerge (lib.flip lib.mapAttrsToList config.volsync.pvcs (pvcName: pvc: let
-            inherit (pvc) title inject path uid gid cacheAccessModes;
+            inherit (pvc) title inject path uid gid cacheAccessModes restore;
             cache = lib.optionalAttrs (cacheAccessModes != []) {inherit cacheAccessModes;};
             region = "us-west-004";
             repository = "volsync--${name}--${pvcName}";
@@ -115,7 +116,8 @@ in {
                     };
                   };
                 };
-                replicationDestinations."${repository}-dst".spec = {
+                replicationDestinations = lib.mkIf restore {
+                "${repository}-dst".spec = {
                   # Override this to track restoration
                   trigger.manual = lib.mkDefault "1";
                   restic =
@@ -127,6 +129,7 @@ in {
                     destinationPVC = title;
                     inherit repository;
                   };
+                };
                 };
               }
             ]));
