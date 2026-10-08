@@ -1,6 +1,7 @@
 {config, ...}: let
   inherit (config.canivete.meta) domain;
   hostname = "workflows.${domain}";
+  nixImage = "nixos/nix:2.28.3";
 in {
   nixidy = {
     charts,
@@ -176,27 +177,18 @@ in {
             remoteRef.property = "password";
           };
         };
-        # Harbor push credentials for CI workflows
+        # Harbor push credentials for CI workflows. Same robot secret that
+        # harbor-init applies to the "push" robot account (harbor/robot/secret);
+        # containers-auth wants a base64 "auth" field, not username/password.
         externalSecrets.argo-workflows-harbor.spec = {
           secretStoreRef.name = "bitwarden";
           secretStoreRef.kind = "ClusterSecretStore";
           target.name = "argo-workflows-harbor";
-          target.template.data."config.json" = builtins.toJSON {
-            auths."harbor.${domain}" = {
-              username = "{{ .username }}";
-              password = "{{ .password }}";
-            };
+          target.template.data."config.json" = ''{"auths":{"harbor.${domain}":{"auth":"{{ printf "robot$push:%s" .password | b64enc }}"}}}'';
+          data = lib.toList {
+            secretKey = "password";
+            remoteRef.key = "harbor/robot/secret";
           };
-          data = [
-            {
-              secretKey = "username";
-              remoteRef.key = "harbor/robot/username";
-            }
-            {
-              secretKey = "password";
-              remoteRef.key = "harbor/robot/password";
-            }
-          ];
         };
         # CI ServiceAccount for workflow pods
         serviceAccounts.argo-workflows-ci = {};
@@ -226,6 +218,117 @@ in {
             kind = "ServiceAccount";
             name = "argo-workflows-ci";
             namespace = "cicd";
+          };
+        };
+        # Persistent /nix for image builds: first run seeds it from the nix
+        # image, later runs reuse substituted + built store paths.
+        persistentVolumeClaims.image-build-nix.spec = {
+          accessModes = ["ReadWriteOnce"];
+          storageClassName = "ceph-block";
+          resources.requests.storage = "60Gi";
+        };
+        # Publish the flake's nix2container images (modules/images.nix) to
+        # Harbor. Idempotent: an image is only built+pushed when its
+        # <name>:<tag> is missing from the registry, so the tag in images.nix
+        # is the release switch. Triggered by the image-poll sensor.
+        workflowTemplates.image-publish.spec = {
+          serviceAccountName = "argo-workflows-ci";
+          entrypoint = "publish";
+          archiveLogs = false;
+          activeDeadlineSeconds = 7200;
+          ttlStrategy = {
+            secondsAfterSuccess = 600;
+            secondsAfterFailure = 86400;
+          };
+          # One build at a time: a single RWO /nix cache and bounded node load.
+          synchronization.mutexes = lib.toList {name = "image-publish";};
+          arguments.parameters = [
+            {
+              name = "repo-url";
+              value = "https://github.com/schradert/millionaire.git";
+            }
+            {
+              name = "revision";
+              value = "main";
+            }
+            {
+              name = "images";
+              value = "";
+            }
+            {
+              name = "force";
+              value = "false";
+            }
+          ];
+          volumes = [
+            {
+              name = "nix";
+              persistentVolumeClaim.claimName = "image-build-nix";
+            }
+            {
+              name = "registry-auth";
+              secret.secretName = "argo-workflows-harbor";
+            }
+          ];
+          templates = lib.toList {
+            name = "publish";
+            # Workers only: keep builds off the etcd control-plane nodes.
+            affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms = lib.toList {
+              matchExpressions = [
+                {
+                  key = "kubernetes.io/hostname";
+                  operator = "In";
+                  values = ["bonobo" "chinchilla"];
+                }
+                {
+                  key = "kubernetes.io/arch";
+                  operator = "In";
+                  values = ["amd64"];
+                }
+              ];
+            };
+            initContainers = lib.toList {
+              name = "seed-nix-store";
+              image = nixImage;
+              command = ["sh" "-c"];
+              args = ["[ -e /cache/.seeded ] || { cp -a /nix/. /cache/ && touch /cache/.seeded; }"];
+              volumeMounts = lib.toList {
+                name = "nix";
+                mountPath = "/cache";
+              };
+            };
+            container = {
+              image = nixImage;
+              command = ["bash" "-ec"];
+              args = [
+                (builtins.readFile ./image-publish.sh)
+                "image-publish"
+                "{{workflow.parameters.repo-url}}"
+                "{{workflow.parameters.revision}}"
+                "{{workflow.parameters.images}}"
+                "{{workflow.parameters.force}}"
+              ];
+              env = lib.toList {
+                name = "REGISTRY_AUTH_FILE";
+                value = "/registry-auth/config.json";
+              };
+              volumeMounts = [
+                {
+                  name = "nix";
+                  mountPath = "/nix";
+                }
+                {
+                  name = "registry-auth";
+                  mountPath = "/registry-auth";
+                  readOnly = true;
+                }
+              ];
+              resources.requests = {
+                cpu = "1";
+                memory = "4Gi";
+              };
+              resources.limits.memory = "12Gi";
+            };
           };
         };
         # Reusable CI WorkflowTemplate: clone → build with Nix → push to Harbor → update Rollout
