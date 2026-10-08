@@ -49,6 +49,8 @@ spec:
           envFrom:
             - secretRef:
                 name: obico
+            - secretRef:
+                name: obico-secret-key
           image: thespaghettidetective/web:latest
           livenessProbe:
             failureThreshold: 3

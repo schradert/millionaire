@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 689320c0dac84ae7e7774a917ad670d0de16ae3d86ee5d8e1927734e0df91bd2
+        checksum/configMaps: 873fae6a6a23852516ef0f59d07586d1cb781ab6466914c5ed702a94f0648a52
       labels:
         app.kubernetes.io/controller: mainsail
         app.kubernetes.io/instance: mainsail
@@ -67,5 +67,5 @@ spec:
       serviceAccountName: mainsail
       volumes:
         - configMap:
-            name: mainsail-config
+            name: mainsail
           name: config

@@ -27,21 +27,16 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - args:
-            - -moonraker-url
-            - http://voron.internal:7125
-          image: ghcr.io/scross01/prometheus-klipper-exporter:v0.15.0
+        - image: ghcr.io/scross01/prometheus-klipper-exporter:v0.15.0
           livenessProbe:
-            httpGet:
-              path: /
+            tcpSocket:
               port: metrics
           name: prometheus-klipper-exporter
           ports:
             - containerPort: 9101
               name: metrics
           readinessProbe:
-            httpGet:
-              path: /
+            tcpSocket:
               port: metrics
       dnsPolicy: ClusterFirst
       enableServiceLinks: false

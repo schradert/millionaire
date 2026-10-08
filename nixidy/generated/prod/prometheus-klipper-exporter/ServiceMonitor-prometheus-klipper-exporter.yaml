@@ -6,7 +6,12 @@ metadata:
 spec:
   endpoints:
     - interval: 30s
+      path: /probe
       port: metrics
+      relabelings:
+        - action: replace
+          replacement: voron.internal:7125
+          targetLabel: __param_target
   selector:
     matchLabels:
       app.kubernetes.io/name: prometheus-klipper-exporter

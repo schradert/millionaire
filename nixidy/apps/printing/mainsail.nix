@@ -28,7 +28,7 @@
             };
           };
           service.mainsail.ports.http.port = 80;
-          configMaps.mainsail-config.data."config.json" = builtins.toJSON {
+          configMaps.mainsail.data."config.json" = builtins.toJSON {
             instancesDB = "json";
             instances = [
               {
@@ -39,7 +39,7 @@
           };
           persistence.config = {
             type = "configMap";
-            name = "mainsail-config";
+            name = "mainsail";
             globalMounts = lib.toList {
               path = "/usr/share/nginx/html/config.json";
               subPath = "config.json";

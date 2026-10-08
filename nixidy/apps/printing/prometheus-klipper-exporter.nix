@@ -7,8 +7,8 @@
     metricsProbe = {
       enabled = true;
       custom = true;
-      spec.httpGet.path = "/";
-      spec.httpGet.port = "metrics";
+      # Metrics only exist under /probe?target=..., so check the port, not a path.
+      spec.tcpSocket.port = "metrics";
     };
   in {
     applications.prometheus-klipper-exporter = {
@@ -19,7 +19,6 @@
           controllers.prometheus-klipper-exporter.containers.prometheus-klipper-exporter = {
             image.repository = "ghcr.io/scross01/prometheus-klipper-exporter";
             image.tag = "v0.15.0";
-            args = ["-moonraker-url" "http://voron.internal:7125"];
             ports = lib.toList {
               name = "metrics";
               containerPort = 9101;
@@ -31,9 +30,16 @@
         };
       };
 
+      # Multi-target exporter: the printer is passed as a probe parameter.
       resources.serviceMonitors.prometheus-klipper-exporter.spec = {
         endpoints = lib.toList {
           port = "metrics";
+          path = "/probe";
+          relabelings = lib.toList {
+            action = "replace";
+            replacement = "voron.internal:7125";
+            targetLabel = "__param_target";
+          };
           interval = "30s";
         };
         selector.matchLabels."app.kubernetes.io/name" = "prometheus-klipper-exporter";
