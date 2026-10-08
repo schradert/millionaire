@@ -120,13 +120,13 @@ in {
               probes.liveness = {
                 enabled = true;
                 custom = true;
-                spec.httpGet.path = "/api/health";
+                spec.httpGet.path = "/health";
                 spec.httpGet.port = "http";
               };
               probes.readiness = {
                 enabled = true;
                 custom = true;
-                spec.httpGet.path = "/api/health";
+                spec.httpGet.path = "/health";
                 spec.httpGet.port = "http";
               };
               probes.startup = {
