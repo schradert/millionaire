@@ -9,6 +9,21 @@ in {
         chart = charts.coredns.coredns;
         values = {
           service.clusterIP = "10.43.0.10";
+          # Cluster DNS is on every pod's critical path: two replicas on
+          # different nodes, and never voluntarily evict both.
+          replicaCount = 2;
+          podDisruptionBudget.minAvailable = 1;
+          topologySpreadConstraints = [
+            {
+              maxSkew = 1;
+              topologyKey = "kubernetes.io/hostname";
+              whenUnsatisfiable = "DoNotSchedule";
+              labelSelector.matchLabels = {
+                "app.kubernetes.io/instance" = "coredns";
+                "app.kubernetes.io/name" = "coredns";
+              };
+            }
+          ];
           servers = [
             # Resolve *.trdos.me to the internal gateway so in-cluster
             # services can reach each other via domain names

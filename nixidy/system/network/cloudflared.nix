@@ -36,6 +36,13 @@ in {
           remoteRef.key = "cloudflare/tunnel/token";
         };
       };
+      resources.podDisruptionBudgets.cloudflared.spec = {
+        minAvailable = 1;
+        selector.matchLabels = {
+          "app.kubernetes.io/instance" = "cloudflared";
+          "app.kubernetes.io/name" = "cloudflared";
+        };
+      };
       resources.dnsEndpoints.cloudflared-tunnel.spec.endpoints = lib.toList {
         dnsName = subdomain;
         recordType = "CNAME";
@@ -45,7 +52,19 @@ in {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.cloudflared = {
+            # Replicas of one tunnel share its connector pool; Cloudflare routes
+            # around a dead one.
+            replicas = 2;
             strategy = "RollingUpdate";
+            pod.topologySpreadConstraints = lib.toList {
+              maxSkew = 1;
+              topologyKey = "kubernetes.io/hostname";
+              whenUnsatisfiable = "DoNotSchedule";
+              labelSelector.matchLabels = {
+                "app.kubernetes.io/instance" = "cloudflared";
+                "app.kubernetes.io/name" = "cloudflared";
+              };
+            };
             annotations."reloader.stakater.com/auto" = "true";
             containers.cloudflared = {
               image.repository = "cloudflare/cloudflared";
