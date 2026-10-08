@@ -30,6 +30,8 @@ spec:
         - args:
             - --maxmemory
             - 256mb
+            - --proactor_threads
+            - "1"
           image: ghcr.io/dragonflydb/dragonfly:v1.25.5
           name: redis
       dnsPolicy: ClusterFirst

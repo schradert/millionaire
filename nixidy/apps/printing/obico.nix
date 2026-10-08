@@ -16,6 +16,8 @@
       namespace = "printing";
       postgres.enable = true;
       volsync.pvcs.obico.title = "obico";
+      # Django SECRET_KEY, generated in-cluster.
+      generatedSecrets.obico-secret-key.key = "SECRET_KEY";
       helm.releases.obico = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
@@ -34,7 +36,10 @@
                 ML_API_HOST = "http://obico-ml:3333";
                 ACCOUNT_ALLOW_SIGN_UP = "False";
               };
-              envFrom = lib.toList {secretRef.name = "obico";};
+              envFrom = [
+                {secretRef.name = "obico";}
+                {secretRef.name = "obico-secret-key";}
+              ];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
               probes.startup.enabled = true;
@@ -52,7 +57,7 @@
             containers.redis = {
               image.repository = "ghcr.io/dragonflydb/dragonfly";
               image.tag = "v1.25.5";
-              args = ["--maxmemory" "256mb"];
+              args = ["--maxmemory" "256mb" "--proactor_threads" "1"];
             };
           };
           service.obico-web.controller = "web";
@@ -97,12 +102,6 @@
         {
           secretKey = "ML_API_TOKEN";
           remoteRef.key = "printing/obico/ml-api-token";
-          sourceRef.storeRef.name = "bitwarden";
-          sourceRef.storeRef.kind = "ClusterSecretStore";
-        }
-        {
-          secretKey = "SECRET_KEY";
-          remoteRef.key = "printing/obico/secret-key";
           sourceRef.storeRef.name = "bitwarden";
           sourceRef.storeRef.kind = "ClusterSecretStore";
         }
