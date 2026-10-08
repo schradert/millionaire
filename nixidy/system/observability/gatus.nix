@@ -25,7 +25,7 @@ in {
     config = {
       gatus.endpoints.gatus = {
         url = "https://${hostname}";
-        group = "external";
+        group = "internal";
       };
       applications.gatus = {
         namespace = "observability";
@@ -70,7 +70,7 @@ in {
           httpRoutes.gatus.spec = {
             hostnames = [hostname];
             parentRefs = lib.toList {
-              name = "external";
+              name = "internal";
               namespace = "kube-system";
               sectionName = "https";
             };

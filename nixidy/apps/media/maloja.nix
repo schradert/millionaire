@@ -18,7 +18,7 @@
   in {
     gatus.endpoints.maloja = {
       url = "https://${hostname}";
-      group = "external";
+      group = "internal";
       conditions = ["[STATUS] == any(200, 302)"];
     };
     applications.maloja = {
@@ -75,7 +75,7 @@
           route.maloja = {
             hostnames = [hostname];
             parentRefs = lib.toList {
-              name = "external";
+              name = "internal";
               namespace = "kube-system";
               sectionName = "https";
             };

@@ -91,11 +91,9 @@ data:
       interval: 1m
       name: firefly
       url: https://firefly.trdos.me
-    - client:
-        dns-resolver: tcp://1.1.1.1:53
-      conditions:
+    - conditions:
       - '[STATUS] == 200'
-      group: external
+      group: internal
       interval: 1m
       name: forgejo
       url: https://git.trdos.me
@@ -105,11 +103,9 @@ data:
       interval: 1m
       name: frigate
       url: https://frigate.trdos.me
-    - client:
-        dns-resolver: tcp://1.1.1.1:53
-      conditions:
+    - conditions:
       - '[STATUS] == 200'
-      group: external
+      group: internal
       interval: 1m
       name: gatus
       url: https://gatus.trdos.me
@@ -143,19 +139,15 @@ data:
       interval: 1m
       name: immich
       url: https://immich.trdos.me
-    - client:
-        dns-resolver: tcp://1.1.1.1:53
-      conditions:
+    - conditions:
       - '[STATUS] == any(200, 302)'
-      group: external
+      group: internal
       interval: 1m
       name: jellyfin
       url: https://jellyfin.trdos.me
-    - client:
-        dns-resolver: tcp://1.1.1.1:53
-      conditions:
+    - conditions:
       - '[STATUS] == any(200, 302)'
-      group: external
+      group: internal
       interval: 1m
       name: jitsi
       url: https://jitsi.trdos.me
@@ -213,11 +205,9 @@ data:
       interval: 1m
       name: maintainerr
       url: https://maintainerr.trdos.me
-    - client:
-        dns-resolver: tcp://1.1.1.1:53
-      conditions:
+    - conditions:
       - '[STATUS] == any(200, 302)'
-      group: external
+      group: internal
       interval: 1m
       name: maloja
       url: https://maloja.trdos.me
@@ -239,11 +229,9 @@ data:
       interval: 1m
       name: music-assistant
       url: https://music-assistant.trdos.me
-    - client:
-        dns-resolver: tcp://1.1.1.1:53
-      conditions:
+    - conditions:
       - '[STATUS] == 200'
-      group: external
+      group: internal
       interval: 1m
       name: navidrome
       url: https://navidrome.trdos.me/ping
@@ -259,11 +247,9 @@ data:
       interval: 1m
       name: obico
       url: https://obico.trdos.me
-    - client:
-        dns-resolver: tcp://1.1.1.1:53
-      conditions:
+    - conditions:
       - '[STATUS] == any(200, 302)'
-      group: external
+      group: internal
       interval: 1m
       name: owncast
       url: https://owncast.trdos.me

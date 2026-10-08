@@ -5,7 +5,7 @@
   in {
     gatus.endpoints.forgejo = {
       url = "https://${hostname}";
-      group = "external";
+      group = "internal";
     };
 
     # Keycloak OIDC client — keycloak-operator syncs secret to K8s
@@ -121,7 +121,7 @@
         httpRoutes.forgejo.spec = {
           hostnames = [hostname];
           parentRefs = lib.toList {
-            name = "external";
+            name = "internal";
             namespace = "kube-system";
             sectionName = "https";
           };
