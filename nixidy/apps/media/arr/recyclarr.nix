@@ -91,6 +91,13 @@
           controllers.recyclarr = {
             type = "cronjob";
             cronjob.schedule = "@daily";
+            # Image runs as 1000; the volume mounts root-owned.
+            pod.securityContext = {
+              runAsUser = 1000;
+              runAsGroup = 1000;
+              fsGroup = 1000;
+              fsGroupChangePolicy = "OnRootMismatch";
+            };
             containers.recyclarr = {
               image.repository = "ghcr.io/recyclarr/recyclarr";
               image.tag = "8.5.1";

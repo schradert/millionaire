@@ -18,13 +18,22 @@
       helm.releases.bazarr = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
-          controllers.bazarr.containers.bazarr = {
-            image.repository = "ghcr.io/home-operations/bazarr";
-            image.tag = "1.5.6";
-            image.digest = "sha256:79fc37491f55c7e24427bcd669bce3df2d7415ca432a47ce9d53cc5988af8411";
-            probes.liveness.enabled = true;
-            probes.readiness.enabled = true;
-            probes.startup.enabled = true;
+          controllers.bazarr = {
+            # Image runs as nobody (65534); the volume mounts root-owned.
+            pod.securityContext = {
+              runAsUser = 65534;
+              runAsGroup = 65534;
+              fsGroup = 65534;
+              fsGroupChangePolicy = "OnRootMismatch";
+            };
+            containers.bazarr = {
+              image.repository = "ghcr.io/home-operations/bazarr";
+              image.tag = "1.5.6";
+              image.digest = "sha256:79fc37491f55c7e24427bcd669bce3df2d7415ca432a47ce9d53cc5988af8411";
+              probes.liveness.enabled = true;
+              probes.readiness.enabled = true;
+              probes.startup.enabled = true;
+            };
           };
           service.bazarr.ports.http.port = 6767;
           persistence.config = {

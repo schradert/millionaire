@@ -54,6 +54,11 @@ spec:
           hostNetwork: false
           hostPID: false
           restartPolicy: Never
+          securityContext:
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+            runAsGroup: 1000
+            runAsUser: 1000
           serviceAccountName: recyclarr
           volumes:
             - name: config

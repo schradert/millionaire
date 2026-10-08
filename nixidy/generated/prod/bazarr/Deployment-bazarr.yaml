@@ -73,6 +73,11 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
+      securityContext:
+        fsGroup: 65534
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 65534
+        runAsUser: 65534
       serviceAccountName: bazarr
       volumes:
         - name: config
