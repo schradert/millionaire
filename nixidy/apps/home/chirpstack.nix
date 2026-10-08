@@ -51,7 +51,8 @@
             containers.chirpstack = {
               image.repository = "chirpstack/chirpstack";
               image.tag = "4";
-              args = ["-c" "/etc/chirpstack/chirpstack.toml"];
+              # -c takes the config directory; chirpstack.toml is mounted into it below.
+              args = ["-c" "/etc/chirpstack"];
               envFrom = [{secretRef.name = "chirpstack";}];
               probes.liveness = probe;
               probes.readiness = probe;
@@ -118,6 +119,7 @@
       # DragonflyDB for Redis (session state, device state cache)
       resources.dragonflies.chirpstack-dragonfly.spec = {
         replicas = 1;
+        args = ["--proactor_threads" "1"];
         resources.requests.memory = "256Mi";
         resources.limits.memory = "512Mi";
       };

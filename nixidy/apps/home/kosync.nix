@@ -27,6 +27,7 @@
             image.repository = "szaffarano/korrosync";
             image.tag = "v0.3.0";
             image.digest = "sha256:5689cd5f7d722bdaf525265e66e4a51759e513f0db4d45d7aaa133c593d31c25";
+            args = ["serve"];
             ports = lib.toList {
               name = "http";
               containerPort = 3000;

@@ -15,6 +15,8 @@ in {
     applications.baikal = {
       namespace = "home";
       volsync.pvcs.baikal.title = "baikal-data";
+      # Admin password; org-bridge reads the same Secret.
+      generatedSecrets.baikal.key = "BAIKAL_ADMIN_PASSWORD";
 
       helm.releases.baikal = {
         chart = charts.bjw-s-labs.app-template-patched;
@@ -70,14 +72,6 @@ in {
         };
       };
 
-      resources.externalSecrets.baikal.spec.data = [
-        {
-          secretKey = "BAIKAL_ADMIN_PASSWORD";
-          remoteRef.key = "baikal/admin-password";
-          sourceRef.storeRef.name = "bitwarden";
-          sourceRef.storeRef.kind = "ClusterSecretStore";
-        }
-      ];
     };
     oauth2Proxy.upstreams.${hostname} = {
       url = "http://baikal.home.svc.cluster.local:80";

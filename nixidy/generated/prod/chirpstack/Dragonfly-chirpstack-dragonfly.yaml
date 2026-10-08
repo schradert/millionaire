@@ -4,6 +4,9 @@ metadata:
   name: chirpstack-dragonfly
   namespace: home
 spec:
+  args:
+    - --proactor_threads
+    - "1"
   replicas: 1
   resources:
     limits:

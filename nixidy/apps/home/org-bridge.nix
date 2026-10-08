@@ -63,25 +63,28 @@
           };
         };
       };
-      resources.externalSecrets.org-bridge.spec.data = map (e:
-        e
-        // {
-          sourceRef.storeRef.name = "bitwarden";
-          sourceRef.storeRef.kind = "ClusterSecretStore";
-        }) [
-        {
-          secretKey = "SYNCTHING_API_KEY";
-          remoteRef.key = "syncthing/api-key";
-        }
-        {
-          secretKey = "CALDAV_USERNAME";
-          remoteRef.key = "baikal/admin-username";
-        }
-        {
-          secretKey = "CALDAV_PASSWORD";
-          remoteRef.key = "baikal/admin-password";
-        }
-      ];
+      # Credentials generated in-cluster for syncthing and baikal.
+      resources.externalSecrets.org-bridge.spec = {
+        secretStoreRef.name = "kubernetes-home";
+        secretStoreRef.kind = "ClusterSecretStore";
+        target.template.data = {
+          SYNCTHING_API_KEY = "{{ .syncthing_key }}";
+          CALDAV_USERNAME = "admin";
+          CALDAV_PASSWORD = "{{ .caldav_password }}";
+        };
+        data = [
+          {
+            secretKey = "syncthing_key";
+            remoteRef.key = "syncthing";
+            remoteRef.property = "STGUIAPIKEY";
+          }
+          {
+            secretKey = "caldav_password";
+            remoteRef.key = "baikal";
+            remoteRef.property = "BAIKAL_ADMIN_PASSWORD";
+          }
+        ];
+      };
     };
   };
 }

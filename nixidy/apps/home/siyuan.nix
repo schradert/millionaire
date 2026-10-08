@@ -27,6 +27,9 @@
                 digest = "sha256:e14f3958fa9d7be867053b0e681f97ad4ec2e410c275b67670690083f81f05db";
               };
               env = {
+                # The entrypoint starts as root, creates the user and drops to it.
+                PUID = "1000";
+                PGID = "1000";
                 # oauth2-proxy gates upstream traffic, so disable siyuan's own auth-code prompt.
                 SIYUAN_ACCESS_AUTH_CODE_BYPASS = "true";
                 TZ = "America/Los_Angeles";
@@ -37,10 +40,6 @@
                 enabled = true;
                 spec.failureThreshold = 30;
                 spec.periodSeconds = 10;
-              };
-              securityContext = {
-                runAsUser = 1000;
-                runAsGroup = 1000;
               };
             };
           };
