@@ -5,8 +5,9 @@ data:
   AUTOBRR__HOST: 0.0.0.0
   AUTOBRR__LOG_LEVEL: INFO
   AUTOBRR__POSTGRES_DATABASE: autobrr
-  AUTOBRR__POSTGRES_HOST: autobrr-rw
+  AUTOBRR__POSTGRES_HOST: autobrr-rw.media.svc.cluster.local
   AUTOBRR__POSTGRES_PASSWORD_FILE: /secrets/db_password.txt
+  AUTOBRR__POSTGRES_PORT: "5432"
   AUTOBRR__POSTGRES_USER: autobrr
   AUTOBRR__SESSION_SECRET_FILE: /secrets/session_secret.txt
 kind: ConfigMap

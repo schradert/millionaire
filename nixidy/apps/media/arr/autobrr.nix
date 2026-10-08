@@ -71,7 +71,10 @@
             AUTOBRR__DATABASE_TYPE = "postgres";
             AUTOBRR__POSTGRES_USER = "autobrr";
             AUTOBRR__POSTGRES_PASSWORD_FILE = "/secrets/db_password.txt";
-            AUTOBRR__POSTGRES_HOST = "autobrr-rw";
+            # Explicit FQDN + port: with the short name the app dialed the
+            # `autobrr` Service IP on :5432 and hung until the startup probe killed it.
+            AUTOBRR__POSTGRES_HOST = "autobrr-rw.media.svc.cluster.local";
+            AUTOBRR__POSTGRES_PORT = "5432";
             AUTOBRR__POSTGRES_DATABASE = "autobrr";
           };
           route.autobrr = {

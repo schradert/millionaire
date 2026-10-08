@@ -26,7 +26,12 @@
             image.digest = "sha256:1f2acae7466d022f037ea09f7989eb7c487f916b881174c7a6de33dbfa8acb39";
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
-            probes.startup.enabled = true;
+            # First start after a schema bump runs migrations; the default 30s
+            # startup budget kills it mid-migration every time.
+            probes.startup = {
+              enabled = true;
+              spec.failureThreshold = 60;
+            };
           };
           service.kavita.ports.http.port = 5000;
           persistence.config = {
