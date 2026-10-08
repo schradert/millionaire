@@ -19,16 +19,18 @@
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.maintainerr.pod.securityContext = {
-            # Image runs as node (1000) since 2.0; the volume mounts root-owned.
+            # Image runs as node (1000); the volume mounts root-owned.
             runAsUser = 1000;
             runAsGroup = 1000;
             fsGroup = 1000;
             fsGroupChangePolicy = "OnRootMismatch";
           };
           controllers.maintainerr.containers.maintainerr = {
-            image.repository = "ghcr.io/jorenn92/maintainerr";
-            image.tag = "2.19.0";
-            image.digest = "sha256:bee84707edaf589cda3d18b6813cbfe3a137b52786210c3a28190e10910c1240";
+            # 3.x added Jellyfin/Emby support (2.x is Plex-only). Not backward
+            # compatible: its DB migration is one-way.
+            image.repository = "ghcr.io/maintainerr/maintainerr";
+            image.tag = "3.30.1";
+            image.digest = "sha256:8251a1f0ba5d71acc878846a727fba566ec87cbfbf6a914fb881a5953af53d46";
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
             probes.startup = {
@@ -36,7 +38,9 @@
               spec.failureThreshold = 60;
             };
           };
-          service.maintainerr.ports.http.port = 80;
+          # The server listens on 6246 (UI_PORT); nothing answers on :80, which
+          # the default probes and the service were targeting.
+          service.maintainerr.ports.http.port = 6246;
           persistence.config = {
             type = "persistentVolumeClaim";
             accessMode = "ReadWriteOnce";
@@ -69,7 +73,7 @@
       };
     };
     oauth2Proxy.upstreams."${hostname}" = {
-      url = "http://maintainerr.media.svc.cluster.local:80";
+      url = "http://maintainerr.media.svc.cluster.local:6246";
       namespace = "media";
     };
   };

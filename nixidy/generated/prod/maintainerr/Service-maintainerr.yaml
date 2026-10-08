@@ -11,9 +11,9 @@ metadata:
 spec:
   ports:
     - name: http
-      port: 80
+      port: 6246
       protocol: TCP
-      targetPort: 80
+      targetPort: 6246
   selector:
     app.kubernetes.io/controller: maintainerr
     app.kubernetes.io/instance: maintainerr
