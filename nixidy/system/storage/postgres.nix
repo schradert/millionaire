@@ -155,7 +155,13 @@ in {
                     name = db.database;
                     inherit (db) owner;
                     cluster.name = name;
-                    extensions = map (ext: {name = ext;}) db.extensions;
+                    # Declare the CRD defaults so ArgoCD's diff stays clean.
+                    ensure = "present";
+                    databaseReclaimPolicy = "retain";
+                    extensions = map (ext: {
+                      name = ext;
+                      ensure = "present";
+                    }) db.extensions;
                   };
                 };
               scheduledBackups.${name}.spec = {
