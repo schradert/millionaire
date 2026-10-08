@@ -138,15 +138,26 @@ in {
                 monitoring.enablePodMonitor = db.monitoring;
                 postgresql.shared_preload_libraries = db.sharedPreloadLibraries;
               };
-              databases = lib.listToAttrs (map (d:
-                lib.nameValuePair "${name}-${d}" {
-                  spec = {
-                    name = d;
+              databases =
+                lib.listToAttrs (map (d:
+                  lib.nameValuePair "${name}-${d}" {
+                    spec = {
+                      name = d;
+                      inherit (db) owner;
+                      cluster.name = name;
+                    };
+                  })
+                db.extraDatabases)
+                # bootstrap.initdb.postInitSQL runs in the "postgres" database, not
+                # the app database, so extensions are declared on the Database.
+                // lib.optionalAttrs (db.extensions != []) {
+                  "${name}-${db.database}".spec = {
+                    name = db.database;
                     inherit (db) owner;
                     cluster.name = name;
+                    extensions = map (ext: {name = ext;}) db.extensions;
                   };
-                })
-              db.extraDatabases);
+                };
               scheduledBackups.${name}.spec = {
                 schedule = db.backup.schedule;
                 backupOwnerReference = "self";
