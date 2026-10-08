@@ -6,12 +6,13 @@
   }: let
     inherit (config.canivete.meta) domain;
     hostname = "immich.${domain}";
+    # Probes use numeric ports: app-template doesn't declare a named container port.
     serverProbe = lib.recursiveUpdate {
       enabled = true;
       custom = true;
       spec = {
         httpGet.path = "/api/server/ping";
-        httpGet.port = "http";
+        httpGet.port = 2283;
         initialDelaySeconds = 0;
         periodSeconds = 10;
         timeoutSeconds = 1;
@@ -23,7 +24,7 @@
       custom = true;
       spec = {
         httpGet.path = "/ping";
-        httpGet.port = "http";
+        httpGet.port = 3003;
         initialDelaySeconds = 0;
         periodSeconds = 10;
         timeoutSeconds = 1;
@@ -70,6 +71,10 @@
         # operand image (bundles VectorChord + pgvecto.rs compat).
         # "vector" must precede "vchord" (dependency; no CASCADE emitted).
         image = "ghcr.io/immich-app/postgres:17-vectorchord0.4.3-pgvectors0.3.0";
+        # That image's postgres user is 999, not CNPG's default 26 (initdb dies
+        # with "could not look up effective user ID 26").
+        uid = 999;
+        gid = 999;
         extensions = ["vector" "vchord" "cube" "earthdistance"];
         sharedPreloadLibraries = ["vchord.so"];
       };
@@ -100,7 +105,7 @@
           };
           persistence.config = {
             type = "configMap";
-            name = "immich-server-files";
+            name = "immich-server-immich-server-files";
           };
           persistence.secrets = {
             type = "secret";
@@ -164,8 +169,11 @@
 
       resources.dragonflies.immich-dragonfly.spec = {
         replicas = 1;
-        resources.requests.memory = "256Mi";
-        resources.limits.memory = "512Mi";
+        # Dragonfly sizes itself to the node's cores (32 here) and refuses to
+        # start without 256MiB per thread.
+        args = ["--proactor_threads" "2"];
+        resources.requests.memory = "512Mi";
+        resources.limits.memory = "1Gi";
       };
 
       resources.externalSecrets.immich-server.spec.data = [

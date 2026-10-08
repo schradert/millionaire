@@ -52,6 +52,8 @@ in {
           storageClass = can.str "Storage class name" {default = "ceph-block";};
           version = can.str "PostgreSQL major version" {default = "17";};
           image = can.str "CNPG operand image (overrides the stock image derived from version)" {default = "";};
+          uid = can.int "postgres UID in the operand image (CNPG default 26)" {default = 26;};
+          gid = can.int "postgres GID in the operand image (CNPG default 26)" {default = 26;};
           database = can.str "Database name" {default = name;};
           owner = can.str "Database owner" {default = name;};
           extraDatabases = can.list.str "Additional databases owned by the owner" {default = [];};
@@ -94,6 +96,15 @@ in {
                   if db.image != ""
                   then db.image
                   else "ghcr.io/cloudnative-pg/postgresql:${db.version}";
+                # null leaves CNPG's default (26) in place.
+                postgresUID =
+                  if db.uid != 26
+                  then db.uid
+                  else null;
+                postgresGID =
+                  if db.gid != 26
+                  then db.gid
+                  else null;
                 serviceAccountTemplate.metadata.name = "${name}-pg";
                 storage = {
                   inherit (db) storageClass;
