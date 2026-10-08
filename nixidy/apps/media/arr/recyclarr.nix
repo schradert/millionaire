@@ -6,80 +6,48 @@
     ...
   }: let
     yaml = pkgs.formats.yaml {};
-    toYAML = name: yamlObj: builtins.readFile (yaml.generate name yamlObj);
+    # The generator quotes "!env_var X" into a plain string; recyclarr needs the tag.
+    toYAML = name: yamlObj:
+      builtins.replaceStrings ["'!env_var RADARR_API_KEY'" "'!env_var SONARR_API_KEY'"] ["!env_var RADARR_API_KEY" "!env_var SONARR_API_KEY"]
+      (builtins.readFile (yaml.generate name yamlObj));
+    # Recyclarr 8 dropped include templates: the published "templates" are
+    # whole configs (config-templates repo) and TRaSH profiles/CF groups are
+    # referenced by trash_id. This mirrors sqp-1-web-2160p (radarr) and
+    # web-1080p + web-2160p (sonarr).
     recyclarrConfig = {
       radarr.radarr = {
         base_url = "http://radarr.media.svc.cluster.local";
-        api_key = "!secret radarr";
-        delete_old_custom_formats = true;
-        replace_existing_custom_formats = true;
-        include = [
-          {template = "radarr-quality-definition-sqp-streaming";}
-          {template = "radarr-quality-profile-sqp-1-2160p-default";}
-          {template = "radarr-custom-formats-sqp-1-2160p";}
-        ];
+        api_key = "!env_var RADARR_API_KEY";
+        quality_definition.type = "sqp-streaming";
         quality_profiles = [
-          {name = "WEB-1080p";}
-          {name = "WEB-2160p";}
+          {
+            trash_id = "e91c9adaca0231493f4af0d571b907f9"; # [SQP] SQP-1 WEB (2160p)
+            reset_unmatched_scores.enabled = true;
+          }
         ];
-        custom_formats = [
-          {
-            trash_ids = ["839bea857ed2c0a8e084f3cbdbd65ecb"];
-            assign_scores_to = [{name = "SQP-1 (2160p)";}];
-          }
-          {
-            trash_ids = [
-              "b6832f586342ef70d9c128d40c07b872"
-              "cc444569854e9de0b084ab2b8b1532b2"
-              "ae9b7c9ebde1f3bd336a8cbd1ec4c5e5"
-              "7357cf5161efbf8c4d5d0c30b4815ee2"
-              "5c44f52a8714fdd79bb4d98e2673be1f"
-              "f537cf427b64c38c8e36298f657e4828"
-            ];
-            assign_scores_to = [{name = "SQP-1 (2160p)";}];
-          }
+        custom_format_groups.add = [
+          {trash_id = "15b1cf0b6f1a1493856a4355907affee";} # [Unwanted] Unwanted Formats SQP
         ];
       };
       sonarr.sonarr = {
         base_url = "http://sonarr.media.svc.cluster.local";
-        api_key = "!secret sonarr";
-        delete_old_custom_formats = true;
-        replace_existing_custom_formats = true;
-        include = [
-          {template = "sonarr-quality-definition-series";}
-          {template = "sonarr-v4-quality-profile-web-1080p";}
-          {template = "sonarr-v4-custom-formats-web-2160p";}
-          {template = "sonarr-v4-quality-profile-web-1080p";}
-          {template = "sonarr-v4-custom-formats-web-2160p";}
-        ];
+        api_key = "!env_var SONARR_API_KEY";
+        quality_definition.type = "series";
         quality_profiles = [
-          {name = "WEB-1080p";}
-          {name = "WEB-2160p";}
+          {
+            trash_id = "72dae194fc92bf828f32cde7744e51a1"; # WEB-1080p
+            reset_unmatched_scores.enabled = true;
+          }
+          {
+            trash_id = "d1498e7d189fbe6c7110ceaabb7473e6"; # WEB-2160p
+            reset_unmatched_scores.enabled = true;
+          }
         ];
-        custom_formats = [
-          {
-            trash_ids = ["9b27ab6498ec0f31a3353992e19434ca"];
-            assign_scores_to = [{name = "WEB-2160p";}];
-          }
-          {
-            trash_ids = [
-              "32b367365729d530ca1c124a0b180c64"
-              "82d40da2bc6923f41e14394075dd4b03"
-              "e1a997ddb54e3ecbfe06341ad323c458"
-              "06d66ab109d4d2eddb2794d21526d140"
-              "1b3994c551cbb92a2c781af061f4ab44"
-            ];
-            assign_scores_to = [
-              {name = "WEB-1080p";}
-              {name = "WEB-2160p";}
-            ];
-          }
+        custom_format_groups.add = [
+          {trash_id = "85fae4a2294965b75710ef2989c850eb";} # [Streaming Services] HD/UHD boost
+          {trash_id = "59c3af66780d08332fdc64e68297098f";} # [Unwanted] Unwanted Formats
         ];
       };
-    };
-    secretsTemplate = {
-      radarr = "{{ .radarr }}";
-      sonarr = "{{ .sonarr }}";
     };
   in {
     applications.recyclarr = {
@@ -145,17 +113,16 @@
         secretStoreRef.kind = "ClusterSecretStore";
         data = [
           {
-            secretKey = "radarr";
+            secretKey = "RADARR_API_KEY";
             remoteRef.key = "radarr-apikey";
             remoteRef.property = "apikey";
           }
           {
-            secretKey = "sonarr";
+            secretKey = "SONARR_API_KEY";
             remoteRef.key = "sonarr-apikey";
             remoteRef.property = "apikey";
           }
         ];
-        target.template.data."secrets.yml" = toYAML "secrets.yml" secretsTemplate;
       };
     };
   };
