@@ -28,6 +28,12 @@ spec:
                     - prometheus-kube-prometheus-prometheus
             topologyKey: kubernetes.io/hostname
           weight: 100
+  alerting:
+    alertmanagers:
+      - name: alertmanager
+        namespace: observability
+        port: 9093
+        scheme: http
   automountServiceAccountToken: true
   enableAdminAPI: false
   enableOTLPReceiver: false
