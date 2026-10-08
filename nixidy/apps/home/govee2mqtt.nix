@@ -7,7 +7,7 @@
   inherit (config.canivete.meta) domain;
 in {
   nixidy = {charts, ...}: let
-    tag = "2025.11.25-60a39bcc";
+    tag = "2026.03.25-ab9deb66";
   in {
     applications.govee2mqtt = {
       namespace = "home";
