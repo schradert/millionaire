@@ -27,7 +27,10 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - image: advplyr/audiobookshelf:2.33.1@sha256:a4a5841bba093d81e5f4ad1eaedb4da3fda6dbb2528c552349da50ad1f7ae708
+        - env:
+            - name: PORT
+              value: "13378"
+          image: advplyr/audiobookshelf:2.33.1@sha256:a4a5841bba093d81e5f4ad1eaedb4da3fda6dbb2528c552349da50ad1f7ae708
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0
