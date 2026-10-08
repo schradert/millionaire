@@ -165,6 +165,38 @@
           };
         };
       };
+      # Admin password: random once, never refreshed (CreatedOnce), then pushed to
+      # Bitwarden so the human can log in. Consumed by the bootstrap job.
+      resources.passwords.jellyfin-admin.spec = {
+        length = 32;
+        digits = 10;
+        symbols = 0;
+        noUpper = false;
+        allowRepeat = true;
+      };
+      resources.externalSecrets.jellyfin-admin.spec = {
+        refreshPolicy = "CreatedOnce";
+        dataFrom = lib.toList {
+          sourceRef.generatorRef = {
+            apiVersion = "generators.external-secrets.io/v1alpha1";
+            kind = "Password";
+            name = "jellyfin-admin";
+          };
+        };
+      };
+      resources.pushSecrets.jellyfin-admin.spec = {
+        secretStoreRefs = lib.toList {
+          name = "bitwarden";
+          kind = "ClusterSecretStore";
+        };
+        selector.secret.name = "jellyfin-admin";
+        data = lib.toList {
+          match = {
+            secretKey = "password";
+            remoteRef.remoteKey = "jellyfin/admin-password";
+          };
+        };
+      };
     };
   };
 }
