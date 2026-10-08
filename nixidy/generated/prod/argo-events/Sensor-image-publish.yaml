@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: image-publish
+  namespace: cicd
+spec:
+  dependencies:
+    - eventName: main
+      eventSourceName: image-poll
+      name: tick
+  template:
+    serviceAccountName: argo-events-sensor
+  triggers:
+    - template:
+        argoWorkflow:
+          operation: submit
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: image-publish-
+              spec:
+                workflowTemplateRef:
+                  name: image-publish
+        name: image-publish
