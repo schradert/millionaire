@@ -4,6 +4,9 @@ metadata:
   name: contextforge
   namespace: identity
 spec:
+  clientSecretRef:
+    create: true
+    name: contextforge
   definition:
     clientId: contextforge
     defaultClientScopes:
@@ -14,6 +17,7 @@ spec:
     enabled: true
     name: ContextForge MCP Gateway
     protocol: openid-connect
+    publicClient: false
     redirectUris:
       - https://mcp.trdos.me/*
     standardFlowEnabled: true
