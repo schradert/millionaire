@@ -11,7 +11,7 @@ metadata:
   name: cloudflared
   namespace: kube-system
 spec:
-  replicas: 1
+  replicas: 2
   revisionHistoryLimit: 3
   selector:
     matchLabels:
@@ -77,6 +77,14 @@ spec:
       hostNetwork: false
       hostPID: false
       serviceAccountName: cloudflared
+      topologySpreadConstraints:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: cloudflared
+              app.kubernetes.io/name: cloudflared
+          maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
       volumes:
         - configMap:
             name: cloudflared
