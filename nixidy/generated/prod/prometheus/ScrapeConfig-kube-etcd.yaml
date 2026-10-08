@@ -1,0 +1,14 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  labels:
+    release: prometheus
+  name: kube-etcd
+  namespace: observability
+spec:
+  jobName: kube-etcd
+  staticConfigs:
+    - targets:
+        - 192.168.50.204:2381
+        - 192.168.50.53:2381
+        - 192.168.50.105:2381

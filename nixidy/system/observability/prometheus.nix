@@ -51,10 +51,12 @@
           };
           prometheusOperator.admissionWebhooks.deployment.enabled = true;
 
-          # rke2 serves etcd metrics (etcd-expose-metrics) over plain HTTP on
-          # each server's LAN IP only (not loopback-only, not the tailnet IP).
+          # Keeps the chart's etcd rules and dashboard. Scraping is the
+          # ScrapeConfig below: the chart's Service + manual Endpoints is the
+          # pattern ArgoCD drops (Endpoints are in its default resource.exclusions).
           kubeEtcd.enabled = true;
-          kubeEtcd.endpoints = ["192.168.50.204" "192.168.50.53" "192.168.50.105"];
+          kubeEtcd.service.enabled = false;
+          kubeEtcd.serviceMonitor.enabled = false;
 
           # Deployed separately
           alertmanager.enabled = false;
@@ -65,6 +67,17 @@
           nodeExporter.enabled = false;
           grafana.enabled = false;
           grafana.forceDeployDashboards = true;
+        };
+      };
+      # rke2 serves etcd metrics (etcd-expose-metrics) over plain HTTP on each
+      # server's LAN IP only (not the tailnet IP). job matches the chart's rules.
+      resources.scrapeConfigs.kube-etcd = {
+        metadata.labels.release = "prometheus";
+        spec = {
+          jobName = "kube-etcd";
+          staticConfigs = lib.toList {
+            targets = map (ip: "${ip}:2381") ["192.168.50.204" "192.168.50.53" "192.168.50.105"];
+          };
         };
       };
       # Selected by the Prometheus CR's ruleSelector (release: prometheus).
