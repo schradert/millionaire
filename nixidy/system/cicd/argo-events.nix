@@ -80,6 +80,38 @@
           method = "POST";
         };
 
+        # Image publishing. The cluster is tailnet-only, so GitHub can't push a
+        # webhook in; instead a calendar EventSource ticks every 10 minutes and
+        # the image-publish workflow itself resolves github main HEAD, skips if
+        # that sha was already published, and otherwise builds+pushes whichever
+        # images.nix tags are missing from Harbor.
+        eventSources.image-poll.spec.calendar.main = {
+          schedule = "*/10 * * * *";
+          timezone = "UTC";
+        };
+        sensors.image-publish.spec = {
+          template.serviceAccountName = "argo-events-sensor";
+          dependencies = lib.toList {
+            name = "tick";
+            eventSourceName = "image-poll";
+            eventName = "main";
+          };
+          triggers = lib.toList {
+            template = {
+              name = "image-publish";
+              argoWorkflow = {
+                operation = "submit";
+                source.resource = {
+                  apiVersion = "argoproj.io/v1alpha1";
+                  kind = "Workflow";
+                  metadata.generateName = "image-publish-";
+                  spec.workflowTemplateRef.name = "image-publish";
+                };
+              };
+            };
+          };
+        };
+
         # Sensor: triggers build-and-deploy workflow on push to main
         sensors.forgejo-push.spec = {
           template.serviceAccountName = "argo-events-sensor";
