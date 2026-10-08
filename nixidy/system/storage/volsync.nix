@@ -49,12 +49,14 @@ in {
               uid = can.int "UID for podSecurityContext" {default = 101;};
               gid = can.int "GID for podSecurityContext" {default = 101;};
               inject = can.enable "Inject dataSourceRef into a PVC" {};
+              cacheAccessModes = can.list.str "Mover cache access modes (RWX sources need ReadWriteOnce on ceph-block)" {default = [];};
             };
           });
         };
         config = lib.mkIf config.volsync.enable {
           resources = lib.mkMerge (lib.flip lib.mapAttrsToList config.volsync.pvcs (pvcName: pvc: let
-            inherit (pvc) title inject path uid gid;
+            inherit (pvc) title inject path uid gid cacheAccessModes;
+            cache = lib.optionalAttrs (cacheAccessModes != []) {inherit cacheAccessModes;};
             region = "us-west-004";
             repository = "volsync--${name}--${pvcName}";
           in
@@ -98,7 +100,9 @@ in {
                 replicationSources."${repository}-src".spec = {
                   sourcePVC = title;
                   trigger.schedule = "0 4 * * *";
-                  restic = {
+                  restic =
+                    cache
+                    // {
                     moverSecurityContext.fsGroup = gid;
                     copyMethod = "Direct";
                     pruneIntervalDays = 8;
@@ -114,7 +118,9 @@ in {
                 replicationDestinations."${repository}-dst".spec = {
                   # Override this to track restoration
                   trigger.manual = lib.mkDefault "1";
-                  restic = {
+                  restic =
+                    cache
+                    // {
                     moverSecurityContext.runAsGroup = gid;
                     moverSecurityContext.runAsUser = uid;
                     copyMethod = "Direct";
