@@ -82,4 +82,4 @@ spec:
             claimName: immich-server
         - name: secrets
           secret:
-            secretName: immich-server
+            secretName: immich-db-password
