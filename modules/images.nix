@@ -129,7 +129,7 @@
         src = ../apps/jellyfin-bootstrap;
         pkg = amd64Pkgs.rustPlatform.buildRustPackage {
           pname = "jellyfin-bootstrap";
-          version = "0.1.0";
+          version = "0.2.0";
           inherit src;
           cargoLock.lockFile = "${src}/Cargo.lock";
         };
