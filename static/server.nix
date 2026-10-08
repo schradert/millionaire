@@ -25,6 +25,9 @@
     nameserver 1.0.0.1
   '';
   canivete.kubernetes.yaml.kubelet-arg = ["resolv-conf=/etc/rke2-resolv.conf"];
+  # Nodes don't use tailnet DNS (accept-dns=false), so internal-only names
+  # containerd pulls from must resolve locally: the internal gateway fronts Harbor.
+  networking.hosts."192.168.50.241" = ["harbor.trdos.me"];
   # The upstream unit sets TimeoutStartSec=0, which let rke2-server sit "activating"
   # for months (Type=notify never signalled ready). Bound it so systemd kills the
   # hung start; Restart=always (upstream) then retries it.
