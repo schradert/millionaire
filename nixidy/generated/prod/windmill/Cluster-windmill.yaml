@@ -24,6 +24,23 @@ spec:
       postInitSQL: []
   imageName: ghcr.io/cloudnative-pg/postgresql:17
   instances: 1
+  managed:
+    roles:
+      - ensure: present
+        login: false
+        name: windmill_user
+      - bypassrls: true
+        ensure: present
+        login: false
+        name: windmill_admin
+      - ensure: present
+        inRoles:
+          - windmill_user
+          - windmill_admin
+        login: true
+        name: windmill
+        passwordSecret:
+          name: windmill-app
   monitoring:
     enablePodMonitor: true
   postgresql:

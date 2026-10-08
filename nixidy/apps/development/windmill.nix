@@ -12,11 +12,16 @@
     # Keycloak OIDC client — operator syncs secret to K8s
     applications.keycloak.resources.keycloakClients.windmill.spec = {
       realmRef.name = "default";
+      clientSecretRef = {
+        name = "windmill";
+        create = true;
+      };
       definition = {
         clientId = "windmill";
         name = "Windmill";
         enabled = true;
         protocol = "openid-connect";
+        publicClient = false;
         standardFlowEnabled = true;
         directAccessGrantsEnabled = false;
         redirectUris = ["https://${hostname}/user/login_callback/keycloak"];
@@ -28,6 +33,8 @@
     applications.windmill = {
       inherit namespace;
       postgres.enable = true;
+      # Admin password for the initial bootstrap job
+      generatedSecrets.windmill-admin.key = "password";
 
       helm.releases.windmill = {
         chart = lib.helm.downloadHelmChart {
@@ -114,6 +121,30 @@
       };
 
       resources = {
+        # Windmill migrations expect these roles to exist (the chart provisions them
+        # for its bundled Postgres only). CNPG initdb SQL does not re-run on an
+        # existing cluster, so reconcile them as managed roles.
+        clusters.windmill.spec.managed.roles = [
+          {
+            name = "windmill_user";
+            ensure = "present";
+            login = false;
+          }
+          {
+            name = "windmill_admin";
+            ensure = "present";
+            login = false;
+            bypassrls = true;
+          }
+          {
+            name = "windmill";
+            ensure = "present";
+            login = true;
+            passwordSecret.name = "windmill-app";
+            inRoles = ["windmill_user" "windmill_admin"];
+          }
+        ];
+
         # Database URL composed from CNPG-generated password
         externalSecrets.windmill-db.spec = {
           target.template.data = {
@@ -143,7 +174,7 @@
               secretKey = "clientId";
               remoteRef = {
                 key = "windmill";
-                property = "CLIENT_ID";
+                property = "client-id";
               };
               sourceRef.storeRef = {
                 name = "kubernetes-identity";
@@ -154,7 +185,7 @@
               secretKey = "clientSecret";
               remoteRef = {
                 key = "windmill";
-                property = "CLIENT_SECRET";
+                property = "client-secret";
               };
               sourceRef.storeRef = {
                 name = "kubernetes-identity";
@@ -162,18 +193,6 @@
               };
             }
           ];
-        };
-
-        # Admin password from Bitwarden for initial bootstrap
-        externalSecrets.windmill-admin.spec = {
-          secretStoreRef = {
-            name = "bitwarden";
-            kind = "ClusterSecretStore";
-          };
-          data = lib.toList {
-            secretKey = "password";
-            remoteRef.key = "windmill/admin/password";
-          };
         };
 
         # Post-deploy Job: configure Keycloak OIDC SSO via Windmill API
