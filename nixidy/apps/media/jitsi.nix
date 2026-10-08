@@ -2,6 +2,12 @@
   nixidy = {lib, ...}: let
     inherit (config.canivete.meta) domain;
     hostname = "jitsi.${domain}";
+    xmppPasswords = ["recorder" "jibri" "jicofo" "component" "jigasi" "jvb"];
+    xmppRef = n: {
+      secretKey = n;
+      remoteRef.key = "jitsi-${n}";
+      remoteRef.property = "password";
+    };
   in {
     gatus.endpoints.jitsi = {
       url = "https://${hostname}";
@@ -103,71 +109,77 @@
           jitsi-prosody-jvb.data = lib.mkForce {};
           jitsi-prosody.data = lib.mkForce {};
         };
-        externalSecrets = {
-          jitsi-prosody-jibri.spec = {
-            secretStoreRef.name = "bitwarden";
-            secretStoreRef.kind = "ClusterSecretStore";
-            data = [
-              {
-                secretKey = "recorder";
-                remoteRef.key = "jitsi/recorder";
-              }
-              {
-                secretKey = "jibri";
-                remoteRef.key = "jitsi/jibri";
-              }
-            ];
-            target.template.data = {
-              JIBRI_RECORDER_PASSWORD = "{{ .recorder }}";
-              JIBRI_RECORDER_USER = "recorder";
-              JIBRI_XMPP_PASSWORD = "{{ .jibri }}";
-              JIBRI_XMPP_USER = "jibri";
+        # Random once, never refreshed: the XMPP accounts are provisioned from
+        # these values at first start.
+        passwords = lib.genAttrs (map (n: "jitsi-${n}") xmppPasswords) (_: {
+          spec = {
+            length = 32;
+            digits = 10;
+            symbols = 0;
+            noUpper = false;
+            allowRepeat = true;
+          };
+        });
+        externalSecrets =
+          lib.genAttrs (map (n: "jitsi-${n}") xmppPasswords) (name: {
+            spec = {
+              refreshPolicy = "CreatedOnce";
+              dataFrom = lib.toList {
+                sourceRef.generatorRef = {
+                  apiVersion = "generators.external-secrets.io/v1alpha1";
+                  kind = "Password";
+                  inherit name;
+                };
+              };
+            };
+          })
+          // {
+            jitsi-prosody-jibri.spec = {
+              secretStoreRef.name = "kubernetes-media";
+              secretStoreRef.kind = "ClusterSecretStore";
+              data = [
+                (xmppRef "recorder")
+                (xmppRef "jibri")
+              ];
+              target.template.data = {
+                JIBRI_RECORDER_PASSWORD = "{{ .recorder }}";
+                JIBRI_RECORDER_USER = "recorder";
+                JIBRI_XMPP_PASSWORD = "{{ .jibri }}";
+                JIBRI_XMPP_USER = "jibri";
+              };
+            };
+            jitsi-prosody-jicofo.spec = {
+              secretStoreRef.name = "kubernetes-media";
+              secretStoreRef.kind = "ClusterSecretStore";
+              data = [
+                (xmppRef "jicofo")
+                (xmppRef "component")
+              ];
+              target.template.data = {
+                JICOFO_AUTH_PASSWORD = "{{ .jicofo }}";
+                JICOFO_AUTH_USER = "focus";
+                JICOFO_COMPONENT_SECRET = "{{ .component }}";
+              };
+            };
+            jitsi-prosody-jigasi.spec = {
+              secretStoreRef.name = "kubernetes-media";
+              secretStoreRef.kind = "ClusterSecretStore";
+              data = lib.toList (xmppRef "jigasi");
+              target.template.data = {
+                JIGASI_XMPP_PASSWORD = "{{ .jigasi }}";
+                JIGASI_XMPP_USER = "jigasi";
+              };
+            };
+            jitsi-prosody-jvb.spec = {
+              secretStoreRef.name = "kubernetes-media";
+              secretStoreRef.kind = "ClusterSecretStore";
+              data = lib.toList (xmppRef "jvb");
+              target.template.data = {
+                JVB_AUTH_PASSWORD = "{{ .jvb }}";
+                JVB_AUTH_USER = "jvb";
+              };
             };
           };
-          jitsi-prosody-jicofo.spec = {
-            secretStoreRef.name = "bitwarden";
-            secretStoreRef.kind = "ClusterSecretStore";
-            data = [
-              {
-                secretKey = "jicofo";
-                remoteRef.key = "jitsi/jicofo";
-              }
-              {
-                secretKey = "component";
-                remoteRef.key = "jitsi/component";
-              }
-            ];
-            target.template.data = {
-              JICOFO_AUTH_PASSWORD = "{{ .jicofo }}";
-              JICOFO_AUTH_USER = "focus";
-              JICOFO_COMPONENT_SECRET = "{{ .component }}";
-            };
-          };
-          jitsi-prosody-jigasi.spec = {
-            secretStoreRef.name = "bitwarden";
-            secretStoreRef.kind = "ClusterSecretStore";
-            data = lib.toList {
-              secretKey = "jigasi";
-              remoteRef.key = "jitsi/jigasi";
-            };
-            target.template.data = {
-              JIGASI_XMPP_PASSWORD = "{{ .jigasi }}";
-              JIGASI_XMPP_USER = "jigasi";
-            };
-          };
-          jitsi-prosody-jvb.spec = {
-            secretStoreRef.name = "bitwarden";
-            secretStoreRef.kind = "ClusterSecretStore";
-            data = lib.toList {
-              secretKey = "jvb";
-              remoteRef.key = "jitsi/jvb";
-            };
-            target.template.data = {
-              JVB_AUTH_PASSWORD = "{{ .jvb }}";
-              JVB_AUTH_USER = "jvb";
-            };
-          };
-        };
       };
     };
   };

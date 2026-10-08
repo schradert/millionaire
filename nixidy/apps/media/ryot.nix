@@ -53,6 +53,24 @@
           };
         };
       };
+      # Random once, never refreshed: ryot refuses to start without an admin token.
+      resources.passwords.ryot-admin-token.spec = {
+        length = 40;
+        digits = 10;
+        symbols = 0;
+        noUpper = false;
+        allowRepeat = true;
+      };
+      resources.externalSecrets.ryot-admin-token.spec = {
+        refreshPolicy = "CreatedOnce";
+        dataFrom = lib.toList {
+          sourceRef.generatorRef = {
+            apiVersion = "generators.external-secrets.io/v1alpha1";
+            kind = "Password";
+            name = "ryot-admin-token";
+          };
+        };
+      };
       resources.externalSecrets.ryot.spec.data = [
         {
           secretKey = "DATABASE_URL";
@@ -61,9 +79,17 @@
           sourceRef.storeRef.name = "kubernetes-media";
           sourceRef.storeRef.kind = "ClusterSecretStore";
         }
+        {
+          secretKey = "ADMIN_ACCESS_TOKEN";
+          remoteRef.key = "ryot-admin-token";
+          remoteRef.property = "password";
+          sourceRef.storeRef.name = "kubernetes-media";
+          sourceRef.storeRef.kind = "ClusterSecretStore";
+        }
       ];
       resources.externalSecrets.ryot.spec.target.template.data = {
         DATABASE_URL = "postgresql://ryot:{{ .DATABASE_URL }}@ryot-rw.media.svc.cluster.local:5432/ryot";
+        SERVER_ADMIN_ACCESS_TOKEN = "{{ .ADMIN_ACCESS_TOKEN }}";
       };
     };
     oauth2Proxy.upstreams."${hostname}" = {
