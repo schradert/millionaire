@@ -37,7 +37,7 @@
       };
       resources = {
         eventBus.default.spec.jetstream = {
-          version = "2.10.24";
+          version = "2.10.10";
           replicas = 1;
           persistence = {
             storageClassName = "ceph-block";

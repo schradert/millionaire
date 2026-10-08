@@ -10,4 +10,4 @@ spec:
       storageClassName: ceph-block
       volumeSize: 5Gi
     replicas: 1
-    version: 2.10.24
+    version: 2.10.10
