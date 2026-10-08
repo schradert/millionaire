@@ -40,7 +40,7 @@ spec:
       containers:
         - env:
             - name: DATABASE_URL
-              value: postgres://contextforge:$(DB_PASSWORD)@contextforge-rw:5432/contextforge
+              value: postgresql+psycopg://contextforge:$(DB_PASSWORD)@contextforge-rw:5432/contextforge
             - name: MCP_GATEWAY_HOST
               value: 0.0.0.0
             - name: MCP_GATEWAY_PORT
