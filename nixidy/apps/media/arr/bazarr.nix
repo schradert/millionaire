@@ -32,7 +32,10 @@
               image.digest = "sha256:79fc37491f55c7e24427bcd669bce3df2d7415ca432a47ce9d53cc5988af8411";
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
-              probes.startup.enabled = true;
+              probes.startup = {
+                enabled = true;
+                spec.failureThreshold = 60;
+              };
             };
           };
           service.bazarr.ports.http.port = 6767;

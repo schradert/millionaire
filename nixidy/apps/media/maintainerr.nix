@@ -31,7 +31,10 @@
             image.digest = "sha256:bee84707edaf589cda3d18b6813cbfe3a137b52786210c3a28190e10910c1240";
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
-            probes.startup.enabled = true;
+            probes.startup = {
+              enabled = true;
+              spec.failureThreshold = 60;
+            };
           };
           service.maintainerr.ports.http.port = 80;
           persistence.config = {

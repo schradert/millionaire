@@ -19,7 +19,7 @@ spec:
       app.kubernetes.io/instance: immich-server
       app.kubernetes.io/name: immich-server
   strategy:
-    type: RollingUpdate
+    type: Recreate
   template:
     metadata:
       annotations:
