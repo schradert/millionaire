@@ -27,12 +27,29 @@ data:
           key: password
           name: argo-workflows-db
         port: 5432
+        tableName: argo_workflows
         userNameSecret:
           key: username
           name: argo-workflows-db
     workflowDefaults:
       spec:
         archiveLogs: true
+    sso:
+      issuer: https://keycloak.trdos.me/realms/default
+      clientId:
+        name: argo-workflows-oidc
+        key: CLIENT_ID
+      clientSecret:
+        name: argo-workflows-oidc
+        key: CLIENT_SECRET
+      redirectUrl: "https://workflows.trdos.me/oauth2/callback"
+      rbac:
+        enabled: true
+      scopes:
+        - openid
+        - profile
+        - email
+        - groups
     nodeEvents:
       enabled: true
     workflowEvents:

@@ -20,7 +20,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/cm: 283e6250138e9f0b30d58bd0986640feb4644ddd9c35ae31a6c699e99174264f
+        checksum/cm: 820dc1bf3ef0a7adaae3a573f6a80178351a8b4fef15c4ec6b1e9dac0e893f3f
       labels:
         app: server
         app.kubernetes.io/component: server
