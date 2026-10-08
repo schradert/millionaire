@@ -50,6 +50,18 @@ in {
     applications.argo-workflows = {
       namespace = "cicd";
       postgres.enable = true;
+      # S3 artifact bucket on Ceph RGW. Rook creates the Secret and ConfigMap
+      # "argo-workflows-bucket" (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY),
+      # exactly what artifactRepository.s3 reads below.
+      objects = lib.toList {
+        apiVersion = "objectbucket.io/v1alpha1";
+        kind = "ObjectBucketClaim";
+        metadata.name = "argo-workflows-bucket";
+        spec = {
+          bucketName = "argo-workflows";
+          storageClassName = "ceph-bucket";
+        };
+      };
       helm.releases.argo-workflows = {
         chart = charts.argoproj.argo-workflows;
         values = {
@@ -161,26 +173,6 @@ in {
             remoteRef.key = "argo-workflows-app";
             remoteRef.property = "password";
           };
-        };
-        # S3 artifact credentials (Ceph RADOS Gateway)
-        externalSecrets.argo-workflows-artifacts.spec = {
-          secretStoreRef.name = "bitwarden";
-          secretStoreRef.kind = "ClusterSecretStore";
-          target.name = "argo-workflows-bucket";
-          target.template.data = {
-            AWS_ACCESS_KEY_ID = "{{ .access_key }}";
-            AWS_SECRET_ACCESS_KEY = "{{ .secret_key }}";
-          };
-          data = [
-            {
-              secretKey = "access_key";
-              remoteRef.key = "argo-workflows/s3/access-key";
-            }
-            {
-              secretKey = "secret_key";
-              remoteRef.key = "argo-workflows/s3/secret-key";
-            }
-          ];
         };
         # Harbor push credentials for CI workflows
         externalSecrets.argo-workflows-harbor.spec = {

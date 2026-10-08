@@ -38,6 +38,7 @@
     ./observability/prometheus.nix
     ./security/cert-manager.nix
     ./security/external-secrets
+    ./security/generated-secrets.nix
     ./storage/dragonflydb.nix
     ./storage/postgres.nix
     ./storage/rook-ceph.nix
