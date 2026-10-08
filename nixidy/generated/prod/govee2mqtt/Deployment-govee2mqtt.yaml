@@ -39,7 +39,7 @@ spec:
           envFrom:
             - secretRef:
                 name: govee2mqtt
-          image: harbor.trdos.me/library/govee2mqtt:2025.11.25-60a39bcc
+          image: harbor.trdos.me/library/govee2mqtt:2026.03.25-ab9deb66
           name: govee2mqtt
           volumeMounts:
             - mountPath: /data
