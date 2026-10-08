@@ -198,7 +198,8 @@
         };
       };
       # Idempotent post-sync bootstrap: runs the startup wizard if needed, creates
-      # the admin user and any missing libraries (apps/jellyfin-bootstrap). Reruns
+      # the admin user, any missing libraries and Maintainerr's Jellyfin connection
+      # (apps/jellyfin-bootstrap). Reruns
       # after every sync, so it must stay a no-op once everything exists.
       # Image: `image publish jellyfin-bootstrap` (modules/images.nix) -> Harbor.
       resources.jobs.jellyfin-bootstrap = {
@@ -219,11 +220,15 @@
             };
             containers = lib.toList {
               name = "bootstrap";
-              image = "harbor.${domain}/library/jellyfin-bootstrap:0.1.0";
+              image = "harbor.${domain}/library/jellyfin-bootstrap:0.2.0";
               env = [
                 {
                   name = "JELLYFIN_URL";
                   value = "http://jellyfin.media.svc.cluster.local:8096";
+                }
+                {
+                  name = "MAINTAINERR_URL";
+                  value = "http://maintainerr.media.svc.cluster.local:6246";
                 }
                 {
                   name = "ADMIN_PASSWORD_FILE";
