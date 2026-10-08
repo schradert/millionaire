@@ -47,6 +47,14 @@ spec:
           envFrom:
             - secretRef:
                 name: contextforge
+            - secretRef:
+                name: contextforge-jwt
+            - secretRef:
+                name: contextforge-auth-encryption
+            - secretRef:
+                name: contextforge-basic-auth
+            - secretRef:
+                name: contextforge-admin
           image: ghcr.io/ibm/mcp-context-forge:latest
           livenessProbe:
             httpGet:
