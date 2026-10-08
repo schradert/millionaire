@@ -78,7 +78,7 @@ in {
               env = {
                 MCP_GATEWAY_PORT = "8080";
                 MCP_GATEWAY_HOST = "0.0.0.0";
-                DATABASE_URL = "postgres://contextforge:$(DB_PASSWORD)@contextforge-rw:5432/contextforge";
+                DATABASE_URL = "postgresql+psycopg://contextforge:$(DB_PASSWORD)@contextforge-rw:5432/contextforge";
                 OIDC_ISSUER_URL = "https://keycloak.${domain}/realms/default";
                 OIDC_CLIENT_ID = "contextforge";
                 OIDC_CLIENT_SECRET_ENV = "OIDC_CLIENT_SECRET";
