@@ -35,6 +35,14 @@
             prometheusSpec = {
               # Size cap below the volume, or a full disk crashloops WAL replay.
               retentionSize = "25GB";
+              # alertmanager.enabled = false below (it is deployed separately), so
+              # the chart emits no `alerting:` block unless pointed at it here.
+              alertingEndpoints = lib.toList {
+                name = "alertmanager";
+                namespace = "observability";
+                port = 9093;
+                scheme = "http";
+              };
               storageSpec.volumeClaimTemplate.spec = {
                 accessModes = ["ReadWriteOnce"];
                 resources.requests.storage = "30Gi";
@@ -43,16 +51,64 @@
           };
           prometheusOperator.admissionWebhooks.deployment.enabled = true;
 
+          # rke2 serves etcd metrics (etcd-expose-metrics) over plain HTTP on
+          # each server's LAN IP only (not loopback-only, not the tailnet IP).
+          kubeEtcd.enabled = true;
+          kubeEtcd.endpoints = ["192.168.50.204" "192.168.50.53" "192.168.50.105"];
+
           # Deployed separately
           alertmanager.enabled = false;
           kubeControllerManager.enabled = false;
-          kubeEtcd.enabled = false;
           kubeProxy.enabled = false;
           kubeScheduler.enabled = false;
           kubeStateMetrics.enabled = false;
           nodeExporter.enabled = false;
           grafana.enabled = false;
           grafana.forceDeployDashboards = true;
+        };
+      };
+      # Selected by the Prometheus CR's ruleSelector (release: prometheus).
+      resources.prometheusRules.resilience = {
+        metadata.labels.release = "prometheus";
+        spec.groups = lib.toList {
+          name = "resilience";
+          rules = [
+            {
+              alert = "EtcdMemberDown";
+              expr = ''up{job="kube-etcd"} == 0'';
+              "for" = "3m";
+              labels.severity = "critical";
+              annotations.summary = "etcd member {{ $labels.instance }} is not scrapable";
+            }
+            {
+              alert = "EtcdNoLeader";
+              expr = ''etcd_server_has_leader{job="kube-etcd"} == 0'';
+              "for" = "1m";
+              labels.severity = "critical";
+              annotations.summary = "etcd member {{ $labels.instance }} has no leader";
+            }
+            {
+              alert = "NodeNotReady";
+              expr = ''kube_node_status_condition{condition="Ready",status="true"} == 0'';
+              "for" = "5m";
+              labels.severity = "critical";
+              annotations.summary = "Node {{ $labels.node }} has been NotReady for 5m";
+            }
+            {
+              alert = "PVCAlmostFull";
+              expr = ''kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes > 0.85'';
+              "for" = "10m";
+              labels.severity = "warning";
+              annotations.summary = "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is above 85% full";
+            }
+            {
+              alert = "ContainerRestartingFrequently";
+              expr = ''increase(kube_pod_container_status_restarts_total[1h]) > 5'';
+              "for" = "5m";
+              labels.severity = "warning";
+              annotations.summary = "Container {{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }} restarted more than 5 times in 1h";
+            }
+          ];
         };
       };
       resources.httpRoutes.prometheus.spec = {
