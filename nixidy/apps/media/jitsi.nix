@@ -57,6 +57,25 @@
           jvb.publicIPs = ["192.168.50.254"];
           prosody.enabled = true;
           prosody.persistence.enabled = true;
+          # prosody's 10-config init takes >30s here; the chart's default probes
+          # (no delay, 3 failures) kill it mid-init every time.
+          prosody.livenessProbe = {
+            httpGet = {
+              path = "/http-bind";
+              port = "bosh-insecure";
+            };
+            initialDelaySeconds = 120;
+            periodSeconds = 10;
+            failureThreshold = 12;
+          };
+          prosody.readinessProbe = {
+            httpGet = {
+              path = "/http-bind";
+              port = "bosh-insecure";
+            };
+            initialDelaySeconds = 30;
+            periodSeconds = 10;
+          };
           # The jitsi/* images below are public + digest-pinned; "Never" can't pull
           # them on a node that lacks them -> ErrImageNeverPull (jitsi never ran).
           image.pullPolicy = "IfNotPresent";

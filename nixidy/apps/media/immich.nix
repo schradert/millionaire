@@ -87,7 +87,8 @@
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.immich-server = {
-            strategy = "RollingUpdate";
+            # RWO volume: a rolling update deadlocks on Multi-Attach.
+            strategy = "Recreate";
             annotations."reloader.stakater.com/auto" = "true";
             containers.immich-server = {
               image.repository = "ghcr.io/immich-app/immich-server";
@@ -147,7 +148,8 @@
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.immich-machine-learning = {
-            strategy = "RollingUpdate";
+            # RWO volume: a rolling update deadlocks on Multi-Attach.
+            strategy = "Recreate";
             annotations."reloader.stakater.com/auto" = "true";
             containers.immich-machine-learning = {
               image.repository = "ghcr.io/immich-app/immich-machine-learning";
