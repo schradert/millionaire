@@ -1,0 +1,11 @@
+apiVersion: v1
+data:
+  webdav.yml: '{"address":"0.0.0.0","directory":"/data","permissions":"R","port":8080,"prefix":"/","users":[{"password":"{env}DVD_PASSWORD","username":"kodi"}]}'
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: dvd-webdav
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: dvd-webdav
+  name: dvd-webdav
+  namespace: media

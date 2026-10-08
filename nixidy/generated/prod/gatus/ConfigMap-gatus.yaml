@@ -86,6 +86,12 @@ data:
       name: contextforge
       url: https://mcp.trdos.me
     - conditions:
+      - '[STATUS] == 401'
+      group: internal
+      interval: 1m
+      name: dvd-webdav
+      url: https://dvd.trdos.me
+    - conditions:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
