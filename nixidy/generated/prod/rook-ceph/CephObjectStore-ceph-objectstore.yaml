@@ -13,6 +13,15 @@ spec:
       bulk: "true"
   gateway:
     instances: 1
+    placement:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: NotIn
+                  values:
+                    - bonobo
     port: 80
     priorityClassName: system-cluster-critical
     resources:

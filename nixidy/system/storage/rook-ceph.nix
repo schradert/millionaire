@@ -127,6 +127,54 @@ in {
               }
             ];
           };
+          # Replaces the chart default list, so the full store is restated.
+          cephObjectStores = lib.toList {
+            name = "ceph-objectstore";
+            spec = {
+              metadataPool = {
+                failureDomain = "host";
+                replicated.size = 3;
+              };
+              dataPool = {
+                failureDomain = "host";
+                erasureCoded = {
+                  dataChunks = 2;
+                  codingChunks = 1;
+                };
+                parameters.bulk = "true";
+              };
+              preservePoolsOnDelete = true;
+              gateway = {
+                port = 80;
+                instances = 1;
+                priorityClassName = "system-cluster-critical";
+                resources = {
+                  limits.memory = "2Gi";
+                  requests = {
+                    cpu = "1000m";
+                    memory = "1Gi";
+                  };
+                };
+                # The gateway runs on the host network and binds 0.0.0.0:80, which
+                # collides with the internal-gateway relay (100.64.0.4:80/443) on bonobo.
+                placement.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms = lib.toList {
+                  matchExpressions = lib.toList {
+                    key = "kubernetes.io/hostname";
+                    operator = "NotIn";
+                    values = ["bonobo"];
+                  };
+                };
+              };
+            };
+            storageClass = {
+              enabled = true;
+              name = "ceph-bucket";
+              reclaimPolicy = "Delete";
+              volumeBindingMode = "Immediate";
+              parameters.region = "us-east-1";
+            };
+            ingress.enabled = false;
+          };
           cephBlockPoolsVolumeSnapshotClass.enabled = true;
           monitoring.enabled = true;
           monitoring.createPrometheusRules = true;
