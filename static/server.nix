@@ -25,6 +25,10 @@
     nameserver 1.0.0.1
   '';
   canivete.kubernetes.yaml.kubelet-arg = ["resolv-conf=/etc/rke2-resolv.conf"];
+  # The upstream unit sets TimeoutStartSec=0, which let rke2-server sit "activating"
+  # for months (Type=notify never signalled ready). Bound it so systemd kills the
+  # hung start; Restart=always (upstream) then retries it.
+  systemd.services.rke2-server.serviceConfig.TimeoutStartSec = lib.mkForce "15min";
   # TODO should this be a default?
   # Allows nodes to reach others on the same network by names like `sirver`, etc.
   services.resolved.settings.Resolve.ResolveUnicastSingleLabel = true;
