@@ -115,7 +115,7 @@
           persistence.library = {
             type = "persistentVolumeClaim";
             accessMode = "ReadWriteOnce";
-            size = "1Gi";
+            size = "200Gi";
             advancedMounts.immich-server.immich-server = [{path = "/usr/src/app/upload";}];
           };
           configMaps.immich-server-files.data."immich.json" = builtins.toJSON {};
@@ -168,6 +168,9 @@
           service.immich-machine-learning.ports.http.port = 3003;
         };
       };
+
+      # Photo library: never let a sync or app removal delete it.
+      resources.persistentVolumeClaims.immich-server.metadata.annotations."argocd.argoproj.io/sync-options" = "Prune=false,Delete=false";
 
       resources.dragonflies.immich-dragonfly.spec = {
         replicas = 1;
