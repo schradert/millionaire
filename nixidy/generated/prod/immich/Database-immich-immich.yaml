@@ -6,10 +6,16 @@ metadata:
 spec:
   cluster:
     name: immich
+  databaseReclaimPolicy: retain
+  ensure: present
   extensions:
-    - name: vector
-    - name: vchord
-    - name: cube
-    - name: earthdistance
+    - ensure: present
+      name: vector
+    - ensure: present
+      name: vchord
+    - ensure: present
+      name: cube
+    - ensure: present
+      name: earthdistance
   name: immich
   owner: immich
