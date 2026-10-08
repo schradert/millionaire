@@ -80,7 +80,7 @@ in {
               archive = true;
               postgresql = {
                 host = "argo-workflows-rw";
-                port = "5432";
+                port = 5432;
                 database = "argo-workflows";
                 userNameSecret = {
                   name = "argo-workflows-db";
