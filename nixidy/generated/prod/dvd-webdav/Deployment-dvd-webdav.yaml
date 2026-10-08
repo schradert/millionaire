@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: dvd-webdav
+    app.kubernetes.io/instance: dvd-webdav
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: dvd-webdav
+  name: dvd-webdav
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: dvd-webdav
+      app.kubernetes.io/instance: dvd-webdav
+      app.kubernetes.io/name: dvd-webdav
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 55666c3953339eb537bea6d87d4b2ccad5fd2a294f42efce1b09a84cd2a845f8
+      labels:
+        app.kubernetes.io/controller: dvd-webdav
+        app.kubernetes.io/instance: dvd-webdav
+        app.kubernetes.io/name: dvd-webdav
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - --config
+            - /config/webdav.yml
+          env:
+            - name: DVD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: dvd-webdav
+          image: hacdias/webdav:v5.11.3
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 1
+          name: dvd-webdav
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /config/webdav.yml
+              name: config
+              readOnly: true
+              subPath: webdav.yml
+            - mountPath: /data
+              name: data
+              readOnly: true
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: dvd-webdav
+      volumes:
+        - configMap:
+            name: dvd-webdav
+          name: config
+        - name: data
+          persistentVolumeClaim:
+            claimName: media-dvd
