@@ -10,4 +10,9 @@ spec:
       storageClassName: ceph-block
       volumeSize: 5Gi
     replicas: 1
+    streamConfig: |
+      maxMsgs: 1000000
+      maxAge: 72h
+      replicas: 1
+      duplicates: 300s
     version: 2.10.10

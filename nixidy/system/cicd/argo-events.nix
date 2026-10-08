@@ -44,6 +44,13 @@
             accessMode = "ReadWriteOnce";
             volumeSize = "5Gi";
           };
+          # The default stream config asks for 3 replicas, which a single-node bus rejects.
+          streamConfig = ''
+            maxMsgs: 1000000
+            maxAge: 72h
+            replicas: 1
+            duplicates: 300s
+          '';
         };
 
         # Sensor ServiceAccount + RBAC (needs to create Workflows)
