@@ -19,6 +19,8 @@
     };
 
     applications.argo-events = {
+      # Forgejo webhook secret; set the same value on the Forgejo webhook.
+      generatedSecrets.forgejo-webhook-secret.key = "secret";
       namespace = "cicd";
       helm.releases.argo-events = {
         chart = lib.helm.downloadHelmChart {
@@ -68,16 +70,6 @@
             kind = "ServiceAccount";
             name = "argo-events-sensor";
             namespace = "cicd";
-          };
-        };
-
-        # Forgejo webhook secret
-        externalSecrets.forgejo-webhook-secret.spec = {
-          secretStoreRef.name = "bitwarden";
-          secretStoreRef.kind = "ClusterSecretStore";
-          data = lib.toList {
-            secretKey = "secret";
-            remoteRef.key = "forgejo/webhook/secret";
           };
         };
 
