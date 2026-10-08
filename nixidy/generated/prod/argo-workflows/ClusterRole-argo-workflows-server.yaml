@@ -37,6 +37,28 @@ rules:
       - list
   - apiGroups:
       - ""
+    resourceNames:
+      - sso
+    resources:
+      - secrets
+    verbs:
+      - get
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - create
+  - apiGroups:
+      - ""
+    resources:
+      - serviceaccounts
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
     resources:
       - secrets
     verbs:

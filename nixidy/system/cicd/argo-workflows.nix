@@ -69,6 +69,7 @@ in {
             authModes = ["sso"];
             extraArgs = ["--auth-mode=sso" "--secure"];
             sso = {
+              enabled = true;
               issuer = "https://keycloak.${domain}/realms/default";
               clientId = {
                 name = "argo-workflows-oidc";
@@ -94,6 +95,7 @@ in {
                 host = "argo-workflows-rw";
                 port = 5432;
                 database = "argo-workflows";
+                tableName = "argo_workflows";
                 userNameSecret = {
                   name = "argo-workflows-db";
                   key = "username";
