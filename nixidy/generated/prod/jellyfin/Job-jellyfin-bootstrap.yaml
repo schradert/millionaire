@@ -15,9 +15,11 @@ spec:
         - env:
             - name: JELLYFIN_URL
               value: http://jellyfin.media.svc.cluster.local:8096
+            - name: MAINTAINERR_URL
+              value: http://maintainerr.media.svc.cluster.local:6246
             - name: ADMIN_PASSWORD_FILE
               value: /secrets/admin/password
-          image: harbor.trdos.me/library/jellyfin-bootstrap:0.1.0
+          image: harbor.trdos.me/library/jellyfin-bootstrap:0.2.0
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
