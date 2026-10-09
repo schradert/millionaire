@@ -41,16 +41,16 @@ spec:
         - env:
             - name: DATABASE_URL
               value: postgresql+psycopg://contextforge:$(DB_PASSWORD)@contextforge-rw:5432/contextforge
-            - name: MCP_GATEWAY_HOST
+            - name: HOST
               value: 0.0.0.0
-            - name: MCP_GATEWAY_PORT
-              value: "8080"
             - name: OIDC_CLIENT_ID
               value: contextforge
             - name: OIDC_CLIENT_SECRET_ENV
               value: OIDC_CLIENT_SECRET
             - name: OIDC_ISSUER_URL
               value: https://keycloak.trdos.me/realms/default
+            - name: PORT
+              value: "8080"
             - name: TOOLHIVE_VMCP_URL
               value: http://homelab-vmcp.ai.svc.cluster.local:8080
           envFrom:
