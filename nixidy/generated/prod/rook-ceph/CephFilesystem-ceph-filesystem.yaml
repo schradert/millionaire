@@ -8,10 +8,12 @@ spec:
     - failureDomain: host
       name: data0
       replicated:
-        size: 3
+        requireSafeReplicaSize: false
+        size: 2
   metadataPool:
     replicated:
-      size: 3
+      requireSafeReplicaSize: false
+      size: 2
   metadataServer:
     activeCount: 1
     activeStandby: true

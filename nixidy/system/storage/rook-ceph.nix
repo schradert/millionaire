@@ -13,7 +13,12 @@ in {
     charts,
     lib,
     ...
-  }: {
+  }: let
+    replicas = {
+      size = 2;
+      requireSafeReplicaSize = false;
+    };
+  in {
     gatus.endpoints.rook-ceph = {
       url = "https://${subdomain}";
       group = "internal";
@@ -69,7 +74,44 @@ in {
           }
         ];
       };
+      # FIXME only 2 hosts have OSDs, so every replicated pool is size 2 (min_size stays at Ceph's
+      # default of 1). Add a 3rd OSD host and restore size 3 with requireSafeReplicaSize.
       helm.releases.rook-ceph-cluster = {
+        # The chart's block pool and filesystem lists carry their StorageClass wiring, so patch the
+        # rendered pools instead of restating the lists.
+        transformer = let
+          withReplicas = pool: pool // {replicated = (pool.replicated or {}) // replicas;};
+          patch = resource:
+            if (resource.kind or "") == "CephBlockPool"
+            then resource // {spec = withReplicas resource.spec;}
+            else if (resource.kind or "") == "CephFilesystem"
+            then
+              resource
+              // {
+                spec =
+                  resource.spec
+                  // {
+                    metadataPool = withReplicas resource.spec.metadataPool;
+                    dataPools = map withReplicas resource.spec.dataPools;
+                  };
+              }
+            else resource;
+          # The operator creates .mgr itself at size 3 unless Rook is given this CR
+          builtinMgr = {
+            apiVersion = "ceph.rook.io/v1";
+            kind = "CephBlockPool";
+            metadata = {
+              name = "builtin-mgr";
+              namespace = "storage";
+            };
+            spec = {
+              name = ".mgr";
+              failureDomain = "host";
+              replicated = replicas;
+            };
+          };
+        in
+          resources: map patch resources ++ [builtinMgr];
         chart = charts.rook-release.rook-ceph-cluster;
         values = {
           operatorNamespace = "storage";
@@ -133,7 +175,7 @@ in {
             spec = {
               metadataPool = {
                 failureDomain = "host";
-                replicated.size = 3;
+                replicated = {inherit (replicas) size requireSafeReplicaSize;};
               };
               dataPool = {
                 failureDomain = "host";
@@ -181,8 +223,6 @@ in {
         };
       };
       resources = {
-        # FIXME how to support only x2 replication?!
-        # cephBlockPools.ceph-blockpool.spec.replicated.size = lib.mkForce 2;
         storageClasses.ceph-bucket.parameters.region = lib.mkForce "us-west-004";
         storageClasses.ceph-block = {
           # TODO should I prevent this from being the default storageclass?
