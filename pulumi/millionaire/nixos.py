@@ -123,6 +123,12 @@ class NixOS:
         def _make_install_cmd(resolved_target: str) -> str:
             return f"""
                 set -euo pipefail
+                # Wipes the target's disks. Only ever runs on an explicit,
+                # per-node request — never because state or a URN drifted.
+                if [ "${{NIXOS_ANYWHERE_INSTALL:-}}" != "{name}" ]; then
+                    echo "refusing to install {name}: set NIXOS_ANYWHERE_INSTALL={name}" >&2
+                    exit 1
+                fi
                 ulimit -n 1048576
 
                 EXTRA_DIR=$(mktemp -d)
@@ -160,17 +166,23 @@ class NixOS:
         )
 
         # Install runs once. Re-running on a live NixOS box would kexec it
-        # back to the installer — ignore_changes makes any drift a no-op.
-        # NOTE: ignoreChanges also applies to forced replacements, so a
-        # genuine reinstall (dead disk) requires temporarily removing this
-        # line (or `pulumi state delete` of the resource) before a targeted
-        # replace — otherwise the OLD command string frozen in state re-runs.
+        # back to the installer and wipe its disks. Three guards:
+        # ignore_changes makes drift a no-op, protect blocks replace/delete,
+        # and the script itself refuses unless NIXOS_ANYWHERE_INSTALL=<name>
+        # (covers a fresh create after a rename or lost state entry).
+        # Reinstall (dead disk): `pulumi state unprotect <urn>`, then
+        # `pulumi state delete <urn>`, then
+        # `NIXOS_ANYWHERE_INSTALL=<name> pulumi up --target <urn>`. Deleting
+        # from state matters: ignore_changes also applies to forced
+        # replacements, so a --target-replace would re-run the OLD command
+        # string frozen in state.
         self.command = command.local.Command(
             f"nixos-{name}-install",
             create=create_cmd,
             opts=pulumi.ResourceOptions(
                 depends_on=depends_on or [],
                 ignore_changes=["create"],
+                protect=True,
             ),
         )
 
