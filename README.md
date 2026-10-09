@@ -18,6 +18,7 @@
 12. TODO port `apps/sveltekit-demo` to the current bun2nix so its image builds in the `image-publish` workflow
 13. TODO add an `org-bridge` image to `modules/images.nix` (and track `org-bridge/Cargo.lock`) so `nixidy/apps/home/org-bridge.nix` has something to pull
 14. TODO build a mooncord image in `modules/images.nix` (no upstream image exists) and re-enable it in `nixidy/apps/default.nix`
+15. TODO remove sops from the repo entirely: move host secrets (hyena, node join/tailnet keys, attic, age key) to a single source of truth (Bitwarden) fetched at activation, and drop the pulumi `*_sops_write` commands and `secrets/sops/`
 
 ## 3D Printing Stack (Voron 2.4 LDO)
 
