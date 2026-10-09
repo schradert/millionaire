@@ -77,6 +77,38 @@ in {
                 ".spec.data[]?.remoteRef.conversionStrategy"
                 ".spec.data[]?.remoteRef.decodingStrategy"
                 ".spec.data[]?.remoteRef.metadataPolicy"
+                ".spec.dataFrom[]?.extract.conversionStrategy"
+                ".spec.dataFrom[]?.extract.decodingStrategy"
+                ".spec.dataFrom[]?.extract.metadataPolicy"
+              ];
+            };
+            # Defaults inside list items (arrays are replaced wholesale when the
+            # diff is predicted, so list-item defaults show up as drift).
+            "resource.customizations.ignoreDifferences.external-secrets.io_PushSecret" = builtins.toJSON {
+              jqPathExpressions = [
+                ".spec.data[]?.conversionStrategy"
+              ];
+            };
+            "resource.customizations.ignoreDifferences.gateway.networking.k8s.io_Gateway" = builtins.toJSON {
+              jqPathExpressions = [
+                ".spec.listeners[]?.tls.mode"
+                ".spec.listeners[]?.tls.certificateRefs[]?.group"
+              ];
+            };
+            "resource.customizations.ignoreDifferences.postgresql.cnpg.io_Cluster" = builtins.toJSON {
+              jqPathExpressions = [
+                ".spec.managed.roles[]?.connectionLimit"
+                ".spec.managed.roles[]?.inherit"
+              ];
+            };
+            # The apiserver stamps apiVersion/kind/status onto each
+            # volumeClaimTemplate; charts that omit them (alertmanager, the
+            # app-template mongodb) otherwise stay OutOfSync.
+            "resource.customizations.ignoreDifferences.apps_StatefulSet" = builtins.toJSON {
+              jqPathExpressions = [
+                ".spec.volumeClaimTemplates[]?.apiVersion"
+                ".spec.volumeClaimTemplates[]?.kind"
+                ".spec.volumeClaimTemplates[]?.status"
               ];
             };
             # gateway-api apiserver defaults parentRefs.group/kind,
