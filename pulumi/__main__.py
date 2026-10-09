@@ -11,6 +11,12 @@ import pulumi
 BW_ORGANIZATION_ID = "ce96e43f-f2ce-4cd7-a36f-b30e0149eeaf"
 
 
+def strip(s: str | None) -> str | None:
+    # Untargeted resources that were never created have no stdout in a
+    # targeted `pulumi up`; str.strip would crash the whole program on None.
+    return s.strip() if s is not None else s
+
+
 def Secret(key: str, value: pulumi.Input[str], note: str = "") -> bw.Secret:
     return bw.Secret(
         key,
@@ -186,7 +192,7 @@ class Millionaire:
         )
         Secret(
             "headscale/preauth-key/k8s",
-            headscale_preauth_k8s.stdout.apply(str.strip),
+            headscale_preauth_k8s.stdout.apply(strip),
             "Headscale pre-auth key for the K8s tailscale-operator (reusable, ephemeral, 90d)",
         )
 
@@ -216,7 +222,7 @@ class Millionaire:
                 'sops set secrets/sops/default.yaml \'["headscale"]["preauth-key"]["cluster-node"]\' --value-stdin'
             ),
             environment={
-                "TS_AUTHKEY": headscale_cluster_node_key.stdout.apply(str.strip)
+                "TS_AUTHKEY": headscale_cluster_node_key.stdout.apply(strip)
             },
             opts=pulumi.ResourceOptions(depends_on=[headscale_cluster_node_key]),
         )
@@ -232,7 +238,7 @@ class Millionaire:
         )
         Secret(
             "headscale/preauth-key/k8s-cloud-worker",
-            headscale_worker_key.stdout.apply(str.strip),
+            headscale_worker_key.stdout.apply(strip),
             "Headscale pre-auth key for CAPI burst workers (reusable, ephemeral, tag:cluster)",
         )
 
@@ -247,7 +253,7 @@ class Millionaire:
         )
         Secret(
             "rke2/agent-token",
-            rke2_agent_token.stdout.apply(str.strip),
+            rke2_agent_token.stdout.apply(strip),
             "RKE2 agent join token (mirror of SOPS passwords.k8s-token for cloud workers)",
         )
 
@@ -340,7 +346,7 @@ class Millionaire:
         )
         Secret(
             "headscale/node-ip/sirver",
-            sirver_tailnet_ip.stdout.apply(str.strip),
+            sirver_tailnet_ip.stdout.apply(strip),
             "sirver tailnet IPv4 (pinned by cloud-burst workers)",
         )
 
@@ -414,7 +420,7 @@ class Millionaire:
                 '/static/generated.json" && ',
                 '[ -f "$FILE" ] && EXISTING=$(cat "$FILE") || EXISTING="{}" && ',
                 'echo "$EXISTING" | jq --arg key \'',
-                attic_public_key.stdout.apply(str.strip),
+                attic_public_key.stdout.apply(strip),
                 "' '.attic_pubkey = $key' > \"$FILE\"",
             ),
             triggers=[attic_public_key.stdout],
