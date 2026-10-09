@@ -19,6 +19,7 @@
 13. TODO add an `org-bridge` image to `modules/images.nix` (and track `org-bridge/Cargo.lock`) so `nixidy/apps/home/org-bridge.nix` has something to pull
 14. TODO build a mooncord image in `modules/images.nix` (no upstream image exists) and re-enable it in `nixidy/apps/default.nix`
 15. TODO remove sops from the repo entirely: move host secrets (hyena, node join/tailnet keys, attic, age key) to a single source of truth (Bitwarden) fetched at activation, and drop the pulumi `*_sops_write` commands and `secrets/sops/`
+16. TODO lock down ntfy on hyena (anyone on the tailnet can read/post `alerts` today): (1) `auth-default-access: deny-all` with declarative `auth-users`/`auth-tokens`/`auth-access`, a read token for my devices, and a write-only publisher token for Alertmanager and Gatus (generated, stored in Bitwarden, not hand-made); (2) a headscale ACL so only my user's devices and cluster nodes reach hyena:443; (3) headscale OIDC against Keycloak so tailnet identity is Keycloak identity. That needs a bootstrap answer, since Keycloak is tailnet-only (public login page vs pre-auth key). Verify from another tailnet user (falcon): 401/403, then connection refused
 
 ## 3D Printing Stack (Voron 2.4 LDO)
 
