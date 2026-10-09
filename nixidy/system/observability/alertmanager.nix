@@ -2,9 +2,11 @@
   nixidy = {lib, ...}: let
     inherit (config.canivete.meta) domain people;
     hostname = "alertmanager.${domain}";
-    # hyena's ntfy + Gatus (static/hyena.nix), reached over the tailnet.
-    ntfy = "http://100.64.0.1:2586/alerts?template=alertmanager";
-    heartbeat = "http://100.64.0.1:8081/api/v1/endpoints/cluster_watchdog/external?success=true";
+    # hyena's ntfy + Gatus (static/hyena.nix): tailnet-only https vhosts with
+    # real certs. The names have no public DNS and CoreDNS can't see AdGuard,
+    # so hostAliases pins them to hyena's tailnet IP.
+    ntfy = "https://ntfy.${domain}/alerts?template=alertmanager";
+    heartbeat = "https://status.${domain}/api/v1/endpoints/cluster_watchdog/external?success=true";
   in {
     gatus.endpoints.alertmanager = {
       url = "https://${hostname}";
@@ -21,6 +23,10 @@
         };
         values = {
           baseURL = "https://${hostname}";
+          hostAliases = lib.toList {
+            ip = "100.64.0.1";
+            hostnames = ["ntfy.${domain}" "status.${domain}"];
+          };
           config = {
             route = {
               receiver = "default";

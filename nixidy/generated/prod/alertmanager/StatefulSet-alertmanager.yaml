@@ -71,6 +71,11 @@ spec:
               name: config
             - mountPath: /alertmanager
               name: storage
+      hostAliases:
+        - hostnames:
+            - ntfy.trdos.me
+            - status.trdos.me
+          ip: 100.64.0.1
       securityContext:
         fsGroup: 65534
       serviceAccountName: alertmanager
