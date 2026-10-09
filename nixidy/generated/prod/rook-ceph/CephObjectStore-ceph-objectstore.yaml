@@ -33,5 +33,6 @@ spec:
   metadataPool:
     failureDomain: host
     replicated:
-      size: 3
+      requireSafeReplicaSize: false
+      size: 2
   preservePoolsOnDelete: true

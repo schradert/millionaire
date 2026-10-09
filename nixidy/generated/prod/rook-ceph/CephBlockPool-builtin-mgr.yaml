@@ -1,10 +1,11 @@
 apiVersion: ceph.rook.io/v1
 kind: CephBlockPool
 metadata:
-  name: ceph-blockpool
+  name: builtin-mgr
   namespace: storage
 spec:
   failureDomain: host
+  name: .mgr
   replicated:
     requireSafeReplicaSize: false
     size: 2
