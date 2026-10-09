@@ -51,6 +51,8 @@ spec:
                 name: obico
             - secretRef:
                 name: obico-secret-key
+            - secretRef:
+                name: obico-ml-api-token
           image: thespaghettidetective/web:latest
           livenessProbe:
             failureThreshold: 3

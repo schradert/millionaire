@@ -33,6 +33,8 @@ spec:
           envFrom:
             - secretRef:
                 name: obico
+            - secretRef:
+                name: obico-ml-api-token
           image: thespaghettidetective/ml_api:latest
           name: ml
       dnsPolicy: ClusterFirst
