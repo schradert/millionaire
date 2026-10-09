@@ -4,8 +4,12 @@ data:
   application.instanceLabelKey: argocd.argoproj.io/instance
   application.sync.impersonation.enabled: "false"
   exec.enabled: "false"
-  resource.customizations.ignoreDifferences.external-secrets.io_ExternalSecret: '{"jqPathExpressions":[".spec.refreshInterval",".spec.target.creationPolicy",".spec.target.deletionPolicy",".spec.target.template.engineVersion",".spec.target.template.mergePolicy",".spec.data[]?.remoteRef.conversionStrategy",".spec.data[]?.remoteRef.decodingStrategy",".spec.data[]?.remoteRef.metadataPolicy"]}'
+  resource.customizations.ignoreDifferences.apps_StatefulSet: '{"jqPathExpressions":[".spec.volumeClaimTemplates[]?.apiVersion",".spec.volumeClaimTemplates[]?.kind",".spec.volumeClaimTemplates[]?.status"]}'
+  resource.customizations.ignoreDifferences.external-secrets.io_ExternalSecret: '{"jqPathExpressions":[".spec.refreshInterval",".spec.target.creationPolicy",".spec.target.deletionPolicy",".spec.target.template.engineVersion",".spec.target.template.mergePolicy",".spec.data[]?.remoteRef.conversionStrategy",".spec.data[]?.remoteRef.decodingStrategy",".spec.data[]?.remoteRef.metadataPolicy",".spec.dataFrom[]?.extract.conversionStrategy",".spec.dataFrom[]?.extract.decodingStrategy",".spec.dataFrom[]?.extract.metadataPolicy"]}'
+  resource.customizations.ignoreDifferences.external-secrets.io_PushSecret: '{"jqPathExpressions":[".spec.data[]?.conversionStrategy"]}'
+  resource.customizations.ignoreDifferences.gateway.networking.k8s.io_Gateway: '{"jqPathExpressions":[".spec.listeners[]?.tls.mode",".spec.listeners[]?.tls.certificateRefs[]?.group"]}'
   resource.customizations.ignoreDifferences.gateway.networking.k8s.io_HTTPRoute: '{"jqPathExpressions":[".spec.parentRefs[]?.group",".spec.parentRefs[]?.kind",".spec.rules[]?.backendRefs[]?.group",".spec.rules[]?.backendRefs[]?.kind",".spec.rules[]?.backendRefs[]?.weight",".spec.rules[]?.matches"]}'
+  resource.customizations.ignoreDifferences.postgresql.cnpg.io_Cluster: '{"jqPathExpressions":[".spec.managed.roles[]?.connectionLimit",".spec.managed.roles[]?.inherit"]}'
   resource.customizations.ignoreResourceUpdates.ConfigMap: |
     jqPathExpressions:
       # Ignore the cluster-autoscaler status
