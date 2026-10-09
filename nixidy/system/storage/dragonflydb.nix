@@ -20,6 +20,9 @@
       helm.releases.dragonflydb = {
         chart = pkgs.runCommand "dragonfly-operator" {} "cp -aL ${repo}/charts/dragonfly-operator $out";
         values = {
+          # The CRD is owned by dragonflydb-crds above; the chart's copy (with a
+          # helm keep annotation) made the two apps fight over it.
+          crds.install = false;
           serviceMonitor.enabled = true;
           # FIXME activate with grafana
           # grafanaDashboard.enabled = true;
