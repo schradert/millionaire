@@ -18,6 +18,8 @@
       volsync.pvcs.obico.title = "obico";
       # Django SECRET_KEY, generated in-cluster.
       generatedSecrets.obico-secret-key.key = "SECRET_KEY";
+      # Shared web <-> ml API token, generated in-cluster.
+      generatedSecrets.obico-ml-api-token.key = "ML_API_TOKEN";
       helm.releases.obico = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
@@ -39,6 +41,7 @@
               envFrom = [
                 {secretRef.name = "obico";}
                 {secretRef.name = "obico-secret-key";}
+                {secretRef.name = "obico-ml-api-token";}
               ];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
@@ -50,7 +53,10 @@
               image.repository = "thespaghettidetective/ml_api";
               image.tag = "latest";
               env.ML_API_TOKEN = "$(ML_API_TOKEN)";
-              envFrom = lib.toList {secretRef.name = "obico";};
+              envFrom = [
+                {secretRef.name = "obico";}
+                {secretRef.name = "obico-ml-api-token";}
+              ];
             };
           };
           controllers.redis = {
@@ -97,12 +103,6 @@
           remoteRef.key = "obico-app";
           remoteRef.property = "password";
           sourceRef.storeRef.name = "kubernetes-printing";
-          sourceRef.storeRef.kind = "ClusterSecretStore";
-        }
-        {
-          secretKey = "ML_API_TOKEN";
-          remoteRef.key = "printing/obico/ml-api-token";
-          sourceRef.storeRef.name = "bitwarden";
           sourceRef.storeRef.kind = "ClusterSecretStore";
         }
       ];
