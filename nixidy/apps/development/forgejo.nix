@@ -156,21 +156,14 @@
             };
           };
 
-          # Admin username from Bitwarden; password generated in-cluster
+          # Fixed admin username ("admin" is reserved by Forgejo); password
+          # generated in-cluster
           forgejo-admin.spec = {
             target.template.data = {
-              username = "{{ .username }}";
+              username = "forgejo-admin";
               password = "{{ .password }}";
             };
             data = [
-              {
-                secretKey = "username";
-                remoteRef.key = "forgejo/admin/username";
-                sourceRef.storeRef = {
-                  name = "bitwarden";
-                  kind = "ClusterSecretStore";
-                };
-              }
               {
                 secretKey = "password";
                 remoteRef = {
