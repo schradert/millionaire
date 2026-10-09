@@ -122,7 +122,7 @@ class Millionaire:
                 "printf '%s' \"$CF_TOKEN\" | jq -Rs . | "
                 'sops set secrets/sops/default.yaml \'["cloudflare"]["account"]["token"]\' --value-stdin'
             ),
-            environment={"CF_TOKEN": cloudflare_account_token.value},
+            environment={"CF_TOKEN": pulumi.Output.secret(cloudflare_account_token.value)},
         )
 
         hyena = millionaire.NixOS(
