@@ -240,11 +240,13 @@ in {
         chmod 600 /var/lib/AdGuardHome/AdGuardHome.yaml
       fi
       # Idempotently ensure our tailnet rewrites exist; leaves everything else
-      # (external-dns rules, UI changes) untouched.
+      # (external-dns rules, UI changes) untouched and in order. Not `yq -i`:
+      # it fchowns its temp file, which the unit's syscall filter kills.
       ${lib.concatMapStringsSep "\n" (rule: ''
-          RULE='${rule}' ${lib.getExe pkgs.yq-go} -i \
-            '.user_rules = ((.user_rules // []) + [strenv(RULE)] | unique)' \
-            /var/lib/AdGuardHome/AdGuardHome.yaml
+          RULE='${rule}' ${lib.getExe pkgs.yq-go} \
+            '.user_rules = ((.user_rules // []) - [strenv(RULE)]) + [strenv(RULE)]' \
+            /var/lib/AdGuardHome/AdGuardHome.yaml > /var/lib/AdGuardHome/AdGuardHome.yaml.tmp
+          mv /var/lib/AdGuardHome/AdGuardHome.yaml.tmp /var/lib/AdGuardHome/AdGuardHome.yaml
         '')
         tailnetRewrites}
     '';
