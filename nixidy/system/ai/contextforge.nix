@@ -76,8 +76,11 @@ in {
               image.repository = "ghcr.io/ibm/mcp-context-forge";
               image.tag = "latest";
               env = {
-                MCP_GATEWAY_PORT = "8080";
-                MCP_GATEWAY_HOST = "0.0.0.0";
+                # The gateway's settings read HOST/PORT (default 127.0.0.1:4444);
+                # MCP_GATEWAY_* are ignored, so without these the probes on :8080
+                # get connection refused.
+                HOST = "0.0.0.0";
+                PORT = "8080";
                 DATABASE_URL = "postgresql+psycopg://contextforge:$(DB_PASSWORD)@contextforge-rw:5432/contextforge";
                 OIDC_ISSUER_URL = "https://keycloak.${domain}/realms/default";
                 OIDC_CLIENT_ID = "contextforge";
