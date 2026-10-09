@@ -10,6 +10,7 @@
   tailnetIP = "100.64.0.1";
   # Tailnet-only vhosts: no public DNS record, cert via ACME DNS-01.
   ntfyHost = "ntfy.${domain}";
+  gatewayProbeHost = "gatus-probe.${domain}";
   statusHost = "status.${domain}";
   tailnetVhost = port: {
     useACMEHost = ntfyHost;
@@ -340,8 +341,9 @@ in {
         [
           # Internal gateway via bonobo's relay; an unrouted host answers 404
           # from Envoy, which proves the relay and the gateway without
-          # depending on any app behind it.
-          (probe "internal-gateway" "https://100.64.0.4" ["[STATUS] == 404"])
+          # depending on any app behind it. Needs a hostname: without SNI the
+          # gateway drops the handshake.
+          (probe "internal-gateway" "https://${gatewayProbeHost}" ["[STATUS] == 404"])
         ]
         # etcd metrics only listen on the nodes' LAN IPs, so probe each server's
         # apiserver instead (401 = serving; anonymous auth is off).
@@ -373,6 +375,7 @@ in {
   # External: SSH (22), ACME (80), nginx (443), DERP STUN (3478/udp),
   # WireGuard (41641/udp — lets tailnet peers reach hyena directly instead of
   # relaying every DNS query through DERP). AdGuard web UI + DNS, ntfy (2586) and Gatus (8081) tailnet-only.
+  networking.hosts."100.64.0.4" = [gatewayProbeHost];
   networking.firewall = {
     allowedTCPPorts = [22 80 443];
     allowedUDPPorts = [3478 41641];
