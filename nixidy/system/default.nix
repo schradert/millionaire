@@ -24,7 +24,6 @@
     ./mail/stalwart.nix
     ./network/cilium.nix
     ./network/coredns.nix
-    ./network/adguard.nix
     ./network/external-dns.nix
     ./network/external-dns-internal.nix
     ./network/cloudflared.nix
