@@ -1,6 +1,6 @@
 {config, ...}: {
   nixidy = {lib, ...}: let
-    inherit (config.canivete.meta) domain people;
+    inherit (config.canivete.meta) domain;
     hostname = "alertmanager.${domain}";
     # hyena's ntfy + Gatus (static/hyena.nix): tailnet-only https vhosts with
     # real certs. The names have no public DNS and CoreDNS can't see AdGuard,
@@ -65,13 +65,11 @@
               }
               {
                 name = "default";
-                webhook_configs = [{url = ntfy;}];
-                email_configs = [
+                # ntfy's alertmanager template titles firing vs resolved.
+                webhook_configs = [
                   {
-                    to = people.my.profiles.personal.email;
-                    from = "noreply@${domain}";
-                    smarthost = "stalwart.mail.svc.cluster.local:25";
-                    require_tls = false;
+                    url = ntfy;
+                    send_resolved = true;
                   }
                 ];
               }
