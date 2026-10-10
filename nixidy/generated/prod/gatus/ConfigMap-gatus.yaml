@@ -125,6 +125,12 @@ data:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
+      name: games-webdav
+      url: https://games.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
       name: gatus
       url: https://gatus.trdos.me
     - conditions:

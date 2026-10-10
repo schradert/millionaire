@@ -54,6 +54,7 @@
     ./media/kavita.nix
     ./media/komga.nix
     ./media/dvd-webdav.nix
+    ./media/games-webdav.nix
     # TODO obs-studio: currently a dotfiles-style NixOS config, not nixidy.
     # See https://github.com/Niek/obs-web to deploy on kubernetes instead.
     # ./media/obs-studio.nix
