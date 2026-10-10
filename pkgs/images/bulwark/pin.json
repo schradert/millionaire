@@ -1,0 +1,8 @@
+{
+  "version": "v1.4.9",
+  "digest": "sha256:9f5ef45ee046d6a33336e2963016538640589afbf8618cef61e340a57dbd8770",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/bulwarkmail/webmail"
+  }
+}

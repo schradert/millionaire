@@ -122,11 +122,7 @@
               # 4.3.0 → multus-cni:4.3.0-thick is a 404). Pin the project's
               # rolling stable-thick by digest; the chart's multus-installer
               # init container reuses .tag, resolving to the same image.
-              image = {
-                repository = "ghcr.io/k8snetworkplumbingwg/multus-cni";
-                tag = "stable-thick";
-                digest = "sha256:2b9671447f3ea4e7e56730843dbf59445b9307246f393b61386b896d56ae51c9";
-              };
+              image = pinned.images.multus;
               resources.requests.memory = "100Mi";
               resources.limits.memory = "1Gi";
             };

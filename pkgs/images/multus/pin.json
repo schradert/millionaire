@@ -1,0 +1,10 @@
+{
+  "version": "stable-thick",
+  "digest": "sha256:2b9671447f3ea4e7e56730843dbf59445b9307246f393b61386b896d56ae51c9",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/k8snetworkplumbingwg/multus-cni",
+    "track": "digest"
+  },
+  "hold": "multus-cni publishes no versioned -thick image (the chart's appVersion tag 404s); only the rolling stable-thick digest moves, re-verify the render by hand"
+}

@@ -1,0 +1,8 @@
+{
+  "version": "v0.15.5",
+  "digest": "sha256:b6c2a04a79695136d5e2c16e9da0254135d0c3f3b1f8147873e812916b0ae8c4",
+  "source": {
+    "type": "oci-tag",
+    "repository": "stalwartlabs/stalwart"
+  }
+}

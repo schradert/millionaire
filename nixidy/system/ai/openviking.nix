@@ -10,6 +10,7 @@
 in {
   nixidy = {
     lib,
+    pinned,
     charts,
     ...
   }: {
@@ -26,11 +27,7 @@ in {
           controllers.openviking = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.openviking = {
-              image = {
-                repository = "ghcr.io/volcengine/openviking";
-                tag = "v0.5.0";
-                digest = "sha256:c60a83cd79cfce80db5266acb8bdd0908eee8abe8ff559a5f786aa504c251ccf";
-              };
+              image = pinned.images.openviking;
               env = {
                 # VikingBot is optional and needs its own config
                 OPENVIKING_WITH_BOT = "0";

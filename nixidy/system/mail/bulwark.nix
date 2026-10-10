@@ -7,6 +7,7 @@ in {
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     probe = lib.recursiveUpdate {
@@ -54,11 +55,7 @@ in {
           controllers.bulwark = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.bulwark = {
-              image = {
-                repository = "ghcr.io/bulwarkmail/webmail";
-                tag = "v1.4.9";
-                digest = "sha256:9f5ef45ee046d6a33336e2963016538640589afbf8618cef61e340a57dbd8770";
-              };
+              image = pinned.images.bulwark;
               env = {
                 JMAP_SERVER_URL = stalwartUrl;
                 APP_NAME = "Homelab Mail";
