@@ -14,26 +14,22 @@
     linuxSystem = builtins.replaceStrings ["darwin"] ["linux"] system;
     n2c = inputs.nix2container.packages.${system}.nix2container;
     linuxPkgs = import inputs.nixpkgs {system = linuxSystem;};
-    bun2nix = inputs.bun2nix.lib.${linuxSystem};
+    bun2nix = inputs.bun2nix.packages.${linuxSystem}.default;
     registry = "harbor.trdos.me";
   in {
     # Image definitions — add new images here
     legacyPackages.images = {
       sveltekit-demo = let
-        bunDeps = bun2nix.fetchBunDeps {
-          bunNix = ../apps/sveltekit-demo/bun.nix;
-        };
         app = linuxPkgs.stdenvNoCC.mkDerivation {
           pname = "sveltekit-demo";
           version = "0.1.0";
           src = ../apps/sveltekit-demo;
-          nativeBuildInputs = [linuxPkgs.bun linuxPkgs.nodejs_22];
-          configurePhase = ''
-            runHook preConfigure
-            cp -r ${bunDeps}/node_modules node_modules
-            chmod -R u+w node_modules
-            runHook postConfigure
-          '';
+          nativeBuildInputs = [bun2nix.hook linuxPkgs.nodejs_22];
+          bunDeps = bun2nix.fetchBunDeps {
+            bunNix = ../apps/sveltekit-demo/bun.nix;
+          };
+          # A plain node_modules tree to copy into the image.
+          bunInstallFlags = ["--linker=hoisted"];
           buildPhase = ''
             runHook preBuild
             bun run build
@@ -42,10 +38,8 @@
           installPhase = ''
             runHook preInstall
             mkdir -p $out
-            cp -r build $out/build
-            cp package.json $out/
-            # Production deps only
-            cp -r node_modules $out/
+            cp -r build package.json $out/
+            cp -rL node_modules $out/
             runHook postInstall
           '';
         };
