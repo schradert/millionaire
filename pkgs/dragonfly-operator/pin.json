@@ -1,0 +1,10 @@
+{
+  "version": "1.4.0",
+  "hash": "sha256-QBylTbY+8HcD0Z2VyqtwUYm+MeXCP7IwVtJpCCMswXs=",
+  "source": {
+    "type": "github-release",
+    "owner": "dragonflydb",
+    "repo": "dragonfly-operator",
+    "tagPrefix": "v"
+  }
+}

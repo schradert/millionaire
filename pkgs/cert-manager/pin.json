@@ -1,0 +1,10 @@
+{
+  "version": "1.19.4",
+  "hash": "sha256-meWu8R33djzvszlj8H8++CHwDYtQh1optWgmiR/Gmk8=",
+  "source": {
+    "type": "github-release",
+    "owner": "cert-manager",
+    "repo": "cert-manager",
+    "tagPrefix": "v"
+  }
+}

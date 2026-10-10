@@ -1,0 +1,10 @@
+{
+  "version": "0.15.0",
+  "hash": "sha256-dq+xNKWWmWTJBuw7npxfl5U/ehrAb7OWmijEwGSvNPQ=",
+  "source": {
+    "type": "github-release",
+    "owner": "backube",
+    "repo": "volsync",
+    "tagPrefix": "v"
+  }
+}

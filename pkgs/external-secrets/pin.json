@@ -1,0 +1,10 @@
+{
+  "version": "2.0.1",
+  "hash": "sha256-VKsruSQIkSkmU7sAznO5Ex/DF3TsykR+Gd5epd42tlw=",
+  "source": {
+    "type": "github-release",
+    "owner": "external-secrets",
+    "repo": "external-secrets",
+    "tagPrefix": "v"
+  }
+}

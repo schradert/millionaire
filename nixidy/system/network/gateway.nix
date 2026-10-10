@@ -7,6 +7,7 @@
 in {
   nixidy = {
     charts,
+    pinned,
     pkgs,
     ...
   }: {
@@ -25,12 +26,7 @@ in {
       # NOTE currently TLSRoutev1alpha2 only available in 1.5.0 experimental
       prefix = "config/crd/experimental";
       match = ".*_.*\\.yaml$"; # CRD files contain underscores, kustomization.yaml doesn't
-      src = pkgs.fetchFromGitHub {
-        owner = "kubernetes-sigs";
-        repo = "gateway-api";
-        rev = "v1.5.0";
-        hash = "sha256-Zl0U1mIcVMq1bcfINLMFRU3XlWCOalHzsl5hELWbkcY=";
-      };
+      src = pinned.gateway-api;
     };
     applications.cilium = {
       helm.releases.cilium.values.gatewayAPI.enabled = true;

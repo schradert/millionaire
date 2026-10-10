@@ -1,0 +1,10 @@
+{
+  "version": "1.28.1",
+  "hash": "sha256-9NfjrVF0OtDLaGD5PPFSZcI8V3Vy/yOTm/JwnE3kMZE=",
+  "source": {
+    "type": "github-release",
+    "owner": "cloudnative-pg",
+    "repo": "cloudnative-pg",
+    "tagPrefix": "v"
+  }
+}

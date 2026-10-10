@@ -5,7 +5,7 @@ in {
   nixidy = {
     charts,
     lib,
-    pkgs,
+    pinned,
     ...
   }: {
     applications.cert-manager-crds.namespace = "kube-system";
@@ -13,12 +13,7 @@ in {
       application = "cert-manager-crds";
       install = true;
       prefix = "deploy/crds";
-      src = pkgs.fetchFromGitHub {
-        owner = "cert-manager";
-        repo = "cert-manager";
-        rev = "v1.19.4";
-        hash = "sha256-meWu8R33djzvszlj8H8++CHwDYtQh1optWgmiR/Gmk8=";
-      };
+      src = pinned.cert-manager;
     };
     applications.cert-manager = {
       namespace = "security";

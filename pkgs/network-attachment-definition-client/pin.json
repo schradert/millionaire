@@ -1,0 +1,10 @@
+{
+  "version": "1.7.7",
+  "hash": "sha256-o5Gxm+lXZVPiWeOyEt8zKrGSRj4ZR60NT1DQASXe6gI=",
+  "source": {
+    "type": "github-release",
+    "owner": "k8snetworkplumbingwg",
+    "repo": "network-attachment-definition-client",
+    "tagPrefix": "v"
+  }
+}
