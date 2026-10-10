@@ -1,4 +1,5 @@
 import pulumi
+import pulumi_b2 as b2
 import pulumi_bitwarden as bw
 import pulumi_cloudflare as cf
 import pulumi_command as command
@@ -507,10 +508,24 @@ class Millionaire:
         )
 
         bucket_name = f"{millionaire.Nix.attr('canivete.meta.domain').value().replace('.', '-')}--volsync"
+        # Legacy: the CLI command that first created the bucket. The bucket is now
+        # the b2.Bucket below; this stays only so an `up` never runs its delete.
+        # Drop it with `pulumi state delete` (not by removing it from code).
         bucket = command.local.Command(
             "b2-bucket",
             create=f"b2 bucket create {bucket_name} allPrivate",
             delete=f"b2 bucket delete {bucket_name}",
+        )
+        # Credentials: B2_APPLICATION_KEY_ID / B2_APPLICATION_KEY (dev shell, sops b2.*).
+        b2.Bucket(
+            "volsync",
+            bucket_name=bucket_name,
+            bucket_type="allPrivate",
+            default_server_side_encryption=b2.BucketDefaultServerSideEncryptionArgs(
+                algorithm="AES256", mode="SSE-B2"
+            ),
+            # Imported (id 6059c9f13683ebd29ece0613) from the bucket the command created.
+            opts=PROTECTED,
         )
         b2_app_key = command.local.Command(
             "b2-app-key",
