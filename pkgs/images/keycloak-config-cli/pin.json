@@ -1,0 +1,9 @@
+{
+  "version": "6.5.1-26.1.0",
+  "digest": "sha256:1b22dfaa9ae0c71f74b0342f9221a6510f272da5def683dbba26a98e6b1b1411",
+  "source": {
+    "type": "oci-tag",
+    "repository": "docker.io/adorsys/keycloak-config-cli",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)-26\\.1\\.0"
+  }
+}
