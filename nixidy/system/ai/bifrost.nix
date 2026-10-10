@@ -61,6 +61,14 @@ in {
         };
       };
 
+      # The ReadWriteOnce data PVC can't be shared by old and new pods during a rollout.
+      resources.deployments.bifrost.spec.strategy = {
+        type = "Recreate";
+        rollingUpdate = null;
+      };
+
+      # The dashboard (:8000/) is only reachable via oauth2-proxy (Keycloak): Bifrost's
+      # own OIDC/SSO is enterprise-only. In-cluster clients call bifrost.ai.svc:8000 directly.
       resources.httpRoutes.bifrost.spec = {
         hostnames = [hostname];
         parentRefs = lib.toList {
