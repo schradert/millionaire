@@ -1,0 +1,15 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: chirpstack-chirpstack
+  namespace: home
+spec:
+  cluster:
+    name: chirpstack
+  databaseReclaimPolicy: retain
+  ensure: present
+  extensions:
+    - ensure: present
+      name: pg_trgm
+  name: chirpstack
+  owner: chirpstack
