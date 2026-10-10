@@ -5,7 +5,7 @@ metadata:
     app.kubernetes.io/instance: navidrome
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: navidrome
-  name: navidrome
+  name: navidrome-navidrome-direct
   namespace: media
 spec:
   hostnames:
@@ -20,9 +20,9 @@ spec:
     - backendRefs:
         - group: ""
           kind: Service
-          name: oauth2-proxy
-          namespace: identity
-          port: 4180
+          name: navidrome
+          namespace: media
+          port: 4533
           weight: 1
       filters:
         - requestHeaderModifier:
@@ -33,3 +33,13 @@ spec:
               - X-Forwarded-Email
               - Remote-User
           type: RequestHeaderModifier
+      matches:
+        - path:
+            type: PathPrefix
+            value: /rest
+        - path:
+            type: PathPrefix
+            value: /share
+        - path:
+            type: PathPrefix
+            value: /ping

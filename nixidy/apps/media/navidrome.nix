@@ -126,6 +126,8 @@ in {
             ND_SPOTIFY_ID = "";
             ND_SPOTIFY_SECRET = "";
           };
+          # Web UI via oauth2-proxy (trusted header). Client copies of the identity
+          # headers are stripped before oauth2-proxy sets its own.
           route.navidrome = {
             hostnames = [hostname];
             parentRefs = lib.toList {
@@ -133,23 +135,24 @@ in {
               namespace = "kube-system";
               sectionName = "https";
             };
-            rules =
-              if bootstrapped
-              then [
-                # Subsonic API (mobile clients can't do OIDC), public shares and the heartbeat
-                # go straight to Navidrome with auth headers stripped: they authenticate by
-                # their own credentials, never by the trusted header.
-                {
-                  matches = map (path: {path = {type = "PathPrefix"; value = path;};}) ["/rest" "/share" "/ping"];
-                  filters = [removeHeaders];
-                  backendRefs = [navidrome];
-                }
-                {
-                  filters = [removeHeaders];
-                  backendRefs = [viaProxy];
-                }
-              ]
-              else [{backendRefs = [viaProxy];}];
+            rules = lib.toList ({backendRefs = [viaProxy];} // lib.optionalAttrs bootstrapped {filters = [removeHeaders];});
+          };
+          # Subsonic API (mobile clients can't do OIDC), public shares and the heartbeat
+          # go straight to Navidrome with auth headers stripped: they authenticate by
+          # their own credentials, never by the trusted header. A separate route: the
+          # chart drops a second, match-less rule.
+          route.navidrome-direct = lib.mkIf bootstrapped {
+            hostnames = [hostname];
+            parentRefs = lib.toList {
+              name = "internal";
+              namespace = "kube-system";
+              sectionName = "https";
+            };
+            rules = lib.toList {
+              matches = map (path: {path = {type = "PathPrefix"; value = path;};}) ["/rest" "/share" "/ping"];
+              filters = [removeHeaders];
+              backendRefs = [navidrome];
+            };
           };
         };
       };
