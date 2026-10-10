@@ -1,6 +1,7 @@
 {
   config,
   flake,
+  lib,
   ...
 }: {
   imports = with flake.inputs.nixos-raspberrypi.nixosModules.raspberry-pi-5; [
@@ -9,8 +10,12 @@
     display-vc4
     bluetooth
   ];
+  # Fleet default (modules/nixos.nix) is srvos systemd-boot; the RPi module
+  # installs its own bootloader to /boot/firmware.
+  boot.loader.systemd-boot.enable = lib.mkForce false;
+  boot.loader.efi.canTouchEfiVariables = lib.mkForce false;
   system.nixos.tags = let
-    cfg = config.boot.loader.raspberryPi;
+    cfg = config.boot.loader.raspberry-pi;
   in [
     "raspberry-pi-${cfg.variant}"
     cfg.bootloader
