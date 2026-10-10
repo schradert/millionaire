@@ -3,6 +3,7 @@ kind: PrometheusRule
 metadata:
   labels:
     prometheus: rook-prometheus
+    release: prometheus
     role: alert-rules
   name: prometheus-ceph-rules
   namespace: storage

@@ -124,6 +124,9 @@ in {
             };
             cleanupPolicy.wipeDevicesFromOtherClusters = true;
             csi.readAffinity.enabled = true;
+            # Prometheus only selects monitors and rules labelled release=prometheus;
+            # without this the operator's ServiceMonitors are never scraped.
+            labels.monitoring.release = "prometheus";
             dashboard.urlPrefix = "/";
             dashboard.ssl = false;
             dashboard.prometheusEndpoint = "http" + "://prometheus-operated.monitoring.svc.cluster.local:9090";
@@ -221,6 +224,8 @@ in {
         };
       };
       resources = {
+        # The chart's Ceph alert rules (health, device failure, slow ops), selected by Prometheus.
+        prometheusRules.prometheus-ceph-rules.metadata.labels.release = "prometheus";
         storageClasses.ceph-bucket.parameters.region = lib.mkForce "us-west-004";
         storageClasses.ceph-block = {
           # TODO should I prevent this from being the default storageclass?
