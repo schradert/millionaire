@@ -162,6 +162,71 @@
           layers = [(n2c.buildLayer {deps = [pkg];})];
         };
 
+      # Keycloak with its build-time options baked in, so it boots `--optimized`.
+      # The stock image re-augments on every start (chmod over every lib jar, an
+      # overlay copy-up of ~285MB), which on a disk-saturated node outlived the
+      # startup probe (2026-10-10). Base: the pinned upstream image; the only added
+      # layer is lib/quarkus from `kc.sh build` on the same release's dist.
+      keycloak = let
+        base = builtins.fromJSON (builtins.readFile ../pkgs/images/keycloak/pin.json);
+        dist = builtins.fromJSON (builtins.readFile ../pkgs/keycloak-dist/pin.json);
+        # Bytecode only, so the build host's own pkgs are fine.
+        hostPkgs = import inputs.nixpkgs {inherit system;};
+        augmented = hostPkgs.stdenvNoCC.mkDerivation {
+          pname = "keycloak-augmented";
+          inherit (dist) version;
+          src = hostPkgs.fetchurl {
+            url = builtins.replaceStrings ["{version}"] [dist.version] dist.source.url;
+            inherit (dist) hash;
+          };
+          # Must match the Deployment's KC_* build options (nixidy/apps/identity/keycloak.nix),
+          # or `start --optimized` refuses to run.
+          env = {
+            KC_DB = "postgres";
+            KC_HEALTH_ENABLED = "true";
+            KC_METRICS_ENABLED = "true";
+            KC_FEATURES = "hostname:v2";
+          };
+          buildPhase = ''
+            patchShebangs bin
+            JAVA_HOME=${hostPkgs.jdk21_headless} bin/kc.sh build
+          '';
+          installPhase = ''
+            mkdir -p $out/opt/keycloak/lib
+            cp -r lib/quarkus $out/opt/keycloak/lib/
+          '';
+        };
+      in
+        n2c.buildImage {
+          name = "${registry}/library/keycloak";
+          tag = "${dist.version}-optimized";
+          arch = "amd64";
+          fromImage = n2c.pullImage {
+            imageName = base.source.repository;
+            imageDigest = base.digest;
+            sha256 = base.hashes.nix2container;
+            arch = "amd64";
+          };
+          copyToRoot = [augmented];
+          # Not inherited from fromImage.
+          config = {
+            User = "1000";
+            WorkingDir = "/";
+            Entrypoint = ["/opt/keycloak/bin/kc.sh"];
+            Cmd = ["start" "--optimized"];
+            Env = [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+              "LANG=en_US.UTF-8"
+              "KC_RUN_IN_CONTAINER=true"
+            ];
+            ExposedPorts = {
+              "8080/tcp" = {};
+              "8443/tcp" = {};
+              "9000/tcp" = {};
+            };
+          };
+        };
+
       govee2mqtt = n2c.buildImage {
         name = "${registry}/library/govee2mqtt";
         tag = linuxPkgs.govee2mqtt.version;

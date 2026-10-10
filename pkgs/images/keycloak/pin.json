@@ -1,6 +1,9 @@
 {
   "version": "26.1.5",
   "digest": "sha256:be6a86215213145bfb4fb3e2b3ab982a806d00262655abdcf3ffa6a38d241c7c",
+  "hashes": {
+    "nix2container": "sha256-6cQe12VnycmrKvFPZlTpvxh4INRroDXA3oS8lyqc45M="
+  },
   "source": {
     "type": "oci-tag",
     "repository": "quay.io/keycloak/keycloak",

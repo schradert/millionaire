@@ -1,0 +1,11 @@
+{
+  "version": "26.1.5",
+  "hash": "sha256-86yHsgXG8dLDuZI2GyTDEWBnaKB5Zzfl0mgwhDU5hWg=",
+  "source": {
+    "type": "url-template",
+    "url": "https://github.com/keycloak/keycloak/releases/download/{version}/keycloak-{version}.tar.gz",
+    "owner": "keycloak",
+    "repo": "keycloak"
+  },
+  "follows": "images/keycloak"
+}
