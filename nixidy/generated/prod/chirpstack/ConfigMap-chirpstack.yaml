@@ -23,8 +23,12 @@ data:
     [api]
       bind="0.0.0.0:8080"
 
+    # "enabled" picks the SSO button shown beside the password form (internal |
+    # openid_connect | oauth2); the password form stays for break-glass.
+    [user_authentication]
+      enabled="openid_connect"
+
     [user_authentication.openid_connect]
-      enabled=true
       registration_enabled=true
       registration_callback_url="https://chirpstack.trdos.me/api/oauth2/callback"
       provider_url="https://keycloak.trdos.me/realms/default"
