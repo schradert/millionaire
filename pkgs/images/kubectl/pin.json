@@ -1,0 +1,10 @@
+{
+  "version": "1.32",
+  "digest": "sha256:9524faf8e3cefb47fa28244a5d15f95ec21a73d963273798e593e61f80712333",
+  "source": {
+    "type": "oci-tag",
+    "repository": "bitnamilegacy/kubectl",
+    "track": "digest"
+  },
+  "hold": "bitnami/kubectl was withdrawn from Docker Hub; bitnamilegacy is frozen. Replace the image rather than bump"
+}

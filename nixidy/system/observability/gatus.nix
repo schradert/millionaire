@@ -34,7 +34,10 @@ in {
         helm.releases.gatus = {
           chart = pinned.charts.gatus;
           values = {
-            image.tag = "v5.34.0";
+            image = with pinned.images.gatus; {
+              inherit tag;
+              sha = lib.removePrefix "sha256:" digest;
+            };
             annotations."secret.reloader.stakater.com/auto" = "true";
             serviceAccount.create = true;
             serviceAccount.autoMount = true;

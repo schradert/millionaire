@@ -55,7 +55,7 @@ spec:
           command:
             - sh
             - -c
-          image: curlimages/curl:8.13.0
+          image: curlimages/curl:8.13.0@sha256:d43bdb28bae0be0998f3be83199bfb2b81e0a30b034b6d7586ce7e05de34c3fd
           name: configure-oidc
           volumeMounts:
             - mountPath: /secrets/admin
@@ -74,7 +74,7 @@ spec:
           command:
             - sh
             - -c
-          image: curlimages/curl:8.13.0
+          image: curlimages/curl:8.13.0@sha256:d43bdb28bae0be0998f3be83199bfb2b81e0a30b034b6d7586ce7e05de34c3fd
           name: wait-for-windmill
       restartPolicy: OnFailure
       volumes:

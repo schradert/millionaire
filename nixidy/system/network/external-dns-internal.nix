@@ -20,8 +20,10 @@
           fullnameOverride = "external-dns-internal";
           provider.name = "webhook";
           provider.webhook = {
-            image.repository = "ghcr.io/muhlba91/external-dns-provider-adguard";
-            image.tag = "v11.0.2";
+            image = with pinned.images.external-dns-provider-adguard; {
+              inherit repository;
+              tag = "${tag}@${digest}";
+            };
             env = [
               {
                 name = "ADGUARD_URL";
