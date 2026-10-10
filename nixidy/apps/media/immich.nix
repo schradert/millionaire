@@ -4,6 +4,7 @@ in {
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -113,9 +114,7 @@ in {
             strategy = "Recreate";
             annotations."reloader.stakater.com/auto" = "true";
             containers.immich-server = {
-              image.repository = "ghcr.io/immich-app/immich-server";
-              image.tag = "v2.6.1";
-              image.digest = "sha256:aa7fe8eec3130742d07498dac7e02baa2d32a903573810ba95ed11f155c7eac1";
+              image = pinned.images.immich-server;
               envFrom = [{configMapRef.name = "immich-server";}];
               probes.liveness = serverProbe {};
               probes.readiness = serverProbe {};
@@ -175,9 +174,7 @@ in {
             strategy = "Recreate";
             annotations."reloader.stakater.com/auto" = "true";
             containers.immich-machine-learning = {
-              image.repository = "ghcr.io/immich-app/immich-machine-learning";
-              image.tag = "v2.6.1";
-              image.digest = "sha256:cafc1ff51b95a931d17d69226435bbb28ea314f151598b8b087391c232d00ab6";
+              image = pinned.images.immich-machine-learning;
               probes.liveness = mlProbe {};
               probes.readiness = mlProbe {};
               probes.startup = mlProbe {spec.failureThreshold = 60;};

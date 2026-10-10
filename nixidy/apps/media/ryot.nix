@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -21,9 +22,7 @@
           controllers.ryot = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.ryot = {
-              image.repository = "ignisda/ryot";
-              image.tag = "v10.3.6";
-              image.digest = "sha256:b3b30436bb272f5b7b6f9fd9f60af494cf4300bec61fc7b43daa5bb0b1f01c33";
+              image = pinned.images.ryot;
               envFrom = [{configMapRef.name = "ryot";} {secretRef.name = "ryot";}];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;

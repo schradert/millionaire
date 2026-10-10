@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -19,9 +20,7 @@
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.audiobookshelf.containers.audiobookshelf = {
-            image.repository = "advplyr/audiobookshelf";
-            image.tag = "2.33.1";
-            image.digest = "sha256:a4a5841bba093d81e5f4ad1eaedb4da3fda6dbb2528c552349da50ad1f7ae708";
+            image = pinned.images.audiobookshelf;
             # The image listens on :80 unless told otherwise.
             env.PORT = "13378";
             probes.liveness.enabled = true;

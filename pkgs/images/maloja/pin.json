@@ -1,0 +1,8 @@
+{
+  "version": "3.2.4",
+  "digest": "sha256:4ecea26058d2ca5168a8d53820279942d28f0606664cea6425f42371d5d88f95",
+  "source": {
+    "type": "oci-tag",
+    "repository": "krateng/maloja"
+  }
+}

@@ -14,6 +14,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -44,9 +45,7 @@
               annotations."k8s.v1.cni.cncf.io/networks" = "home-lan";
             };
             containers.music-assistant = {
-              image.repository = "ghcr.io/music-assistant/server";
-              image.tag = "2.8.6";
-              image.digest = "sha256:400697b305e45bd1712c019e67d22681219e91deb41afe88939f921b5fae137f";
+              image = pinned.images.music-assistant;
               # MA needs CAP_NET_ADMIN / NET_RAW for the macvlan interface and for
               # mDNS multicast send. Privileged is the simplest knob; could be tightened
               # to capabilities once the deploy is shaken out.

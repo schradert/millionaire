@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -23,17 +24,13 @@
           controllers.qbittorrent = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.qbittorrent = {
-              image.repository = "ghcr.io/home-operations/qbittorrent";
-              image.tag = "5.1.4";
-              image.digest = "sha256:bb82ad6668f8eda1d0fcce6c1341498bfa879155bb1295cd9d314a2c35c07a01";
+              image = pinned.images.qbittorrent;
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
               probes.startup.enabled = true;
             };
             containers.gluetun = {
-              image.repository = "qmcgaw/gluetun";
-              image.tag = "v3.41.1";
-              image.digest = "sha256:1a5bf4b4820a879cdf8d93d7ef0d2d963af56670c9ebff8981860b6804ebc8ab";
+              image = pinned.images.gluetun;
               env = {
                 VPN_SERVICE_PROVIDER = "custom";
                 VPN_TYPE = "wireguard";

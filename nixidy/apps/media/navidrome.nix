@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -22,9 +23,7 @@
           controllers.navidrome = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.navidrome = {
-              image.repository = "deluan/navidrome";
-              image.tag = "0.55.2";
-              image.digest = "sha256:3a66e262b7ea836faa06c08ad5b32076c49e9e63e2fa4de10080c8e9be9f0846";
+              image = pinned.images.navidrome;
               envFrom = [{configMapRef.name = "navidrome";}];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;

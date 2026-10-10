@@ -4,6 +4,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -21,9 +22,7 @@
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.komga.containers.komga = {
-            image.repository = "gotson/komga";
-            image.tag = "1.24.1";
-            image.digest = "sha256:a84a0424e2f8235ba9373ed10b9b903e0feecdbb500a1b4aebac01f08e9e57db";
+            image = pinned.images.komga;
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
             probes.startup.enabled = true;

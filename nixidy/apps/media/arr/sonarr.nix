@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -33,9 +34,7 @@
               fsGroupChangePolicy = "OnRootMismatch";
             };
             containers.sonarr = {
-              image.repository = "ghcr.io/home-operations/sonarr";
-              image.tag = "4.0.17.2950";
-              image.digest = "sha256:bdc787fe07bb7c0b6af9c030764902f70092ec9a426e52a36716d3a13917fe2d";
+              image = pinned.images.sonarr;
               envFrom = [{secretRef.name = "sonarr";} {configMapRef.name = "sonarr";}];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;

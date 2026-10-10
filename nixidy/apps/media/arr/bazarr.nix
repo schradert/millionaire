@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -27,9 +28,7 @@
               fsGroupChangePolicy = "OnRootMismatch";
             };
             containers.bazarr = {
-              image.repository = "ghcr.io/home-operations/bazarr";
-              image.tag = "1.5.6";
-              image.digest = "sha256:79fc37491f55c7e24427bcd669bce3df2d7415ca432a47ce9d53cc5988af8411";
+              image = pinned.images.bazarr;
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
               probes.startup = {

@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -24,9 +25,7 @@
             fsGroupChangePolicy = "OnRootMismatch";
           };
           controllers.seerr.containers.seerr = {
-            image.repository = "ghcr.io/seerr-team/seerr";
-            image.tag = "develop";
-            image.digest = "sha256:e49a2f222e48c7ccc30103b51cace3ef47111f57c251bca0366f2abf7e6f831e";
+            image = pinned.images.seerr;
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
             probes.startup.enabled = true;

@@ -1,0 +1,9 @@
+{
+  "version": "develop",
+  "digest": "sha256:e49a2f222e48c7ccc30103b51cace3ef47111f57c251bca0366f2abf7e6f831e",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/seerr-team/seerr",
+    "track": "digest"
+  }
+}

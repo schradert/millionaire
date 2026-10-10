@@ -1,0 +1,8 @@
+{
+  "version": "v2.6.1",
+  "digest": "sha256:cafc1ff51b95a931d17d69226435bbb28ea314f151598b8b087391c232d00ab6",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/immich-app/immich-machine-learning"
+  }
+}

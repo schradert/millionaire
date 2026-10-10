@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -19,9 +20,7 @@
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.shoko.containers.shoko = {
-            image.repository = "shokoanime/server";
-            image.tag = "v5.3.1";
-            image.digest = "sha256:8bfa235fc36a7147443679c242368f30a532e12de3f52e0de2dcc7743fa37044";
+            image = pinned.images.shoko;
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
             probes.startup.enabled = true;

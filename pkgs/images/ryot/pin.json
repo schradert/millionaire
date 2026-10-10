@@ -1,0 +1,8 @@
+{
+  "version": "v10.3.6",
+  "digest": "sha256:b3b30436bb272f5b7b6f9fd9f60af494cf4300bec61fc7b43daa5bb0b1f01c33",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ignisda/ryot"
+  }
+}

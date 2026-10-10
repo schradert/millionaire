@@ -1,0 +1,8 @@
+{
+  "version": "2.3.4.5307",
+  "digest": "sha256:4df82f58d39fde43a206c4bba126226b63ecf2394df202e94c31afc9faae3ed9",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/home-operations/prowlarr"
+  }
+}

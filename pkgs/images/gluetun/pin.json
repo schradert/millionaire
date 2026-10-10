@@ -1,0 +1,8 @@
+{
+  "version": "v3.41.1",
+  "digest": "sha256:1a5bf4b4820a879cdf8d93d7ef0d2d963af56670c9ebff8981860b6804ebc8ab",
+  "source": {
+    "type": "oci-tag",
+    "repository": "qmcgaw/gluetun"
+  }
+}

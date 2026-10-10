@@ -4,6 +4,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -43,9 +44,7 @@
           controllers.jellyfin = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.jellyfin = {
-              image.repository = "ghcr.io/jellyfin/jellyfin";
-              image.tag = "10.11.6";
-              image.digest = "sha256:25db4eb10143c1c12adb79ed978e31d94fc98dc499fbae2d38b2c935089ced3e";
+              image = pinned.images.jellyfin;
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
               probes.startup.enabled = true;

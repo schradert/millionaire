@@ -8,6 +8,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -28,9 +29,7 @@
           controllers.multi-scrobbler = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.multi-scrobbler = {
-              image.repository = "ghcr.io/foxxmd/multi-scrobbler";
-              image.tag = "0.13.1";
-              image.digest = "sha256:1d9d3fd20c311016aa2daf10af2a17f56c1c9c9f1c5ee63792babb9b6d431447";
+              image = pinned.images.multi-scrobbler;
               envFrom = [
                 {configMapRef.name = "multi-scrobbler";}
                 {secretRef.name = "multi-scrobbler";}

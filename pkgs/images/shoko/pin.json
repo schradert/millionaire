@@ -1,0 +1,8 @@
+{
+  "version": "v5.3.1",
+  "digest": "sha256:8bfa235fc36a7147443679c242368f30a532e12de3f52e0de2dcc7743fa37044",
+  "source": {
+    "type": "oci-tag",
+    "repository": "shokoanime/server"
+  }
+}

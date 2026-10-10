@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -27,9 +28,7 @@
               fsGroupChangePolicy = "OnRootMismatch";
             };
             containers.autobrr = {
-              image.repository = "ghcr.io/autobrr/autobrr";
-              image.tag = "v1.74.0";
-              image.digest = "sha256:6f37217bbc0496fff0c7ffb4264545036bf735775e484188b80b31f21daa06e2";
+              image = pinned.images.autobrr;
               envFrom = [{configMapRef.name = "autobrr";}];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
