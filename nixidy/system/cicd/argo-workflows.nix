@@ -326,6 +326,107 @@ in {
             };
           };
         };
+        # GitHub token for the weekly dependency-update PRs (contents + pull
+        # requests write on schradert/millionaire).
+        externalSecrets.argo-workflows-github.spec = {
+          secretStoreRef.name = "bitwarden";
+          secretStoreRef.kind = "ClusterSecretStore";
+          target.name = "argo-workflows-github";
+          data = lib.toList {
+            secretKey = "GITHUB_TOKEN";
+            remoteRef.key = "github/update-bot/token";
+          };
+        };
+        persistentVolumeClaims.deps-update-nix.spec = {
+          accessModes = ["ReadWriteOnce"];
+          storageClassName = "ceph-block";
+          resources.requests.storage = "60Gi";
+        };
+        # Weekly `update bump --only <kind>` per kind (tools/update), each
+        # gated and pushed to branch deps/<kind> with one PR per kind.
+        cronWorkflows.deps-update.spec = {
+          # Unsuspend once github/update-bot/token exists in Bitwarden.
+          suspend = true;
+          schedules = ["0 6 * * 1"];
+          timezone = "America/Los_Angeles";
+          concurrencyPolicy = "Forbid";
+          workflowSpec = {
+            serviceAccountName = "argo-workflows-ci";
+            entrypoint = "update";
+            archiveLogs = false;
+            activeDeadlineSeconds = 21600;
+            ttlStrategy = {
+              secondsAfterSuccess = 86400;
+              secondsAfterFailure = 604800;
+            };
+            arguments.parameters = [
+              {
+                name = "repo";
+                value = "schradert/millionaire";
+              }
+              {
+                name = "base";
+                value = "main";
+              }
+              {
+                name = "kinds";
+                value = "src,chart,image,flake,nixhelm,devenv,cargo,uv,bun";
+              }
+            ];
+            volumes = lib.toList {
+              name = "nix";
+              persistentVolumeClaim.claimName = "deps-update-nix";
+            };
+            templates = lib.toList {
+              name = "update";
+              affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms = lib.toList {
+                matchExpressions = [
+                  {
+                    key = "kubernetes.io/hostname";
+                    operator = "In";
+                    values = ["bonobo" "chinchilla"];
+                  }
+                  {
+                    key = "kubernetes.io/arch";
+                    operator = "In";
+                    values = ["amd64"];
+                  }
+                ];
+              };
+              initContainers = lib.toList {
+                name = "seed-nix-store";
+                image = nixImage;
+                command = ["sh" "-c"];
+                args = ["[ -e /cache/.seeded ] || { cp -a /nix/. /cache/ && touch /cache/.seeded; }"];
+                volumeMounts = lib.toList {
+                  name = "nix";
+                  mountPath = "/cache";
+                };
+              };
+              container = {
+                image = nixImage;
+                command = ["bash" "-ec"];
+                args = [
+                  (builtins.readFile ./deps-update.sh)
+                  "deps-update"
+                  "{{workflow.parameters.repo}}"
+                  "{{workflow.parameters.base}}"
+                  "{{workflow.parameters.kinds}}"
+                ];
+                envFrom = lib.toList {secretRef.name = "argo-workflows-github";};
+                volumeMounts = lib.toList {
+                  name = "nix";
+                  mountPath = "/nix";
+                };
+                resources.requests = {
+                  cpu = "1";
+                  memory = "4Gi";
+                };
+                resources.limits.memory = "12Gi";
+              };
+            };
+          };
+        };
         # Reusable CI WorkflowTemplate: clone → build with Nix → push to Harbor → update Rollout
         workflowTemplates.build-and-deploy.spec = {
           serviceAccountName = "argo-workflows-ci";
