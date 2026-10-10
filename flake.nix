@@ -178,6 +178,7 @@
         };
       };
       canivete.nixidy.k8s = "rke2";
+      canivete.pkgs.allowUnfree = ["displaylink"];
       canivete.sops.directory = "secrets/sops";
       canivete.deploy.nodes = {
         millionaire = {
@@ -304,6 +305,14 @@
           (import ./static/falcon.nix)
           {profiles.system.canivete.configuration.imports = [./static/facter ./static/falcon-system.nix];}
         ];
+        # Dell Precision 7510 laptop on DisplayLink docks (./static/axolotl.nix).
+        axolotl = {
+          hostname = "192.168.50.250";
+          sshUser = "tristan";
+          sshOpts = ["-J" "tristan@192.184.168.248"];
+          remoteBuild = true;
+          profiles.system.canivete.configuration.imports = [./static/axolotl.nix];
+        };
         # Cloud-burst worker image config — never deployed via pulumi or
         # deploy-rs; defined as a node only so it gets the canivete.kubernetes
         # module machinery. CAPI boots Hetzner VMs from its uploaded snapshot
