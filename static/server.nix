@@ -32,6 +32,14 @@
   # for months (Type=notify never signalled ready). Bound it so systemd kills the
   # hung start; Restart=always (upstream) then retries it.
   systemd.services.rke2-server.serviceConfig.TimeoutStartSec = lib.mkForce "15min";
+  # Ceph mons need <50ms skew; timesyncd (SNTP, 34min polls, random pool servers) drifted ~70ms.
+  # chrony disciplines the clock; enabling it disables timesyncd.
+  services.chrony = {
+    enable = true;
+    servers = ["time.cloudflare.com" "0.pool.ntp.org" "1.pool.ntp.org" "2.pool.ntp.org"];
+    serverOption = "iburst";
+    extraConfig = "makestep 1.0 3";
+  };
   # TODO should this be a default?
   # Allows nodes to reach others on the same network by names like `sirver`, etc.
   services.resolved.settings.Resolve.ResolveUnicastSingleLabel = true;
