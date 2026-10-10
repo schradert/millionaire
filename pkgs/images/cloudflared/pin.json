@@ -1,0 +1,8 @@
+{
+  "version": "2026.2.0",
+  "digest": "sha256:d4d2bf56c792ab207fa557c2431c250bfc8e4114d7e28c98eda1896bf65f10f6",
+  "source": {
+    "type": "oci-tag",
+    "repository": "cloudflare/cloudflared"
+  }
+}
