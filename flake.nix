@@ -100,6 +100,8 @@
     };
     zsh-helix-mode.url = "github:multirious/zsh-helix-mode";
     zsh-helix-mode.inputs.nixpkgs.follows = "nixpkgs";
+    nix-doom-emacs-unstraightened.url = "github:marienz/nix-doom-emacs-unstraightened";
+    nix-doom-emacs-unstraightened.inputs.nixpkgs.follows = "nixpkgs";
 
     # Modules
     mac-app-util.url = "github:hraban/mac-app-util";

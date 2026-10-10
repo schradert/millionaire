@@ -7,6 +7,7 @@
       EDITOR = "hx";
       VISUAL = "hx";
     };
+    programs.vim.enable = true;
     programs.helix = {
       enable = true;
       defaultEditor = true;

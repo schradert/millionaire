@@ -1,0 +1,141 @@
+* Org
+Terminal DoomEmacs: org-node knowledge base + GTD task/agenda workflow.
+=org-directory= is set in Nix (modules/emacs/default.nix) before org loads.
+
+** Workflow: TODO states, clocking, projects, agenda
+#+begin_src emacs-lisp :tangle config.el
+(after! org
+  (defun my/mark-as-project ()
+    "Ensure the current heading is a project: tag :project:, set COOKIE_DATA
+to \"todo recursive\", give it a TODO keyword and a leading progress indicator."
+    (interactive)
+    (org-toggle-tag "project" 'on)
+    (org-set-property "COOKIE_DATA" "todo recursive")
+    (org-back-to-heading t)
+    (let* ((title (nth 4 (org-heading-components)))
+           (keyword (nth 2 (org-heading-components))))
+      (when (and (bound-and-true-p keyword) (string-prefix-p "[" title))
+        (message "TODO keyword and progress indicator found"))
+      (when (and (not (bound-and-true-p keyword)) (string-prefix-p "[" title))
+        (message "no TODO keyword but progress indicator found")
+        (forward-whitespace 1)
+        (insert "PLANNED "))
+      (when (and (not (bound-and-true-p keyword)) (not (string-prefix-p "[" title)))
+        (message "no TODO keyword and no progress indicator found")
+        (forward-whitespace 1)
+        (insert "PLANNED [/] "))
+      (when (and (bound-and-true-p keyword) (not (string-prefix-p "[" title)))
+        (message "TODO keyword but no progress indicator found")
+        (forward-whitespace 2)
+        (insert "[/] "))))
+
+  (defun my/org-clock-todo-change ()
+    "Clock in when a task becomes IN-PROGRESS; clock out otherwise."
+    (if (equal org-state "IN-PROGRESS")
+        (org-clock-in)
+      (org-clock-out-if-current)))
+
+  (defun my/org-agenda-remove-schedule ()
+    "Remove the SCHEDULED cookie when a task is COMPLETED."
+    (save-excursion
+      (and (equal org-state "COMPLETED")
+           (org-get-scheduled-time (point))
+           (when (search-forward-regexp org-scheduled-time-regexp nil t)
+             (or (delete-region (match-beginning 0) (match-end 0)) t))
+           (get-buffer "*Org Agenda*")
+           (with-current-buffer "*Org Agenda*" (org-agenda-redo)))))
+
+  (setq org-log-into-drawer t
+        org-todo-keywords
+        '((sequence "DRAFTING(d@)" "PLANNED(p!)" "IN-PROGRESS(i!/@)" "WAITING(w@)"
+           "|" "COMPLETED(c@)" "REJECTED(r@)" "MISSED(m@)"))
+        org-todo-repeat-to-state "PLANNED"
+        org-columns-default-format
+        "%40ITEM(Task) %TODO %3PRIORITY %17Effort{:} %CLOCKSUM %CLOCKSUM_T %TAGS"
+        org-global-properties
+        '(("Effort_ALL" . "0 0:15 0:30 1:00 2:00 3:00 4:00 5:00 6:00 7:00"))
+        ;; Whole org tree for now; refine to tagged nodes later if it gets big.
+        org-agenda-files (directory-files-recursively org-directory "\\.org$")
+        org-agenda-skip-scheduled-if-done t
+        org-agenda-skip-deadline-if-done t
+        org-agenda-columns-add-appointments-to-effort-sum t
+        org-agenda-include-diary t
+        org-agenda-start-day nil
+        org-agenda-show-future-repeats nil
+        org-agenda-custom-commands
+        '(("g" "Get Things Done (GTD)"
+           ((agenda "" ((org-agenda-skip-function '(org-agenda-skip-entry-if 'deadline))
+                        (org-deadline-warning-days 0)))
+            (todo "PLANNED" ((org-agenda-skip-function '(org-agenda-skip-entry-if 'deadline))
+                             (org-agenda-prefix-format "  %i %-12:c [%e] ")
+                             (org-agenda-overriding-header "\nTasks\n")))
+            (agenda nil ((org-agenda-entry-types '(:deadline))
+                         (org-agenda-format-date "")
+                         (org-deadline-warning-days 7)
+                         (org-agenda-skip-function
+                          '(org-agenda-skip-entry-if 'notregexp "\\* PLANNED"))
+                         (org-agenda-overriding-header "\nDeadlines\n")))
+            (tags-todo "inbox" ((org-agenda-prefix-format "  %?-12t% s")
+                                (org-agenda-overriding-header "\nInbox\n")))
+            (tags "COMPLETED>=\"<today>\""
+                  ((org-agenda-overriding-header "\nCompleted today\n")))))))
+
+  ;; NOTE both hooks were the same in the old config; the old `stage-change`
+  ;; spelling was a typo — org's hook is `org-after-todo-state-change-hook`.
+  (add-hook! 'org-after-todo-state-change-hook 'my/org-clock-todo-change)
+  (add-hook! 'org-after-todo-state-change-hook 'my/org-agenda-remove-schedule))
+#+end_src
+
+** org-mem + org-node (fast index; replaces org-roam's slow sync)
+#+begin_src emacs-lisp :tangle config.el
+(use-package! org-mem
+  :after org
+  :config
+  (setq org-mem-do-sync-with-org-id t
+        org-mem-watch-dirs (list org-directory))
+  (org-mem-updater-mode)
+  ;; Feed org-roam's DB from org-mem so org-roam-ui works WITHOUT org-roam-db-sync.
+  ;; org-mem-roamy-db-mode lives in a separate file; require it explicitly.
+  (require 'org-mem-roamy)
+  (setq org-roam-db-update-on-save nil
+        org-mem-roamy-do-overwrite-real-db t)
+  (org-mem-roamy-db-mode))
+
+(use-package! org-node
+  :after org
+  :config
+  ;; org-node-backlink-mode and org-node-seq-mode live in separate files.
+  (require 'org-node-backlink)
+  (require 'org-node-seq)
+  (setq org-node-creation-fn #'org-capture
+        ;; Materialize :BACKLINKS: [[id:]] drawers into files — portable,
+        ;; readable in Orgzly offline. This is what replaces org-super-links.
+        org-node-backlink-do-drawers t)
+  (org-node-cache-mode)
+  (org-node-backlink-mode)
+  (org-node-roam-accelerator-mode)   ; fast org-roam backlinks buffer, no org-roam DB
+  (org-node-seq-mode)                ; dailies / sequences
+  ;; No Doom SPC-leader without evil, so bind to plain prefixes.
+  (keymap-global-set "C-c n" org-node-global-prefix-map)
+  (keymap-set org-mode-map "C-c N" org-node-org-prefix-map))
+
+;; Capture straight into a new node.
+(after! org
+  (add-to-list 'org-capture-templates
+               '("n" "New node" plain (function org-node-capture-target)
+                 "%?" :empty-lines 1)))
+#+end_src
+
+** org-roam-ui (interactive network graph)
+Reads the org-roam DB that org-mem keeps populated above, so the graph works
+without ever running =org-roam-db-sync=.
+#+begin_src emacs-lisp :tangle config.el
+(use-package! websocket :after org-roam)
+(use-package! org-roam-ui
+  :after org-roam
+  :config
+  (setq org-roam-ui-sync-theme t
+        org-roam-ui-follow t
+        org-roam-ui-update-on-save t
+        org-roam-ui-open-on-start nil))  ; don't auto-launch a browser from a TTY
+#+end_src
