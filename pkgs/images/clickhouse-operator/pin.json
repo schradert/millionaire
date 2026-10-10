@@ -1,0 +1,9 @@
+{
+  "version": "0.27.2",
+  "digest": "sha256:49573fe8b301865c0683003555031f62eeceeaa2baa362c2407baaacb52fa592",
+  "source": {
+    "type": "oci-tag",
+    "repository": "altinity/clickhouse-operator",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}

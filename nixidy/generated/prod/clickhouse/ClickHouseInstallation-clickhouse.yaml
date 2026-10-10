@@ -1,0 +1,107 @@
+apiVersion: clickhouse.altinity.com/v1
+kind: ClickHouseInstallation
+metadata:
+  labels:
+    app.kubernetes.io/instance: clickhouse
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: clickhouse
+  name: clickhouse
+  namespace: storage
+spec:
+  configuration:
+    clusters:
+      - layout:
+          replicasCount: 1
+          shardsCount: 1
+        name: clickhouse
+        secret:
+          auto: "true"
+    files:
+      config.d/extra_config.xml: |
+        <clickhouse>
+        </clickhouse>
+      users.d/extra_users.xml: |
+        <clickhouse>
+        </clickhouse>
+    users:
+      default/access_management: 1
+      default/named_collection_control: 1
+      default/networks/ip: 10.0.0.0/8
+      default/password:
+        valueFrom:
+          secretKeyRef:
+            key: password
+            name: clickhouse-credentials
+      default/show_named_collections: 1
+      default/show_named_collections_secrets: 1
+  defaults:
+    templates:
+      dataVolumeClaimTemplate: clickhouse-data
+      logVolumeClaimTemplate: clickhouse-logs
+      podTemplate: clickhouse-pod-efa8c3ee
+      serviceTemplate: clickhouse-service
+  templates:
+    podTemplates:
+      - metadata:
+          labels:
+            app.kubernetes.io/instance: clickhouse
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: clickhouse
+            app.kubernetes.io/version: 25.3.6.10034
+            helm.sh/chart: clickhouse-0.3.13
+        name: clickhouse-pod-efa8c3ee
+        podDistribution: []
+        spec:
+          containers:
+            - image: altinity/clickhouse-server:25.3.6.10034.altinitystable@sha256:3396b15c51a2c13c0aead9532bd022e478a8f575fe325deacb7d0efeae594174
+              imagePullPolicy: IfNotPresent
+              name: clickhouse
+              ports:
+                - containerPort: 8123
+                  name: http
+                - containerPort: 9000
+                  name: client
+                - containerPort: 9009
+                  name: interserver
+              resources: {}
+              securityContext: {}
+          securityContext: {}
+          serviceAccountName: clickhouse
+    serviceTemplates:
+      - metadata:
+          labels:
+            app.kubernetes.io/instance: clickhouse
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: clickhouse
+            app.kubernetes.io/version: 25.3.6.10034
+            helm.sh/chart: clickhouse-0.3.13
+        name: clickhouse-service
+        spec:
+          ports:
+            - name: http
+              port: 8123
+              targetPort: 8123
+            - name: tcp
+              port: 9000
+              targetPort: 9000
+          selector:
+            app.kubernetes.io/instance: clickhouse
+            app.kubernetes.io/name: clickhouse
+          type: ClusterIP
+    volumeClaimTemplates:
+      - name: clickhouse-data
+        reclaimPolicy: Retain
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+      - name: clickhouse-logs
+        reclaimPolicy: Retain
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi

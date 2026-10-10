@@ -1,0 +1,9 @@
+{
+  "version": "0.27.2",
+  "digest": "sha256:029b422333f0fe6d78075d80ab9a394df7c5ad5aec18bb7d354367a10b71f636",
+  "source": {
+    "type": "oci-tag",
+    "repository": "altinity/metrics-exporter",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}

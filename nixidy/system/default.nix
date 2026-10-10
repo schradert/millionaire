@@ -42,6 +42,7 @@
     ./security/external-secrets
     ./security/generated-secrets.nix
     ./security/kubelet-csr-approver.nix
+    ./storage/clickhouse.nix
     ./storage/dragonflydb.nix
     ./storage/postgres.nix
     ./storage/rook-ceph.nix
