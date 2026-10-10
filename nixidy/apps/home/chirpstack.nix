@@ -1,7 +1,15 @@
 # Chirpstack LoRaWAN network server. Internal-only (no oauth2-proxy — chirpstack
 # has its own OIDC integration against Keycloak). Postgres via CNPG, Redis via
 # DragonflyDB. MQTT integration talks to the mosquitto broker in this namespace.
-{config, ...}: {
+#
+# Auth: ChirpStack's first migration creates a default admin `admin`/`admin`. The
+# bootstrap Job (chirpstack-bootstrap.sql, psql against the CNPG database) renames
+# that row to tristan's email (OIDC logins match by external_id, then verified email,
+# so tristan's SSO login IS the admin) and sets the generated password
+# (Bitwarden chirpstack/admin-password). Break-glass: tristan's email + that password.
+{config, ...}: let
+  inherit (config.canivete.meta.people.my.profiles.personal) email;
+in {
   nixidy = {
     charts,
     lib,
@@ -38,12 +46,35 @@
         directAccessGrantsEnabled = false;
         redirectUris = ["https://${hostname}/api/oauth2/callback"];
         webOrigins = ["https://${hostname}"];
-        defaultClientScopes = ["openid" "profile" "email"];
+        defaultClientScopes = ["openid" "profile" "email" "groups"];
       };
     };
     applications.chirpstack = {
       namespace = "home";
       postgres.enable = true;
+      generatedSecrets.chirpstack-admin = {
+        key = "password";
+        bitwarden = "chirpstack/admin-password";
+      };
+      # Idempotent post-sync bootstrap. No app-bootstrap mode: there is no Postgres client
+      # crate, so psql from the pinned CNPG postgres image (no entrypoint, so args is the
+      # command). The SQL travels as an env var and is piped to psql (read-only rootfs).
+      bootstrap = {
+        image = with pinned.images.postgresql; "${repository}:${tag}@${digest}";
+        args = ["bash" "-c" ''export PGPASSWORD="$(cat /secrets/db/password)"; printf '%s' "$BOOTSTRAP_SQL" | psql -q -v ON_ERROR_STOP=1 -v email="$ADMIN_EMAIL" -v password="$(cat /secrets/admin/password)" -f -''];
+        env = {
+          PGHOST = "chirpstack-rw.home.svc.cluster.local";
+          PGDATABASE = "chirpstack";
+          PGUSER = "chirpstack";
+          PGSSLMODE = "disable";
+          ADMIN_EMAIL = email;
+          BOOTSTRAP_SQL = builtins.readFile ./chirpstack-bootstrap.sql;
+        };
+        secrets = {
+          db = "chirpstack-app";
+          admin = "chirpstack-admin";
+        };
+      };
       helm.releases.chirpstack = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
@@ -85,8 +116,12 @@
             [api]
               bind="0.0.0.0:8080"
 
+            # "enabled" picks the SSO button shown beside the password form (internal |
+            # openid_connect | oauth2); the password form stays for break-glass.
+            [user_authentication]
+              enabled="openid_connect"
+
             [user_authentication.openid_connect]
-              enabled=true
               registration_enabled=true
               registration_callback_url="https://${hostname}/api/oauth2/callback"
               provider_url="https://keycloak.${domain}/realms/default"

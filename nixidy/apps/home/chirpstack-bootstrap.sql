@@ -1,0 +1,87 @@
+-- ChirpStack first-run bootstrap (run by psql; idempotent). Vars: :email, :password.
+-- ChirpStack's first migration inserts a default admin ("admin" / "admin"). This
+-- (1) renames it to the owner's email so a verified OIDC login with that email links to
+--     it (users are matched by external_id, then by email) and so is an admin,
+-- (2) replaces the default password with the generated one, as PBKDF2-HMAC-SHA512
+--     (10000 iterations, 32 bytes: ChirpStack's PHC format) computed with built-in
+--     sha512() only, no extensions. Rows already holding that password are untouched.
+-- Keep dollar-paren out of this file: Kubernetes expands it in env values.
+\set ON_ERROR_STOP on
+select set_config('bootstrap.email', :'email', false), set_config('bootstrap.password', :'password', false) \gset
+
+create function pg_temp.cs_pbkdf2(pw bytea, salt bytea) returns bytea language plpgsql as $f$
+declare
+  k bytea := pw;
+  ip bytea;
+  op bytea;
+  u bytea;
+  t bytea;
+  i int;
+  j int;
+begin
+  if length(k) > 128 then k := sha512(k); end if;
+  k := k || decode(repeat('00', 128 - length(k)), 'hex');
+  ip := k;
+  op := k;
+  for j in 0..127 loop
+    ip := set_byte(ip, j, get_byte(k, j) # 54);
+    op := set_byte(op, j, get_byte(k, j) # 92);
+  end loop;
+  u := sha512(op || sha512(ip || salt || '\x00000001'::bytea));
+  t := substring(u from 1 for 32);
+  for i in 2..10000 loop
+    u := sha512(op || sha512(ip || u));
+    for j in 0..31 loop
+      t := set_byte(t, j, get_byte(t, j) # get_byte(u, j));
+    end loop;
+  end loop;
+  return t;
+end
+$f$;
+
+do $bootstrap$
+declare
+  want text := current_setting('bootstrap.email');
+  pw bytea := convert_to(current_setting('bootstrap.password'), 'UTF8');
+  r record;
+  salt bytea;
+  salt_b64 text;
+  ok boolean;
+begin
+  if to_regclass('public."user"') is null then
+    raise exception 'chirpstack schema not migrated yet';
+  end if;
+
+  update "user" set email = want, email_verified = true, updated_at = now()
+    where email = 'admin' and not exists (select 1 from "user" where email = want);
+
+  if not exists (select 1 from "user" where email = want) then
+    insert into "user" (id, created_at, updated_at, is_admin, is_active, email, email_verified, password_hash, note)
+      values (gen_random_uuid(), now(), now(), true, true, want, true, '', '');
+  end if;
+
+  update "user" set is_admin = true, is_active = true, email_verified = true, updated_at = now()
+    where email = want and not (is_admin and is_active and email_verified);
+
+  -- A default admin that survived (the owner's row already existed) is switched off.
+  update "user" set is_active = false, updated_at = now() where email = 'admin' and is_active;
+
+  for r in select id, email, password_hash from "user" where email in (want, 'admin') loop
+    ok := false;
+    if r.password_hash like '$pbkdf2-sha512$i=10000,l=32$%' then
+      salt_b64 := split_part(r.password_hash, '$', 4);
+      salt := decode(salt_b64 || repeat('=', (4 - length(salt_b64) % 4) % 4), 'base64');
+      ok := rtrim(encode(pg_temp.cs_pbkdf2(pw, salt), 'base64'), '=') = split_part(r.password_hash, '$', 5);
+    end if;
+    if not ok then
+      salt := decode(replace(gen_random_uuid()::text, '-', ''), 'hex');
+      update "user"
+        set password_hash = '$pbkdf2-sha512$i=10000,l=32$' || rtrim(encode(salt, 'base64'), '=') || '$'
+                            || rtrim(encode(pg_temp.cs_pbkdf2(pw, salt), 'base64'), '='),
+            updated_at = now()
+        where id = r.id;
+      raise notice 'chirpstack: password set for %', case when r.email = 'admin' then 'default admin' else 'owner' end;
+    end if;
+  end loop;
+end
+$bootstrap$;
