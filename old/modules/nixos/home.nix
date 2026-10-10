@@ -1,3 +1,4 @@
+# Partially ported (modules/client.nix: HM 10m timeout, backupFileExtension, fontconfig). Unported: doom-emacs jq-mode, nur overlay, XDG session vars.
 {
   dotfiles.nixos = {
     config,

@@ -1,3 +1,4 @@
+# Partially ported (modules/plasma.nix). Unported: Plasma Mobile branch (gargoyle).
 {
   dotfiles.nixos = {
     config,

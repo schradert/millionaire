@@ -1,3 +1,4 @@
+# Partially ported (modules/fhs.nix: nix-ld, envfs). Unported: nix-alien (needs flake input).
 {
   dotfiles.nixos = {
     config,

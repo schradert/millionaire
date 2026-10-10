@@ -1,3 +1,4 @@
+# Partially ported (modules/nix.nix covers nix-index-database, nix-inspect, nom, nix-fast-build). Unported: doom-emacs nix lang, nushell command-not-found patch, nixVersions.latest.
 {inputs, ...}: {
   dotfiles.nixos = {
     lib,
