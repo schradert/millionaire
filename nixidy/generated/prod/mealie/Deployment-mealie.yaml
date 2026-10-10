@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 6c54ee30d0c2827c092f5f31af5e3a280ee71c2e7d72b956645b72a489ad40ea
+        checksum/configMaps: 94cc1e2ed5d6065f5c88817401a3e592d67a926a127b7f0a3b6bb506c911dd0a
       labels:
         app.kubernetes.io/controller: mealie
         app.kubernetes.io/instance: mealie

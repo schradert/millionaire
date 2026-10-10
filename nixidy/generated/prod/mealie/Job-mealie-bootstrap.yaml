@@ -1,0 +1,51 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: mealie-bootstrap
+  namespace: health
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - mealie
+          env:
+            - name: ADMIN_EMAIL
+              value: t0rdos@pm.me
+            - name: ADMIN_NAME
+              value: Tristan Schrader
+            - name: ADMIN_PASSWORD_FILE
+              value: /secrets/admin/password
+            - name: ADMIN_USER
+              value: tristan
+            - name: MEALIE_URL
+              value: http://mealie.health.svc.cluster.local:9000
+          image: harbor.trdos.me/library/app-bootstrap:0.9.0@sha256:2b31fc750d428004b3416115892f5c283f486447c873de7b9d2d561f4a1806be
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /secrets/admin
+              name: admin
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - name: admin
+          secret:
+            secretName: mealie-admin
