@@ -27,7 +27,37 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - image: gotson/komga:1.24.1@sha256:a84a0424e2f8235ba9373ed10b9b903e0feecdbb500a1b4aebac01f08e9e57db
+        - env:
+            - name: KOMGA_OAUTH2_ACCOUNT_CREATION
+              value: "false"
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI
+              value: https://keycloak.trdos.me/realms/default/protocol/openid-connect/auth
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWK_SET_URI
+              value: https://keycloak.trdos.me/realms/default/protocol/openid-connect/certs
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN_URI
+              value: https://keycloak.trdos.me/realms/default/protocol/openid-connect/token
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USER_INFO_URI
+              value: https://keycloak.trdos.me/realms/default/protocol/openid-connect/userinfo
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USER_NAME_ATTRIBUTE
+              value: sub
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_AUTHORIZATION_GRANT_TYPE
+              value: authorization_code
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_ID
+              value: komga
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_NAME
+              value: Keycloak
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: client_secret
+                  name: komga-oidc
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_PROVIDER
+              value: keycloak
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_REDIRECT_URI
+              value: '{baseUrl}/{action}/oauth2/code/{registrationId}'
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_SCOPE
+              value: openid,email,profile
+          image: gotson/komga:1.24.1@sha256:a84a0424e2f8235ba9373ed10b9b903e0feecdbb500a1b4aebac01f08e9e57db
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0

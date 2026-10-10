@@ -1,0 +1,28 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: komga
+  namespace: identity
+spec:
+  clientSecretRef:
+    create: true
+    name: komga
+  definition:
+    clientId: komga
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+      - groups
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Komga
+    protocol: openid-connect
+    publicClient: false
+    redirectUris:
+      - https://komga.trdos.me/login/oauth2/code/keycloak
+    standardFlowEnabled: true
+    webOrigins:
+      - https://komga.trdos.me
+  realmRef:
+    name: default
