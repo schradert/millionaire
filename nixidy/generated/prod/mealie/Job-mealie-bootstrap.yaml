@@ -26,7 +26,7 @@ spec:
               value: tristan
             - name: MEALIE_URL
               value: http://mealie.health.svc.cluster.local:9000
-          image: harbor.trdos.me/library/app-bootstrap:0.9.0@sha256:2b31fc750d428004b3416115892f5c283f486447c873de7b9d2d561f4a1806be
+          image: harbor.trdos.me/library/app-bootstrap:0.10.0@sha256:86e6b7640c92e52254803a96defa575ca91774c296f61df26104d04dfb47116b
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
