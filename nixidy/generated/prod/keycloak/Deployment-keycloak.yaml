@@ -19,7 +19,9 @@ spec:
       app.kubernetes.io/instance: keycloak
       app.kubernetes.io/name: keycloak
   strategy:
-    type: Recreate
+    rollingUpdate:
+      maxSurge: 1
+    type: RollingUpdate
   template:
     metadata:
       labels:
@@ -31,6 +33,7 @@ spec:
       containers:
         - args:
             - start
+            - --optimized
           env:
             - name: KC_BOOTSTRAP_ADMIN_USERNAME
               value: admin
@@ -55,7 +58,7 @@ spec:
           envFrom:
             - secretRef:
                 name: keycloak
-          image: quay.io/keycloak/keycloak:26.1.5@sha256:be6a86215213145bfb4fb3e2b3ab982a806d00262655abdcf3ffa6a38d241c7c
+          image: harbor.trdos.me/library/keycloak:26.1.5-optimized@sha256:cffa3b4907818010375bb96785e49e09d50f29be50c67acc7b90431beba3fd98
           livenessProbe:
             httpGet:
               path: /health/live
@@ -71,7 +74,7 @@ spec:
               path: /health/ready
               port: management
           startupProbe:
-            failureThreshold: 180
+            failureThreshold: 60
             httpGet:
               path: /health/started
               port: management

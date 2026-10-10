@@ -20,9 +20,18 @@ in {
         values = {
           controllers.keycloak = {
             annotations."reloader.stakater.com/auto" = "true";
+            # New pod must be Ready before the old one goes: SSO never drops on a
+            # rollout, and a bad image never takes it down.
+            strategy = "RollingUpdate";
+            rollingUpdate = {
+              surge = 1;
+              unavailable = 0;
+            };
             containers.keycloak = {
-              image = pinned.images.keycloak;
-              args = ["start"];
+              # Build options (KC_DB, health, metrics, features) are baked in by
+              # modules/images.nix; keep them in sync with the env below.
+              image = pinned.images.keycloak-optimized;
+              args = ["start" "--optimized"];
               env = {
                 KC_DB = "postgres";
                 KC_DB_URL = "jdbc:postgresql://keycloak-rw:5432/keycloak";
@@ -63,11 +72,7 @@ in {
                 custom = true;
                 spec.httpGet.path = "/health/started";
                 spec.httpGet.port = "management";
-                # The stock image re-augments at boot (build options in env),
-                # chmod-ing every lib jar: an overlay copy-up of ~285MB. On a node
-                # with saturated disk I/O that took >10min and the probe killed it
-                # on every attempt (2026-10-10, octopus). 30min budget.
-                spec.failureThreshold = 180;
+                spec.failureThreshold = 60;
                 spec.periodSeconds = 10;
               };
             };
