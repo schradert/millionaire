@@ -294,11 +294,16 @@
           };
         };
 
-        # x86_64-linux box that hosts all the USB-connected microcontrollers.
-        # Each profile flashes one physical board (see ./static/falcon.nix).
-        # `deploy '.#falcon'` flashes everything reachable; `deploy '.#falcon.<board>'`
-        # flashes one. Disconnected boards print a "skipping" line and exit 0.
-        falcon = import ./static/falcon.nix;
+        # x86_64-linux desktop that also hosts all the USB-connected microcontrollers.
+        # `system` is its NixOS config (./static/falcon-system.nix); every other
+        # profile flashes one physical board (see ./static/falcon.nix).
+        # `deploy '.#falcon.system'` switches NixOS; `deploy '.#falcon.<board>'`
+        # flashes one board; bare `.#falcon` does both. Disconnected boards print
+        # a "skipping" line and exit 0.
+        falcon = inputs.nixpkgs.lib.mkMerge [
+          (import ./static/falcon.nix)
+          {profiles.system.canivete.configuration.imports = [./static/facter ./static/falcon-system.nix];}
+        ];
         # Cloud-burst worker image config — never deployed via pulumi or
         # deploy-rs; defined as a node only so it gets the canivete.kubernetes
         # module machinery. CAPI boots Hetzner VMs from its uploaded snapshot

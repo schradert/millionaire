@@ -1,5 +1,5 @@
 {
-  canivete.pkgs.allowUnfree = ["beeper" "slack" "spotify"];
+  canivete.pkgs.allowUnfree = ["beeper" "discord" "slack" "spotify"];
   system = {
     flake,
     lib,

@@ -110,8 +110,6 @@ in {
     # chinchilla.hostname = mkForce "192.168.50.85";
     # dingo.hostname = mkForce "192.168.50.105";
     axolotl.hostname = mkForce "192.168.50.250";
-    falcon.hostname = mkForce "192.168.50.215";
-    falcon.remoteBuild = true;
     gargoyle.hostname = mkForce "192.168.50.192";
     gargoyle.canivete.system = "aarch64-linux";
   };
@@ -226,52 +224,9 @@ in {
         networking.networkmanager.enable = true;
       };
     };
+    # Unported remainder of falcon (rest lives in static/falcon-system.nix)
     falcon = {
-      platform.prem.install_host = "192.168.50.215";
-      opentofu.module.nixos_falcon_system_install.build_on_remote = true;
       system = {
-        services.tailscale.enable = true;
-
-        boot.binfmt.emulatedSystems = ["aarch64-linux"];
-        boot.initrd.availableKernelModules = ["sr_mod"];
-        boot.plymouth.enable = true;
-        # Desktop keeps getting stuck in ULP mode..., breaking networking connection
-        boot.extraModprobeConfig = ''
-          options e1000e EEE=0
-        '';
-        # Firmware bug in ACPI DSDT table for Super IO + UART
-        # Prevents kernel from even touching 8250 UART ports
-        # TODO did this actually work? (it did at first but then maybe not...)
-        boot.kernelParams = ["8250.nr_uarts=0"];
-        disko = diskoZfs "/dev/disk/by-id/nvme-PC801_NVMe_SK_hynix_1TB__SIABN06591CB93G1B" [] {
-          devices.disk.data = {
-            type = "disk";
-            device = "/dev/disk/by-id/ata-TOSHIBA_MG08ADA400NY_X1Q0A2MPFYXG";
-            content.type = "gpt";
-            content.partitions.zfs = {
-              size = "100%";
-              content.type = "zfs";
-              content.pool = "data";
-            };
-          };
-          devices.zpool.data = {
-            type = "zpool";
-            rootFsOptions = {
-              mountpoint = "none";
-              compression = "lz4";
-              acltype = "posixacl";
-              xattr = "sa";
-              "com.sun:auto-snapshot" = "true";
-            };
-            options.ashift = "12";
-            datasets.root.type = "zfs_fs";
-            datasets.root.mountpoint = "/data";
-          };
-        };
-        dotfiles.profiles.client.enable = true;
-        dotfiles.profiles.client.gaming.enable = true;
-        dotfiles.profiles.client.workstation.enable = true;
-        dotfiles.profiles.nvidia.enable = true;
         # TODO why doesn't Continue work with vscodium? it just never loads...
         dotfiles.nixpkgs.config.allowUnfreePackages = ["vscode"];
         home-manager.sharedModules = [
@@ -296,7 +251,6 @@ in {
             ];
           })
         ];
-        networking.hostId = "fa7c0969";
         # services.ollama.enable = true;
         # services.ollama.loadModels = [
         #   "llama3.1:8b" # chat
