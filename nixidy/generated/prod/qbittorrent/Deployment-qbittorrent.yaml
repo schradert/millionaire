@@ -86,8 +86,60 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
+      initContainers:
+        - command:
+            - python3
+            - -c
+            - |
+              import base64, hashlib, hmac, os, re, shutil
+              conf = "/config/qBittorrent/qBittorrent.conf"
+              if not os.path.exists(conf):
+                  os.makedirs(os.path.dirname(conf), exist_ok=True)
+                  shutil.copy("/defaults/qBittorrent.conf", conf)
+              pw = open("/secrets/admin/password", "rb").read().strip()
+              text = open(conf).read()
+              key = "WebUI\\Password_PBKDF2"
+              m = re.search(r"^" + re.escape(key) + r'="?@ByteArray\(([^:]+):([^)]+)\)"?\s*$', text, re.M)
+              def verifies():
+                  if not m:
+                      return False
+                  salt = base64.b64decode(m.group(1))
+                  want = base64.b64decode(m.group(2))
+                  got = hashlib.pbkdf2_hmac("sha512", pw, salt, 100000, len(want))
+                  return hmac.compare_digest(got, want)
+              want = {"WebUI\\Username": "admin"}
+              if not verifies():
+                  salt = os.urandom(16)
+                  dk = hashlib.pbkdf2_hmac("sha512", pw, salt, 100000, 64)
+                  b64 = lambda b: base64.b64encode(b).decode()
+                  want[key] = '"@ByteArray(%s:%s)"' % (b64(salt), b64(dk))
+              lines = text.split("\n")
+              if "[Preferences]" not in lines:
+                  lines += ["", "[Preferences]"]
+              i = lines.index("[Preferences]") + 1
+              for k, v in want.items():
+                  new = k + "=" + v
+                  for j, l in enumerate(lines):
+                      if l.startswith(k + "="):
+                          lines[j] = new
+                          break
+                  else:
+                      lines.insert(i, new)
+              open(conf, "w").write("\n".join(lines))
+          image: ghcr.io/home-operations/qbittorrent:5.1.4@sha256:bb82ad6668f8eda1d0fcce6c1341498bfa879155bb1295cd9d314a2c35c07a01
+          name: admin
+          volumeMounts:
+            - mountPath: /secrets/admin
+              name: admin-secret
+            - mountPath: /config
+              name: config
+            - mountPath: /tmp
+              name: tmp
       serviceAccountName: qbittorrent
       volumes:
+        - name: admin-secret
+          secret:
+            secretName: qbittorrent-admin
         - name: config
           persistentVolumeClaim:
             claimName: qbittorrent
