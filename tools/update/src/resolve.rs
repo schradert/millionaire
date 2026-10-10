@@ -2,9 +2,10 @@
 
 use crate::github::GitHub;
 use crate::nix;
-use crate::pin::{Entry, Kind, Pin, Source};
+use crate::oci::Registry;
+use crate::pin::{Entry, Pin, Source, Track};
 use crate::version::{Constraint, Version};
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use regex::Regex;
 use std::path::Path;
 
@@ -52,9 +53,58 @@ pub fn constraint(pin: &Pin, major: bool) -> Result<Option<Constraint>> {
     }
 }
 
-/// The version this pin would move to, if any.
-pub fn latest(ctx: &Ctx, e: &Entry, major: bool) -> Result<Option<String>> {
+/// Where a pin would move: a new version (and, for images, its digest).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Update {
+    pub version: String,
+    pub digest: Option<String>,
+}
+
+impl std::fmt::Display for Update {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match &self.digest {
+            Some(d) => write!(f, "{}@{}", self.version, &d[..d.len().min(19)]),
+            None => f.write_str(&self.version),
+        }
+    }
+}
+
+/// The update available for a pin, if any.
+pub fn latest(ctx: &Ctx, e: &Entry, major: bool) -> Result<Option<Update>> {
     let pin = &e.pin;
+    if let Source::OciTag {
+        repository,
+        tag_pattern,
+        track,
+    } = &pin.source
+    {
+        let mut reg = Registry::new(repository);
+        let version = match track.unwrap_or(Track::Semver) {
+            Track::Digest => pin.version.clone(),
+            Track::Semver => {
+                let c = constraint(pin, major)?;
+                let re = tag_pattern.as_deref().map(Regex::new).transpose()?;
+                match pick(&reg.tags()?, "", re.as_ref(), &pin.version, c.as_ref()) {
+                    Some(v) => v,
+                    None => return Ok(None),
+                }
+            }
+        };
+        let digest = reg.digest(&version)?;
+        return Ok(
+            (version != pin.version || pin.digest.as_deref() != Some(&digest)).then_some(Update {
+                version,
+                digest: Some(digest),
+            }),
+        );
+    }
+    Ok(latest_version(ctx, pin, major)?.map(|version| Update {
+        version,
+        digest: None,
+    }))
+}
+
+fn latest_version(ctx: &Ctx, pin: &Pin, major: bool) -> Result<Option<String>> {
     let c = constraint(pin, major)?;
     let pat = |p: &Option<String>| p.as_deref().map(Regex::new).transpose();
     Ok(match &pin.source {
@@ -99,9 +149,14 @@ pub fn latest(ctx: &Ctx, e: &Entry, major: bool) -> Result<Option<String>> {
             c.as_ref(),
         ),
         Source::UrlTemplate { .. } => None,
-        Source::HelmRepo { .. } | Source::OciTag { .. } => {
-            bail!("{} sources are not supported yet", e.kind)
-        }
+        Source::HelmRepo { repo, chart } => pick(
+            &crate::helm::versions(repo, chart)?,
+            "",
+            None,
+            &pin.version,
+            c.as_ref(),
+        ),
+        Source::OciTag { .. } => unreachable!("handled in latest"),
     })
 }
 
@@ -138,8 +193,12 @@ fn attr(ctx: &Ctx, e: &Entry) -> String {
 
 /// Set `version` and recompute `hash` and every derived hash, saving as it
 /// goes (derived hashes are found by building with the fake hash).
-pub fn rehash(ctx: &Ctx, e: &mut Entry, version: &str) -> Result<()> {
-    e.pin.version = version.to_string();
+pub fn rehash(ctx: &Ctx, e: &mut Entry, update: &Update) -> Result<()> {
+    e.pin.version = update.version.clone();
+    if let Some(d) = &update.digest {
+        e.pin.digest = Some(d.clone());
+        return e.save();
+    }
     let url = fetch_url(&e.pin);
     e.pin.hash = Some(match (&e.pin.source, url) {
         (Source::UrlTemplate { .. }, Some(u)) => nix::prefetch_file(&u)?,
@@ -161,10 +220,6 @@ pub fn rehash(ctx: &Ctx, e: &mut Entry, version: &str) -> Result<()> {
         e.save()?;
     }
     Ok(())
-}
-
-pub fn supported(e: &Entry) -> bool {
-    e.kind == Kind::Src
 }
 
 pub fn restore(path: &Path, original: &str) -> Result<()> {
