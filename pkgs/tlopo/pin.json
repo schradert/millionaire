@@ -1,0 +1,8 @@
+{
+  "version": "1.4.1",
+  "hash": "sha256-8xx2HJi5sbJBpnRLMLVroNQ+ykNprA45xWPw+x6QRVA=",
+  "source": {
+    "type": "url-template",
+    "url": "https://download.tlopo.com/TLOPO_win64_setup_{version}.exe"
+  }
+}
