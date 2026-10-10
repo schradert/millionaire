@@ -39,6 +39,9 @@ spec:
                 name: qbittorrent-vpn
           image: qmcgaw/gluetun:v3.41.1@sha256:1a5bf4b4820a879cdf8d93d7ef0d2d963af56670c9ebff8981860b6804ebc8ab
           name: gluetun
+          resources:
+            limits:
+              squat.ai/tun: 1
           securityContext:
             capabilities:
               add:

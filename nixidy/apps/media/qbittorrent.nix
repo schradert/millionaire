@@ -37,6 +37,8 @@
               };
               envFrom = [{secretRef.name = "qbittorrent-vpn";}];
               securityContext.capabilities.add = ["NET_ADMIN"];
+              # /dev/net/tun from generic-device-plugin.
+              resources.limits."squat.ai/tun" = 1;
             };
           };
           service.qbittorrent = {
