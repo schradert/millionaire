@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: seerr-bootstrap
+  namespace: media
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - seerr
+          env:
+            - name: ADMIN_EMAIL
+              value: t0rdos@pm.me
+            - name: JELLYFIN_ADMIN_PASSWORD_FILE
+              value: /secrets/jellyfin/password
+            - name: JELLYFIN_ADMIN_USER
+              value: admin
+            - name: JELLYFIN_HOST
+              value: jellyfin.media.svc.cluster.local
+            - name: JELLYFIN_PORT
+              value: "8096"
+            - name: SEERR_URL
+              value: http://seerr.media.svc.cluster.local:5055
+          image: harbor.trdos.me/library/app-bootstrap:0.7.0@sha256:1293a36d3ba089aa011dfe1c7130559407f5f024e32961842df7f6d66cd28bf6
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /secrets/jellyfin
+              name: jellyfin
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - name: jellyfin
+          secret:
+            secretName: jellyfin-admin
