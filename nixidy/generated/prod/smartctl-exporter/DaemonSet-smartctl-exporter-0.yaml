@@ -27,7 +27,7 @@ spec:
             - --smartctl.interval=120s
             - --web.listen-address=0.0.0.0:9633
             - --web.telemetry-path=/metrics
-          image: quay.io/prometheuscommunity/smartctl-exporter:master@sha256:775a1bebb413ce4d60aa04c589475d753e4c0da43c5cce02839eb0883deee14a
+          image: quay.io/prometheuscommunity/smartctl-exporter:v0.14.0@sha256:cfe22c36d7d2fac48ebf619707305acb65eb0fb670656eb80f356e606d782bc1
           imagePullPolicy: IfNotPresent
           name: main
           ports:

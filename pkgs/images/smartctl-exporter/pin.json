@@ -1,6 +1,6 @@
 {
-  "version": "master",
-  "digest": "sha256:775a1bebb413ce4d60aa04c589475d753e4c0da43c5cce02839eb0883deee14a",
+  "version": "v0.14.0",
+  "digest": "sha256:cfe22c36d7d2fac48ebf619707305acb65eb0fb670656eb80f356e606d782bc1",
   "source": {
     "type": "oci-tag",
     "repository": "quay.io/prometheuscommunity/smartctl-exporter"
