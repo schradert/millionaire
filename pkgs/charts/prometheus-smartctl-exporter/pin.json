@@ -1,0 +1,9 @@
+{
+  "version": "0.17.1",
+  "hash": "sha256-TD+xgMpsOPegNz0MpXZparXK4T+0/VAF1unDAwp+jsA=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "oci://ghcr.io/prometheus-community/charts",
+    "chart": "prometheus-smartctl-exporter"
+  }
+}
