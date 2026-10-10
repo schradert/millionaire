@@ -58,6 +58,13 @@
           };
           prometheusOperator.admissionWebhooks.deployment.enabled = true;
 
+          # Capacity-planning rules that always trip on a small, uneven cluster
+          # (4-core nodes beside a 64-core one) and are not actionable.
+          defaultRules.disabled = {
+            KubeCPUOvercommit = true;
+            KubeMemoryOvercommit = true;
+          };
+
           # Keeps the chart's etcd rules and dashboard. Scraping is the
           # ScrapeConfig below: the chart's Service + manual Endpoints is the
           # pattern ArgoCD drops (Endpoints are in its default resource.exclusions).
