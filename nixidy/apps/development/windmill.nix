@@ -4,7 +4,7 @@
     pinned,
     ...
   }: let
-    inherit (config.canivete.meta) domain;
+    inherit (config.canivete.meta) domain people;
     hostname = "windmill.${domain}";
     namespace = "development";
   in {
@@ -37,8 +37,11 @@
     applications.windmill = {
       inherit namespace;
       postgres.enable = true;
-      # Admin password for the initial bootstrap job
-      generatedSecrets.windmill-admin.key = "password";
+      # Break-glass admin (admin@windmill.dev) for the bootstrap job
+      generatedSecrets.windmill-admin = {
+        key = "password";
+        bitwarden = "windmill/admin-password";
+      };
 
       helm.releases.windmill = {
         chart = pinned.charts.windmill;
@@ -196,97 +199,160 @@
           ];
         };
 
-        # Post-deploy Job: configure Keycloak OIDC SSO via Windmill API
-        jobs.windmill-oidc-config.spec = {
-          backoffLimit = 5;
-          template.spec = {
-            restartPolicy = "OnFailure";
-            initContainers = lib.toList {
-              name = "wait-for-windmill";
-              image = with pinned.images.curl; "${repository}:${tag}@${digest}";
-              command = ["sh" "-c"];
-              args = [
-                ''
-                  until curl -sf http://windmill-app.${namespace}.svc.cluster.local:8000/api/version; do
-                    echo "Waiting for Windmill..."
-                    sleep 10
-                  done
-                ''
-              ];
-            };
-            containers = lib.toList {
-              name = "configure-oidc";
-              image = with pinned.images.curl; "${repository}:${tag}@${digest}";
-              command = ["sh" "-c"];
-              args = [
-                ''
-                  ADMIN_PASS=$(cat /secrets/admin/password)
-                  CLIENT_ID=$(cat /secrets/oidc/CLIENT_ID)
-                  CLIENT_SECRET=$(cat /secrets/oidc/CLIENT_SECRET)
+        # PostSync bootstrap (README "Conventions"): idempotent on every sync.
+        # Windmill CE ships no declarative user/SSO config, so this drives the
+        # REST API with curl (no Rust mode needed: every step is one call and
+        # the checks are status codes or bare booleans, so no JSON parsing).
+        #  1. Admin: log in with the generated password; only if that fails use
+        #     the factory default (admin@windmill.dev / changeme) to rotate it.
+        #  2. tristan: superadmin keyed by email (Windmill identifies SSO users
+        #     by email). Created when missing, with an unguessable password and
+        #     login type "keycloak" so password login is off for that row and
+        #     the Keycloak login resolves to this account.
+        #  3. Keycloak OAuth instance setting.
+        jobs.windmill-bootstrap = {
+          metadata.annotations = {
+            "argocd.argoproj.io/hook" = "PostSync";
+            "argocd.argoproj.io/hook-delete-policy" = "BeforeHookCreation";
+          };
+          spec = {
+            backoffLimit = 6;
+            activeDeadlineSeconds = 1200;
+            template.spec = let
+              container = {
+                image = with pinned.images.curl; "${repository}:${tag}@${digest}";
+                securityContext = {
+                  allowPrivilegeEscalation = false;
+                  readOnlyRootFilesystem = true;
+                  capabilities.drop = ["ALL"];
+                };
+              };
+            in {
+              restartPolicy = "OnFailure";
+              securityContext = {
+                runAsNonRoot = true;
+                runAsUser = 65534;
+                runAsGroup = 65534;
+                seccompProfile.type = "RuntimeDefault";
+              };
+              automountServiceAccountToken = false;
+              initContainers = lib.toList (container
+                // {
+                  name = "wait-for-windmill";
+                  command = ["sh" "-c"];
+                  args = [
+                    ''
+                      until curl -sf http://windmill-app.${namespace}.svc.cluster.local:8000/api/version; do
+                        echo "Waiting for Windmill..."
+                        sleep 10
+                      done
+                    ''
+                  ];
+                });
+              containers = lib.toList (container
+                // {
+                  name = "bootstrap";
+                  command = ["sh" "-c"];
+                  args = [
+                    ''
+                      set -eu
+                      API=http://windmill-app.${namespace}.svc.cluster.local:8000/api
+                      ADMIN_EMAIL=admin@windmill.dev
+                      ADMIN_PASS=$(cat /secrets/admin/password)
+                      CLIENT_ID=$(cat /secrets/oidc/CLIENT_ID)
+                      CLIENT_SECRET=$(cat /secrets/oidc/CLIENT_SECRET)
+                      USER_EMAIL=${people.my.profiles.personal.email}
 
-                  # Initial login with default credentials to get bootstrap token
-                  TOKEN=$(curl -sf -X POST \
-                    -H "Content-Type: application/json" \
-                    -d "{\"email\":\"admin@windmill.dev\",\"password\":\"changeme\"}" \
-                    "http://windmill-app.${namespace}.svc.cluster.local:8000/api/auth/login")
+                      # call METHOD PATH [JSON] [TOKEN] -> sets CODE and BODY
+                      call() {
+                        auth="X-Auth: none"
+                        [ -z "''${4:-}" ] || auth="Authorization: Bearer $4"
+                        if [ -n "''${3:-}" ]; then
+                          out=$(curl -s -m 30 -X "$1" -H "Content-Type: application/json" -H "$auth" \
+                            -d "$3" -w '\n%{http_code}' "$API$2") || out=$(printf '\n000')
+                        else
+                          out=$(curl -s -m 30 -X "$1" -H "$auth" \
+                            -w '\n%{http_code}' "$API$2") || out=$(printf '\n000')
+                        fi
+                        CODE=$(printf '%s' "$out" | tail -n 1)
+                        BODY=$(printf '%s' "$out" | sed '$d')
+                      }
+                      fail() { echo "FAILED: $1 (HTTP $CODE)" >&2; exit 1; }
 
-                  # Update admin password
-                  curl -sf -X POST \
-                    -H "Content-Type: application/json" \
-                    -H "Authorization: Bearer $TOKEN" \
-                    -d "{\"password\":\"$ADMIN_PASS\"}" \
-                    "http://windmill-app.${namespace}.svc.cluster.local:8000/api/users/setpassword" || true
+                      # --- 1. admin: generated password first, default only to rotate it
+                      login() { call POST /auth/login "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$1\"}"; }
+                      login "$ADMIN_PASS"
+                      if [ "$CODE" != 200 ]; then
+                        echo "generated admin password rejected; trying the factory default to rotate it"
+                        login changeme
+                        [ "$CODE" = 200 ] || fail "admin login with both generated and default password"
+                        call POST /users/setpassword "{\"password\":\"$ADMIN_PASS\"}" "$BODY"
+                        [ "$CODE" = 200 ] || fail "set admin password"
+                        login "$ADMIN_PASS"
+                        [ "$CODE" = 200 ] || fail "admin login after password rotation"
+                        echo "admin password rotated"
+                      fi
+                      TOKEN=$BODY
 
-                  # Re-login with new password
-                  TOKEN=$(curl -sf -X POST \
-                    -H "Content-Type: application/json" \
-                    -d "{\"email\":\"admin@windmill.dev\",\"password\":\"$ADMIN_PASS\"}" \
-                    "http://windmill-app.${namespace}.svc.cluster.local:8000/api/auth/login")
+                      # --- 2. tristan: superadmin, SSO-only, matched by email
+                      call GET "/users/exists/$USER_EMAIL" "" "$TOKEN"
+                      [ "$CODE" = 200 ] || fail "check for $USER_EMAIL"
+                      if [ "$BODY" != true ]; then
+                        RANDOM_PASS=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 48)
+                        call POST /users/create \
+                          "{\"email\":\"$USER_EMAIL\",\"password\":\"$RANDOM_PASS\",\"super_admin\":true,\"name\":\"tristan\",\"skip_email\":true}" "$TOKEN"
+                        [ "$CODE" = 201 ] || fail "create $USER_EMAIL"
+                        echo "created $USER_EMAIL"
+                      fi
+                      call POST "/users/update/$USER_EMAIL" '{"is_super_admin":true}' "$TOKEN"
+                      [ "$CODE" = 200 ] || fail "grant superadmin to $USER_EMAIL"
+                      call POST "/users/set_login_type/$USER_EMAIL" '{"login_type":"keycloak"}' "$TOKEN"
+                      [ "$CODE" = 200 ] || fail "set login type for $USER_EMAIL"
 
-                  # Configure Keycloak OIDC SSO
-                  curl -sf -X POST \
-                    -H "Content-Type: application/json" \
-                    -H "Authorization: Bearer $TOKEN" \
-                    -d "{
-                      \"value\": {
-                        \"keycloak\": {
-                          \"id\": \"$CLIENT_ID\",
-                          \"secret\": \"$CLIENT_SECRET\",
-                          \"login_config\": {
-                            \"auth_url\": \"https://keycloak.${domain}/realms/default/protocol/openid-connect/auth\",
-                            \"token_url\": \"https://keycloak.${domain}/realms/default/protocol/openid-connect/token\",
-                            \"userinfo_url\": \"https://keycloak.${domain}/realms/default/protocol/openid-connect/userinfo\",
-                            \"scopes\": [\"openid\", \"profile\", \"email\", \"offline_access\"]
+                      # --- 3. Keycloak OAuth instance setting (idempotent overwrite)
+                      KC=https://keycloak.${domain}/realms/default/protocol/openid-connect
+                      call POST /settings/global/oauths "{
+                        \"value\": {
+                          \"keycloak\": {
+                            \"id\": \"$CLIENT_ID\",
+                            \"secret\": \"$CLIENT_SECRET\",
+                            \"login_config\": {
+                              \"auth_url\": \"$KC/auth\",
+                              \"token_url\": \"$KC/token\",
+                              \"userinfo_url\": \"$KC/userinfo\",
+                              \"scopes\": [\"openid\", \"profile\", \"email\"]
+                            }
                           }
                         }
-                      }
-                    }" \
-                    "http://windmill-app.${namespace}.svc.cluster.local:8000/api/settings/global/oauths"
-                ''
-              ];
-              volumeMounts = [
+                      }" "$TOKEN"
+                      [ "$CODE" = 200 ] || fail "set oauths setting"
+                      echo "windmill bootstrap complete"
+                    ''
+                  ];
+                  volumeMounts = [
+                    {
+                      name = "admin-secrets";
+                      mountPath = "/secrets/admin";
+                      readOnly = true;
+                    }
+                    {
+                      name = "oidc-secrets";
+                      mountPath = "/secrets/oidc";
+                      readOnly = true;
+                    }
+                  ];
+                });
+              volumes = [
                 {
                   name = "admin-secrets";
-                  mountPath = "/secrets/admin";
-                  readOnly = true;
+                  secret.secretName = "windmill-admin";
                 }
                 {
                   name = "oidc-secrets";
-                  mountPath = "/secrets/oidc";
-                  readOnly = true;
+                  secret.secretName = "windmill-oidc";
                 }
               ];
             };
-            volumes = [
-              {
-                name = "admin-secrets";
-                secret.secretName = "windmill-admin";
-              }
-              {
-                name = "oidc-secrets";
-                secret.secretName = "windmill-oidc";
-              }
-            ];
           };
         };
 
