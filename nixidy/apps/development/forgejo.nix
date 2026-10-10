@@ -1,5 +1,9 @@
 {config, ...}: {
-  nixidy = {lib, ...}: let
+  nixidy = {
+    lib,
+    pinned,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "git.${domain}";
   in {
@@ -37,12 +41,7 @@
       volsync.pvcs.data-forgejo-0.title = "data-forgejo-0";
 
       helm.releases.forgejo = {
-        chart = lib.helm.downloadHelmChart {
-          chart = "forgejo";
-          version = "16.2.1";
-          repo = "oci://code.forgejo.org/forgejo-helm";
-          chartHash = "sha256-aA1ZUGa6q2sm1GYsxnex/Z2THC9GsVYvNz6e88Dl1XM=";
-        };
+        chart = pinned.charts.forgejo;
         values = {
           service.ssh = {
             type = "LoadBalancer";

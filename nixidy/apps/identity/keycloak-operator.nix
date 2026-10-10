@@ -16,12 +16,7 @@ in {
     applications.keycloak-operator = {
       namespace = "identity";
       helm.releases.keycloak-operator = {
-        chart = lib.helm.downloadHelmChart {
-          chart = "keycloak-operator";
-          version = "0.5.0";
-          repo = "oci://ghcr.io/hostzero-gmbh/charts";
-          chartHash = "sha256-hB9AgNnS0Ia1PGEnEbxaCbVrNUmKoPn4bNo0dfoAYsQ=";
-        };
+        chart = pinned.charts.keycloak-operator;
         values.crds.install = false;
       };
     };

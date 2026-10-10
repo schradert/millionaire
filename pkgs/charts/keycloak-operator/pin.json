@@ -1,0 +1,9 @@
+{
+  "version": "0.5.0",
+  "hash": "sha256-hB9AgNnS0Ia1PGEnEbxaCbVrNUmKoPn4bNo0dfoAYsQ=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "oci://ghcr.io/hostzero-gmbh/charts",
+    "chart": "keycloak-operator"
+  }
+}
