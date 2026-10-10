@@ -10,7 +10,7 @@ in {
     boot.kernelModules = lib.mkIf config.canivete.kubernetes.enable ["nbd" "rbd"];
   };
   nixidy = {
-    charts,
+    pinned,
     lib,
     ...
   }: let
@@ -26,7 +26,7 @@ in {
     applications.rook-ceph = {
       namespace = "storage";
       helm.releases.rook-ceph-operator = {
-        chart = charts.rook-release.rook-ceph;
+        chart = pinned.charts.rook-ceph;
         values = lib.mkMerge [
           {
             csi.cephFSKernelMountOptions = "ms_mode=prefer-crc";
@@ -112,7 +112,7 @@ in {
           };
         in
           resources: map patch resources ++ [builtinMgr];
-        chart = charts.rook-release.rook-ceph-cluster;
+        chart = pinned.charts.rook-ceph-cluster;
         values = {
           operatorNamespace = "storage";
           cephClusterSpec = {

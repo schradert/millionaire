@@ -1,6 +1,6 @@
 {config, ...}: {
   nixidy = {
-    charts,
+    pinned,
     lib,
     ...
   }: let
@@ -19,7 +19,7 @@
         gid = 472;
       };
       helm.releases.grafana = {
-        chart = charts.grafana.grafana;
+        chart = pinned.charts.grafana;
         values = {
           # TODO dashboards + providers + plugins
           admin.existingSecret = "grafana-admin";

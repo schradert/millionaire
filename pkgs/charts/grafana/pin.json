@@ -1,0 +1,9 @@
+{
+  "version": "10.5.15",
+  "hash": "sha256-Mu0AEXTV5xU9zMrmFkHWJRQyOrmDSZeMwKMXEpS7Gy8=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://grafana.github.io/helm-charts/",
+    "chart": "grafana"
+  }
+}

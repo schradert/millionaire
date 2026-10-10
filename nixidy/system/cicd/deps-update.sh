@@ -50,7 +50,7 @@ for kind in ${KINDS//,/ }; do
   git checkout -q -f "origin/$BASE" && git clean -qfdx
   branch="deps/$kind"
   summary="$work/summary-$kind.md"
-  case "$kind" in src|chart|image|flake|nixhelm) before=$(render) ;; *) before= ;; esac
+  case "$kind" in src|chart|image|flake) before=$(render) ;; *) before= ;; esac
   rc=0
   "$update" bump --only "$kind" --summary "$summary" || rc=$?
   if [ "$rc" -ne 0 ] && [ "$rc" -ne 2 ]; then echo "[$kind] update errored ($rc)" >&2; failed=1; continue; fi

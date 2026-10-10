@@ -1,7 +1,6 @@
 {
   imports = [./bitwarden.nix];
   nixidy = {
-    charts,
     config,
     lib,
     pinned,
@@ -21,7 +20,7 @@
     applications.external-secrets = {
       namespace = "security";
       helm.releases.external-secrets = {
-        chart = charts.external-secrets.external-secrets;
+        chart = pinned.charts.external-secrets;
         values = {
           installCRDs = false;
           serviceMonitor.enabled = true;

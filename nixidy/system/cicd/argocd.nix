@@ -2,7 +2,7 @@
   inherit (config.canivete.meta) domain;
 in {
   nixidy = {
-    charts,
+    pinned,
     lib,
     ...
   }: {
@@ -35,7 +35,7 @@ in {
       canivete.bootstrap.enable = true;
       namespace = "cicd";
       helm.releases.argod = {
-        chart = charts.argoproj.argo-cd;
+        chart = pinned.charts.argo-cd;
         values = {
           global.domain = "argocd.${domain}";
           # TODO activate HA mode with autoscaling (after multi-node)

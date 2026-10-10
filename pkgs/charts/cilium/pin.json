@@ -1,0 +1,9 @@
+{
+  "version": "1.19.4",
+  "hash": "sha256-u4FPk5HpTGHUiRMObVrK7v9FaLQSXGNGsCZcqVZ27iw=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://helm.cilium.io/",
+    "chart": "cilium"
+  }
+}

@@ -1,10 +1,10 @@
 {config, ...}: {
   nixidy = {
-    charts,
+    pinned,
     lib,
     ...
   }: let
-    chart = charts.external-dns.external-dns;
+    chart = pinned.charts.external-dns;
   in {
     applications.external-dns-crds.namespace = "kube-system";
     canivete.crds.external-dns = {

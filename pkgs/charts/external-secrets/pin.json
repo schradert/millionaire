@@ -1,0 +1,9 @@
+{
+  "version": "2.5.0",
+  "hash": "sha256-XLMbdHum3r+4HCYv2/3FjF36eEjmVfd43PYYytYl4yY=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://charts.external-secrets.io/",
+    "chart": "external-secrets"
+  }
+}

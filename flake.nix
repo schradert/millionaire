@@ -50,10 +50,6 @@
       url = "github:arnarg/nixidy";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    nixhelm = {
-      url = "github:nix-community/nixhelm";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     nixos-raspberrypi.url = "github:nvmd/nixos-raspberrypi/main";
     # Needed for nixos-raspberrypi right now
     # TODO follow merge of https://github.com/NixOS/nixpkgs/pull/398456

@@ -7,7 +7,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// Flake inputs never bumped by `--only flake` (each has its own kind).
-pub const FLAKE_SEPARATE: &[&str] = &["nixhelm"];
 pub const CARGO_DIRS: &[&str] = &[
     "embedded",
     "embedded/boards/arduino-uno-r3",
@@ -59,12 +58,8 @@ pub fn flake(root: &Path, inputs: &[String]) -> Result<()> {
     run(root, ".", &args).map(drop)
 }
 
-pub fn flake_all_but_separate(root: &Path) -> Result<()> {
-    let inputs: Vec<String> = flake_inputs(root)?
-        .into_iter()
-        .filter(|i| !FLAKE_SEPARATE.contains(&i.as_str()))
-        .collect();
-    flake(root, &inputs)
+pub fn flake_all(root: &Path) -> Result<()> {
+    flake(root, &flake_inputs(root)?)
 }
 
 pub fn devenv(root: &Path) -> Result<()> {

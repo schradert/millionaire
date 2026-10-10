@@ -1,0 +1,9 @@
+{
+  "version": "86.1.0",
+  "hash": "sha256-aS8RlavEkIMPcadxlg1f0wwfrshWkvBWGCqyJC8QJ78=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://prometheus-community.github.io/helm-charts/",
+    "chart": "kube-prometheus-stack"
+  }
+}

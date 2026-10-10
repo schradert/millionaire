@@ -16,11 +16,11 @@
     };
   };
   nixidy = {
-    charts,
+    pinned,
     pkgs,
     ...
   }: let
-    chart = charts.cilium.cilium;
+    chart = pinned.charts.cilium;
     # br0/eno1 = home LAN; eth0 = cloud-burst workers (their image forces
     # net.ifnames=0). Per-node, cilium ignores listed devices that don't
     # exist, so this is a no-op on hardware without eth0.
@@ -35,7 +35,7 @@
         owner = "cilium";
         repo = "cilium";
         # rev tracks the chart's appVersion (below), so this hash must be
-        # re-pinned whenever nixhelm bumps cilium.
+        # re-pinned whenever pkgs/charts/cilium bumps.
         hash = "sha256-DcDhBYowP755z7EQ45189GaFNnYAgfJb4rMLSFF113U=";
         rev = let
           chartJSON = pkgs.runCommand "Chart.json" {} "${pkgs.yq}/bin/yq -r '.' ${chart + "/Chart.yaml"} > $out";

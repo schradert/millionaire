@@ -1,13 +1,13 @@
 {...}: {
   nixidy = {
-    charts,
+    pinned,
     lib,
     ...
   }: {
     applications.loki = {
       namespace = "observability";
       helm.releases.loki = {
-        chart = charts.grafana.loki;
+        chart = pinned.charts.loki;
         values = {
           deploymentMode = "SingleBinary";
           backend.replicas = 0;

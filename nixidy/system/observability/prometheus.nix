@@ -1,10 +1,10 @@
 {config, ...}: {
   nixidy = {
-    charts,
+    pinned,
     lib,
     ...
   }: let
-    chart = charts.prometheus-community.kube-prometheus-stack;
+    chart = pinned.charts.kube-prometheus-stack;
   in {
     applications.prometheus-crds.namespace = "kube-system";
     canivete.crds.prometheus = {
@@ -26,7 +26,7 @@
         path = ["prometheuses" "prometheus-kube-prometheus-prometheus" "spec" "storage" "volumeClaimTemplate"];
       };
       helm.releases.prometheus = {
-        chart = charts.prometheus-community.kube-prometheus-stack;
+        chart = pinned.charts.kube-prometheus-stack;
         values = {
           crds.enabled = false;
           kubelet.enabled = true;
