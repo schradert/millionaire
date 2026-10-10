@@ -38,10 +38,11 @@ async fn login(http: &Client, base: &str, user: &str, password: &str) -> Result<
 }
 
 /// The `PUT /api/users/{id}` body: the user's own fields with the wanted identity.
-/// Permissions are copied unchanged (Mealie rejects admins editing their own).
+/// Permissions are copied unchanged (Mealie rejects admins editing their own), and so is
+/// `id`: Mealie dumps the whole model into the row, so a missing id would null the key.
 fn profile_update(me: &Value, username: &str, full_name: &str, email: &str) -> Value {
     let mut body = serde_json::Map::new();
-    for k in ["group", "household", "admin", "canInvite", "canManage", "canManageHousehold", "canOrganize"] {
+    for k in ["id", "group", "household", "admin", "advanced", "authMethod", "canInvite", "canManage", "canManageHousehold", "canOrganize"] {
         body.insert(k.into(), me[k].clone());
     }
     body.insert("username".into(), json!(username));
@@ -136,6 +137,6 @@ mod tests {
         assert_eq!(b["admin"], json!(true));
         assert_eq!(b["group"], json!("Home"));
         assert_eq!(b["email"], json!("t@example.com"));
-        assert!(b.get("id").is_none());
+        assert_eq!(b["id"], json!("x"));
     }
 }
