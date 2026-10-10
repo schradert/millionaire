@@ -197,68 +197,7 @@
             # It's activated per-project via devenv's nix.settings to avoid
             # caching work builds on the personal cache.
             # Nodes (server.nix) have it system-wide since they're personal-only.
-            nix.buildMachines = let
-              mkBuilder = hostName: {
-                inherit hostName;
-                systems = ["x86_64-linux"];
-                sshUser = "nix-remote-builder";
-                sshKey = "/Users/tristan/.ssh/personal";
-                protocol = "ssh-ng";
-                supportedFeatures = ["kvm" "benchmark" "big-parallel"];
-                maxJobs = 4;
-              };
-            in
-              map mkBuilder ["sirver" "octopus" "dingo" "bonobo" "chinchilla"]
-              # falcon (32 cores): preferred linux builder; aarch64-linux is binfmt
-              # emulation, so no kvm there and the native linux-builder VM stays as
-              # fallback. Same store URI => both entries share falcon's 12 slots.
-              ++ map (b:
-                {
-                  hostName = "falcon";
-                  sshUser = "tristan";
-                  sshKey = "/Users/tristan/.ssh/personal";
-                  protocol = "ssh-ng";
-                  maxJobs = 12;
-                }
-                // b) [
-                {
-                  systems = ["x86_64-linux" "i686-linux"];
-                  supportedFeatures = ["benchmark" "big-parallel" "kvm" "nixos-test"];
-                  speedFactor = 8;
-                }
-                {
-                  systems = ["aarch64-linux"];
-                  supportedFeatures = ["benchmark" "big-parallel"];
-                  speedFactor = 2;
-                }
-              ];
-            # Direct on the home LAN, ProxyJump through the edge box otherwise.
-            programs.ssh.extraConfig = ''
-              Match originalhost falcon !exec "/usr/bin/nc -z -G 1 192.168.50.215 22 >/dev/null 2>&1"
-                ProxyJump tristan@192.184.168.248
-              Host falcon
-                HostName 192.168.50.215
-                User tristan
-                IdentityFile /Users/tristan/.ssh/personal
-                IdentitiesOnly yes
-                # Parallel builds otherwise trip sshd's MaxStartups.
-                ControlMaster auto
-                ControlPath ~/.ssh/cm-%C
-                ControlPersist 60
-              Host 192.184.168.248
-                IdentityFile /Users/tristan/.ssh/personal
-                IdentitiesOnly yes
-            '';
-            programs.ssh.knownHosts = {
-              falcon = {
-                hostNames = ["falcon" "192.168.50.215"];
-                publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfpkvVrcUgze90HfVLMVsjEUCN3RGynuJC9z4EHKVnA";
-              };
-              edge = {
-                hostNames = ["192.184.168.248"];
-                publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMZHuAa6lN+oXGgR7QbNP+5WZcXuzq9E7EFCvh4dgNOK";
-              };
-            };
+            # Distributed builders and the ssh routes to them: modules/builders.nix.
             nix.settings.trusted-users = ["@admin"];
 
             # TODO follow broken Nix 2.33 with Devenv 1.11.2 support
