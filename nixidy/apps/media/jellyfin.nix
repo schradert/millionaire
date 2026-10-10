@@ -1,6 +1,4 @@
 {config, ...}: {
-  # TODO enable OIDC via jellyfin-plugin-sso with the Keycloak client below
-  # https://github.com/9p4/jellyfin-plugin-sso
   nixidy = {
     charts,
     lib,
@@ -15,7 +13,8 @@
       group = "internal";
       conditions = ["[STATUS] == any(200, 302)"];
     };
-    # Keycloak OIDC client for Jellyfin SSO plugin (configured via admin UI).
+    # Keycloak OIDC client for the jellyfin-plugin-sso (installed and configured by the
+    # jellyfin-bootstrap job; the route stays direct, no oauth2-proxy).
     applications.keycloak.resources.keycloakClients.jellyfin.spec = {
       realmRef.name = "default";
       clientSecretRef = {
@@ -196,9 +195,16 @@
           };
         };
       };
+      resources.externalSecrets.jellyfin-oidc.spec.data = lib.toList {
+        secretKey = "client_secret";
+        remoteRef.key = "jellyfin";
+        remoteRef.property = "client-secret";
+        sourceRef.storeRef.name = "kubernetes-identity";
+        sourceRef.storeRef.kind = "ClusterSecretStore";
+      };
       # Idempotent post-sync bootstrap: runs the startup wizard if needed, creates
-      # the admin user, any missing libraries and Maintainerr's Jellyfin connection
-      # (apps/jellyfin-bootstrap). Reruns
+      # the admin user, any missing libraries, Maintainerr's Jellyfin connection and
+      # the Keycloak SSO plugin + provider + login button (apps/jellyfin-bootstrap). Reruns
       # after every sync, so it must stay a no-op once everything exists.
       # Image: `image publish jellyfin-bootstrap` (modules/images.nix) -> Harbor.
       resources.jobs.jellyfin-bootstrap = {
@@ -233,22 +239,43 @@
                   name = "ADMIN_PASSWORD_FILE";
                   value = "/secrets/admin/password";
                 }
+                {
+                  name = "SSO_ISSUER";
+                  value = "https://keycloak.${domain}/realms/default";
+                }
+                {
+                  name = "SSO_SECRET_FILE";
+                  value = "/secrets/oidc/client_secret";
+                }
               ];
-              volumeMounts = lib.toList {
-                name = "admin";
-                mountPath = "/secrets/admin";
-                readOnly = true;
-              };
+              volumeMounts = [
+                {
+                  name = "admin";
+                  mountPath = "/secrets/admin";
+                  readOnly = true;
+                }
+                {
+                  name = "oidc";
+                  mountPath = "/secrets/oidc";
+                  readOnly = true;
+                }
+              ];
               securityContext = {
                 allowPrivilegeEscalation = false;
                 readOnlyRootFilesystem = true;
                 capabilities.drop = ["ALL"];
               };
             };
-            volumes = lib.toList {
-              name = "admin";
-              secret.secretName = "jellyfin-admin";
-            };
+            volumes = [
+              {
+                name = "admin";
+                secret.secretName = "jellyfin-admin";
+              }
+              {
+                name = "oidc";
+                secret.secretName = "jellyfin-oidc";
+              }
+            ];
           };
         };
       };
