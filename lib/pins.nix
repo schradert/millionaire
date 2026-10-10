@@ -4,9 +4,11 @@
 #
 # {
 #   "version": "1.2.3",            required; tag, chart version or commit sha
-#   "hash": "sha256-…",            required unless source.type = oci-tag
+#   "hash": "sha256-…",            required unless source.type = oci-tag | url-set
 #   "digest": "sha256:…",          required for oci-tag
-#   "hashes": {"vendorHash": …},   optional derived hashes
+#   "hashes": {"vendorHash": …},   optional derived hashes; for url-set, one
+#                                  per file: {"<name>": hash} (fetched as
+#                                  pinned.<pin>.<name>)
 #   "source": {"type": …, …},      required; see `sources` below
 #   "constraint": "<2.0",          optional; comma-separated version bounds
 #   "hold": "reason",              optional; blocks updates
@@ -42,6 +44,13 @@
       required = ["url"];
       optional = ["owner" "repo" "tagPrefix"];
     };
+    # many files under one url ("{name}" = key of `hashes`, "/" kept),
+    # zips unpacked (fetchzip, stripRoot = false) when `unpack`; files
+    # marked executable (recursive hash) when `executable`
+    url-set = {
+      required = ["url"];
+      optional = ["unpack" "executable"];
+    };
   };
   topKeys = ["version" "hash" "digest" "hashes" "source" "constraint" "hold" "follows"];
 
@@ -55,7 +64,8 @@
       [(lib.isAttrs pin) "must be an object"]
       [(lib.subtractLists topKeys (lib.attrNames pin) == []) "unknown keys ${toString (lib.subtractLists topKeys (lib.attrNames pin))}"]
       [(isStr "version") "version must be a string"]
-      [(type == "oci-tag" || isStr "hash") "hash must be a string"]
+      [(type == "oci-tag" || type == "url-set" || isStr "hash") "hash must be a string"]
+      [(type != "url-set" || pin.hashes or {} != {}) "url-set needs hashes"]
       [(type != "oci-tag" || isStr "digest") "digest must be a string"]
       [(lib.all (k: src ? ${k}) spec.required) "source.${type} needs ${toString spec.required}"]
       [(lib.subtractLists (["type"] ++ spec.required ++ spec.optional) (lib.attrNames src) == []) "unknown source keys"]
@@ -81,7 +91,12 @@
     kubelib,
   }: pin: let
     s = pin.source;
-    github = ref: pkgs.fetchFromGitHub ({inherit (s) owner repo; inherit (pin) hash;} // ref);
+    github = ref:
+      pkgs.fetchFromGitHub ({
+          inherit (s) owner repo;
+          inherit (pin) hash;
+        }
+        // ref);
   in
     {
       github-release = github {tag = tag pin;};
@@ -91,6 +106,17 @@
         url = url pin;
         inherit (pin) hash;
       };
+      url-set = lib.mapAttrs (name: hash: let
+        args = {
+          url = builtins.replaceStrings ["{name}"] [(lib.concatMapStringsSep "/" lib.escapeURL (lib.splitString "/" name))] s.url;
+          name = lib.strings.sanitizeDerivationName (baseNameOf name);
+          inherit hash;
+        };
+      in
+        if s.unpack or false
+        then pkgs.fetchzip (args // {stripRoot = false;})
+        else pkgs.fetchurl (args // {executable = s.executable or false;}))
+      pin.hashes;
       helm-repo = (kubelib {inherit pkgs;}).downloadHelmChart {
         inherit (s) repo chart;
         inherit (pin) version;
