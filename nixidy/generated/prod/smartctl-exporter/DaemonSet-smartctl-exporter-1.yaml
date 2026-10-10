@@ -25,7 +25,7 @@ spec:
         - args:
             - --smartctl.path=/usr/sbin/smartctl
             - --smartctl.interval=120s
-            - --smartctl.device-exclude=/dev/bus/.*
+            - --smartctl.device-exclude=bus_0_megaraid_.*
             - --web.listen-address=0.0.0.0:9633
             - --web.telemetry-path=/metrics
           image: quay.io/prometheuscommunity/smartctl-exporter:v0.14.0@sha256:cfe22c36d7d2fac48ebf619707305acb65eb0fb670656eb80f356e606d782bc1

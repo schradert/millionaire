@@ -31,7 +31,8 @@
             };
           };
           extraInstances = lib.toList {
-            config.device_exclude = "/dev/bus/.*";
+            # Matched against the exporter's device label, not the /dev path.
+            config.device_exclude = "bus_0_megaraid_.*";
             nodeSelector."kubernetes.io/hostname" = "sirver";
             tolerations = lib.toList {operator = "Exists";};
           };
