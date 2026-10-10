@@ -7,7 +7,13 @@
 - Destination: `s3://trdos-me--volsync/etcd/offsite-<node>-<node>-<unix-ts>` on B2 (`us-west-004`), 28 kept per node.
   Credentials are the VolSync B2 key, read at run time from the first `volsync--*` secret in the cluster.
 - rke2's own schedule still writes local snapshots every 12h to `/var/lib/rancher/rke2/server/db/snapshots` on each server (5 kept).
-- Snapshots are not encrypted. They contain every Secret in the cluster. Keep the bucket private.
+- Secrets in snapshots are encrypted at rest by rke2 (`rke2 secrets-encrypt status`: Enabled, AES-CBC key `aescbckey`).
+  Verified 2026-10-10 on `offsite-sirver-sirver-1791640393`: all 333 `/registry/secrets/` values start with
+  `k8s:enc:aescbc:v1:aescbckey`. Non-Secret objects (ConfigMaps, nodes, ...) are plaintext, so keep the bucket private.
+  No extra age layer: it would add a key to hold offline and a second thing to lose, for no gain on Secrets.
+- The AES key lives in `/var/lib/rancher/rke2/server/cred/encryption-config.json` on each server (not in B2).
+  Do not delete `server/cred` on the restore node. I believe (k3s source, not verified here) rke2 also keeps it in the
+  token-encrypted `/bootstrap` key in etcd, which is what recreates it on a fresh node.
 - Check: `kubectl get etcdsnapshotfile -o custom-columns=NAME:.metadata.name,SIZE:.status.size,S3:.spec.s3.bucket,READY:.status.readyToUse`
   (rows named `s3-offsite-*`). Expect ~165 MB each (Oct 2026).
 
