@@ -71,7 +71,7 @@ spec:
               path: /health/ready
               port: management
           startupProbe:
-            failureThreshold: 60
+            failureThreshold: 180
             httpGet:
               path: /health/started
               port: management
