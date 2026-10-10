@@ -1,43 +1,9 @@
 {
-  system = {
-    config,
-    flake,
-    lib,
-    ...
-  }: {
-    config = lib.mkIf (config.profile == "work" && config.profiles.workstation.enable) {
-      nixpkgs.overlays = [
-        (_: prev: {
-          datadog-pup = prev.rustPlatform.buildRustPackage {
-            pname = "datadog-pup";
-            version = "0.52.0-unstable-${flake.inputs.datadog-pup.shortRev or "dirty"}";
-            src = flake.inputs.datadog-pup;
-            cargoLock = {
-              lockFile = "${flake.inputs.datadog-pup}/Cargo.lock";
-              outputHashes."datadog-api-client-0.31.0" = "sha256-UzI8d1oYToULy0YZ9Rckk2m6sXxBq4IcOWd9bFuS8Gc=";
-            };
-            nativeBuildInputs = [prev.pkg-config];
-            buildInputs =
-              [prev.openssl]
-              ++ lib.optionals prev.stdenv.hostPlatform.isDarwin [prev.apple-sdk]
-              ++ lib.optionals prev.stdenv.hostPlatform.isLinux [prev.libsecret prev.dbus];
-            doCheck = false;
-            meta = {
-              description = "Datadog CLI for AI agents";
-              homepage = "https://github.com/datadog-labs/pup";
-              license = lib.licenses.asl20;
-              mainProgram = "pup";
-            };
-          };
-        })
-      ];
-    };
-  };
   home = {
     config,
     flake,
     lib,
-    pkgs,
+    pinned,
     ...
   }: {
     config = lib.mkIf (config.profile == "work" && config.profiles.workstation.enable) (let
@@ -45,7 +11,7 @@
         lib.mapAttrs (name: _: "${flake.inputs.datadog-agent-skills}/${name}")
         (lib.filterAttrs (_: t: t == "directory") (builtins.readDir flake.inputs.datadog-agent-skills));
     in {
-      home.packages = [pkgs.datadog-pup];
+      home.packages = [pinned.datadog-pup];
       programs.mcp.servers.datadog = {
         type = "http";
         url = "https://mcp.datadoghq.com/api/mcp?toolsets=core,apm,dbm,error-tracking";

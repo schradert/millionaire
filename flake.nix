@@ -142,8 +142,6 @@
     datadog-agent-skills.flake = false;
     datadog-api-claude-plugin.url = "github:DataDog/datadog-api-claude-plugin";
     datadog-api-claude-plugin.flake = false;
-    datadog-pup.url = "github:datadog-labs/pup";
-    datadog-pup.flake = false;
     gastown.url = "github:steveyegge/gastown";
     gastown.flake = false;
 

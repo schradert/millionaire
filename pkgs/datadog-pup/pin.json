@@ -1,0 +1,13 @@
+{
+  "version": "79e3985b2a2da7e687d4dc50d0cf83bbb68a4f5c",
+  "hash": "sha256-zEPxxdP7QvpZmPcLQ18tr5ljiuUk422W3I0j7Ath+ec=",
+  "hashes": {
+    "cargoHash": "sha256-rzjPlsvuK0S2HPd8jHazvJeRIatmEZ2qOtvWGx3kf4U="
+  },
+  "source": {
+    "type": "git-commit",
+    "owner": "datadog-labs",
+    "repo": "pup",
+    "branch": "main"
+  }
+}

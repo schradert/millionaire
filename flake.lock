@@ -443,22 +443,6 @@
         "type": "github"
       }
     },
-    "datadog-pup": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1780149859,
-        "narHash": "sha256-zEPxxdP7QvpZmPcLQ18tr5ljiuUk422W3I0j7Ath+ec=",
-        "owner": "datadog-labs",
-        "repo": "pup",
-        "rev": "79e3985b2a2da7e687d4dc50d0cf83bbb68a4f5c",
-        "type": "github"
-      },
-      "original": {
-        "owner": "datadog-labs",
-        "repo": "pup",
-        "type": "github"
-      }
-    },
     "deploy-rs": {
       "inputs": {
         "flake-compat": "flake-compat_4",
@@ -2472,7 +2456,6 @@
         "canivete": "canivete",
         "datadog-agent-skills": "datadog-agent-skills",
         "datadog-api-claude-plugin": "datadog-api-claude-plugin",
-        "datadog-pup": "datadog-pup",
         "deploy-rs": "deploy-rs",
         "devenv": "devenv_2",
         "devenv-agents": "devenv-agents",
