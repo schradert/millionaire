@@ -20,7 +20,26 @@ spec:
     - backendRefs:
         - group: ""
           kind: Service
-          name: oauth2-proxy
-          namespace: identity
-          port: 4180
+          name: navidrome
+          namespace: media
+          port: 4533
           weight: 1
+      filters:
+        - requestHeaderModifier:
+            remove:
+              - X-Auth-Request-Preferred-Username
+              - X-Forwarded-Preferred-Username
+              - X-Forwarded-User
+              - X-Forwarded-Email
+              - Remote-User
+          type: RequestHeaderModifier
+      matches:
+        - path:
+            type: PathPrefix
+            value: /rest
+        - path:
+            type: PathPrefix
+            value: /share
+        - path:
+            type: PathPrefix
+            value: /ping
