@@ -136,6 +136,17 @@ in {
         ruff-format = onCommit;
         trim-trailing-whitespace = onCommit;
         typos = onCommit;
+        # Hashes, revs and image digests live in pkgs/**/pin.json only.
+        pin-lint =
+          onCommit
+          // {
+            enable = true;
+            name = "pin-lint";
+            entry = "tools/pin-lint";
+            language = "system";
+            pass_filenames = false;
+            always_run = true;
+          };
         lychee.toml.accept = [200 403 405 406];
         lychee.toml.exclude = [
           # In-cluster service DNS (lychee normalizes with a trailing slash)

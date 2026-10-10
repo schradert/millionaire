@@ -23,7 +23,7 @@ git clone -q --branch "$BASE" "$remote" "$work/repo"
 cd "$work/repo"
 git config user.name "millionaire-update"
 git config user.email "update@trdos.me"
-tools=$(nix build --no-pure-eval --no-link --print-out-paths --inputs-from . nixpkgs#gh nixpkgs#jq | sed 's|$|/bin|' | paste -sd:)
+tools=$(nix build --no-pure-eval --no-link --print-out-paths --inputs-from . nixpkgs#gh nixpkgs#jq nixpkgs#gawk | sed 's|$|/bin|' | paste -sd:)
 export PATH="$tools:$PATH"
 update=$(nix build --no-pure-eval --no-link --print-out-paths .#update)/bin/update
 system=$(nix eval --impure --raw --expr builtins.currentSystem)
@@ -58,6 +58,7 @@ for kind in ${KINDS//,/ }; do
     echo "[$kind] nothing to update"; continue
   fi
   [ -n "$before" ] && sync_generated "$before" "$(render)"
+  if ! tools/pin-lint; then echo "[$kind] pin-lint failed, not pushing" >&2; failed=1; continue; fi
   git checkout -q -B "$branch"
   git add -A
   git commit -q -m "chore(deps): update $kind"
