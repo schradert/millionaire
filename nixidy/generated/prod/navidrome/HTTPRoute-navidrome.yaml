@@ -20,7 +20,7 @@ spec:
     - backendRefs:
         - group: ""
           kind: Service
-          name: navidrome
-          namespace: media
-          port: 4533
+          name: oauth2-proxy
+          namespace: identity
+          port: 4180
           weight: 1

@@ -1,4 +1,6 @@
-{config, ...}: {
+{config, ...}: let
+  inherit (config.canivete.meta) people;
+in {
   nixidy = {
     charts,
     lib,
@@ -8,6 +10,27 @@
     inherit (config.canivete.meta) domain;
     hostname = "navidrome.${domain}";
     port = 4533;
+    # Navidrome has no native OIDC. Until the bootstrap image is pinned the whole host
+    # stays behind oauth2-proxy with header auth OFF: an unclaimed instance lets the
+    # first header-authenticated (or /auth/createAdmin) caller become admin.
+    bootstrapped = pinned.images ? app-bootstrap-navidrome;
+    # oauth2-proxy's nginx router sets this from the Keycloak preferred_username.
+    userHeader = "X-Auth-Request-Preferred-Username";
+    # Client-supplied copies of every identity header are stripped at the gateway.
+    identityHeaders = [userHeader "X-Forwarded-Preferred-Username" "X-Forwarded-User" "X-Forwarded-Email" "Remote-User"];
+    removeHeaders = {
+      type = "RequestHeaderModifier";
+      requestHeaderModifier.remove = identityHeaders;
+    };
+    navidrome = {
+      name = "navidrome";
+      inherit port;
+    };
+    viaProxy = {
+      name = "oauth2-proxy";
+      namespace = "identity";
+      port = 4180;
+    };
   in {
     gatus.endpoints.navidrome = {
       url = "https://${hostname}/ping";
@@ -16,6 +39,23 @@
     };
     applications.navidrome = {
       namespace = "media";
+      generatedSecrets.navidrome-admin = {
+        key = "password";
+        bitwarden = "navidrome/admin-password";
+      };
+      # Idempotent post-sync bootstrap (apps/app-bootstrap navidrome, >= 0.6.0): first admin
+      # named after tristan, so the oauth2-proxy-forwarded username IS the admin. The generated
+      # password is for Subsonic clients and break-glass native login.
+      bootstrap = lib.mkIf bootstrapped {
+        image = with pinned.images.app-bootstrap-navidrome; "${repository}:${tag}@${digest}";
+        args = ["navidrome"];
+        env = {
+          NAVIDROME_URL = "http://navidrome.media.svc.cluster.local:${toString port}";
+          ADMIN_USER = people.me;
+          ADMIN_PASSWORD_FILE = "/secrets/admin/password";
+        };
+        secrets.admin = "navidrome-admin";
+      };
       volsync.pvcs.navidrome.title = "navidrome";
       helm.releases.navidrome = {
         chart = charts.bjw-s-labs.app-template-patched;
@@ -64,10 +104,15 @@
             ND_ENABLESHARING = "true";
             ND_ENABLEDOWNLOADS = "true";
             ND_ENABLETRANSCODINGCONFIG = "true";
-            # Reverse-proxy headers from gateway: trust X-Forwarded-* and identify the user
-            # via the ReverseProxyUserHeader. Subsonic API uses its own per-request auth — do NOT
-            # put oauth2-proxy in front of Navidrome (it breaks every mobile client).
-            ND_REVERSEPROXYWHITELIST = "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16";
+            # Trusted-header login, only reachable via oauth2-proxy: the route below strips
+            # the header from every direct (Subsonic/share) request, and the whitelist is
+            # pod IPs only. Pre-bootstrap there is no whitelist, so header auth is off.
+          }
+          // lib.optionalAttrs bootstrapped {
+            ND_REVERSEPROXYUSERHEADER = userHeader;
+            ND_REVERSEPROXYWHITELIST = "10.0.0.0/8";
+          }
+          // {
             # ListenBrainz scrobble target points at Maloja's LB-compatible endpoint.
             # Maloja then proxy-forwards to real (pseudonymous) ListenBrainz.
             # Per-user LB tokens are configured in Navidrome's user UI; the token a user
@@ -88,9 +133,31 @@
               namespace = "kube-system";
               sectionName = "https";
             };
+            rules =
+              if bootstrapped
+              then [
+                # Subsonic API (mobile clients can't do OIDC), public shares and the heartbeat
+                # go straight to Navidrome with auth headers stripped: they authenticate by
+                # their own credentials, never by the trusted header.
+                {
+                  matches = map (path: {path = {type = "PathPrefix"; value = path;};}) ["/rest" "/share" "/ping"];
+                  filters = [removeHeaders];
+                  backendRefs = [navidrome];
+                }
+                {
+                  filters = [removeHeaders];
+                  backendRefs = [viaProxy];
+                }
+              ]
+              else [{backendRefs = [viaProxy];}];
           };
         };
       };
+    };
+    # Always registered: the router needs the host, and the ReferenceGrant for `media`.
+    oauth2Proxy.upstreams.${hostname} = {
+      url = "http://navidrome.media.svc.cluster.local:${toString port}";
+      namespace = "media";
     };
   };
 }
