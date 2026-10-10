@@ -1,0 +1,58 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: kavita-bootstrap
+  namespace: media
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      containers:
+        - args:
+            - kavita
+          env:
+            - name: KAVITA_URL
+              value: http://kavita.media.svc.cluster.local:5000
+            - name: ADMIN_EMAIL
+              value: t0rdos@pm.me
+            - name: ADMIN_PASSWORD_FILE
+              value: /secrets/admin/password
+            - name: OIDC_AUTHORITY
+              value: https://keycloak.trdos.me/realms/default
+            - name: OIDC_CLIENT_ID
+              value: kavita
+            - name: OIDC_CLIENT_SECRET_FILE
+              value: /secrets/oidc/client_secret
+          image: harbor.trdos.me/library/app-bootstrap:0.1.0
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /secrets/admin
+              name: admin
+              readOnly: true
+            - mountPath: /secrets/oidc
+              name: oidc
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - name: admin
+          secret:
+            secretName: kavita-admin
+        - name: oidc
+          secret:
+            secretName: kavita-oidc

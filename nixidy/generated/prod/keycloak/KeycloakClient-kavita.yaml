@@ -1,0 +1,32 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: kavita
+  namespace: identity
+spec:
+  clientSecretRef:
+    create: true
+    name: kavita
+  definition:
+    attributes:
+      post.logout.redirect.uris: https://kavita.trdos.me/signout-callback-oidc
+    clientId: kavita
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+      - roles
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Kavita
+    optionalClientScopes:
+      - offline_access
+    protocol: openid-connect
+    publicClient: false
+    redirectUris:
+      - https://kavita.trdos.me/signin-oidc
+    standardFlowEnabled: true
+    webOrigins:
+      - https://kavita.trdos.me
+  realmRef:
+    name: default
