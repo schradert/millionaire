@@ -3,7 +3,7 @@
     can,
     config,
     lib,
-    pkgs,
+    pinned,
     ...
   }: {
     options.programs.zsh.extensions.zsh-autosuggestions.enable = can.enable "zsh-autosuggestions" {};
@@ -11,12 +11,7 @@
       programs.zsh.plugins = [
         {
           name = "zsh-autosuggestions";
-          src = pkgs.fetchFromGitHub {
-            owner = "zsh-users";
-            repo = "zsh-autosuggestions";
-            rev = "v0.7.0";
-            sha256 = "KLUYpUu4DHRumQZ3w59m9aTW6TBKMCXl2UcKi4uMd7w=";
-          };
+          src = pinned.zsh-autosuggestions;
         }
       ];
     };
