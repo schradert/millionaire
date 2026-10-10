@@ -19,6 +19,10 @@ spec:
               value: http://maintainerr.media.svc.cluster.local:6246
             - name: ADMIN_PASSWORD_FILE
               value: /secrets/admin/password
+            - name: SSO_ISSUER
+              value: https://keycloak.trdos.me/realms/default
+            - name: SSO_SECRET_FILE
+              value: /secrets/oidc/client_secret
           image: harbor.trdos.me/library/jellyfin-bootstrap:0.2.0@sha256:b5f0b93064efa481469c8b93c86a17fc54f39a0900bb943058791e6fe35245f5
           name: bootstrap
           securityContext:
@@ -31,6 +35,9 @@ spec:
             - mountPath: /secrets/admin
               name: admin
               readOnly: true
+            - mountPath: /secrets/oidc
+              name: oidc
+              readOnly: true
       restartPolicy: OnFailure
       securityContext:
         runAsGroup: 65534
@@ -42,3 +49,6 @@ spec:
         - name: admin
           secret:
             secretName: jellyfin-admin
+        - name: oidc
+          secret:
+            secretName: jellyfin-oidc

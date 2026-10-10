@@ -6,12 +6,16 @@
 //! 4. Create whichever libraries are missing; never touch existing ones.
 //! 5. Reuse (or create) a "Maintainerr" API key and point Maintainerr at Jellyfin,
 //!    PATCHing its settings only when they differ.
+//! 6. If SSO_ISSUER is set: register the 9p4/jellyfin-plugin-sso repository, install the
+//!    plugin (restarting Jellyfin once when newly installed), write the OIDC provider
+//!    config only when it differs, and add the login-page button via the branding
+//!    LoginDisclaimer.
 
 use std::{env, fs, process::ExitCode, time::Duration};
 
 use reqwest::{Client, Response};
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{json, Value};
 use tokio::time::sleep;
 
 const CLIENT: &str = "jellyfin-bootstrap";
@@ -20,6 +24,16 @@ const DEVICE_ID: &str = "jellyfin-bootstrap-job";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const MAINTAINERR_KEY_NAME: &str = "Maintainerr";
 const MAINTAINERR_ATTEMPTS: u32 = 60;
+
+const SSO_PLUGIN_NAME: &str = "SSO Authentication";
+const SSO_PLUGIN_GUID: &str = "505ce9d1d91642fa86ca673ef241d7df";
+/// 4.x is the line that targets Jellyfin 10.11 (manifest targetAbi 10.11.0.0).
+const SSO_PLUGIN_VERSION: &str = "4.0.0.4";
+const SSO_REPO_NAME: &str = "Jellyfin SSO";
+const SSO_REPO_URL: &str =
+    "https://raw.githubusercontent.com/9p4/jellyfin-plugin-sso/manifest-release/manifest.json";
+const SSO_CSS_MARKER: &str = "/* jellyfin-bootstrap:sso */";
+const SSO_CSS: &str = "/* jellyfin-bootstrap:sso */\na.raised.emby-button { padding: 0.9em 1em; color: inherit !important; }\n.disclaimerContainer { display: block; }";
 
 /// (name, path, collectionType). /media/dvd is deliberately absent: those ISOs are for Kodi.
 const LIBRARIES: &[(&str, &str, &str)] = &[
@@ -371,6 +385,298 @@ async fn ensure_maintainerr(
     Ok(())
 }
 
+// ---------------------------------------------------------------------------
+// SSO (9p4/jellyfin-plugin-sso)
+// ---------------------------------------------------------------------------
+
+struct SsoSettings {
+    provider: String,
+    issuer: String,
+    client_id: String,
+    secret: String,
+    roles: Vec<String>,
+    admin_roles: Vec<String>,
+}
+
+fn csv(name: &str, default: &str) -> Vec<String> {
+    env::var(name)
+        .unwrap_or_else(|_| default.into())
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+        .collect()
+}
+
+fn sso_settings() -> Result<Option<SsoSettings>> {
+    let Ok(issuer) = env::var("SSO_ISSUER") else {
+        return Ok(None);
+    };
+    let secret_file = env::var("SSO_SECRET_FILE").map_err(|_| "SSO_ISSUER set but SSO_SECRET_FILE is not")?;
+    Ok(Some(SsoSettings {
+        provider: env::var("SSO_PROVIDER").unwrap_or_else(|_| "keycloak".into()),
+        issuer: issuer.trim_end_matches('/').to_string(),
+        client_id: env::var("SSO_CLIENT_ID").unwrap_or_else(|_| "jellyfin".into()),
+        secret: fs::read_to_string(secret_file)?.trim().to_string(),
+        roles: csv("SSO_ROLES", "admin,family"),
+        admin_roles: csv("SSO_ADMIN_ROLES", "admin"),
+    }))
+}
+
+/// The plugin's OidConfig, restricted to the fields we manage.
+fn desired_oid_config(s: &SsoSettings) -> Value {
+    json!({
+        "OidEndpoint": s.issuer,
+        "OidClientId": s.client_id,
+        "OidSecret": s.secret,
+        "Enabled": true,
+        "EnableAuthorization": true,
+        "EnableAllFolders": true,
+        "Roles": s.roles,
+        "AdminRoles": s.admin_roles,
+        "RoleClaim": "groups",
+        // Non-null is required: the plugin does OidScopes.Prepend(..) unguarded.
+        "OidScopes": ["groups"],
+        "DefaultUsernameClaim": "preferred_username",
+        // TLS ends at the gateway; Jellyfin sees http and would build an http redirect_uri.
+        "SchemeOverride": "https",
+        "NewPath": true,
+    })
+}
+
+/// Case-insensitive object key lookup (Jellyfin emits PascalCase, docs show camelCase).
+fn get_ci<'a>(v: &'a Value, key: &str) -> Option<&'a Value> {
+    v.as_object()?
+        .iter()
+        .find(|(k, _)| k.eq_ignore_ascii_case(key))
+        .map(|(_, v)| v)
+}
+
+/// True when every field in `desired` is already set to the same value in `current`.
+fn config_in_sync(current: &Value, desired: &Value) -> bool {
+    desired.as_object().is_some_and(|d| {
+        d.iter().all(|(k, want)| get_ci(current, k) == Some(want))
+    })
+}
+
+fn norm_guid(g: &str) -> String {
+    g.chars().filter(|c| *c != '-').collect::<String>().to_ascii_lowercase()
+}
+
+/// Ok(true) if the SSO plugin shows up in /Plugins; Err if it is installed but unusable.
+fn sso_plugin_state(plugins: &Value) -> Result<bool> {
+    let Some(list) = plugins.as_array() else {
+        return Ok(false);
+    };
+    for p in list {
+        let id = get_ci(p, "Id").and_then(Value::as_str).map(norm_guid);
+        let name = get_ci(p, "Name").and_then(Value::as_str);
+        if id.as_deref() == Some(SSO_PLUGIN_GUID) || name == Some(SSO_PLUGIN_NAME) {
+            let status = get_ci(p, "Status").and_then(Value::as_str).unwrap_or("");
+            if status.eq_ignore_ascii_case("Malfunctioned")
+                || status.eq_ignore_ascii_case("NotSupported")
+            {
+                return Err(format!("SSO plugin present but status {status}").into());
+            }
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+/// Returns the repository list to POST, or None when ours is already registered and enabled.
+fn repos_with_sso(current: &Value) -> Option<Value> {
+    let mut list = current.as_array().cloned().unwrap_or_default();
+    let mut found = false;
+    for r in list.iter_mut() {
+        if get_ci(r, "Url").and_then(Value::as_str) == Some(SSO_REPO_URL) {
+            found = true;
+            if get_ci(r, "Enabled").and_then(Value::as_bool) == Some(true) {
+                return None;
+            }
+            r["Enabled"] = json!(true);
+        }
+    }
+    if !found {
+        list.push(json!({ "Name": SSO_REPO_NAME, "Url": SSO_REPO_URL, "Enabled": true }));
+    }
+    Some(Value::Array(list))
+}
+
+fn login_disclaimer(provider: &str) -> String {
+    format!(
+        r#"<form action="/sso/OID/start/{provider}"><button class="raised block emby-button button-submit">Sign in with Keycloak</button></form>"#
+    )
+}
+
+/// New CustomCss with our block appended, or None if already present.
+fn css_with_sso(current: &str) -> Option<String> {
+    if current.contains(SSO_CSS_MARKER) {
+        None
+    } else if current.trim().is_empty() {
+        Some(SSO_CSS.to_string())
+    } else {
+        Some(format!("{current}\n{SSO_CSS}"))
+    }
+}
+
+async fn get_json(http: &Client, base: &str, token: &str, path: &str) -> Result<Value> {
+    Ok(ok(
+        http.get(format!("{base}{path}"))
+            .header("X-Emby-Authorization", auth_header(Some(token)))
+            .send()
+            .await?,
+        &format!("GET {path}"),
+    )
+    .await?
+    .json::<Value>()
+    .await?)
+}
+
+/// Restart Jellyfin and wait until it answers again (after having gone down, or 30s).
+async fn restart_and_wait(http: &Client, base: &str, token: &str) -> Result<()> {
+    println!("restarting jellyfin");
+    ok(
+        http.post(format!("{base}/System/Restart"))
+            .header("X-Emby-Authorization", auth_header(Some(token)))
+            .send()
+            .await?,
+        "POST /System/Restart",
+    )
+    .await?;
+    let mut went_down = false;
+    for _ in 0..15 {
+        sleep(Duration::from_secs(2)).await;
+        let up = match http.get(format!("{base}/System/Info/Public")).send().await {
+            Ok(r) => r.status().is_success(),
+            Err(_) => false,
+        };
+        if !up {
+            went_down = true;
+            break;
+        }
+    }
+    if !went_down {
+        eprintln!("jellyfin never appeared to go down, continuing");
+    }
+    wait_for_jellyfin(http, base).await?;
+    // Plugins and the DB finish loading shortly after the public endpoint answers.
+    sleep(Duration::from_secs(5)).await;
+    Ok(())
+}
+
+/// Returns true when the plugin was newly installed (and Jellyfin restarted).
+async fn ensure_sso_plugin(
+    http: &Client,
+    base: &str,
+    user: &str,
+    password: &str,
+    token: &mut String,
+) -> Result<()> {
+    let repos = get_json(http, base, token, "/Repositories").await?;
+    if let Some(new_repos) = repos_with_sso(&repos) {
+        println!("registering plugin repository {SSO_REPO_NAME}");
+        ok(
+            http.post(format!("{base}/Repositories"))
+                .header("X-Emby-Authorization", auth_header(Some(token)))
+                .json(&new_repos)
+                .send()
+                .await?,
+            "POST /Repositories",
+        )
+        .await?;
+    }
+    if sso_plugin_state(&get_json(http, base, token, "/Plugins").await?)? {
+        println!("SSO plugin already installed");
+        return Ok(());
+    }
+    println!("installing SSO plugin {SSO_PLUGIN_VERSION}");
+    ok(
+        http.post(format!("{base}/Packages/Installed/{}", SSO_PLUGIN_NAME.replace(' ', "%20")))
+            .header("X-Emby-Authorization", auth_header(Some(token)))
+            .query(&[
+                ("assemblyGuid", SSO_PLUGIN_GUID),
+                ("version", SSO_PLUGIN_VERSION),
+                ("repositoryUrl", SSO_REPO_URL),
+            ])
+            .send()
+            .await?,
+        "POST /Packages/Installed",
+    )
+    .await?;
+    restart_and_wait(http, base, token).await?;
+    *token = authenticate(http, base, user, password).await?;
+    if !sso_plugin_state(&get_json(http, base, token, "/Plugins").await?)? {
+        return Err("SSO plugin not listed after install + restart".into());
+    }
+    Ok(())
+}
+
+async fn ensure_sso_provider(http: &Client, base: &str, token: &str, s: &SsoSettings) -> Result<()> {
+    let desired = desired_oid_config(s);
+    let mut attempt = 0u32;
+    // The plugin's endpoints can take a moment to come up after the restart.
+    let current = loop {
+        attempt += 1;
+        match get_json(http, base, token, "/sso/OID/Get").await {
+            Ok(v) => break v,
+            Err(e) if attempt < 12 => {
+                eprintln!("waiting for sso endpoints ({attempt}): {e}");
+                sleep(Duration::from_secs(5)).await;
+            }
+            Err(e) => return Err(e),
+        }
+    };
+    if get_ci(&current, &s.provider).is_some_and(|c| config_in_sync(c, &desired)) {
+        println!("sso provider {} already configured", s.provider);
+        return Ok(());
+    }
+    println!("configuring sso provider {}", s.provider);
+    ok(
+        http.post(format!("{base}/sso/OID/Add/{}", s.provider))
+            .header("X-Emby-Authorization", auth_header(Some(token)))
+            .json(&desired)
+            .send()
+            .await?,
+        "POST /sso/OID/Add",
+    )
+    .await?;
+    Ok(())
+}
+
+async fn ensure_login_button(http: &Client, base: &str, token: &str, provider: &str) -> Result<()> {
+    let mut branding = get_json(http, base, token, "/System/Configuration/branding").await?;
+    let want = login_disclaimer(provider);
+    let cur_disclaimer = get_ci(&branding, "LoginDisclaimer")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    let cur_css = get_ci(&branding, "CustomCss")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    let new_css = css_with_sso(&cur_css);
+    if cur_disclaimer == want && new_css.is_none() {
+        println!("login button already configured");
+        return Ok(());
+    }
+    println!("configuring login button");
+    let obj = branding.as_object_mut().ok_or("branding config is not an object")?;
+    obj.retain(|k, _| !k.eq_ignore_ascii_case("LoginDisclaimer") && !k.eq_ignore_ascii_case("CustomCss"));
+    obj.insert("LoginDisclaimer".into(), json!(want));
+    obj.insert("CustomCss".into(), json!(new_css.unwrap_or(cur_css)));
+    ok(
+        http.post(format!("{base}/System/Configuration/branding"))
+            .header("X-Emby-Authorization", auth_header(Some(token)))
+            .json(&branding)
+            .send()
+            .await?,
+        "POST /System/Configuration/branding",
+    )
+    .await?;
+    Ok(())
+}
+
 async fn run() -> Result<()> {
     let base = env::var("JELLYFIN_URL")
         .unwrap_or_else(|_| "http://jellyfin.media.svc.cluster.local:8096".into());
@@ -383,12 +689,17 @@ async fn run() -> Result<()> {
     if !info.startup_wizard_completed {
         run_wizard(&http, base, &user, &password).await?;
     }
-    let token = authenticate(&http, base, &user, &password).await?;
+    let mut token = authenticate(&http, base, &user, &password).await?;
     ensure_libraries(&http, base, &token).await?;
     if let Ok(maintainerr) = env::var("MAINTAINERR_URL") {
         let jellyfin_url = env::var("MAINTAINERR_JELLYFIN_URL").unwrap_or_else(|_| base.into());
         let key = ensure_api_key(&http, base, &token).await?;
         ensure_maintainerr(&http, maintainerr.trim_end_matches('/'), &jellyfin_url, &key).await?;
+    }
+    if let Some(sso) = sso_settings()? {
+        ensure_sso_plugin(&http, base, &user, &password, &mut token).await?;
+        ensure_sso_provider(&http, base, &token, &sso).await?;
+        ensure_login_button(&http, base, &token, &sso.provider).await?;
     }
     println!("bootstrap done");
     Ok(())
@@ -448,6 +759,66 @@ mod tests {
         let mut unset = settings("jellyfin", u, k);
         unset.jellyfin_api_key = None;
         assert!(!settings_in_sync(&unset, u, k));
+    }
+
+    fn sso() -> SsoSettings {
+        SsoSettings {
+            provider: "keycloak".into(),
+            issuer: "https://keycloak.example/realms/default".into(),
+            client_id: "jellyfin".into(),
+            secret: "s3cret".into(),
+            roles: vec!["admin".into(), "family".into()],
+            admin_roles: vec!["admin".into()],
+        }
+    }
+
+    #[test]
+    fn oid_config_sync_is_case_insensitive_and_detects_drift() {
+        let desired = desired_oid_config(&sso());
+        // Jellyfin returns PascalCase plus extra fields we do not manage.
+        let mut current = desired.clone();
+        current["PortOverride"] = Value::Null;
+        assert!(config_in_sync(&current, &desired));
+        let lower: Value = serde_json::from_str(
+            &desired.to_string().replace("\"OidEndpoint\"", "\"oidEndpoint\""),
+        )
+        .unwrap();
+        assert!(config_in_sync(&lower, &desired));
+        current["OidSecret"] = json!("other");
+        assert!(!config_in_sync(&current, &desired));
+        assert!(!config_in_sync(&json!({}), &desired));
+        assert!(!config_in_sync(&Value::Null, &desired));
+    }
+
+    #[test]
+    fn plugin_detection() {
+        assert!(!sso_plugin_state(&json!([])).unwrap());
+        assert!(!sso_plugin_state(&json!([{"Name": "Other", "Id": "abc"}])).unwrap());
+        assert!(sso_plugin_state(&json!([{"Name": "x", "Id": "505ce9d1-d916-42fa-86ca-673ef241d7df", "Status": "Active"}])).unwrap());
+        assert!(sso_plugin_state(&json!([{"Name": SSO_PLUGIN_NAME, "Status": "Restart"}])).unwrap());
+        assert!(sso_plugin_state(&json!([{"Name": SSO_PLUGIN_NAME, "Status": "Malfunctioned"}])).is_err());
+    }
+
+    #[test]
+    fn repo_registration() {
+        let added = repos_with_sso(&json!([{"Name": "Official", "Url": "https://x", "Enabled": true}])).unwrap();
+        assert_eq!(added.as_array().unwrap().len(), 2);
+        assert!(repos_with_sso(&added).is_none());
+        let off = json!([{"Name": "n", "Url": SSO_REPO_URL, "Enabled": false}]);
+        assert_eq!(repos_with_sso(&off).unwrap()[0]["Enabled"], json!(true));
+    }
+
+    #[test]
+    fn css_appended_once() {
+        let first = css_with_sso("body{}").unwrap();
+        assert!(first.starts_with("body{}") && first.contains(SSO_CSS_MARKER));
+        assert!(css_with_sso(&first).is_none());
+        assert_eq!(css_with_sso("  ").unwrap(), SSO_CSS);
+    }
+
+    #[test]
+    fn disclaimer_links_to_provider() {
+        assert!(login_disclaimer("keycloak").contains("/sso/OID/start/keycloak"));
     }
 
     #[test]
