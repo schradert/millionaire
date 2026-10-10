@@ -1,5 +1,6 @@
 # Pin files: pkgs/<name>/pin.json, pkgs/charts/<name>/pin.json,
-# pkgs/images/<name>/pin.json. Read and bumped by tools/update.
+# pkgs/images/<name>/pin.json. Read and bumped by tools/update. tools/pin-lint
+# (pre-commit, deps-update) fails on hashes, revs or digestless images elsewhere.
 #
 # {
 #   "version": "1.2.3",            required; tag, chart version or commit sha

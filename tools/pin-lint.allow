@@ -1,0 +1,6 @@
+# Exceptions to tools/pin-lint: <path> <rule|*> <reason>. Keep it short.
+tools/update/src/ sri test fixtures, and FAKE_HASH (the placeholder update builds with to learn derived hashes)
+nixidy/apps/development/sveltekit-demo.nix * never published to Harbor, so no digest exists; placeholder until the first `image publish sveltekit-demo`
+nixidy/apps/home/org-bridge.nix image-tag ghcr.io/schradert/org-bridge is not published (registry 403), so no digest exists
+nixidy/apps/printing/mooncord.nix image-tag ghcr.io/eliteschwein/mooncord does not exist (registry 403), so no digest exists
+nixidy/system/ai/heretic.nix image-tag ghcr.io/p-e-w/heretic does not exist (registry 403), so no digest exists

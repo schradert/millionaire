@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# Fail if a fixed-output hash, git rev or digestless image ref appears
+# outside pkgs/ (pin.json) and tool-managed lockfiles. Those belong in
+# pkgs/**/pin.json, read through `pinned` (lib/pins.nix).
+#
+# Exceptions live in tools/pin-lint.allow as `<path> <rule|*> <reason>`; a
+# path ending in / is a prefix. An entry without a reason, or one that
+# matches nothing, fails too, so the list can only shrink.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+allow=tools/pin-lint.allow
+
+h='[0-9a-f]'
+export RE_SRI='sha(1|256|384|512)-[A-Za-z0-9+/]{27,}'
+export RE_HEX="(^|[^0-9a-f])$h{64}([^0-9a-f]|\$)"
+export RE_B32='"[0-9a-df-np-sv-z]{52}"'
+# hash = "…", vendorHash = "…", outputHashes."x" = "…", sha256 = lib.fakeSha256
+export RE_ATTR='(^|[^A-Za-z0-9_-])([A-Za-z0-9_]*[hH]ash(es)?|sha256|sha512)(\.[^ =]+)? *= *("|'"''"'|(pkgs\.)?lib\.fake)'
+export RE_REV="(^|[^A-Za-z0-9_])rev *= *\"$h{40}\""
+export RE_IMG='(^|[^A-Za-z0-9_])image *= *"[^"]*[:/][^"]*"'
+export RE_YIMG='^[ -]*image: *[^ ]+'
+export RE_TAG='(^|[^A-Za-z0-9_])tag *= *"[^"$]'
+
+# Commits a pin holds: a Cargo git dep may name one (pkgs/avr-hal).
+pinned_revs=$(git grep -hoE "\"version\": \"$h{40}\"" -- 'pkgs/**/pin.json' | grep -oE "$h{40}" | tr '\n' ' ' || true)
+
+findings=$(
+  git grep -nIE --no-color \
+    -e "$RE_SRI" -e "$RE_HEX" -e "$RE_B32" -e "$RE_ATTR" -e "$RE_REV" \
+    -e "$RE_IMG" -e "$RE_YIMG" -e "$RE_TAG" -- \
+    ':(exclude)pkgs/' ':(exclude)nixidy/generated/' ":(exclude)$allow" \
+    ':(exclude,glob)**/flake.lock' ':(exclude,glob)**/devenv.lock' \
+    ':(exclude,glob)**/Cargo.lock' ':(exclude,glob)**/uv.lock' \
+    ':(exclude,glob)**/bun.lock' ':(exclude,glob)**/bun.nix' \
+    ':(exclude,glob)**/package-lock.json' ':(exclude,glob)**/pnpm-lock.yaml' \
+    ':(exclude,glob)**/yarn.lock' |
+    awk -v revs="$pinned_revs" '
+      function out(r) { print f ":" n ":" r ":" t }
+      {
+        i = index($0, ":"); f = substr($0, 1, i - 1); rest = substr($0, i + 1)
+        j = index(rest, ":"); n = substr(rest, 1, j - 1); t = substr(rest, j + 1)
+        nix = f ~ /\.nix$/
+        if (t ~ ENVIRON["RE_SRI"]) out("sri")
+        if (t ~ ENVIRON["RE_HEX"]) out("hex")
+        if (t ~ ENVIRON["RE_B32"]) out("base32")
+        if (nix && t ~ ENVIRON["RE_ATTR"]) out("hash-attr")
+        if ((nix || f ~ /\.toml$/) && match(t, ENVIRON["RE_REV"])) {
+          rev = substr(t, RSTART, RLENGTH); sub(/"$/, "", rev); rev = substr(rev, length(rev) - 39)
+          if (index(" " revs " ", " " rev " ") == 0) out("git-rev")
+        }
+        if (nix && t ~ ENVIRON["RE_IMG"] && t !~ /@sha256:|"https?:\/\// ) out("image")
+        if (f ~ /\.ya?ml$/ && t ~ ENVIRON["RE_YIMG"] && t !~ /@sha256:/) out("image")
+        if (nix && f ~ /^nixidy\// && t ~ ENVIRON["RE_TAG"]) out("image-tag")
+      }' || true
+)
+
+[ -f "$allow" ] || : >"$allow"
+out=$(awk -v allowfile="$allow" '
+  BEGIN {
+    while ((getline l < allowfile) > 0) {
+      n++
+      if (l ~ /^[ \t]*(#|$)/) continue
+      split(l, f, /[ \t]+/)
+      if (f[3] == "") { printf "%s:%d: allowlist entry has no reason\n", allowfile, n; bad = 1 }
+      path[n] = f[1]; rul[n] = f[2]; used[n] = 0
+    }
+  }
+  NF == 0 { next }
+  {
+    i = index($0, ":"); p = substr($0, 1, i - 1)
+    rest = substr($0, i + 1); j = index(rest, ":"); rest = substr(rest, j + 1)
+    k = index(rest, ":"); r = substr(rest, 1, k - 1)
+    ok = 0
+    for (e in path)
+      if ((p == path[e] || (path[e] ~ /\/$/ && index(p, path[e]) == 1)) && (rul[e] == r || rul[e] == "*")) { used[e] = 1; ok = 1 }
+    if (!ok) { print; bad = 1 }
+  }
+  END {
+    for (e in path) if (!used[e]) { printf "%s:%d: allowlist entry matches nothing: %s %s\n", allowfile, e, path[e], rul[e]; bad = 1 }
+    exit bad
+  }' <<<"$findings") && exit 0
+printf '%s\n' "$out" | sed '/^$/d'
+cat >&2 <<'EOF'
+pin-lint: hashes, revs and image refs belong in pkgs/**/pin.json (pinned.*);
+images need tag+digest. Justified exceptions: tools/pin-lint.allow.
+EOF
+exit 1
