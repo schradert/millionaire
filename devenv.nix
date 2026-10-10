@@ -187,42 +187,11 @@ in {
       };
 
       # Scripts
-      # `update-deps` — bump every dependency system in the repo to the latest
-      # versions each manifest allows. This is the whole-repo orchestrator: the
-      # root shell has nix + uv but NOT cargo/bun, so the Rust/Bun domains are
-      # delegated into their own devenv shells (each defines its own
-      # `update-deps`). --no-reload stops this outer shell from reacting when a
-      # delegated `devenv update` rewrites a sub-lock mid-run.
-      # NOTE: this bumps WITHIN each manifest's version constraints. Getting the
-      # latest PAST those pins (semver caps) is a separate, still-open problem.
-      scripts.update-deps.exec = ''
-        set -euo pipefail
-        root="${config.devenv.root}"
-
-        echo "==> [1/6] Nix flake inputs (nixpkgs, home-manager, devenv, nixidy, git-hooks, nix2container, …)"
-        (cd "$root" && nix flake update)
-
-        echo "==> [2/6] Root devenv lock"
-        (cd "$root" && devenv update)
-
-        echo "==> [3/6] Python / uv — Pulumi providers"
-        (cd "$root/pulumi" && uv lock --upgrade && uv sync)
-
-        echo "==> [4/6] Rust — embedded workspace + arduino (AVR)"
-        (cd "$root/embedded" && devenv shell --no-reload update-deps)
-
-        echo "==> [5/6] Rust — org-bridge"
-        (cd "$root/org-bridge" && devenv shell --no-reload update-deps)
-
-        echo "==> [6/6] Bun — sveltekit-demo"
-        (cd "$root/apps/sveltekit-demo" && devenv shell --no-reload update-deps)
-
-        echo ""
-        echo "==> Done. Review lockfile diffs before committing:"
-        echo "      flake.lock  {.,embedded,org-bridge,apps/sveltekit-demo}/devenv.lock"
-        echo "      pulumi/uv.lock  embedded/Cargo.lock  embedded/boards/arduino-uno-r3/Cargo.lock"
-        echo "      org-bridge/Cargo.lock  apps/sveltekit-demo/bun.lock"
-        echo "    Then regenerate bun.nix from bun.lock (see README bun2nix todo)."
+      # `update` — check/bump pins (pkgs/**/pin.json) and every lockfile
+      # (flake, devenv, cargo, uv, bun) with validation gates; see
+      # tools/update. Built on first use, not on shell entry.
+      scripts.update.exec = ''
+        exec nix run "${config.devenv.root}#update" --no-pure-eval -- "$@"
       '';
       scripts.sync.exec = ''
         subcmd="$1"; shift

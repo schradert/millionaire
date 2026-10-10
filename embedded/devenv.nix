@@ -155,30 +155,6 @@ in {
     | xargs -0 rustfmt
   '';
 
-  # `update-deps` — bump this workspace's Cargo deps to the latest the manifests
-  # allow. Two invocations are needed because the tree spans two toolchains:
-  #   1. The workspace root (`cargo update` here) refreshes embedded/Cargo.lock,
-  #      which covers all 4 board MEMBERS *and* the excluded path-dep libs
-  #      (shared/*, apps/*) — those are pulled into the workspace lock, and
-  #      their own Cargo.lock files are gitignored, so no separate run needed.
-  #   2. boards/arduino-uno-r3 is EXCLUDED and not a path-dep of any member, so
-  #      the workspace lock never sees it. It also needs the AVR nightly
-  #      toolchain (esp-rs has no AVR backend), so we prepend $AVR_RUST like its
-  #      .envrc does. It has no committed lock (embedded/.gitignore ignores
-  #      shared/*,apps/* locks but NOT boards/*) — `cargo update` creates
-  #      boards/arduino-uno-r3/Cargo.lock, which is committable.
-  # The default `cargo`/esp-rs toolchain drives the workspace update; only the
-  # arduino step swaps to AVR. (The other boards' upstream-nightly `xcargo`
-  # path isn't needed for a lockfile bump — resolution is target-independent.)
-  scripts.update-deps.exec = ''
-    set -euo pipefail
-    echo "  -> embedded workspace (esp32-c3/s3, stm32, teensy + shared/apps path-deps)"
-    (cd "$DEVENV_ROOT" && cargo update)
-
-    echo "  -> boards/arduino-uno-r3 (AVR nightly toolchain)"
-    (cd "$DEVENV_ROOT/boards/arduino-uno-r3" && PATH="$AVR_RUST/bin:$PATH" cargo update)
-  '';
-
   # `xcargo` — run cargo with the UPSTREAM nightly toolchain instead of the
   # default esp-rs. Use it to cross-build the non-Xtensa boards locally (incl.
   # macOS): `cd boards/esp32-c3 && xcargo build --release`. The board's

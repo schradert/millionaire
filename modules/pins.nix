@@ -15,9 +15,15 @@
 in {
   shared = arg;
   nixidy = arg;
-  perSystem = {pkgs, ...}: {
+  perSystem = {
+    inputs',
+    pkgs,
+    ...
+  }: {
     _module.args.pinned = mkPinned pkgs;
     legacyPackages.pinned = mkPinned pkgs;
-    packages.update = pkgs.callPackage ../tools/update {};
+    packages.update = pkgs.callPackage ../tools/update {
+      bun2nix = inputs'.bun2nix.packages.default;
+    };
   };
 }

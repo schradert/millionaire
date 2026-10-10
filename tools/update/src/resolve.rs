@@ -23,7 +23,13 @@ fn key(s: &str, pattern: Option<&Regex>) -> Option<Version> {
             if c.get(0)?.as_str() != s {
                 return None;
             }
-            Version::parse(c.get(1).or(c.get(0))?.as_str())
+            // all capture groups joined by '.' (or the whole match)
+            let groups: Vec<&str> = c.iter().skip(1).flatten().map(|m| m.as_str()).collect();
+            if groups.is_empty() {
+                Version::parse(c.get(0)?.as_str())
+            } else {
+                Version::parse(&groups.join("."))
+            }
         }
         None => Version::parse(s),
     }
@@ -258,6 +264,16 @@ mod tests {
         assert_eq!(
             pick(&t, "", Some(&re), "0.10.1-nginx", None).as_deref(),
             Some("0.11.0-nginx")
+        );
+        let re = Regex::new(r"jvb-(\d+\.\d+)-(\d+)-g[0-9a-f]+-1").unwrap();
+        let t = tags(&[
+            "jvb-2.3-280-g159a678e5-1",
+            "jvb-2.3-301-gabc-1",
+            "jvb-2.4-1-gdef-1x",
+        ]);
+        assert_eq!(
+            pick(&t, "", Some(&re), "jvb-2.3-280-g159a678e5-1", None).as_deref(),
+            Some("jvb-2.3-301-gabc-1")
         );
         let t = tags(&["release-1.2", "1.3", "release-1.4"]);
         assert_eq!(
