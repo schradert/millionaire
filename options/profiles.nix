@@ -7,6 +7,7 @@
     options.profile = can.enum ["work" "personal"] "use case for node" {default = "personal";};
     options.profiles = {
       workstation.enable = can.enable "workstation modules" {};
+      languages.enable = can.enable "language toolchains (modules/languages)" {default = config.profiles.workstation.enable;};
       client.enable = can.enable "laptop/desktop client (networkmanager, audio, video, fhs)" {};
       desktop.plasma.enable = can.enable "Plasma 6 desktop with SDDM on wayland" {default = config.profiles.client.enable;};
       gaming.enable = can.enable "gaming" {};
