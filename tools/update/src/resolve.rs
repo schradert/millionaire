@@ -154,7 +154,7 @@ fn latest_version(ctx: &Ctx, pin: &Pin, major: bool) -> Result<Option<String>> {
             &pin.version,
             c.as_ref(),
         ),
-        Source::UrlTemplate { .. } => None,
+        Source::UrlTemplate { .. } | Source::UrlSet { .. } => None,
         Source::HelmRepo { repo, chart } => pick(
             &crate::helm::versions(repo, chart)?,
             "",

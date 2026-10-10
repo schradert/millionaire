@@ -66,6 +66,15 @@ pub enum Source {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         track: Option<Track>,
     },
+    /// Many files under one URL template (`{name}` = a key of `hashes`),
+    /// e.g. the game library. Never updated upstream.
+    UrlSet {
+        url: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        unpack: Option<bool>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        executable: Option<bool>,
+    },
     UrlTemplate {
         url: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -147,6 +156,10 @@ pub fn read(path: &Path) -> Result<Pin> {
     match (&pin.source, &pin.hash, &pin.digest) {
         (Source::OciTag { .. }, _, None) => bail!("{}: oci-tag needs digest", path.display()),
         (Source::OciTag { .. }, _, _) => {}
+        (Source::UrlSet { .. }, _, _) if pin.hashes.is_empty() => {
+            bail!("{}: url-set needs hashes", path.display())
+        }
+        (Source::UrlSet { .. }, _, _) => {}
         (_, None, _) => bail!("{}: missing hash", path.display()),
         _ => {}
     }
@@ -254,6 +267,15 @@ mod tests {
         let pin: Pin = serde_json::from_str(s).unwrap();
         assert_eq!(pin.follows.as_deref(), Some("charts/cilium"));
         assert_eq!(to_string(&pin).unwrap(), s);
+    }
+
+    #[test]
+    fn url_set_parses() {
+        let pin: Pin = serde_json::from_str(
+            r#"{"version":"1","hashes":{"a/b":"x"},"source":{"type":"url-set","url":"https://e/{name}.zip","unpack":true}}"#,
+        )
+        .unwrap();
+        assert!(matches!(pin.source, Source::UrlSet { unpack: Some(true), .. }));
     }
 
     #[test]

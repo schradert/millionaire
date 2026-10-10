@@ -1,0 +1,11 @@
+{
+  "version": "1",
+  "hashes": {
+    "PS1/ps-41a": "sha256-xrIXKXbsnEYB7h1R3gg80Tua5sEMhxDX4083RVO7j9I="
+  },
+  "source": {
+    "type": "url-set",
+    "url": "https://games.trdos.me/bios/{name}.zip",
+    "unpack": true
+  }
+}
