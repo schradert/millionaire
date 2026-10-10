@@ -1,0 +1,30 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: grafana
+  namespace: identity
+spec:
+  clientSecretRef:
+    create: true
+    name: grafana
+  definition:
+    attributes:
+      post.logout.redirect.uris: https://grafana.trdos.me/login
+    clientId: grafana
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+      - groups
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Grafana
+    protocol: openid-connect
+    publicClient: false
+    redirectUris:
+      - https://grafana.trdos.me/login/generic_oauth
+    standardFlowEnabled: true
+    webOrigins:
+      - https://grafana.trdos.me
+  realmRef:
+    name: default
