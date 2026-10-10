@@ -1,4 +1,6 @@
-{config, ...}: {
+{config, ...}: let
+  inherit (config.canivete.meta) people;
+in {
   # TODO AI features https://docs.mealie.io/documentation/getting-started/installation/ai-providers/
   # TODO bulk import some recipes https://docs.mealie.io/documentation/community-guide/bulk-url-import/
   # TODO bookmarklet https://docs.mealie.io/documentation/community-guide/import-recipe-bookmarklet/
@@ -12,12 +14,19 @@
   }: let
     inherit (config.canivete.meta) domain;
     hostname = "mealie.${domain}";
+    bootstrapped = pinned.images ? app-bootstrap-mealie;
   in {
     gatus.endpoints.mealie = {
       url = "https://${hostname}";
       group = "internal";
     };
 
+    # Native OIDC (env-configured below), no oauth2-proxy. Logins are matched to a user
+    # by the `email` claim (username, then email), and the `groups` claim (short names)
+    # sets admin: `admin` -> admin, `family` -> plain user, anyone else is refused.
+    # The bootstrap job renames the seeded admin to tristan's email, so tristan's
+    # login IS that admin; password login stays on as break-glass (with
+    # OIDC_AUTO_REDIRECT, reach the password form at /login?direct=1).
     # Keycloak OIDC client — Hostzero operator syncs secret to K8s
     applications.keycloak.resources.keycloakClients.mealie.spec = {
       realmRef.name = "default";
@@ -35,12 +44,30 @@
         directAccessGrantsEnabled = false;
         redirectUris = ["https://${hostname}/login*"];
         webOrigins = ["https://${hostname}"];
-        defaultClientScopes = ["openid" "profile" "email"];
+        defaultClientScopes = ["openid" "profile" "email" "groups"];
       };
     };
 
     applications.mealie = {
       namespace = "health";
+      generatedSecrets.mealie-admin = {
+        key = "password";
+        bitwarden = "mealie/admin-password";
+      };
+      # Idempotent post-sync bootstrap (apps/app-bootstrap mealie, >= 0.9.0): turns the
+      # seeded changeme@example.com admin into tristan with the generated password.
+      bootstrap = lib.mkIf bootstrapped {
+        image = with pinned.images.app-bootstrap-mealie; "${repository}:${tag}@${digest}";
+        args = ["mealie"];
+        env = {
+          MEALIE_URL = "http://mealie.health.svc.cluster.local:9000";
+          ADMIN_USER = people.me;
+          ADMIN_NAME = people.my.name;
+          ADMIN_EMAIL = people.my.profiles.personal.email;
+          ADMIN_PASSWORD_FILE = "/secrets/admin/password";
+        };
+        secrets.admin = "mealie-admin";
+      };
       postgres.enable = true;
       helm.releases.mealie = {
         chart = charts.bjw-s-labs.app-template-patched;
@@ -63,7 +90,12 @@
           configMaps.mealie.data = {
             BASE_URL = "https://${hostname}";
             ALLOW_SIGNUP = "False";
-            ALLOW_PASSWORD_LOGIN = "False";
+            # Off until the bootstrap has replaced the seeded changeme@example.com /
+            # MyPassword admin; then on as break-glass.
+            ALLOW_PASSWORD_LOGIN =
+              if bootstrapped
+              then "True"
+              else "False";
             DB_ENGINE = "postgres";
             POSTGRES_SERVER = "mealie-rw";
             POSTGRES_PASSWORD_FILE = "/secrets/db_password.txt";
@@ -73,8 +105,8 @@
             OIDC_CLIENT_SECRET_FILE = "/secrets/client_secret";
             OIDC_PROVIDER_NAME = "Keycloak";
             OIDC_SIGNUP_ENABLED = "True";
-            OIDC_USER_GROUP = "/family";
-            OIDC_ADMIN_GROUP = "/admin";
+            OIDC_USER_GROUP = "family";
+            OIDC_ADMIN_GROUP = "admin";
             OIDC_AUTO_REDIRECT = "True";
             OIDC_REMEMBER_ME = "True";
             SMTP_HOST = "stalwart.mail.svc.cluster.local";

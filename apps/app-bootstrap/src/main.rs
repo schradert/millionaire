@@ -1,6 +1,6 @@
 //! Idempotent first-run bootstraps, run as ArgoCD PostSync Jobs.
 //!
-//! `app-bootstrap <app>` where app is `atuin`, `audiobookshelf`, `immich`, `kavita`, `komga`, `navidrome`, `seerr`, `openviking` or `contextforge`. Every step checks
+//! `app-bootstrap <app>` where app is `atuin`, `audiobookshelf`, `immich`, `kavita`, `komga`, `mealie`, `navidrome`, `seerr`, `openviking` or `contextforge`. Every step checks
 //! the current state first, so a rerun against a configured app changes nothing.
 
 mod atuin;
@@ -10,6 +10,7 @@ mod contextforge;
 mod immich;
 mod kavita;
 mod komga;
+mod mealie;
 mod navidrome;
 mod openviking;
 mod seerr;
@@ -25,11 +26,12 @@ async fn main() -> ExitCode {
         "immich" => immich::run().await,
         "kavita" => kavita::run().await,
         "komga" => komga::run().await,
+        "mealie" => mealie::run().await,
         "navidrome" => navidrome::run().await,
         "openviking" => openviking::run().await,
         "seerr" => seerr::run().await,
         "contextforge" => contextforge::run().await,
-        other => Err(format!("usage: app-bootstrap <atuin|audiobookshelf|immich|kavita|komga|navidrome|openviking|seerr|contextforge> (got {other:?})").into()),
+        other => Err(format!("usage: app-bootstrap <atuin|audiobookshelf|immich|kavita|komga|mealie|navidrome|openviking|seerr|contextforge> (got {other:?})").into()),
     };
     match res {
         Ok(()) => {

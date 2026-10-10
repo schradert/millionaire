@@ -4,7 +4,7 @@ data:
   ALLOW_SIGNUP: "False"
   BASE_URL: https://mealie.trdos.me
   DB_ENGINE: postgres
-  OIDC_ADMIN_GROUP: /admin
+  OIDC_ADMIN_GROUP: admin
   OIDC_AUTH_ENABLED: "True"
   OIDC_AUTO_REDIRECT: "True"
   OIDC_CLIENT_ID: mealie
@@ -13,7 +13,7 @@ data:
   OIDC_PROVIDER_NAME: Keycloak
   OIDC_REMEMBER_ME: "True"
   OIDC_SIGNUP_ENABLED: "True"
-  OIDC_USER_GROUP: /family
+  OIDC_USER_GROUP: family
   POSTGRES_PASSWORD_FILE: /secrets/db_password.txt
   POSTGRES_SERVER: mealie-rw
   SMTP_AUTH_STRATEGY: NONE
