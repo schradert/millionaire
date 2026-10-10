@@ -16,7 +16,7 @@ spec:
       app.kubernetes.io/instance: grafana
       app.kubernetes.io/name: grafana
   strategy:
-    type: RollingUpdate
+    type: Recreate
   template:
     metadata:
       annotations:
@@ -131,6 +131,9 @@ spec:
             - name: GF_UNIFIED_STORAGE_INDEX_PATH
               value: /var/lib/grafana-search/bleve
           envFrom:
+            - secretRef:
+                name: grafana-oidc
+                optional: false
             - configMapRef:
                 name: grafana
                 optional: false
