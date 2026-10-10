@@ -40,6 +40,8 @@ in {
       conditions = ["[STATUS] == any(200, 302, 401)"];
     };
     # Immich native OIDC: wired up in IMMICH_CONFIG_FILE (immich-config Secret below).
+    # Logins link to an existing user by email (tristan -> the bootstrapped admin).
+    # New users get admin from immich_role, which the Keycloak `admin` group sets.
     applications.keycloak.resources.keycloakClients.immich.spec = {
       realmRef.name = "default";
       clientSecretRef = {
@@ -60,7 +62,25 @@ in {
           "app.immich:///oauth-callback"
         ];
         webOrigins = ["https://${hostname}"];
-        defaultClientScopes = ["openid" "profile" "email"];
+        defaultClientScopes = ["openid" "profile" "email" "groups"];
+        protocolMappers = lib.toList {
+          name = "immich_role";
+          protocol = "openid-connect";
+          protocolMapper = "oidc-usermodel-attribute-mapper";
+          consentRequired = false;
+          config = {
+            "user.attribute" = "immich_role";
+            "claim.name" = "immich_role";
+            "jsonType.label" = "String";
+            # Pick it up from the user's groups (KeycloakGroup admin).
+            "aggregate.attrs" = "true";
+            "multivalued" = "false";
+            "id.token.claim" = "true";
+            "access.token.claim" = "true";
+            "userinfo.token.claim" = "true";
+            "introspection.token.claim" = "true";
+          };
+        };
       };
     };
     applications.immich = {
@@ -137,10 +157,10 @@ in {
               sectionName = "https";
             };
             rules = lib.toList {
+              # Native OIDC, no oauth2-proxy: the mobile app needs the API directly.
               backendRefs = lib.toList {
-                name = "oauth2-proxy";
-                namespace = "identity";
-                port = 4180;
+                name = "immich-server";
+                port = 2283;
               };
             };
           };
@@ -205,6 +225,7 @@ in {
             buttonText = "Login with Keycloak";
             autoRegister = true;
             autoLaunch = false;
+            roleClaim = "immich_role";
           };
         };
       };
@@ -313,10 +334,6 @@ in {
           sourceRef.storeRef.kind = "ClusterSecretStore";
         }
       ];
-    };
-    oauth2Proxy.upstreams."${hostname}" = {
-      url = "http://immich-server.media.svc.cluster.local:2283";
-      namespace = "media";
     };
   };
 }

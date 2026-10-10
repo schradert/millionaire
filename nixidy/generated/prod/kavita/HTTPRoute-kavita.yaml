@@ -20,7 +20,7 @@ spec:
     - backendRefs:
         - group: ""
           kind: Service
-          name: oauth2-proxy
-          namespace: identity
-          port: 4180
+          name: kavita
+          namespace: media
+          port: 5000
           weight: 1

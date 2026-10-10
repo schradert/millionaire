@@ -13,10 +13,26 @@ spec:
       - openid
       - profile
       - email
+      - groups
     directAccessGrantsEnabled: false
     enabled: true
     name: Immich
     protocol: openid-connect
+    protocolMappers:
+      - config:
+          access.token.claim: "true"
+          aggregate.attrs: "true"
+          claim.name: immich_role
+          id.token.claim: "true"
+          introspection.token.claim: "true"
+          jsonType.label: String
+          multivalued: "false"
+          user.attribute: immich_role
+          userinfo.token.claim: "true"
+        consentRequired: false
+        name: immich_role
+        protocol: openid-connect
+        protocolMapper: oidc-usermodel-attribute-mapper
     publicClient: false
     redirectUris:
       - https://immich.trdos.me/auth/login

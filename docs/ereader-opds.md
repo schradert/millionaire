@@ -2,7 +2,12 @@
 
 ## Problem
 
-Kavita and Komga sit behind oauth2-proxy (OIDC). E-reader OPDS clients can
+> Update 2026-10: Kavita no longer sits behind oauth2-proxy. It uses its own
+> Keycloak OIDC login, and the whole hostname routes straight to Kavita, so the
+> OPDS bypass route is gone. OPDS URLs are unchanged, and Kavita still requires
+> the per-user API key on `/api/opds`. The Komga bypass below still applies.
+
+Kavita and Komga sat behind oauth2-proxy (OIDC). E-reader OPDS clients can
 only do HTTP Basic auth or URL-embedded API keys — they cannot complete an
 OIDC redirect flow. The Xteink X4 (ESP32-C3) additionally cannot run a real
 Tailscale client (measured below), so a tailnet-only exposure doesn't cover

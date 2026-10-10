@@ -5,6 +5,9 @@ metadata:
   namespace: identity
 spec:
   definition:
+    attributes:
+      immich_role:
+        - admin
     name: admin
   realmRef:
     name: default
