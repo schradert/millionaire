@@ -1,0 +1,10 @@
+{
+  "version": "1.55",
+  "hash": "sha256-DWVFBoICroKaKgByLmDEo4O+xo6eA8YO792g8t8R7kA=",
+  "source": {
+    "type": "github-tag",
+    "owner": "zdharma-continuum",
+    "repo": "fast-syntax-highlighting",
+    "tagPrefix": "v"
+  }
+}

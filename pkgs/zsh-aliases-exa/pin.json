@@ -1,0 +1,10 @@
+{
+  "version": "9b0ee887340a3b40e1bc3d2cdf98a7626cdff816",
+  "hash": "sha256-31od2U/8MtIYh801eBdOvubzON5GpMM/2kWjkGXguAE=",
+  "source": {
+    "type": "git-commit",
+    "owner": "DarrinTisdale",
+    "repo": "zsh-aliases-exa",
+    "branch": "master"
+  }
+}

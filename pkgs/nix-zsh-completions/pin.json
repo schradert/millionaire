@@ -1,0 +1,9 @@
+{
+  "version": "0.4.4",
+  "hash": "sha256-Djs1oOnzeVAUMrZObNLZ8/5zD7DjW3YK42SWpD2FPNk=",
+  "source": {
+    "type": "github-tag",
+    "owner": "spwhitt",
+    "repo": "nix-zsh-completions"
+  }
+}

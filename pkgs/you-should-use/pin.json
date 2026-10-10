@@ -1,0 +1,9 @@
+{
+  "version": "1.7.3",
+  "hash": "sha256-/uVFyplnlg9mETMi7myIndO6IG7Wr9M7xDFfY1pG5Lc=",
+  "source": {
+    "type": "github-tag",
+    "owner": "MichaelAquilina",
+    "repo": "zsh-you-should-use"
+  }
+}
