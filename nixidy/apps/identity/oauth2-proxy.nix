@@ -10,9 +10,10 @@
   hostname = "oauth2.${domain}";
 in {
   nixidy = {
-    config,
     charts,
+    config,
     lib,
+    pinned,
     ...
   }: let
     upstreams = config.oauth2Proxy.upstreams;
@@ -106,8 +107,7 @@ in {
             controllers.oauth2-proxy = {
               annotations."reloader.stakater.com/auto" = "true";
               containers.oauth2-proxy = {
-                image.repository = "quay.io/oauth2-proxy/oauth2-proxy";
-                image.tag = "v7.8.1";
+                image = pinned.images.oauth2-proxy;
                 args = [
                   "--http-address=0.0.0.0:4180"
                   "--provider=keycloak-oidc"
@@ -148,8 +148,7 @@ in {
                 probes.startup.enabled = true;
               };
               containers.router = {
-                image.repository = "nginx";
-                image.tag = "1.27-alpine";
+                image = pinned.images.nginx;
                 ports = lib.toList {
                   name = "router";
                   containerPort = 8080;

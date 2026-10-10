@@ -29,7 +29,7 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - image: ghcr.io/clon1998/mobileraker_companion:latest
+        - image: ghcr.io/clon1998/mobileraker_companion:latest@sha256:4aad389e1da183d38e5ebb57fa16a78464e465874788a0deeaf3b8458883d821
           name: mobileraker-companion
           volumeMounts:
             - mountPath: /opt/printer_data/config/mobileraker.conf

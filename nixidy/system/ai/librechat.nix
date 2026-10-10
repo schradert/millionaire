@@ -5,6 +5,7 @@ in {
   nixidy = {
     charts,
     lib,
+    pinned,
     pkgs,
     ...
   }: let
@@ -92,8 +93,7 @@ in {
           controllers.librechat = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.librechat = {
-              image.repository = "ghcr.io/danny-avila/librechat";
-              image.tag = "v0.8.7";
+              image = pinned.images.librechat;
               env = {
                 HOST = "0.0.0.0";
                 PORT = "3080";
@@ -139,8 +139,7 @@ in {
           controllers.mongodb = {
             type = "statefulset";
             containers.mongodb = {
-              image.repository = "mongo";
-              image.tag = "7";
+              image = pinned.images.mongo;
               ports = lib.toList {
                 name = "mongodb";
                 containerPort = 27017;

@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -53,9 +54,7 @@
           controllers.sure = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.sure = {
-              image.repository = "ghcr.io/we-promise/sure";
-              image.tag = "stable";
-              # TODO: pin digest for reproducibility
+              image = pinned.images.sure;
               inherit envFrom;
               ports = lib.toList {
                 name = "http";
@@ -76,8 +75,7 @@
           controllers.sure-worker = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.sure-worker = {
-              image.repository = "ghcr.io/we-promise/sure";
-              image.tag = "stable";
+              image = pinned.images.sure;
               args = ["bundle" "exec" "sidekiq"];
               inherit envFrom;
               probes.liveness.enabled = false;

@@ -1,0 +1,9 @@
+{
+  "version": "v0.15.0",
+  "digest": "sha256:1b64a4dee2e9827278e0b003e25e33d449e6868cfab851b33d6da98d83d73442",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/scross01/prometheus-klipper-exporter",
+    "tagPattern": "v(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}

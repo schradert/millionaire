@@ -4,6 +4,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: {
     applications.openclaw = {
@@ -15,8 +16,7 @@
             annotations."reloader.stakater.com/auto" = "true";
             containers.openclaw = {
               # TODO: update image once published, or build from github:openclaw/openclaw
-              image.repository = "ghcr.io/openclaw/openclaw";
-              image.tag = "latest";
+              image = pinned.images.openclaw;
               env = {
                 GATEWAY_HOST = "0.0.0.0";
                 GATEWAY_PORT = "18789";

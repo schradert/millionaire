@@ -1,0 +1,9 @@
+{
+  "version": "v5.11.3",
+  "digest": "sha256:ff21e4ed74fa70b8c41b78e8f06af3ad7cc488dab9678b5508838ca963abe621",
+  "source": {
+    "type": "oci-tag",
+    "repository": "hacdias/webdav",
+    "tagPattern": "v(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}

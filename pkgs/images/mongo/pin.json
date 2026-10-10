@@ -1,0 +1,9 @@
+{
+  "version": "7",
+  "digest": "sha256:1f995ad6fdb93244a1addab1b58f934a0bc2f5643c38e02f5e9d7f0c7d227a7b",
+  "source": {
+    "type": "oci-tag",
+    "repository": "mongo",
+    "track": "digest"
+  }
+}

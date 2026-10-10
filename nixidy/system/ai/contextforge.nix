@@ -5,6 +5,7 @@ in {
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: {
     # Keycloak OIDC client for ContextForge admin UI
@@ -73,8 +74,7 @@ in {
               };
             };
             containers.contextforge = {
-              image.repository = "ghcr.io/ibm/mcp-context-forge";
-              image.tag = "latest";
+              image = pinned.images.mcp-context-forge;
               env = {
                 # The gateway's settings read HOST/PORT (default 127.0.0.1:4444);
                 # MCP_GATEWAY_* are ignored, so without these the probes on :8080

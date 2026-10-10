@@ -1,0 +1,9 @@
+{
+  "version": "v7.8.1",
+  "digest": "sha256:d62e2d81c6f5048f652f67c302083be1272c181b971fad80e5a30ebe2b8b75d8",
+  "source": {
+    "type": "oci-tag",
+    "repository": "quay.io/oauth2-proxy/oauth2-proxy",
+    "tagPattern": "v(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}

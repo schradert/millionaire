@@ -31,7 +31,7 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - image: zwavejs/zwave-js-ui:9.31.0
+        - image: zwavejs/zwave-js-ui:9.31.0@sha256:361c8c958cf75b731cb73127a403c0750084b8e9b414244d80a1f1bef6bcf460
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0

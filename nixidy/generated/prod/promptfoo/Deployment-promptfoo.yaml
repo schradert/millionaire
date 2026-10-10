@@ -44,7 +44,7 @@ spec:
           envFrom:
             - secretRef:
                 name: promptfoo
-          image: ghcr.io/promptfoo/promptfoo:latest
+          image: ghcr.io/promptfoo/promptfoo:latest@sha256:3001a2cdc6a1cf42b814dd24d59e543cae602ddf01b4ee073db6ce76c6469a72
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0

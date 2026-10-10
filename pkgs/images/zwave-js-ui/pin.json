@@ -1,0 +1,9 @@
+{
+  "version": "9.31.0",
+  "digest": "sha256:361c8c958cf75b731cb73127a403c0750084b8e9b414244d80a1f1bef6bcf460",
+  "source": {
+    "type": "oci-tag",
+    "repository": "zwavejs/zwave-js-ui",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}

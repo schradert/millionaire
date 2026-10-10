@@ -1,0 +1,9 @@
+{
+  "version": "1.29",
+  "digest": "sha256:dde2305f0b78260a66e4a12785f0e26d86e89276ffccf50209c34943f270a954",
+  "source": {
+    "type": "oci-tag",
+    "repository": "syncthing/syncthing",
+    "track": "digest"
+  }
+}

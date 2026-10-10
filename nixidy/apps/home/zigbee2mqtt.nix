@@ -6,6 +6,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -31,8 +32,7 @@
               nodeSelector."kubernetes.io/hostname" = "sirver";
             };
             containers.zigbee2mqtt = {
-              image.repository = "koenkk/zigbee2mqtt";
-              image.tag = "2.12.0";
+              image = pinned.images.zigbee2mqtt;
               env = {
                 ZIGBEE2MQTT_CONFIG_MQTT_SERVER = "mqtt://mosquitto.home.svc.cluster.local:1883";
                 ZIGBEE2MQTT_CONFIG_SERIAL_PORT = serialPort;

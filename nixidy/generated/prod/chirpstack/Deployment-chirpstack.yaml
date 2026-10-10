@@ -37,7 +37,7 @@ spec:
           envFrom:
             - secretRef:
                 name: chirpstack
-          image: chirpstack/chirpstack:4
+          image: chirpstack/chirpstack:4@sha256:cecb45bd2dfc9de55d32c620d6674093f859a899f4de36eb82924c7aa3bda8de
           livenessProbe:
             tcpSocket:
               port: 8080

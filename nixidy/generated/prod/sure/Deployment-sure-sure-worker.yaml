@@ -40,7 +40,7 @@ spec:
                 name: sure
             - secretRef:
                 name: sure
-          image: ghcr.io/we-promise/sure:stable
+          image: ghcr.io/we-promise/sure:stable@sha256:665adde4e60f1695936f880185f6bd4abd30b53866244edc132bfaff9d5bbde8
           name: sure-worker
       dnsPolicy: ClusterFirst
       enableServiceLinks: false

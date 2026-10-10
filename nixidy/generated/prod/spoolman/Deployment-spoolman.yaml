@@ -34,7 +34,7 @@ spec:
               value: sqlite
             - name: SPOOLMAN_DIR
               value: /data
-          image: ghcr.io/donkie/spoolman:0.23.1
+          image: ghcr.io/donkie/spoolman:0.23.1@sha256:c798bcc19194949962044459e4b43c09d667d084ae9c2c2e0187a42c36d43d9e
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0

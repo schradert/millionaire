@@ -1,0 +1,9 @@
+{
+  "version": "v0.8.7",
+  "digest": "sha256:c5db3331b845e1f289f8d04c0c77936c4bbe372f76730a804abc1c37e44d23a9",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/danny-avila/librechat",
+    "tagPattern": "v(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}

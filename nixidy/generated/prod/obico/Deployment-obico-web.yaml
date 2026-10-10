@@ -53,7 +53,7 @@ spec:
                 name: obico-secret-key
             - secretRef:
                 name: obico-ml-api-token
-          image: thespaghettidetective/web:latest
+          image: thespaghettidetective/web:latest@sha256:a0463b85904d239f9de9c66f1b5583674d24440c6df5778f897b4a952589fed7
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0

@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -21,8 +22,7 @@
           controllers.spoolman = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.spoolman = {
-              image.repository = "ghcr.io/donkie/spoolman";
-              image.tag = "0.23.1";
+              image = pinned.images.spoolman;
               env.SPOOLMAN_DB_TYPE = "sqlite";
               env.SPOOLMAN_DIR = "/data";
               probes.liveness.enabled = true;

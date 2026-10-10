@@ -1,0 +1,9 @@
+{
+  "version": "latest",
+  "digest": "sha256:1b3d07c5d9c6fddbcd207024830accdef964aff626654cbb7a5f38af7024cdf9",
+  "source": {
+    "type": "oci-tag",
+    "repository": "thespaghettidetective/ml_api",
+    "track": "digest"
+  }
+}

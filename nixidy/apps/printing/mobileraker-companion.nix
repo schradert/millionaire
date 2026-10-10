@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: {
     applications.mobileraker-companion = {
@@ -10,8 +11,7 @@
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.mobileraker-companion.containers.mobileraker-companion = {
-            image.repository = "ghcr.io/clon1998/mobileraker_companion";
-            image.tag = "latest";
+            image = pinned.images.mobileraker-companion;
           };
           configMaps.mobileraker-companion.data."mobileraker.conf" = lib.generators.toINI {} {
             general.language = "en";
