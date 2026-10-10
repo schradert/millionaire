@@ -20,3 +20,5 @@ hass = "hass"
 HASS = "HASS"
 # Navidrome config env vars are all `ND_`-prefixed, not a typo of "AND"
 ND = "ND"
+# chiaki's PS5 registration key flag (--registkey, regist_key)
+regist = "regist"
