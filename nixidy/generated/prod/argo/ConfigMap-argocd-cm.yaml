@@ -4,6 +4,7 @@ data:
   application.instanceLabelKey: argocd.argoproj.io/instance
   application.sync.impersonation.enabled: "false"
   exec.enabled: "false"
+  oidc.config: '{"clientID":"$oidc.argocd.clientID","clientSecret":"$oidc.argocd.clientSecret","issuer":"https://keycloak.trdos.me/realms/default","name":"Keycloak","requestedScopes":["openid","profile","email","groups"]}'
   resource.customizations.ignoreDifferences.apps_StatefulSet: '{"jqPathExpressions":[".spec.volumeClaimTemplates[]?.apiVersion",".spec.volumeClaimTemplates[]?.kind",".spec.volumeClaimTemplates[]?.status"]}'
   resource.customizations.ignoreDifferences.external-secrets.io_ExternalSecret: '{"jqPathExpressions":[".spec.refreshInterval",".spec.target.creationPolicy",".spec.target.deletionPolicy",".spec.target.template.engineVersion",".spec.target.template.mergePolicy",".spec.data[]?.remoteRef.conversionStrategy",".spec.data[]?.remoteRef.decodingStrategy",".spec.data[]?.remoteRef.metadataPolicy",".spec.dataFrom[]?.extract.conversionStrategy",".spec.dataFrom[]?.extract.decodingStrategy",".spec.dataFrom[]?.extract.metadataPolicy"]}'
   resource.customizations.ignoreDifferences.external-secrets.io_PushSecret: '{"jqPathExpressions":[".spec.data[]?.conversionStrategy"]}'
