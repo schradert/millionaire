@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/controller: atuin
+    app.kubernetes.io/instance: atuin
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: atuin
+  name: atuin
+  namespace: development
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: atuin
+      app.kubernetes.io/instance: atuin
+      app.kubernetes.io/name: atuin
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: atuin
+        app.kubernetes.io/instance: atuin
+        app.kubernetes.io/name: atuin
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - start
+          env:
+            - name: ATUIN_DB_URI
+              valueFrom:
+                secretKeyRef:
+                  key: uri
+                  name: atuin-app
+            - name: ATUIN_HOST
+              value: 0.0.0.0
+            - name: ATUIN_METRICS__ENABLE
+              value: "true"
+            - name: ATUIN_METRICS__HOST
+              value: 0.0.0.0
+            - name: ATUIN_METRICS__PORT
+              value: "9001"
+            - name: ATUIN_OPEN_REGISTRATION
+              value: "true"
+            - name: ATUIN_PORT
+              value: "8888"
+          image: ghcr.io/atuinsh/atuin:18.23.0@sha256:f232feeead54a0a13132b9cd477e312c3380e9dc90f1db24c4f79ce6c8e034ea
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8888
+            timeoutSeconds: 1
+          name: atuin
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8888
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8888
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /config
+              name: config
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: atuin
+      volumes:
+        - emptyDir: {}
+          name: config

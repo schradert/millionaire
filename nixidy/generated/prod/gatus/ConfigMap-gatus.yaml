@@ -38,6 +38,12 @@ data:
       name: argo-workflows
       url: https://workflows.trdos.me
     - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: atuin
+      url: https://atuin.trdos.me
+    - conditions:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m

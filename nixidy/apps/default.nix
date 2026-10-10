@@ -1,5 +1,6 @@
 {
   imports = [
+    ./development/atuin.nix
     ./development/sveltekit-demo.nix
     ./development/forgejo.nix
     ./development/windmill.nix
