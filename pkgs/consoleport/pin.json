@@ -1,0 +1,10 @@
+{
+  "version": "2.9.27",
+  "hash": "sha256-I3L6P9zOSgLY4DTS1v63GcgdgLT/BojYK6eeknXWGdw=",
+  "source": {
+    "type": "url-template",
+    "url": "https://github.com/seblindfors/ConsolePort/releases/download/{version}/ConsolePort-{version}.zip",
+    "owner": "seblindfors",
+    "repo": "ConsolePort"
+  }
+}
