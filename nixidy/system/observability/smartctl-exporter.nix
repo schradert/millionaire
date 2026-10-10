@@ -12,6 +12,8 @@
           fullnameOverride = "smartctl-exporter";
           # The chart's own rules are generic; ours are in prometheus.nix.
           prometheusRules.enabled = false;
+          # v0.15.0 answers 500 on any host with SCSI disks (its verify-error metrics
+          # miss a Describe entry); fixed on master (#329), no release yet.
           image = {
             inherit (pinned.images.smartctl-exporter) repository;
             tag = with pinned.images.smartctl-exporter; "${tag}@${digest}";
