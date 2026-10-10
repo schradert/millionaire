@@ -14,7 +14,7 @@
 {...}: {
   nixidy = {
     lib,
-    pkgs,
+    pinned,
     pulumi,
     ...
   }: let
@@ -33,23 +33,13 @@
       match = ".*_(clusters|machinedeployments|machinehealthchecks)\\.yaml";
       # CloudNativePG's Cluster kind already owns resources.clusters.
       attrNameOverrides."clusters.cluster.x-k8s.io" = "capiClusters";
-      src = pkgs.fetchFromGitHub {
-        owner = "kubernetes-sigs";
-        repo = "cluster-api";
-        rev = "v1.13.2";
-        hash = "sha256-qV96VA3kPzQSyn4Ff3l7Qh0BL9qKXGNax1rVAo+629g=";
-      };
+      src = pinned.cluster-api;
     };
     canivete.crds.caph = {
       application = "capi-cluster";
       prefix = "config/crd/bases";
       match = ".*_(hetznerclusters|hcloudmachinetemplates)\\.yaml";
-      src = pkgs.fetchFromGitHub {
-        owner = "syself";
-        repo = "cluster-api-provider-hetzner";
-        rev = "v1.1.6";
-        hash = "sha256-FfwzFqZ9Qva2lG+xFsBwC2D2iuBVHC6lJ62oD75Yibk=";
-      };
+      src = pinned.cluster-api-provider-hetzner;
     };
 
     applications.capi-cluster = {

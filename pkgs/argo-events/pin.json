@@ -1,0 +1,10 @@
+{
+  "version": "1.9.10",
+  "hash": "sha256-C0FDilzSjY7OMtqQV/mudT+Ojg4+w2FL6IKVgs0dNQ4=",
+  "source": {
+    "type": "github-release",
+    "owner": "argoproj",
+    "repo": "argo-events",
+    "tagPrefix": "v"
+  }
+}

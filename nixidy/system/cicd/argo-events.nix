@@ -1,7 +1,7 @@
 {...}: {
   nixidy = {
     lib,
-    pkgs,
+    pinned,
     ...
   }: {
     applications.argo-events-crds.namespace = "kube-system";
@@ -10,12 +10,7 @@
       install = true;
       prefix = "manifests/base/crds";
       match = "argoproj\\.io_.*\\.yaml$"; # only the real CRD files, not kustomization.yaml
-      src = pkgs.fetchFromGitHub {
-        owner = "argoproj";
-        repo = "argo-events";
-        rev = "v1.9.10";
-        hash = "sha256-C0FDilzSjY7OMtqQV/mudT+Ojg4+w2FL6IKVgs0dNQ4=";
-      };
+      src = pinned.argo-events;
     };
 
     applications.argo-events = {

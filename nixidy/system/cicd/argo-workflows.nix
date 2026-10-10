@@ -6,7 +6,7 @@ in {
   nixidy = {
     charts,
     lib,
-    pkgs,
+    pinned,
     ...
   }: {
     applications.argo-workflows-crds.namespace = "kube-system";
@@ -15,12 +15,7 @@ in {
       install = true;
       prefix = "manifests/base/crds/minimal";
       match = "argoproj\\.io_.*\\.yaml$"; # only the real CRD files, not kustomization.yaml
-      src = pkgs.fetchFromGitHub {
-        owner = "argoproj";
-        repo = "argo-workflows";
-        rev = "v4.0.3";
-        hash = "sha256-dfsWutL/hrl+/hjwHYBfuJ2iBCnn5Ly6OejqJ0ZHrR0=";
-      };
+      src = pinned.argo-workflows;
     };
 
     # Keycloak OIDC client — Hostzero operator syncs secret to K8s
