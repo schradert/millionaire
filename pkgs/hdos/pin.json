@@ -1,0 +1,8 @@
+{
+  "version": "20241106",
+  "hash": "sha256-00ddeR+ov6Tjrn+pscXoao4C0ek/iP9Hdlgq946pL8A=",
+  "source": {
+    "type": "url-template",
+    "url": "https://cdn.hdos.dev/launcher/latest/hdos-launcher.jar"
+  }
+}

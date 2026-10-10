@@ -1,0 +1,10 @@
+{
+  "version": "8880399c8fc9dc742755aa46e5d12f9142ab71c1",
+  "hash": "sha256-mbE4KjmwdhRGDCpXc4Q3ko+3pvoR4oTaVHRmUeaVG3A=",
+  "source": {
+    "type": "git-commit",
+    "owner": "RSCPlus",
+    "repo": "rscplus",
+    "branch": "master"
+  }
+}
