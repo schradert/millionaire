@@ -1,5 +1,8 @@
 {config, ...}: let
-  inherit (config.canivete.meta) domain;
+  inherit (config.canivete.meta) domain people;
+  # allowedDomains is an exact match on the email domain (isEmailDomainAllowed), so tristan's
+  # personal email domain must be allowed alongside the homelab domain.
+  emailDomain = builtins.elemAt (builtins.split "@" people.my.profiles.personal.email) 2;
   hostname = "chat.${domain}";
 in {
   nixidy = {
@@ -17,7 +20,7 @@ in {
       cache = true;
       registration = {
         socialLogins = ["openid"];
-        allowedDomains = [domain];
+        allowedDomains = lib.unique [domain emailDomain];
       };
       endpoints = {
         custom = [
@@ -60,7 +63,7 @@ in {
         directAccessGrantsEnabled = false;
         redirectUris = ["https://${hostname}/oauth/openid/callback"];
         webOrigins = ["https://${hostname}"];
-        defaultClientScopes = ["openid" "profile" "email"];
+        defaultClientScopes = ["openid" "profile" "email" "groups"];
       };
     };
 
@@ -112,7 +115,11 @@ in {
                 OPENID_ISSUER = "https://keycloak.${domain}/realms/default";
                 OPENID_CLIENT_ID = "librechat";
                 OPENID_CALLBACK_URL = "https://${hostname}/oauth/openid/callback";
-                OPENID_SCOPE = "openid profile email";
+                OPENID_SCOPE = "openid profile email groups";
+                # Admin role from the Keycloak `groups` claim (ID token).
+                OPENID_ADMIN_ROLE = "admin";
+                OPENID_ADMIN_ROLE_PARAMETER_PATH = "groups";
+                OPENID_ADMIN_ROLE_TOKEN_KIND = "id";
                 OPENID_BUTTON_LABEL = "Login with Keycloak";
                 MONGO_URI = "mongodb://librechat-librechat-mongodb:27017/librechat";
               };
@@ -199,9 +206,8 @@ in {
         };
         rules = lib.toList {
           backendRefs = lib.toList {
-            name = "oauth2-proxy";
-            namespace = "identity";
-            port = 4180;
+            name = "librechat";
+            port = 3080;
           };
         };
       };
@@ -217,11 +223,6 @@ in {
           remoteRef.property = "client-secret";
         };
       };
-    };
-
-    oauth2Proxy.upstreams."${hostname}" = {
-      url = "http://librechat.ai.svc.cluster.local:3080";
-      namespace = "ai";
     };
   };
 }
