@@ -1,0 +1,59 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: audiobookshelf-bootstrap
+  namespace: media
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - audiobookshelf
+          env:
+            - name: ADMIN_PASSWORD_FILE
+              value: /secrets/admin/password
+            - name: ADMIN_USER
+              value: tristan
+            - name: AUDIOBOOKSHELF_URL
+              value: http://audiobookshelf.media.svc.cluster.local:13378
+            - name: OIDC_AUTHORITY
+              value: https://keycloak.trdos.me/realms/default
+            - name: OIDC_CLIENT_ID
+              value: audiobookshelf
+            - name: OIDC_CLIENT_SECRET_FILE
+              value: /secrets/oidc/client_secret
+          image: harbor.trdos.me/library/app-bootstrap:0.4.0@sha256:8c8773894446288a8f19d6babb2cc531ef2c233d2f511c703c6f88b1c5cdc1ab
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /secrets/admin
+              name: admin
+              readOnly: true
+            - mountPath: /secrets/oidc
+              name: oidc
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - name: admin
+          secret:
+            secretName: audiobookshelf-admin
+        - name: oidc
+          secret:
+            secretName: audiobookshelf-oidc
