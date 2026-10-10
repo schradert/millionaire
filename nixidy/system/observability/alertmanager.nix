@@ -32,7 +32,7 @@
               # Without this every firing alert shares one group, and ntfy rejects
               # the one combined message ("message or title is too large", 400) once
               # a handful of alerts carry long annotations, dropping all of them.
-              group_by = ["alertname" "node" "device"];
+              group_by = ["alertname" "namespace" "node" "device"];
               group_wait = "30s";
               group_interval = "5m";
               repeat_interval = "4h";
@@ -63,6 +63,17 @@
                 source_matchers = ["severity = critical"];
                 target_matchers = ["severity =~ warning|info"];
                 equal = ["namespace" "alertname"];
+              }
+              # A stuck rollout explains its own symptoms; keep only the root alert.
+              {
+                source_matchers = ["alertname = KubeDeploymentRolloutStuck"];
+                target_matchers = ["alertname = KubeDeploymentReplicasMismatch"];
+                equal = ["namespace" "deployment"];
+              }
+              {
+                source_matchers = ["alertname = KubeDeploymentRolloutStuck"];
+                target_matchers = ["alertname =~ KubePodNotReady|KubeContainerWaiting"];
+                equal = ["namespace"];
               }
               {
                 source_matchers = ["severity = warning"];

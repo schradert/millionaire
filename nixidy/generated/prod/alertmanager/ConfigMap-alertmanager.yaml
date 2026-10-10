@@ -12,6 +12,19 @@ data:
       - severity =~ warning|info
     - equal:
       - namespace
+      - deployment
+      source_matchers:
+      - alertname = KubeDeploymentRolloutStuck
+      target_matchers:
+      - alertname = KubeDeploymentReplicasMismatch
+    - equal:
+      - namespace
+      source_matchers:
+      - alertname = KubeDeploymentRolloutStuck
+      target_matchers:
+      - alertname =~ KubePodNotReady|KubeContainerWaiting
+    - equal:
+      - namespace
       source_matchers:
       - severity = warning
       target_matchers:
@@ -32,6 +45,7 @@ data:
     route:
       group_by:
       - alertname
+      - namespace
       - node
       - device
       group_interval: 5m
