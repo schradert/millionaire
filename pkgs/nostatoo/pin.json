@@ -1,0 +1,10 @@
+{
+  "version": "5b274cb03963b7fc7d295f6e53ae67d39531d016",
+  "hash": "sha256-UWVI3HofHRpy28hi8z/iFzPLgk0FeAH4K55RsfHL8Es=",
+  "source": {
+    "type": "git-commit",
+    "owner": "samueldr",
+    "repo": "nostatoo",
+    "branch": "development"
+  }
+}
