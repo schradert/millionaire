@@ -1,6 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
   labels:
     app.kubernetes.io/controller: openviking
     app.kubernetes.io/instance: openviking
@@ -20,6 +22,8 @@ spec:
     type: Recreate
   template:
     metadata:
+      annotations:
+        checksum/configMaps: 72c21a2b3366d63fa4eb3bcc9354f33e2cdf7956c0634ff1e55969d021f41c3d
       labels:
         app.kubernetes.io/controller: openviking
         app.kubernetes.io/instance: openviking
@@ -28,30 +32,44 @@ spec:
       automountServiceAccountToken: false
       containers:
         - env:
-            - name: VIKING_PORT
-              value: "8080"
-          image: ghcr.io/volcengine/openviking:latest
+            - name: OPENVIKING_SERVER_PORT
+              value: "1933"
+            - name: OPENVIKING_WITH_BOT
+              value: "0"
+          envFrom:
+            - secretRef:
+                name: openviking-root-api-key
+          image: ghcr.io/volcengine/openviking:v0.5.0@sha256:c60a83cd79cfce80db5266acb8bdd0908eee8abe8ff559a5f786aa504c251ccf
           livenessProbe:
             httpGet:
               path: /health
               port: http
           name: openviking
           ports:
-            - containerPort: 8080
+            - containerPort: 1933
               name: http
           readinessProbe:
             httpGet:
               path: /health
               port: http
+          resources:
+            limits:
+              memory: 4Gi
+            requests:
+              cpu: 250m
+              memory: 1Gi
           startupProbe:
-            failureThreshold: 3
-            initialDelaySeconds: 0
+            failureThreshold: 30
+            httpGet:
+              path: /health
+              port: http
             periodSeconds: 10
-            tcpSocket:
-              port: 8080
-            timeoutSeconds: 1
           volumeMounts:
-            - mountPath: /data
+            - mountPath: /app/.openviking/ov.conf
+              name: config
+              readOnly: true
+              subPath: ov.conf
+            - mountPath: /app/.openviking
               name: data
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
@@ -60,6 +78,9 @@ spec:
       hostPID: false
       serviceAccountName: openviking
       volumes:
+        - configMap:
+            name: openviking
+          name: config
         - name: data
           persistentVolumeClaim:
             claimName: openviking
