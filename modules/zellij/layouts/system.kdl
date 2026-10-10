@@ -9,10 +9,10 @@ layout {
         }
     }
     tab name="doom" {
-        pane
+        pane command="emacs"
     }
     tab name="files" focus=true {
-        pane size="50%" name="superfile" command="superfile"
+        pane size="50%" name="superfile" command="spf"
         pane size="25%" name="yazi" command="yazi"
         pane size="25%" name="xplr" command="xplr"
     }
@@ -21,16 +21,8 @@ layout {
         pane size="25%" name="htop" command="htop"
         pane size="25%" name="btm" command="btm"
     }
-    tab name="services" {
-        pane size="50%" name="lazyjournal" command="lazyjournal"
-        pane size="50%" name="systemctl-tui" command="systemctl-tui"
-    }
     tab name="containers" {
-        pane size="50%" name="podman" command="podman-tui"
-        pane size="25%" name="lazydocker" command="lazydocker"
-        pane size="25%" name="oxker" command="oxker"
-    }
-    tab name="wtf" {
-        pane name="wtf" command="wtfutil"
+        pane size="50%" name="lazydocker" command="lazydocker"
+        pane size="50%" name="oxker" command="oxker"
     }
 }
