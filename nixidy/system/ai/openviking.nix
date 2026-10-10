@@ -1,4 +1,5 @@
-{...}: let
+{config, ...}: let
+  inherit (config.canivete.meta) domain;
   port = 1933;
   # Bifrost is the only LLM provider: OpenAI-compatible, models addressed as <provider>/<model>.
   # Inference needs no key (enforce_governance_header = false); the SDKs just need a non-empty one.
@@ -120,6 +121,85 @@ in {
           };
         };
       };
+      # Idempotent post-sync bootstrap (apps/app-bootstrap): the root key gets 403 on MCP
+      # tools/list, so create a non-root agent user and mirror its key into the
+      # openviking-agent-key Secret. Never logs the key. Reruns must stay a no-op.
+      resources.serviceAccounts.openviking-bootstrap = {};
+      resources.roles.openviking-bootstrap.rules = [
+        {
+          apiGroups = [""];
+          resources = ["secrets"];
+          verbs = ["create"];
+        }
+        {
+          apiGroups = [""];
+          resources = ["secrets"];
+          resourceNames = ["openviking-agent-key"];
+          verbs = ["get" "patch"];
+        }
+      ];
+      resources.roleBindings.openviking-bootstrap = {
+        roleRef = {
+          apiGroup = "rbac.authorization.k8s.io";
+          kind = "Role";
+          name = "openviking-bootstrap";
+        };
+        subjects = lib.toList {
+          kind = "ServiceAccount";
+          name = "openviking-bootstrap";
+          namespace = "ai";
+        };
+      };
+      resources.jobs.openviking-bootstrap = {
+        metadata.annotations = {
+          "argocd.argoproj.io/hook" = "PostSync";
+          "argocd.argoproj.io/hook-delete-policy" = "BeforeHookCreation";
+        };
+        spec = {
+          backoffLimit = 6;
+          activeDeadlineSeconds = 1200;
+          template.spec = {
+            restartPolicy = "OnFailure";
+            serviceAccountName = "openviking-bootstrap";
+            securityContext = {
+              runAsNonRoot = true;
+              runAsUser = 65534;
+              runAsGroup = 65534;
+              seccompProfile.type = "RuntimeDefault";
+            };
+            containers = lib.toList {
+              name = "bootstrap";
+              image = "harbor.${domain}/library/app-bootstrap:0.2.0";
+              args = ["openviking"];
+              env = [
+                {
+                  name = "OPENVIKING_URL";
+                  value = "http://openviking.ai.svc.cluster.local:${toString port}";
+                }
+                {
+                  name = "ROOT_API_KEY_FILE";
+                  value = "/secrets/root/OPENVIKING_ROOT_API_KEY";
+                }
+              ];
+              volumeMounts = lib.toList {
+                name = "root";
+                mountPath = "/secrets/root";
+                readOnly = true;
+              };
+              securityContext = {
+                allowPrivilegeEscalation = false;
+                readOnlyRootFilesystem = true;
+                capabilities.drop = ["ALL"];
+              };
+            };
+            volumes = lib.toList {
+              name = "root";
+              secret.secretName = "openviking-root-api-key";
+            };
+          };
+        };
+      };
+
       # No external route: internal only. Agents reach it at http://openviking.ai.svc.cluster.local:1933/mcp
       # (Bearer <root key>), e.g. registered as an MCP gateway in contextforge.
     };

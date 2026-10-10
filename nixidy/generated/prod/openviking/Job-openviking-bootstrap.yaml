@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: openviking-bootstrap
+  namespace: ai
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      containers:
+        - args:
+            - openviking
+          env:
+            - name: OPENVIKING_URL
+              value: http://openviking.ai.svc.cluster.local:1933
+            - name: ROOT_API_KEY_FILE
+              value: /secrets/root/OPENVIKING_ROOT_API_KEY
+          image: harbor.trdos.me/library/app-bootstrap:0.2.0
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /secrets/root
+              name: root
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: openviking-bootstrap
+      volumes:
+        - name: root
+          secret:
+            secretName: openviking-root-api-key
