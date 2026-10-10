@@ -27,7 +27,7 @@
     if pkgs.stdenv.isDarwin
     then
       removeAutoPatch (pkgs.callPackage "${espSrc}/esp-rs/rust-src.nix" {
-        version = espNix.esp-rust-build.version or "1.93.0.0";
+        inherit (espNix.esp-rust-build) version;
         esp-rust-build = removeAutoPatch espNix.esp-rust-build;
         esp-xtensa-gcc = removeAutoPatch espNix.esp-xtensa-gcc;
         esp-xtensa-gdb = removeAutoPatch espNix.esp-xtensa-gdb;
@@ -39,17 +39,20 @@
   # ── AVR toolchain (Arduino Uno R3) ──────────────────────────────────────
   # The esp-rs toolchain lacks the AVR LLVM backend; can't compile for AVR
   # at all. So we ship a SEPARATE upstream-nightly toolchain just for the
-  # arduino-uno-r3 crate, pinned to the avr-hal-template's known-good date
-  # (AVR backend regressions in nightly are common, and avr-hal pins to a
-  # specific date that's been tested).
+  # arduino-uno-r3 crate: the dated nightly from avr-hal's own
+  # rust-toolchain.toml at the rev arduino-hal is pinned to (pkgs/avr-hal;
+  # AVR backend regressions in nightly are common, and avr-hal tests one date).
   #
   # This isn't put on PATH at the workspace level — that would shadow esp-rs.
   # Instead the path is exposed via env.AVR_RUST so that
   # `boards/arduino-uno-r3/.envrc` can prepend it to PATH for that subdir only.
   pkgs-rust = pkgs.appendOverlays [inputs.rust-overlay.overlays.default];
-  avr-rust = pkgs-rust.rust-bin.nightly."2025-04-27".default.override {
-    extensions = ["rust-src"];
-  };
+  pins = import ../lib/pins.nix {inherit lib;};
+  avr-hal = pins.fetch {
+    inherit pkgs;
+    kubelib = null;
+  } (pins.read ../pkgs/avr-hal/pin.json);
+  avr-rust = pkgs-rust.rust-bin.fromRustupToolchainFile "${avr-hal}/rust-toolchain.toml";
 
   # ── Upstream nightly toolchain (cross-build the non-Xtensa boards locally) ──
   # The esp-rs fork builds everything on falcon, but on macOS its build-std +
