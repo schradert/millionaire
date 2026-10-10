@@ -1,6 +1,6 @@
 # Central pins (pkgs/**/pin.json) as the `pinned` module arg in perSystem,
-# nixidy and every deployed profile; also legacyPackages.<system>.pinned for
-# tools/update.
+# nixidy and every deployed profile; also legacyPackages.<system>.pinned and
+# packages.<system>.update (tools/update) to check and bump them.
 {
   inputs,
   lib,
@@ -18,5 +18,6 @@ in {
   perSystem = {pkgs, ...}: {
     _module.args.pinned = mkPinned pkgs;
     legacyPackages.pinned = mkPinned pkgs;
+    packages.update = pkgs.callPackage ../tools/update {};
   };
 }
