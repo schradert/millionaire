@@ -1,0 +1,229 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    meta.helm.sh/release-name: clickhouse
+    meta.helm.sh/release-namespace: storage
+  labels:
+    app.kubernetes.io/instance: clickhouse
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: operator
+  name: clickhouse-operator
+  namespace: storage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: clickhouse
+      app.kubernetes.io/name: operator
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/confd-files: 35d8f257786cf0fa0c4d781422921bde3f14374cddf267c068cf8d413cb4229c
+        checksum/configd-files: 4bc6d9d03fd4c519111a320a5c6f02a9802719b6e86056f4516887e65da7c678
+        checksum/files: 282be2887002afb89383c26996d7ca0010788bba069a6b05ac26a51a05ef3a47
+        checksum/keeper-confd-files: 88b9b4d0ee82bb52879ed6559843cd01cf52e8dc726a6ae259d02a500e53415f
+        checksum/keeper-configd-files: fa1ac58c8efe4463474bf380f1170c39eea760e7ac68a34dc7ea8360e1e9d9cc
+        checksum/keeper-templatesd-files: e6c6d06d95aafc833eaab64711d0d93660e409b5c4cde27880581410ee339e5a
+        checksum/keeper-usersd-files: 92a59082bf4fd02d07f77ce3e183e08397ac7a9e6d846f8506a2a35928b2518c
+        checksum/templatesd-files: 3d60ccb43db46884fc52fac62b9c0c2a1ba68ca14e12f6312d627f8e05373b8f
+        checksum/usersd-files: 56dfc790ec997883b235ac31879f324e494687f5763f46e8273c115861c79c99
+        clickhouse-operator-metrics/port: "9999"
+        clickhouse-operator-metrics/scrape: "true"
+        prometheus.io/port: "8888"
+        prometheus.io/scrape: "true"
+      labels:
+        app.kubernetes.io/instance: clickhouse
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: operator
+    spec:
+      affinity: {}
+      containers:
+        - env:
+            - name: OPERATOR_POD_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: OPERATOR_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: OPERATOR_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: OPERATOR_POD_SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+            - name: OPERATOR_CONTAINER_CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  containerName: operator
+                  divisor: 1m
+                  resource: requests.cpu
+            - name: OPERATOR_CONTAINER_CPU_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  containerName: operator
+                  divisor: 1m
+                  resource: limits.cpu
+            - name: OPERATOR_CONTAINER_MEM_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  containerName: operator
+                  divisor: 1Mi
+                  resource: requests.memory
+            - name: OPERATOR_CONTAINER_MEM_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  containerName: operator
+                  divisor: 1Mi
+                  resource: limits.memory
+          image: altinity/clickhouse-operator:0.27.2@sha256:49573fe8b301865c0683003555031f62eeceeaa2baa362c2407baaacb52fa592
+          imagePullPolicy: IfNotPresent
+          name: operator
+          ports:
+            - containerPort: 9999
+              name: op-metrics
+          resources: {}
+          securityContext: {}
+          volumeMounts:
+            - mountPath: /etc/clickhouse-operator
+              name: etc-clickhouse-operator-folder
+            - mountPath: /etc/clickhouse-operator/chi/conf.d
+              name: etc-clickhouse-operator-confd-folder
+            - mountPath: /etc/clickhouse-operator/chi/config.d
+              name: etc-clickhouse-operator-configd-folder
+            - mountPath: /etc/clickhouse-operator/chi/templates.d
+              name: etc-clickhouse-operator-templatesd-folder
+            - mountPath: /etc/clickhouse-operator/chi/users.d
+              name: etc-clickhouse-operator-usersd-folder
+            - mountPath: /etc/clickhouse-operator/chk/conf.d
+              name: etc-keeper-operator-confd-folder
+            - mountPath: /etc/clickhouse-operator/chk/keeper_config.d
+              name: etc-keeper-operator-configd-folder
+            - mountPath: /etc/clickhouse-operator/chk/templates.d
+              name: etc-keeper-operator-templatesd-folder
+            - mountPath: /etc/clickhouse-operator/chk/users.d
+              name: etc-keeper-operator-usersd-folder
+            - mountPath: /etc/clickhouse-operator-ipc
+              name: clickhouse-operator-ipc
+        - env:
+            - name: OPERATOR_POD_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: OPERATOR_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: OPERATOR_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: OPERATOR_POD_SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+            - name: OPERATOR_CONTAINER_CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  containerName: operator
+                  divisor: 1m
+                  resource: requests.cpu
+            - name: OPERATOR_CONTAINER_CPU_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  containerName: operator
+                  divisor: 1m
+                  resource: limits.cpu
+            - name: OPERATOR_CONTAINER_MEM_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  containerName: operator
+                  divisor: 1Mi
+                  resource: requests.memory
+            - name: OPERATOR_CONTAINER_MEM_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  containerName: operator
+                  divisor: 1Mi
+                  resource: limits.memory
+          image: altinity/metrics-exporter:0.27.2@sha256:029b422333f0fe6d78075d80ab9a394df7c5ad5aec18bb7d354367a10b71f636
+          imagePullPolicy: IfNotPresent
+          name: metrics-exporter
+          ports:
+            - containerPort: 8888
+              name: ch-metrics
+          resources: {}
+          securityContext: {}
+          volumeMounts:
+            - mountPath: /etc/clickhouse-operator
+              name: etc-clickhouse-operator-folder
+            - mountPath: /etc/clickhouse-operator/chi/conf.d
+              name: etc-clickhouse-operator-confd-folder
+            - mountPath: /etc/clickhouse-operator/chi/config.d
+              name: etc-clickhouse-operator-configd-folder
+            - mountPath: /etc/clickhouse-operator/chi/templates.d
+              name: etc-clickhouse-operator-templatesd-folder
+            - mountPath: /etc/clickhouse-operator/chi/users.d
+              name: etc-clickhouse-operator-usersd-folder
+            - mountPath: /etc/clickhouse-operator/chk/conf.d
+              name: etc-keeper-operator-confd-folder
+            - mountPath: /etc/clickhouse-operator/chk/keeper_config.d
+              name: etc-keeper-operator-configd-folder
+            - mountPath: /etc/clickhouse-operator/chk/templates.d
+              name: etc-keeper-operator-templatesd-folder
+            - mountPath: /etc/clickhouse-operator/chk/users.d
+              name: etc-keeper-operator-usersd-folder
+            - mountPath: /etc/clickhouse-operator-ipc
+              name: clickhouse-operator-ipc
+      imagePullSecrets: []
+      nodeSelector: {}
+      securityContext: {}
+      serviceAccountName: clickhouse-operator
+      tolerations: []
+      topologySpreadConstraints: []
+      volumes:
+        - configMap:
+            name: clickhouse-operator-files
+          name: etc-clickhouse-operator-folder
+        - configMap:
+            name: clickhouse-operator-confd-files
+          name: etc-clickhouse-operator-confd-folder
+        - configMap:
+            name: clickhouse-operator-configd-files
+          name: etc-clickhouse-operator-configd-folder
+        - configMap:
+            name: clickhouse-operator-templatesd-files
+          name: etc-clickhouse-operator-templatesd-folder
+        - configMap:
+            name: clickhouse-operator-usersd-files
+          name: etc-clickhouse-operator-usersd-folder
+        - configMap:
+            name: clickhouse-operator-keeper-confd-files
+          name: etc-keeper-operator-confd-folder
+        - configMap:
+            name: clickhouse-operator-keeper-configd-files
+          name: etc-keeper-operator-configd-folder
+        - configMap:
+            name: clickhouse-operator-keeper-templatesd-files
+          name: etc-keeper-operator-templatesd-folder
+        - configMap:
+            name: clickhouse-operator-keeper-usersd-files
+          name: etc-keeper-operator-usersd-folder
+        - emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi
+          name: clickhouse-operator-ipc

@@ -1,0 +1,9 @@
+{
+  "version": "0.3.13",
+  "hash": "sha256-tq76hu7Qk7fo9lZAYuWhc6BCvZbPiJnUFKTn+XV4MXc=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://helm.altinity.com",
+    "chart": "clickhouse"
+  }
+}
