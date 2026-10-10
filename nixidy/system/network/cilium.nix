@@ -15,11 +15,7 @@
       networking.firewall.enable = lib.mkForce false;
     };
   };
-  nixidy = {
-    pinned,
-    pkgs,
-    ...
-  }: let
+  nixidy = {pinned, ...}: let
     chart = pinned.charts.cilium;
     # br0/eno1 = home LAN; eth0 = cloud-burst workers (their image forces
     # net.ifnames=0). Per-node, cilium ignores listed devices that don't
@@ -31,17 +27,10 @@
       application = "cilium-crds";
       install = true;
       prefix = "pkg/k8s/apis/cilium.io/client/crds";
-      src = pkgs.fetchFromGitHub {
-        owner = "cilium";
-        repo = "cilium";
-        # rev tracks the chart's appVersion (below), so this hash must be
-        # re-pinned whenever pkgs/charts/cilium bumps.
-        hash = "sha256-DcDhBYowP755z7EQ45189GaFNnYAgfJb4rMLSFF113U=";
-        rev = let
-          chartJSON = pkgs.runCommand "Chart.json" {} "${pkgs.yq}/bin/yq -r '.' ${chart + "/Chart.yaml"} > $out";
-        in
-          (lib.importJSON chartJSON).appVersion;
-      };
+      # The chart ships no CRDs. pkgs/cilium follows pkgs/charts/cilium
+      # (chart version == appVersion == source tag), so `update` bumps and
+      # rehashes both together.
+      src = pinned.cilium;
     };
     applications.cilium = {
       imports = [

@@ -22,6 +22,10 @@ pub struct Pin {
     pub constraint: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hold: Option<String>,
+    /// Another pin's id; this pin's version always equals it and is bumped
+    /// with it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub follows: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -232,6 +236,24 @@ mod tests {
                 tag_prefix: Some("v".into())
             }
         );
+    }
+
+    #[test]
+    fn follows_roundtrips() {
+        let s = r#"{
+  "version": "1.19.4",
+  "hash": "sha256-x",
+  "source": {
+    "type": "github-tag",
+    "owner": "cilium",
+    "repo": "cilium"
+  },
+  "follows": "charts/cilium"
+}
+"#;
+        let pin: Pin = serde_json::from_str(s).unwrap();
+        assert_eq!(pin.follows.as_deref(), Some("charts/cilium"));
+        assert_eq!(to_string(&pin).unwrap(), s);
     }
 
     #[test]

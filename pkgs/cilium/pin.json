@@ -1,0 +1,10 @@
+{
+  "version": "1.19.4",
+  "hash": "sha256-DcDhBYowP755z7EQ45189GaFNnYAgfJb4rMLSFF113U=",
+  "source": {
+    "type": "github-tag",
+    "owner": "cilium",
+    "repo": "cilium"
+  },
+  "follows": "charts/cilium"
+}
