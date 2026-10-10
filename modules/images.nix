@@ -142,6 +142,26 @@
           layers = [(n2c.buildLayer {deps = [pkg];})];
         };
 
+      # First-run bootstrap for apps without their own (immich, kavita): one image,
+      # `app-bootstrap <app>`. Pinned to x86_64 for the same reason as above.
+      app-bootstrap = let
+        amd64Pkgs = import inputs.nixpkgs {system = "x86_64-linux";};
+        src = ../apps/app-bootstrap;
+        pkg = amd64Pkgs.rustPlatform.buildRustPackage {
+          pname = "app-bootstrap";
+          version = "0.1.0";
+          inherit src;
+          cargoLock.lockFile = "${src}/Cargo.lock";
+        };
+      in
+        n2c.buildImage {
+          name = "${registry}/library/app-bootstrap";
+          tag = pkg.version;
+          arch = "amd64";
+          config.Entrypoint = ["${pkg}/bin/app-bootstrap"];
+          layers = [(n2c.buildLayer {deps = [pkg];})];
+        };
+
       govee2mqtt = n2c.buildImage {
         name = "${registry}/library/govee2mqtt";
         tag = linuxPkgs.govee2mqtt.version;
