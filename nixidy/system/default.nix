@@ -39,6 +39,7 @@
     ./observability/node-exporter.nix
     ./observability/prometheus.nix
     ./observability/smartctl-exporter.nix
+    ./portal.nix
     ./security/cert-manager.nix
     ./security/external-secrets
     ./security/generated-secrets.nix
