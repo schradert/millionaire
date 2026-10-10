@@ -15,7 +15,10 @@ in {
     };
     applications.baikal = {
       namespace = "home";
-      volsync.pvcs.baikal.title = "baikal-data";
+      volsync.pvcs.baikal = {
+        title = "baikal";
+        restore = false;
+      };
       # Admin password; org-bridge reads the same Secret.
       generatedSecrets.baikal.key = "BAIKAL_ADMIN_PASSWORD";
 

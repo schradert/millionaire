@@ -15,7 +15,10 @@
     };
     applications.zwave-js-ui = {
       namespace = "home";
-      volsync.pvcs.zwave-js-data.title = "zwave-js-data";
+      volsync.pvcs.zwave-js-data = {
+        title = "zwave-js-ui";
+        restore = false;
+      };
       helm.releases.zwave-js-ui = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {

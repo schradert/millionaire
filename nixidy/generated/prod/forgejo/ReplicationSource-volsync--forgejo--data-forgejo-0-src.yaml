@@ -15,6 +15,6 @@ spec:
       monthly: 1
       weekly: 1
       yearly: 1
-  sourcePVC: data-forgejo-0
+  sourcePVC: gitea-shared-storage
   trigger:
     schedule: 0 4 * * *
