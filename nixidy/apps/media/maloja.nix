@@ -10,6 +10,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -30,9 +31,7 @@
           controllers.maloja = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.maloja = {
-              image.repository = "krateng/maloja";
-              image.tag = "3.2.4";
-              image.digest = "sha256:4ecea26058d2ca5168a8d53820279942d28f0606664cea6425f42371d5d88f95";
+              image = pinned.images.maloja;
               envFrom = [
                 {configMapRef.name = "maloja";}
                 {secretRef.name = "maloja";}

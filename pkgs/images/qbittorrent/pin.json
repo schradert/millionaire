@@ -1,0 +1,8 @@
+{
+  "version": "5.1.4",
+  "digest": "sha256:bb82ad6668f8eda1d0fcce6c1341498bfa879155bb1295cd9d314a2c35c07a01",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/home-operations/qbittorrent"
+  }
+}

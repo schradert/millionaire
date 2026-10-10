@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -28,9 +29,7 @@
           controllers.maintainerr.containers.maintainerr = {
             # 3.x added Jellyfin/Emby support (2.x is Plex-only). Not backward
             # compatible: its DB migration is one-way.
-            image.repository = "ghcr.io/maintainerr/maintainerr";
-            image.tag = "3.30.1";
-            image.digest = "sha256:8251a1f0ba5d71acc878846a727fba566ec87cbfbf6a914fb881a5953af53d46";
+            image = pinned.images.maintainerr;
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
             probes.startup = {

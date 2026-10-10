@@ -1,0 +1,8 @@
+{
+  "version": "2.8.6",
+  "digest": "sha256:400697b305e45bd1712c019e67d22681219e91deb41afe88939f921b5fae137f",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/music-assistant/server"
+  }
+}

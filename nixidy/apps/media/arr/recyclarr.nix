@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     pkgs,
     ...
   }: let
@@ -67,9 +68,7 @@
               fsGroupChangePolicy = "OnRootMismatch";
             };
             containers.recyclarr = {
-              image.repository = "ghcr.io/recyclarr/recyclarr";
-              image.tag = "8.5.1";
-              image.digest = "sha256:734cecf44ae9be7cf0cb05b2c1bc7da0abef9d938cc11b605e58b3146205e5c0";
+              image = pinned.images.recyclarr;
               args = ["sync"];
               envFrom = [{secretRef.name = "recyclarr";}];
             };

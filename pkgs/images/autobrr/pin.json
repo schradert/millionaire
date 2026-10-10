@@ -1,0 +1,8 @@
+{
+  "version": "v1.74.0",
+  "digest": "sha256:6f37217bbc0496fff0c7ffb4264545036bf735775e484188b80b31f21daa06e2",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/autobrr/autobrr"
+  }
+}

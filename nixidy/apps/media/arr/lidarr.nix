@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -33,9 +34,7 @@
               fsGroupChangePolicy = "OnRootMismatch";
             };
             containers.lidarr = {
-              image.repository = "ghcr.io/home-operations/lidarr";
-              image.tag = "3.1.2.4902";
-              image.digest = "sha256:dab0e07502a34436fc50c3e789388f0a29f8cbf681fb7a02ed703ad7c368a22c";
+              image = pinned.images.lidarr;
               envFrom = [{secretRef.name = "lidarr";} {configMapRef.name = "lidarr";}];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;

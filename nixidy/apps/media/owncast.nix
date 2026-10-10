@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -21,9 +22,7 @@
           controllers.owncast = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.owncast = {
-              image.repository = "owncast/owncast";
-              image.tag = "0.2.4";
-              image.digest = "sha256:0138977cbfaf130ec472c773e07314c8bf3c67b1f20d1c52c8086688227eb4ba";
+              image = pinned.images.owncast;
               envFrom = [{secretRef.name = "owncast";}];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;

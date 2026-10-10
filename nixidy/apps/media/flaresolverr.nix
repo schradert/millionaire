@@ -1,14 +1,16 @@
 {...}: {
-  nixidy = {charts, ...}: {
+  nixidy = {
+    charts,
+    pinned,
+    ...
+  }: {
     applications.flaresolverr = {
       namespace = "media";
       helm.releases.flaresolverr = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.flaresolverr.containers.flaresolverr = {
-            image.repository = "ghcr.io/flaresolverr/flaresolverr";
-            image.tag = "v3.4.6";
-            image.digest = "sha256:7962759d99d7e125e108e0f5e7f3cdbcd36161776d058d1d9b7153b92ef1af9e";
+            image = pinned.images.flaresolverr;
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
             probes.startup.enabled = true;

@@ -6,6 +6,7 @@ in {
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -50,9 +51,7 @@ in {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.kavita.containers.kavita = {
-            image.repository = "jvmilazz0/kavita";
-            image.tag = "0.8.9";
-            image.digest = "sha256:1f2acae7466d022f037ea09f7989eb7c487f916b881174c7a6de33dbfa8acb39";
+            image = pinned.images.kavita;
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
             # First start after a schema bump runs migrations; the default 30s
