@@ -1,0 +1,8 @@
+{
+  "version": "v1.2.15",
+  "digest": "sha256:6469ef517d2b6d3cb108fce8a913483533a48b1cd78b5d4af307fa09e04a7818",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/postfinance/kubelet-csr-approver"
+  }
+}

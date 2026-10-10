@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    helm.sh/hook: test
+  labels:
+    app.kubernetes.io/instance: kubelet-csr-approver
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kubelet-csr-approver
+  name: kubelet-csr-approver-test-connection
+  namespace: security
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: kubelet-csr-approver
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: kubelet-csr-approver
+    spec:
+      containers:
+        - command:
+            - /bin/sh
+            - -c
+            - |
+              sleep 10 ; wget -O- -S kubelet-csr-approver.security.svc.cluster.local:8080/metrics
+          image: busybox
+          name: wget
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsGroup: 65532
+            runAsNonRoot: true
+            runAsUser: 65532
+            seccompProfile:
+              type: RuntimeDefault
+      restartPolicy: Never
+      securityContext: {}
+  ttlSecondsAfterFinished: 300

@@ -40,6 +40,7 @@
     ./security/cert-manager.nix
     ./security/external-secrets
     ./security/generated-secrets.nix
+    ./security/kubelet-csr-approver.nix
     ./storage/dragonflydb.nix
     ./storage/postgres.nix
     ./storage/rook-ceph.nix
