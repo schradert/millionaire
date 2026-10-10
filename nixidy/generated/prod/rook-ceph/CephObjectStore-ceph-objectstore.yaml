@@ -5,12 +5,12 @@ metadata:
   namespace: storage
 spec:
   dataPool:
-    erasureCoded:
-      codingChunks: 1
-      dataChunks: 2
     failureDomain: host
     parameters:
       bulk: "true"
+    replicated:
+      requireSafeReplicaSize: false
+      size: 2
   gateway:
     instances: 1
     placement:

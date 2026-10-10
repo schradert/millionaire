@@ -177,12 +177,10 @@ in {
                 failureDomain = "host";
                 replicated = {inherit (replicas) size requireSafeReplicaSize;};
               };
+              # Erasure coding 2+1 needs 3 hosts; replicated is the only option with 2 OSD hosts.
               dataPool = {
                 failureDomain = "host";
-                erasureCoded = {
-                  dataChunks = 2;
-                  codingChunks = 1;
-                };
+                replicated = {inherit (replicas) size requireSafeReplicaSize;};
                 parameters.bulk = "true";
               };
               preservePoolsOnDelete = true;
