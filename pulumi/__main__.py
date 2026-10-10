@@ -1,4 +1,4 @@
-import millionaire
+import pulumi
 import pulumi_bitwarden as bw
 import pulumi_cloudflare as cf
 import pulumi_command as command
@@ -6,7 +6,7 @@ import pulumi_hcloud as hcloud
 import pulumi_random as rand
 import pulumi_tls as tls
 
-import pulumi
+import millionaire
 
 # Replacing any of these destroys state that can't be regenerated: rotated
 # secrets (restic, harbor keys) orphan what they encrypt or sign. Protect blocks

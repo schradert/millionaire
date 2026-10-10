@@ -6,6 +6,7 @@ import secrets
 from typing import Any
 
 import pulumi
+from cryptography.hazmat.primitives.asymmetric import rsa
 from pulumi.dynamic import (
     CreateResult,
     DiffResult,
@@ -13,8 +14,6 @@ from pulumi.dynamic import (
     Resource,
     ResourceProvider,
 )
-
-from cryptography.hazmat.primitives.asymmetric import rsa
 
 
 def _int_to_base64url(n: int) -> str:
