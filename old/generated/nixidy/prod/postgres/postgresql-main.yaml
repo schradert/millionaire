@@ -1,0 +1,61 @@
+apiVersion: acid.zalan.do/v1
+kind: postgresql
+metadata:
+  name: main
+  namespace: storage
+spec:
+  databases:
+    atuin: atuin
+    autobrr: autobrr
+    firefly: firefly
+    forgejo: forgejo
+    gatus: gatus
+    immich: immich
+    keycloak: keycloak
+    lidarr-log: lidarr
+    lidarr-main: lidarr
+    mealie: mealie
+    prowlarr-log: prowlarr
+    prowlarr-main: prowlarr
+    radarr-log: radarr
+    radarr-main: radarr
+    readarr-cache: readarr
+    readarr-log: readarr
+    readarr-main: readarr
+    rreading-glasses: rreading-glasses
+    sonarr-log: sonarr
+    sonarr-main: sonarr
+    vaultwarden: vaultwarden
+    windmill: windmill
+  numberOfInstances: 1
+  postgresql:
+    version: "16"
+  preparedDatabases:
+    immich:
+      extensions:
+        cube: public
+        earthdistance: public
+        vectors: public
+  teamId: acid
+  users:
+    atuin: createdb
+    autobrr: createdb
+    firefly: createdb
+    forgejo: createdb
+    gatus: createdb
+    immich: createdb
+    keycloak: createdb
+    lidarr: createdb
+    mealie: createdb
+    prowlarr: createdb
+    radarr: createdb
+    readarr: createdb
+    rreading-glasses: createdb
+    sonarr: createdb
+    superadmin: superuser
+    vaultwarden: createdb
+    windmill: superuser
+    windmill_admin: createdb
+    windmill_user: createdb
+  volume:
+    size: 10Gi

@@ -4,7 +4,7 @@
 # They faithfully capture vendor BIOS/DMI strings ("DislayPort", "PnP",
 # "snd_hda_intel") that typos misreads as misspellings — none are editable
 # without misrepresenting the detected hardware, so skip the directory.
-extend-exclude = ["static/facter/"]
+extend-exclude = ["static/facter/", "old/"]
 
 [default.extend-identifiers]
 # Universal Plug and Play — the "Pn" in "UPnP" is not a typo of "On".
