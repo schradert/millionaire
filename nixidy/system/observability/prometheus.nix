@@ -33,6 +33,13 @@
           kubeApiServer.enabled = true;
           prometheus = {
             prometheusSpec = {
+              # Select every monitor, rule and probe in all namespaces, not only
+              # those labelled release=prometheus.
+              serviceMonitorSelectorNilUsesHelmValues = false;
+              podMonitorSelectorNilUsesHelmValues = false;
+              probeSelectorNilUsesHelmValues = false;
+              ruleSelectorNilUsesHelmValues = false;
+              scrapeConfigSelectorNilUsesHelmValues = false;
               # Size cap below the volume, or a full disk crashloops WAL replay.
               retentionSize = "25GB";
               # alertmanager.enabled = false below (it is deployed separately), so
