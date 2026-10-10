@@ -27,7 +27,7 @@ spec:
               value: kavita
             - name: OIDC_CLIENT_SECRET_FILE
               value: /secrets/oidc/client_secret
-          image: harbor.trdos.me/library/app-bootstrap:0.1.1
+          image: harbor.trdos.me/library/app-bootstrap:0.1.1@sha256:d0f0cf344c1e2d01b92af17271e68926b7eb81acf115be3a222886296df213a2
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false

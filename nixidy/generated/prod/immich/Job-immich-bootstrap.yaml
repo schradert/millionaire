@@ -23,7 +23,7 @@ spec:
               value: /secrets/admin/password
             - name: REQUIRE_OAUTH
               value: "1"
-          image: harbor.trdos.me/library/app-bootstrap:0.1.0
+          image: harbor.trdos.me/library/app-bootstrap:0.1.0@sha256:bca881228655434a4822e73f2e06db3476c34c35696b59926f4aba9b9ddc396c
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false

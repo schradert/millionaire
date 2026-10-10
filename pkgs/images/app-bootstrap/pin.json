@@ -1,0 +1,9 @@
+{
+  "version": "0.2.0",
+  "digest": "sha256:845ee41a3eedff7b6b64b67747b7a10edd52b0b2984bc04e6755bbb0a092fe52",
+  "source": {
+    "type": "oci-tag",
+    "repository": "harbor.trdos.me/library/app-bootstrap",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}

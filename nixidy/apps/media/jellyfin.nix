@@ -219,7 +219,7 @@
             };
             containers = lib.toList {
               name = "bootstrap";
-              image = "harbor.${domain}/library/jellyfin-bootstrap:0.2.0";
+              image = with pinned.images.jellyfin-bootstrap; "${repository}:${tag}@${digest}";
               env = [
                 {
                   name = "JELLYFIN_URL";

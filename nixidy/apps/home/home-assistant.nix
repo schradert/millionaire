@@ -5,6 +5,7 @@ in {
   nixidy = {
     charts,
     lib,
+    pinned,
     pkgs,
     ...
   }: let
@@ -15,11 +16,7 @@ in {
       key = "onboarding";
       data.done = ["user" "core_config" "analytics" "integration"];
     };
-    image = {
-      repository = "harbor.${domain}/library/ha";
-      tag = "2026.4.1";
-      digest = "sha256:8a69d7d6073e6c67b250e0e74879c6d102ecf4dd2c3c329feb991edbf754e275";
-    };
+    image = pinned.images.ha;
   in {
     gatus.endpoints.ha = {
       url = "https://${hostname}";

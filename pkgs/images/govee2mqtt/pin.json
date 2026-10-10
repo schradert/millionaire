@@ -1,0 +1,9 @@
+{
+  "version": "2026.03.25-ab9deb66",
+  "digest": "sha256:91ca071ea117ae55e3fd1e7d76f8481dce6b8c61b70edcd9dc493a8042087541",
+  "source": {
+    "type": "oci-tag",
+    "repository": "harbor.trdos.me/library/govee2mqtt",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)-[0-9a-f]+"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "version": "0.2.0",
+  "digest": "sha256:b5f0b93064efa481469c8b93c86a17fc54f39a0900bb943058791e6fe35245f5",
+  "source": {
+    "type": "oci-tag",
+    "repository": "harbor.trdos.me/library/jellyfin-bootstrap",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}
