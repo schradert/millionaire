@@ -1,0 +1,349 @@
+{
+  config,
+  inputs,
+  lib,
+  ...
+}: let
+  inherit (builtins) elemAt genList length listToAttrs toString;
+  inherit (lib) mergeAttrs mkForce nameValuePair optionalAttrs pipe recursiveUpdate;
+  # Disko does not actually merge NixOS modules (major bummer!)
+  # I have to use recursiveUpdate within the same module for all settings to be detected and used
+  # NOTE https://github.com/nix-community/disko/issues/678
+  # NOTE https://github.com/NixOS/nixpkgs/pull/284551
+  # FIXME sirver + octopus fail on first boot and emergency mode must be manually skipped
+  diskoZfs = root: raid:
+    recursiveUpdate {
+      devices.disk = pipe raid [
+        length
+        (genList (index:
+          nameValuePair "raid-${toString (index + 1)}" {
+            type = "disk";
+            device = elemAt raid index;
+            content.type = "zfs";
+            content.pool = "raid";
+          }))
+        listToAttrs
+        (mergeAttrs {
+          root = {
+            device = root;
+            type = "disk";
+            content.type = "gpt";
+            content.partitions = {
+              ESP = {
+                type = "EF00";
+                size = "1G";
+                content = {
+                  type = "filesystem";
+                  format = "vfat";
+                  mountpoint = "/boot";
+                  mountOptions = ["umask=0077" "nofail"];
+                };
+              };
+              zfs = {
+                size = "100%";
+                content.type = "zfs";
+                content.pool = "root";
+              };
+            };
+          };
+        })
+      ];
+      devices.zpool =
+        {
+          root = {
+            type = "zpool";
+            rootFsOptions = {
+              mountpoint = "none";
+              compression = "lz4";
+              acltype = "posixacl";
+              xattr = "sa";
+              "com.sun:auto-snapshot" = "true";
+            };
+            options.ashift = "12";
+            datasets = {
+              root.type = "zfs_fs";
+              root.mountpoint = "/";
+              home.type = "zfs_fs";
+              home.mountpoint = "/home";
+              tmp.type = "zfs_fs";
+              tmp.mountpoint = "/tmp";
+              tmp.options.sync = "disabled";
+            };
+          };
+        }
+        // (optionalAttrs (length raid > 0) {
+          raid = {
+            type = "zpool";
+            rootFsOptions = {
+              mountpoint = "none";
+              compression = "lz4";
+              acltype = "posixacl";
+              xattr = "sa";
+              "com.sun:auto-snapshot" = "true";
+            };
+            options.ashift = "12";
+            mode.topology.type = "topology";
+            mode.topology.vdev = [
+              {
+                mode = "raidz1";
+                members = raid;
+              }
+            ];
+            datasets.raid = {
+              type = "zfs_fs";
+              mountpoint = "/mnt/raid";
+            };
+          };
+        });
+    };
+in {
+  # disabledModules = [./systeamdeck.nix];
+  # FIXME don't override
+  # NOTE current thought is to install servers and deploy k8s before doing server/client updates
+  canivete.deploy.nodes = {
+    # NOTE this IP is not currently predictable from the bridging
+    sirver.hostname = mkForce "192.168.50.58";
+    sirver.activationTimeout = 600;
+    sirver.confirmTimeout = 600;
+    octopus.hostname = mkForce "192.168.50.53";
+    bonobo.hostname = mkForce "192.168.50.142";
+    # chinchilla.hostname = mkForce "192.168.50.85";
+    # dingo.hostname = mkForce "192.168.50.105";
+    axolotl.hostname = mkForce "192.168.50.250";
+    falcon.hostname = mkForce "192.168.50.215";
+    falcon.remoteBuild = true;
+    gargoyle.hostname = mkForce "192.168.50.192";
+    gargoyle.canivete.system = "aarch64-linux";
+  };
+  dotfiles.devenv.git-hooks.excludes = ["infra/nodes/nixos/.+\\.json"];
+  dotfiles.nodes = {
+    sirver = {
+      platform.prem.install_host = "192.168.50.23";
+      system = {
+        boot.initrd.availableKernelModules = ["sr_mod"];
+        boot.plymouth.enable = false;
+        canivete.kubernetes.root = true;
+        disko = diskoZfs "/dev/disk/by-id/scsi-35000c50067faa64b" [] {};
+        dotfiles.profiles.server.enable = true;
+        networking.hostId = "799f2113";
+        # Mini switch on spare LAN to connect another system (dingo)
+        networking.bridges.br0.interfaces = ["eno3" "eno4"];
+        networking.interfaces.br0.useDHCP = true;
+      };
+    };
+    octopus = {
+      platform.prem.install_host = "192.168.50.53";
+      system = {
+        boot.initrd.availableKernelModules = ["sr_mod"];
+        boot.plymouth.enable = false;
+        disko = diskoZfs "/dev/disk/by-id/scsi-36b82a720cf60ce002fd94d2e2991b17e" [] {};
+        dotfiles.profiles.server.enable = true;
+        networking.hostId = "101915fa";
+        services.k3s.role = "server";
+      };
+    };
+    bonobo = {
+      platform.prem.install_host = "192.168.50.142";
+      system = {
+        disko = diskoZfs "/dev/disk/by-id/ata-Micron_1100_SATA_256GB_165015496CBD" [] {};
+        dotfiles.profiles.server.enable = true;
+        networking.hostId = "b090b069";
+        services.k3s.role = "server";
+        # TODO can I specify that this node should only have the etcd role and not control-plane or master?
+      };
+    };
+    # chinchilla = {
+    #   platform.prem.install_host = "192.168.50.85";
+    #   system = {
+    #     disko = diskoZfs "/dev/disk/by-id/ata-MTFDDAK256TBN-1AR1ZABHA_UGXVK01J7BDCER" [] {};
+    #     dotfiles.profiles.server.enable = true;
+    #     networking.hostId = "c419c417";
+    #   };
+    # };
+    # dingo = {
+    #   platform.prem.install_host = "192.168.50.105";
+    #   system = {
+    #     disko = diskoZfs "/dev/disk/by-id/ata-LITEON_IT_LCS-256L9S_SD0E97900L2TH61100DL" [] {};
+    #     dotfiles.profiles.server.enable = true;
+    #     networking.hostId = "d1960666";
+    #   };
+    # };
+    axolotl = {
+      platform.prem.install_host = "192.168.50.250";
+      system = {
+        # TODO Deactivate auto sleep
+        disko = diskoZfs "/dev/disk/by-id/nvme-SPCC_M.2_PCIE_SSD_30012119169" [] {};
+        dotfiles.nixpkgs.config.allowUnfreePackages = ["displaylink"];
+        dotfiles.profiles.client.enable = true;
+        dotfiles.profiles.client.workstation.enable = true;
+        # home-manager.sharedModules = [{dotfiles.programs.macchina.networkInterface = "enp0s31f6";}];
+        networking.hostId = "a6070877";
+        services.logind.lidSwitch = "ignore";
+        services.xserver.videoDrivers = ["radeon" "i915" "displaylink" "modesetting" "fbdev"];
+        systemd.targets = {
+          sleep.enable = false;
+          suspend.enable = false;
+          hibernate.enable = false;
+          hybrid-sleep.enable = false;
+        };
+      };
+    };
+    # TODO deploy
+    echidna.platform.wsl = {};
+    # TODO deploy
+    systeamadeck = {
+      platform.prem.install_host = "192.168.50.155";
+      system = {pkgs, ...}: {
+        imports = [inputs.jovian.nixosModules.jovian];
+        disko = diskoZfs "/dev/disk/by-id/nvme-Phison_ESMP001TMN48C3-E21TS_23445M001T05978" [] {};
+        dotfiles.profiles.client.enable = true;
+        dotfiles.profiles.client.gaming.enable = true;
+        dotfiles.nixpkgs.config.allowUnfreePackages = [
+          "steam-run"
+          "steam-jupiter-original"
+          "steam-jupiter-unwrapped"
+          "steamcmd"
+          "steamdeck-hw-theme"
+          "steam-original"
+        ];
+        environment.systemPackages = with pkgs; [maliit-keyboard maliit-framework];
+        jovian.decky-loader = {
+          enable = true;
+          package = pkgs.decky-loader-prerelease;
+        };
+        jovian.devices.steamdeck = {
+          enable = true;
+          autoUpdate = true;
+          enableGyroDsuService = true;
+        };
+        jovian.steam = {
+          enable = true;
+          autoStart = true;
+          desktopSession = "plasma";
+          user = config.canivete.meta.people.me;
+        };
+        networking.hostId = "58ea3dec";
+        networking.networkmanager.enable = true;
+      };
+    };
+    falcon = {
+      platform.prem.install_host = "192.168.50.215";
+      opentofu.module.nixos_falcon_system_install.build_on_remote = true;
+      system = {
+        services.tailscale.enable = true;
+
+        boot.binfmt.emulatedSystems = ["aarch64-linux"];
+        boot.initrd.availableKernelModules = ["sr_mod"];
+        boot.plymouth.enable = true;
+        # Desktop keeps getting stuck in ULP mode..., breaking networking connection
+        boot.extraModprobeConfig = ''
+          options e1000e EEE=0
+        '';
+        # Firmware bug in ACPI DSDT table for Super IO + UART
+        # Prevents kernel from even touching 8250 UART ports
+        # TODO did this actually work? (it did at first but then maybe not...)
+        boot.kernelParams = ["8250.nr_uarts=0"];
+        disko = diskoZfs "/dev/disk/by-id/nvme-PC801_NVMe_SK_hynix_1TB__SIABN06591CB93G1B" [] {
+          devices.disk.data = {
+            type = "disk";
+            device = "/dev/disk/by-id/ata-TOSHIBA_MG08ADA400NY_X1Q0A2MPFYXG";
+            content.type = "gpt";
+            content.partitions.zfs = {
+              size = "100%";
+              content.type = "zfs";
+              content.pool = "data";
+            };
+          };
+          devices.zpool.data = {
+            type = "zpool";
+            rootFsOptions = {
+              mountpoint = "none";
+              compression = "lz4";
+              acltype = "posixacl";
+              xattr = "sa";
+              "com.sun:auto-snapshot" = "true";
+            };
+            options.ashift = "12";
+            datasets.root.type = "zfs_fs";
+            datasets.root.mountpoint = "/data";
+          };
+        };
+        dotfiles.profiles.client.enable = true;
+        dotfiles.profiles.client.gaming.enable = true;
+        dotfiles.profiles.client.workstation.enable = true;
+        dotfiles.profiles.nvidia.enable = true;
+        # TODO why doesn't Continue work with vscodium? it just never loads...
+        dotfiles.nixpkgs.config.allowUnfreePackages = ["vscode"];
+        home-manager.sharedModules = [
+          ({
+            lib,
+            pkgs,
+            ...
+          }: {
+            programs.vscode.package = lib.mkForce pkgs.vscode;
+            programs.vscode.profiles.default.extensions = [
+              (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
+                mktplcRef = {
+                  name = "continue";
+                  publisher = "Continue";
+                  version = "1.1.40";
+                  sha256 = "sha256-P4rhoj4Juag7cfB9Ca8eRmHRA10Rb4f7y5bNGgVZt+E=";
+                  arch = "linux-x64";
+                };
+                nativeBuildInputs = [pkgs.autoPatchelfHook];
+                buildInputs = [pkgs.stdenv.cc.cc.lib];
+              })
+            ];
+          })
+        ];
+        networking.hostId = "fa7c0969";
+        # services.ollama.enable = true;
+        # services.ollama.loadModels = [
+        #   "llama3.1:8b" # chat
+        #   "qwen2.5-coder:1.5b-base" # autocomplete
+        #   "nomic-embed-text:latest" # embeddings
+        # ];
+        # imports = [
+        #   {
+        #     # TODO host on cluster
+        #     services.open-webui.enable = true;
+        #     dotfiles.nixpkgs.config.allowUnfreePackages = [
+        #       "open-webui"
+        #       "cuda_cupti"
+        #       "cuda_nvml_dev"
+        #       "cuda_nvrtc"
+        #       "cuda_nvtx"
+        #       "libcusparse_lt"
+        #       "libcufft"
+        #       "libcufile"
+        #       "libcurand"
+        #       "libcusolver"
+        #       "libnvjitlink"
+        #       "libcusparse"
+        #       "cudnn"
+        #       "cuda_profiler_api"
+        #       "cuda_cuobjdump"
+        #       "cuda_nvdisasm"
+        #       "cuda-merged"
+        #       "cuda_gdb"
+        #       "cuda_nvprune"
+        #       "cuda_cuxxfilt"
+        #       "cuda_sanitizer_api"
+        #       "libnpp"
+        #     ];
+        #   }
+        # ];
+      };
+    };
+    gargoyle = {
+      platform.mobile.device = "oneplus-enchilada";
+      system = {
+        # TODO dotfiles.profiles.client.gaming.enable = true;
+        # TODO Accidentally initialized wrong...
+        system.stateVersion = "24.11";
+        home-manager.sharedModules = [{home.stateVersion = "24.11";}];
+        users.users.tristan.uid = 1000;
+      };
+    };
+  };
+}

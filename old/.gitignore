@@ -1,0 +1,6 @@
+.direnv/
+.devenv/
+result
+.pre-commit-config.yaml
+/.canivete/opentofu/**/terraform.tfstate*.backup
+/kubeconfig
