@@ -25,6 +25,7 @@
     ./home/zwave-js-ui.nix
     ./identity/keycloak.nix
     ./identity/keycloak-operator.nix
+    ./identity/keycloak-auth.nix
     ./identity/oauth2-proxy.nix
     ./media/maloja.nix
     ./media/multi-scrobbler.nix

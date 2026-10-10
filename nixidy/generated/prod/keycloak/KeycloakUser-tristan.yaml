@@ -8,9 +8,11 @@ spec:
     email: t0rdos@pm.me
     emailVerified: true
     enabled: true
+    firstName: Tristan
     groups:
       - admin
       - family
+    lastName: Schrader
     username: tristan
   realmRef:
     name: default

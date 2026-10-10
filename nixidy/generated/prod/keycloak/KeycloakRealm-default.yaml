@@ -11,6 +11,12 @@ spec:
     duplicateEmailsAllowed: false
     enabled: true
     loginWithEmailAllowed: true
+    otpPolicyAlgorithm: HmacSHA1
+    otpPolicyCodeReusable: false
+    otpPolicyDigits: 6
+    otpPolicyInitialCounter: 0
+    otpPolicyLookAheadWindow: 1
+    otpPolicyPeriod: 30
     otpPolicyType: totp
     realm: default
     registrationAllowed: false
@@ -24,7 +30,31 @@ spec:
       starttls: "false"
     ssoSessionIdleTimeout: 86400
     ssoSessionMaxLifespan: 259200
-    webAuthnPolicyRpEntityName: Homelab Default Realm
+    webAuthnPolicyAcceptableAaguids: []
+    webAuthnPolicyAttestationConveyancePreference: not specified
+    webAuthnPolicyAuthenticatorAttachment: not specified
+    webAuthnPolicyAvoidSameAuthenticatorRegister: false
+    webAuthnPolicyCreateTimeout: 0
+    webAuthnPolicyExtraOrigins: []
+    webAuthnPolicyPasswordlessAcceptableAaguids: []
+    webAuthnPolicyPasswordlessAttestationConveyancePreference: not specified
+    webAuthnPolicyPasswordlessAuthenticatorAttachment: not specified
+    webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister: false
+    webAuthnPolicyPasswordlessCreateTimeout: 0
+    webAuthnPolicyPasswordlessExtraOrigins: []
+    webAuthnPolicyPasswordlessRequireResidentKey: not specified
+    webAuthnPolicyPasswordlessRpEntityName: Homelab
+    webAuthnPolicyPasswordlessRpId: trdos.me
+    webAuthnPolicyPasswordlessSignatureAlgorithms:
+      - ES256
+      - RS256
+    webAuthnPolicyPasswordlessUserVerificationRequirement: required
+    webAuthnPolicyRequireResidentKey: not specified
+    webAuthnPolicyRpEntityName: Homelab
     webAuthnPolicyRpId: trdos.me
+    webAuthnPolicySignatureAlgorithms:
+      - ES256
+      - RS256
+    webAuthnPolicyUserVerificationRequirement: preferred
   instanceRef:
     name: default
