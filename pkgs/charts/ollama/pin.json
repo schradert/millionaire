@@ -1,0 +1,9 @@
+{
+  "version": "1.12.0",
+  "hash": "sha256-U5tBXc49GzKtCfCEV7G9nN7tQKXF5A+rUvS8OZJ2rPg=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://otwld.github.io/ollama-helm/",
+    "chart": "ollama"
+  }
+}

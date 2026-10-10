@@ -1,0 +1,9 @@
+{
+  "version": "2.2.9",
+  "hash": "sha256-cdGekNPr8381ZWzzuj1vYZD4DeC11vT3Csb94shr4PM=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "oci://ghcr.io/stakater/charts",
+    "chart": "reloader"
+  }
+}

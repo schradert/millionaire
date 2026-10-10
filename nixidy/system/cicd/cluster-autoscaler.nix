@@ -5,16 +5,11 @@
 # clusterapi provider scales MachineDeployments instead of calling a cloud API,
 # which keeps the autoscaler provider-agnostic as more infra providers land.
 {...}: {
-  nixidy = {lib, ...}: {
+  nixidy = {pinned, ...}: {
     applications.cluster-autoscaler = {
       namespace = "capi";
       helm.releases.cluster-autoscaler = {
-        chart = lib.helm.downloadHelmChart {
-          repo = "https://kubernetes.github.io/autoscaler";
-          chart = "cluster-autoscaler";
-          version = "9.57.0";
-          chartHash = "sha256-TfMNgTwq0g+faac8ReRD4bMls45kv1IwuLt08Ov0fjE=";
-        };
+        chart = pinned.charts.cluster-autoscaler;
         values = {
           cloudProvider = "clusterapi";
           # Management cluster == workload cluster: in-cluster client for both.

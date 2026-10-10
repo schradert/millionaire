@@ -1,0 +1,9 @@
+{
+  "version": "1.5.0",
+  "hash": "sha256-Dwbis8l61YZUo4dRLlBpnGBt9kXpAOsRT441hG18Y2c=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://maximhq.github.io/bifrost/helm-charts",
+    "chart": "bifrost"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "version": "1.18.3",
+  "hash": "sha256-fQdrdJhG33EOaESKRVYmPHVZUg7oVrX5TqLFWw/b6nY=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://helm.goharbor.io",
+    "chart": "harbor"
+  }
+}

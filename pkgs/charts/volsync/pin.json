@@ -1,0 +1,9 @@
+{
+  "version": "0.15.0",
+  "hash": "sha256-MZxxd26S9wST2Jy7fFhriQX2T4n1gNKu2d+jtlPYpEs=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://backube.github.io/helm-charts",
+    "chart": "volsync"
+  }
+}

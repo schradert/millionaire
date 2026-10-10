@@ -1,14 +1,13 @@
 {...}: {
-  nixidy = {lib, ...}: {
+  nixidy = {
+    lib,
+    pinned,
+    ...
+  }: {
     applications.descheduler = {
       namespace = "cicd";
       helm.releases.descheduler = {
-        chart = lib.helm.downloadHelmChart {
-          repo = "https://kubernetes-sigs.github.io/descheduler";
-          chart = "descheduler";
-          version = "0.35.1";
-          chartHash = "sha256-eugw/YckC6dI6kIYbNwK/5CYQvAwaFFbkeD9Si4fdn4=";
-        };
+        chart = pinned.charts.descheduler;
         values = {
           replicas = 1;
           kind = "Deployment";

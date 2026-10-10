@@ -1,0 +1,9 @@
+{
+  "version": "2.40.9",
+  "hash": "sha256-mmv2qZaz0nvCx4Jwbha2CF52s+coL0xZ23PuOfF4P5A=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://argoproj.github.io/argo-helm",
+    "chart": "argo-rollouts"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "version": "0.35.1",
+  "hash": "sha256-eugw/YckC6dI6kIYbNwK/5CYQvAwaFFbkeD9Si4fdn4=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://kubernetes-sigs.github.io/descheduler",
+    "chart": "descheduler"
+  }
+}

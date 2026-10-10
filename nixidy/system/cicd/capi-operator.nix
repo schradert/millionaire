@@ -7,7 +7,6 @@
 # NixOS), and the home control plane stays Pulumi-managed.
 {...}: {
   nixidy = {
-    lib,
     pinned,
     ...
   }: {
@@ -27,12 +26,7 @@
     applications.capi-operator = {
       namespace = "capi";
       helm.releases.cluster-api-operator = {
-        chart = lib.helm.downloadHelmChart {
-          repo = "https://kubernetes-sigs.github.io/cluster-api-operator";
-          chart = "cluster-api-operator";
-          version = "0.27.0";
-          chartHash = "sha256-XYJaGk3fU0rL9MMP8vWLS4OFrUdhHDcEwUumJUgHXPU=";
-        };
+        chart = pinned.charts.cluster-api-operator;
         values = {
           resources.manager = {
             requests.cpu = "50m";

@@ -18,12 +18,7 @@
       generatedSecrets.forgejo-webhook-secret.key = "secret";
       namespace = "cicd";
       helm.releases.argo-events = {
-        chart = lib.helm.downloadHelmChart {
-          chart = "argo-events";
-          version = "2.4.21";
-          repo = "https://argoproj.github.io/argo-helm";
-          chartHash = "sha256-I2seJPvPXti08DSnWFbjH9wj4ysx8zYLSN4D8CU4aHQ=";
-        };
+        chart = pinned.charts.argo-events;
         values = {
           crds.install = false;
           controller.metrics.enabled = true;

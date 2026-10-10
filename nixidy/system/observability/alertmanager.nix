@@ -1,5 +1,9 @@
 {config, ...}: {
-  nixidy = {lib, ...}: let
+  nixidy = {
+    lib,
+    pinned,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "alertmanager.${domain}";
     # hyena's ntfy + Gatus (static/hyena.nix): tailnet-only https vhosts with
@@ -15,12 +19,7 @@
     applications.alertmanager = {
       namespace = "observability";
       helm.releases.alertmanager = {
-        chart = lib.helm.downloadHelmChart {
-          chart = "alertmanager";
-          version = "1.33.1";
-          repo = "oci://ghcr.io/prometheus-community/charts";
-          chartHash = "sha256-o/zMeLb9GmqTipkv+tOEWX2GuDPxwRERnzTfU3jO5zo=";
-        };
+        chart = pinned.charts.alertmanager;
         values = {
           baseURL = "https://${hostname}";
           hostAliases = lib.toList {

@@ -1,11 +1,6 @@
 {...}: {
-  nixidy = {lib, ...}: let
-    chart = lib.helm.downloadHelmChart {
-      chart = "gpu-operator";
-      version = "v24.9.2";
-      repo = "https://helm.ngc.nvidia.com/nvidia";
-      chartHash = "sha256-OZTki30gm8nNOb0nZqPTvvRLDt34G3DgkbqP5mfVjAU=";
-    };
+  nixidy = {pinned, ...}: let
+    chart = pinned.charts.gpu-operator;
   in {
     applications.nvidia-gpu-operator-crds = {
       namespace = "kube-system";

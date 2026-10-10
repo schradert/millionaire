@@ -2,7 +2,11 @@
   inherit (config.canivete.meta) domain;
   hostname = "bifrost.${domain}";
 in {
-  nixidy = {lib, ...}: let
+  nixidy = {
+    lib,
+    pinned,
+    ...
+  }: let
     providerKey = name: env: {
       inherit name;
       value = "env.${env}";
@@ -33,12 +37,7 @@ in {
     applications.bifrost = {
       namespace = "ai";
       helm.releases.bifrost = {
-        chart = lib.helm.downloadHelmChart {
-          chart = "bifrost";
-          version = "1.5.0";
-          repo = "https://maximhq.github.io/bifrost/helm-charts";
-          chartHash = "sha256-Dwbis8l61YZUo4dRLlBpnGBt9kXpAOsRT441hG18Y2c=";
-        };
+        chart = pinned.charts.bifrost;
         values = {
           replicaCount = 1;
           # Chart 1.5.0 ships appVersion 1.5.0; the old v1.3.36 tag predates its config schema
