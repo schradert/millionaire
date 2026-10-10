@@ -1,5 +1,9 @@
 {config, ...}: {
-  nixidy = {lib, ...}: let
+  nixidy = {
+    lib,
+    pinned,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "windmill.${domain}";
     namespace = "development";
@@ -37,12 +41,7 @@
       generatedSecrets.windmill-admin.key = "password";
 
       helm.releases.windmill = {
-        chart = lib.helm.downloadHelmChart {
-          chart = "windmill";
-          version = "4.0.119";
-          repo = "https://windmill-labs.github.io/windmill-helm-charts";
-          chartHash = "sha256-197D3CuiggeCCojavZENj5eWSxAkGApv5RJPXz8hazw=";
-        };
+        chart = pinned.charts.windmill;
         values = {
           # Disable bundled demo PostgreSQL — use CNPG
           postgresql.enabled = false;

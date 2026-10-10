@@ -1,5 +1,9 @@
 {config, ...}: {
-  nixidy = {lib, ...}: let
+  nixidy = {
+    lib,
+    pinned,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "jitsi.${domain}";
     xmppPasswords = ["recorder" "jibri" "jicofo" "component" "jigasi" "jvb"];
@@ -21,12 +25,7 @@
         prosody.title = "prosody-data";
       };
       helm.releases.jitsi = {
-        chart = lib.helm.downloadHelmChart {
-          chart = "jitsi-meet";
-          version = "1.5.1";
-          repo = "https://jitsi-contrib.github.io/jitsi-helm";
-          chartHash = "sha256-ohIP3j7w0H9pT8Lyi7329k1pgtPn5QWOAeJ8uyligC8=";
-        };
+        chart = pinned.charts.jitsi-meet;
         values = {
           enableAuth = true;
           enableGuests = false;

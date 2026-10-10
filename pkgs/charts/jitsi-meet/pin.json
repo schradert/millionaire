@@ -1,0 +1,9 @@
+{
+  "version": "1.5.1",
+  "hash": "sha256-ohIP3j7w0H9pT8Lyi7329k1pgtPn5QWOAeJ8uyligC8=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://jitsi-contrib.github.io/jitsi-helm",
+    "chart": "jitsi-meet"
+  }
+}
