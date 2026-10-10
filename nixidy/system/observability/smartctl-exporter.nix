@@ -29,6 +29,12 @@
           };
         };
       };
+      # nixidy strips the chart's version and chart labels from the Service but
+      # the ServiceMonitor selector still requires them, so it matched nothing.
+      resources.serviceMonitors.smartctl-exporter.spec.selector.matchLabels = lib.mkForce {
+        "app.kubernetes.io/instance" = "smartctl-exporter";
+        "app.kubernetes.io/name" = "prometheus-smartctl-exporter";
+      };
     };
   };
 }
