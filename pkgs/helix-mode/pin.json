@@ -1,0 +1,10 @@
+{
+  "version": "723225b724ca9221b9c52be2eb798cc426e05f2b",
+  "hash": "sha256-JQbhWfQumBuUuNnjiIvYbjiMgnOMz/McrtM/gKqQXm8=",
+  "source": {
+    "type": "git-commit",
+    "owner": "mgmarlow",
+    "repo": "helix-mode",
+    "branch": "main"
+  }
+}
