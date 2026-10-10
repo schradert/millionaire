@@ -29,6 +29,10 @@
           config = {
             route = {
               receiver = "default";
+              # Without this every firing alert shares one group, and ntfy rejects
+              # the one combined message ("message or title is too large", 400) once
+              # a handful of alerts carry long annotations, dropping all of them.
+              group_by = ["alertname" "node" "device"];
               group_wait = "30s";
               group_interval = "5m";
               repeat_interval = "4h";
