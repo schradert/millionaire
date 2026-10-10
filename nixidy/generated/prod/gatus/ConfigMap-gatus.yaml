@@ -95,6 +95,12 @@ data:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
+      name: excalidraw
+      url: https://excalidraw.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
       name: firefly
       url: https://firefly.trdos.me
     - conditions:
