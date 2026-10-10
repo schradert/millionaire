@@ -1,0 +1,11 @@
+{
+  "version": "0.17.3",
+  "hash": "sha256-n1d2n6CX8iV/bRqQSaivRxMAYKA/ctfWPQaFgS7ETgE=",
+  "source": {
+    "type": "github-release",
+    "owner": "maxlaverse",
+    "repo": "terraform-provider-bitwarden",
+    "tagPrefix": "v"
+  },
+  "hold": "pulumi/sdks/bitwarden is generated from this provider version (pulumi-plugin.json parameterization); regenerate with `pulumi package add terraform-provider maxlaverse/bitwarden <version>` in pulumi/, then bump this pin"
+}
