@@ -172,6 +172,26 @@ in {
           };
         };
       };
+      # Kavita registers its OIDC handler only at startup, so the job deletes the
+      # kavita pod once after first configuring OIDC; it needs pod delete rights.
+      resources.serviceAccounts.kavita-bootstrap = {};
+      resources.roles.kavita-bootstrap.rules = lib.toList {
+        apiGroups = [""];
+        resources = ["pods"];
+        verbs = ["get" "list" "delete"];
+      };
+      resources.roleBindings.kavita-bootstrap = {
+        roleRef = {
+          apiGroup = "rbac.authorization.k8s.io";
+          kind = "Role";
+          name = "kavita-bootstrap";
+        };
+        subjects = lib.toList {
+          kind = "ServiceAccount";
+          name = "kavita-bootstrap";
+          namespace = "media";
+        };
+      };
       # Idempotent post-sync bootstrap: first admin (first registered user is
       # admin), the Books/Comics libraries, and Keycloak OIDC in the server
       # settings (apps/app-bootstrap). Reruns after every sync: must stay a no-op.
@@ -186,6 +206,7 @@ in {
           activeDeadlineSeconds = 1200;
           template.spec = {
             restartPolicy = "OnFailure";
+            serviceAccountName = "kavita-bootstrap";
             securityContext = {
               runAsNonRoot = true;
               runAsUser = 65534;
@@ -194,7 +215,7 @@ in {
             };
             containers = lib.toList {
               name = "bootstrap";
-              image = "harbor.${domain}/library/app-bootstrap:0.1.0";
+              image = "harbor.${domain}/library/app-bootstrap:0.1.1";
               args = ["kavita"];
               env = [
                 {

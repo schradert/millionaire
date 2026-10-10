@@ -27,7 +27,7 @@ spec:
               value: kavita
             - name: OIDC_CLIENT_SECRET_FILE
               value: /secrets/oidc/client_secret
-          image: harbor.trdos.me/library/app-bootstrap:0.1.0
+          image: harbor.trdos.me/library/app-bootstrap:0.1.1
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
@@ -49,6 +49,7 @@ spec:
         runAsUser: 65534
         seccompProfile:
           type: RuntimeDefault
+      serviceAccountName: kavita-bootstrap
       volumes:
         - name: admin
           secret:
