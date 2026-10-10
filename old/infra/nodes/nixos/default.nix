@@ -109,7 +109,6 @@ in {
     bonobo.hostname = mkForce "192.168.50.142";
     # chinchilla.hostname = mkForce "192.168.50.85";
     # dingo.hostname = mkForce "192.168.50.105";
-    axolotl.hostname = mkForce "192.168.50.250";
     gargoyle.hostname = mkForce "192.168.50.192";
     gargoyle.canivete.system = "aarch64-linux";
   };
@@ -166,26 +165,6 @@ in {
     #     networking.hostId = "d1960666";
     #   };
     # };
-    axolotl = {
-      platform.prem.install_host = "192.168.50.250";
-      system = {
-        # TODO Deactivate auto sleep
-        disko = diskoZfs "/dev/disk/by-id/nvme-SPCC_M.2_PCIE_SSD_30012119169" [] {};
-        dotfiles.nixpkgs.config.allowUnfreePackages = ["displaylink"];
-        dotfiles.profiles.client.enable = true;
-        dotfiles.profiles.client.workstation.enable = true;
-        # home-manager.sharedModules = [{dotfiles.programs.macchina.networkInterface = "enp0s31f6";}];
-        networking.hostId = "a6070877";
-        services.logind.lidSwitch = "ignore";
-        services.xserver.videoDrivers = ["radeon" "i915" "displaylink" "modesetting" "fbdev"];
-        systemd.targets = {
-          sleep.enable = false;
-          suspend.enable = false;
-          hibernate.enable = false;
-          hybrid-sleep.enable = false;
-        };
-      };
-    };
     # TODO deploy
     echidna.platform.wsl = {};
     # TODO deploy
