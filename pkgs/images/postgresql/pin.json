@@ -5,5 +5,6 @@
     "type": "oci-tag",
     "repository": "ghcr.io/cloudnative-pg/postgresql",
     "track": "digest"
-  }
+  },
+  "hold": "a new digest restarts every CNPG primary (instances=1, no switchover); bump in a maintenance window"
 }
