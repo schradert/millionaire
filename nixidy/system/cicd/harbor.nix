@@ -283,7 +283,13 @@
           };
         };
 
-        # Post-deploy Job: configure OIDC + create robot account (idempotent)
+        # Post-deploy Job: configure OIDC + create robot account (idempotent).
+        # A hook, recreated on every sync: a plain Job's template is immutable, so
+        # any change to it wedged the app's sync.
+        jobs.harbor-init.metadata.annotations = {
+          "argocd.argoproj.io/hook" = "PostSync";
+          "argocd.argoproj.io/hook-delete-policy" = "BeforeHookCreation";
+        };
         jobs.harbor-init.spec = {
           backoffLimit = 5;
           template.spec = {
@@ -316,7 +322,8 @@
                   oidc_client_secret = "__OIDC_CLIENT_SECRET__";
                   oidc_scope = "openid,profile,email,groups";
                   oidc_groups_claim = "groups";
-                  oidc_admin_group = "/admin";
+                  # Short group names (groups scope has full.path off).
+                  oidc_admin_group = "admin";
                   oidc_auto_onboard = true;
                   oidc_verify_cert = true;
                 };
