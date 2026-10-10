@@ -59,8 +59,8 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
             - name: DRIVER_MANAGER_IMAGE
-              value: nvcr.io/nvidia/cloud-native/k8s-driver-manager:v0.7.0
-          image: nvcr.io/nvidia/gpu-operator:v24.9.2
+              value: nvcr.io/nvidia/cloud-native/k8s-driver-manager:v0.7.0@sha256:b072c5793be65eee556eaff1b9cbbd115a1ef29982be95b2959adfcb4bc72382
+          image: nvcr.io/nvidia/gpu-operator:v24.9.2@sha256:92f5262bb4934e0ea29eb10ec0ad4fc293164f2f2f94d48a935922791abbfdac
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:

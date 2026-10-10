@@ -18,6 +18,7 @@ in {
       helm.releases.keycloak-operator = {
         chart = pinned.charts.keycloak-operator;
         values.crds.install = false;
+        values.image.tag = with pinned.images.keycloak-operator; "${tag}@${digest}";
       };
     };
     applications.keycloak.resources = {

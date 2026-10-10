@@ -37,6 +37,14 @@ in {
       helm.releases.argod = {
         chart = pinned.charts.argo-cd;
         values = {
+          global.image = with pinned.images.argocd; {
+            inherit repository;
+            tag = "${tag}@${digest}";
+          };
+          redis.image = with pinned.images.argocd-redis; {
+            inherit repository;
+            tag = "${tag}@${digest}";
+          };
           global.domain = "argocd.${domain}";
           # TODO activate HA mode with autoscaling (after multi-node)
           # redis-ha.enabled = true;

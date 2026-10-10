@@ -21,6 +21,7 @@
       helm.releases.alertmanager = {
         chart = pinned.charts.alertmanager;
         values = {
+          image.tag = with pinned.images.alertmanager; "${tag}@${digest}";
           baseURL = "https://${hostname}";
           hostAliases = lib.toList {
             ip = "100.64.0.1";

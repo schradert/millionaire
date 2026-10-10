@@ -1,0 +1,9 @@
+{
+  "version": "3.3.9-3.6.1-ubuntu22.04",
+  "digest": "sha256:3d4e0dfa5fc4d7d12689d29fc6b56cd6c610750e8d187a393882e341fbba6c12",
+  "source": {
+    "type": "oci-tag",
+    "repository": "nvcr.io/nvidia/k8s/dcgm-exporter"
+  },
+  "follows": "charts/gpu-operator"
+}

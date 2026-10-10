@@ -1,0 +1,9 @@
+{
+  "version": "14.0.3-rootless",
+  "digest": "sha256:3bde16a366e57f37c09599b77ceb83ed05b1934f8224072f8140bc66cf243608",
+  "source": {
+    "type": "oci-tag",
+    "repository": "code.forgejo.org/forgejo/forgejo"
+  },
+  "follows": "charts/forgejo"
+}

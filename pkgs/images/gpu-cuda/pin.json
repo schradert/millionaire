@@ -1,0 +1,9 @@
+{
+  "version": "12.6.3-base-ubi9",
+  "digest": "sha256:b3b340847db9abd0c39703278f5638d3e65e1369e9a526a19b3138d5a6563527",
+  "source": {
+    "type": "oci-tag",
+    "repository": "nvcr.io/nvidia/cuda"
+  },
+  "follows": "charts/gpu-operator"
+}

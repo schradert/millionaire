@@ -1,0 +1,9 @@
+{
+  "version": "8.2.3-alpine",
+  "digest": "sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ecr-public.aws.com/docker/library/redis"
+  },
+  "follows": "charts/argo-cd"
+}

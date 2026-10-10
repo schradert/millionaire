@@ -1,7 +1,11 @@
 {config, ...}: let
   inherit (config.canivete.meta) domain;
 in {
-  nixidy = {pinned, ...}: {
+  nixidy = {
+    lib,
+    pinned,
+    ...
+  }: {
     applications.coredns = {
       canivete.bootstrap.enable = true;
       namespace = "kube-system";
@@ -92,6 +96,9 @@ in {
           ];
         };
       };
+      # Pinned here, not via image.tag: the chart folds the tag into its
+      # version label.
+      resources.deployments.coredns.spec.template.spec.containers.coredns.image = lib.mkForce (with pinned.images.coredns; "${repository}:${tag}@${digest}");
     };
   };
 }

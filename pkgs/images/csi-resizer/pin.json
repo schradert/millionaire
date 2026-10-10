@@ -1,0 +1,9 @@
+{
+  "version": "v2.1.0",
+  "digest": "sha256:589e525cddef6d768e68da1f0bc9ffd0a24bf3add3dd010648eb7189976fde79",
+  "source": {
+    "type": "oci-tag",
+    "repository": "registry.k8s.io/sig-storage/csi-resizer"
+  },
+  "follows": "charts/rook-ceph"
+}

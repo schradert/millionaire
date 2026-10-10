@@ -1,0 +1,9 @@
+{
+  "version": "v1.2.10",
+  "digest": "sha256:4ffa1cd2a6497eb647a89ed259dcfb007554737b9d80f69bc173a2c3cd72a1da",
+  "source": {
+    "type": "oci-tag",
+    "repository": "nvcr.io/nvidia/kubevirt-gpu-device-plugin"
+  },
+  "follows": "charts/gpu-operator"
+}

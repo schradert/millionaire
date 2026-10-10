@@ -1,0 +1,9 @@
+{
+  "version": "v19.2.3",
+  "digest": "sha256:af0c5903e901e329adabe219dfc8d0c3efc1f05102a753902f33ee16c26b6cee",
+  "source": {
+    "type": "oci-tag",
+    "repository": "quay.io/ceph/ceph"
+  },
+  "follows": "charts/rook-ceph-cluster"
+}

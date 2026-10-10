@@ -1,0 +1,9 @@
+{
+  "version": "12.3.1",
+  "digest": "sha256:2175aaa91c96733d86d31cf270d5310b278654b03f5718c59de12a865380a31f",
+  "source": {
+    "type": "oci-tag",
+    "repository": "docker.io/grafana/grafana"
+  },
+  "follows": "charts/grafana"
+}

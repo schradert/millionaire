@@ -1,0 +1,9 @@
+{
+  "version": "v0.14.0",
+  "digest": "sha256:69092d026323307933fba2bed9c57d864f2a92cfd385d644b478442ded0d2886",
+  "source": {
+    "type": "oci-tag",
+    "repository": "quay.io/csiaddons/k8s-sidecar"
+  },
+  "follows": "charts/rook-ceph"
+}

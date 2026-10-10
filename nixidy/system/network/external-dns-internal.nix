@@ -17,6 +17,7 @@
       helm.releases.external-dns-internal = {
         chart = pinned.charts.external-dns;
         values = {
+          image.tag = with pinned.images.external-dns; "${tag}@${digest}";
           fullnameOverride = "external-dns-internal";
           provider.name = "webhook";
           provider.webhook = {

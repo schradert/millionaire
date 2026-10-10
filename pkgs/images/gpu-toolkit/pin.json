@@ -1,0 +1,9 @@
+{
+  "version": "v1.17.4-ubuntu20.04",
+  "digest": "sha256:83a9f9fe948bd82358e53ed09470e2500ff689ce26241d76b444ec6b71792dcc",
+  "source": {
+    "type": "oci-tag",
+    "repository": "nvcr.io/nvidia/k8s/container-toolkit"
+  },
+  "follows": "charts/gpu-operator"
+}

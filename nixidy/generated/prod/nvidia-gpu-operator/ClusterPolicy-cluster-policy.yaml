@@ -15,7 +15,7 @@ spec:
     image: k8s-cc-manager
     imagePullPolicy: IfNotPresent
     repository: nvcr.io/nvidia/cloud-native
-    version: v0.1.1
+    version: v0.1.1@sha256:f916e3a6017f0c376b5a933c93b550dcbc1d40b2b36de16ddf96169f80e67bcb
   cdi:
     default: false
     enabled: false
@@ -36,7 +36,7 @@ spec:
     image: dcgm
     imagePullPolicy: IfNotPresent
     repository: nvcr.io/nvidia/cloud-native
-    version: 3.3.9-1-ubuntu22.04
+    version: 3.3.9-1-ubuntu22.04@sha256:9cce4b88361d634bfff830b68b4f24a0a39b3c7004447e917bf85fa01804b24f
   dcgmExporter:
     enabled: true
     env:
@@ -55,7 +55,7 @@ spec:
       honorLabels: false
       interval: 15s
       relabelings: []
-    version: 3.3.9-3.6.1-ubuntu22.04
+    version: 3.3.9-3.6.1-ubuntu22.04@sha256:3d4e0dfa5fc4d7d12689d29fc6b56cd6c610750e8d187a393882e341fbba6c12
   devicePlugin:
     enabled: true
     env:
@@ -74,7 +74,7 @@ spec:
     image: k8s-device-plugin
     imagePullPolicy: IfNotPresent
     repository: nvcr.io/nvidia
-    version: v0.17.0
+    version: v0.17.0@sha256:7089559ce6153018806857f5049085bae15b3bf6f1c8bd19d8b12f707d087dea
   driver:
     certConfig:
       name: ""
@@ -103,7 +103,7 @@ spec:
       image: k8s-driver-manager
       imagePullPolicy: IfNotPresent
       repository: nvcr.io/nvidia/cloud-native
-      version: v0.7.0
+      version: v0.7.0@sha256:b072c5793be65eee556eaff1b9cbbd115a1ef29982be95b2959adfcb4bc72382
     rdma:
       enabled: false
       useHostMofed: false
@@ -152,7 +152,7 @@ spec:
     image: k8s-device-plugin
     imagePullPolicy: IfNotPresent
     repository: nvcr.io/nvidia
-    version: v0.17.0
+    version: v0.17.0@sha256:7089559ce6153018806857f5049085bae15b3bf6f1c8bd19d8b12f707d087dea
   hostPaths:
     driverInstallDir: /run/nvidia/driver
     rootFS: /
@@ -175,7 +175,7 @@ spec:
     image: k8s-kata-manager
     imagePullPolicy: IfNotPresent
     repository: nvcr.io/nvidia/cloud-native
-    version: v0.2.2
+    version: v0.2.2@sha256:ea68d596acd35e304b54b397550dc140baf8b807e7214e981dacf910a2bd788f
   mig:
     strategy: single
   migManager:
@@ -190,20 +190,20 @@ spec:
     image: k8s-mig-manager
     imagePullPolicy: IfNotPresent
     repository: nvcr.io/nvidia/cloud-native
-    version: v0.10.0-ubuntu20.04
+    version: v0.10.0-ubuntu20.04@sha256:932afee5f38785a64e3949ab05689bcab8ec14827a1dd5cd769acdfda592bca0
   nodeStatusExporter:
     enabled: false
     image: gpu-operator-validator
     imagePullPolicy: IfNotPresent
     repository: nvcr.io/nvidia/cloud-native
-    version: v24.9.2
+    version: v24.9.2@sha256:34eab99d7992a57c35803ec5e0afd538d16e997341e951fef4c4019afb08793e
   operator:
     defaultRuntime: docker
     initContainer:
       image: cuda
       imagePullPolicy: IfNotPresent
       repository: nvcr.io/nvidia
-      version: 12.6.3-base-ubi9
+      version: 12.6.3-base-ubi9@sha256:b3b340847db9abd0c39703278f5638d3e65e1369e9a526a19b3138d5a6563527
     runtimeClass: nvidia
   psa:
     enabled: false
@@ -212,7 +212,7 @@ spec:
     image: kubevirt-gpu-device-plugin
     imagePullPolicy: IfNotPresent
     repository: nvcr.io/nvidia
-    version: v1.2.10
+    version: v1.2.10@sha256:4ffa1cd2a6497eb647a89ed259dcfb007554737b9d80f69bc173a2c3cd72a1da
   sandboxWorkloads:
     defaultWorkload: container
     enabled: false
@@ -222,7 +222,7 @@ spec:
     imagePullPolicy: IfNotPresent
     installDir: /usr/local/nvidia
     repository: nvcr.io/nvidia/k8s
-    version: v1.17.4-ubuntu20.04
+    version: v1.17.4-ubuntu20.04@sha256:83a9f9fe948bd82358e53ed09470e2500ff689ce26241d76b444ec6b71792dcc
   validator:
     image: gpu-operator-validator
     imagePullPolicy: IfNotPresent
@@ -231,7 +231,7 @@ spec:
         - name: WITH_WORKLOAD
           value: "false"
     repository: nvcr.io/nvidia/cloud-native
-    version: v24.9.2
+    version: v24.9.2@sha256:34eab99d7992a57c35803ec5e0afd538d16e997341e951fef4c4019afb08793e
   vfioManager:
     driverManager:
       env:
@@ -242,12 +242,12 @@ spec:
       image: k8s-driver-manager
       imagePullPolicy: IfNotPresent
       repository: nvcr.io/nvidia/cloud-native
-      version: v0.7.0
+      version: v0.7.0@sha256:b072c5793be65eee556eaff1b9cbbd115a1ef29982be95b2959adfcb4bc72382
     enabled: true
     image: cuda
     imagePullPolicy: IfNotPresent
     repository: nvcr.io/nvidia
-    version: 12.6.3-base-ubi9
+    version: 12.6.3-base-ubi9@sha256:b3b340847db9abd0c39703278f5638d3e65e1369e9a526a19b3138d5a6563527
   vgpuDeviceManager:
     config:
       default: default
@@ -256,7 +256,7 @@ spec:
     image: vgpu-device-manager
     imagePullPolicy: IfNotPresent
     repository: nvcr.io/nvidia/cloud-native
-    version: v0.2.8
+    version: v0.2.8@sha256:7edd7a0413dcb39b6e3bcefaf06812f3293c8e480ca10783e821a561ed686200
   vgpuManager:
     driverManager:
       env:
@@ -267,7 +267,7 @@ spec:
       image: k8s-driver-manager
       imagePullPolicy: IfNotPresent
       repository: nvcr.io/nvidia/cloud-native
-      version: v0.7.0
+      version: v0.7.0@sha256:b072c5793be65eee556eaff1b9cbbd115a1ef29982be95b2959adfcb4bc72382
     enabled: false
     image: vgpu-manager
     imagePullPolicy: IfNotPresent

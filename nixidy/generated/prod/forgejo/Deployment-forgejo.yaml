@@ -47,7 +47,7 @@ spec:
               value: /tmp/gitea
             - name: HOME
               value: /data/gitea/git
-          image: code.forgejo.org/forgejo/forgejo:14.0.3-rootless
+          image: code.forgejo.org/forgejo/forgejo:14.0.3-rootless@sha256:3bde16a366e57f37c09599b77ceb83ed05b1934f8224072f8140bc66cf243608
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 10
@@ -91,7 +91,7 @@ spec:
               value: /data
             - name: GITEA_TEMP
               value: /tmp/gitea
-          image: code.forgejo.org/forgejo/forgejo:14.0.3-rootless
+          image: code.forgejo.org/forgejo/forgejo:14.0.3-rootless@sha256:3bde16a366e57f37c09599b77ceb83ed05b1934f8224072f8140bc66cf243608
           imagePullPolicy: IfNotPresent
           name: init-directories
           resources:
@@ -118,7 +118,7 @@ spec:
               value: /data
             - name: GITEA_TEMP
               value: /tmp/gitea
-          image: code.forgejo.org/forgejo/forgejo:14.0.3-rootless
+          image: code.forgejo.org/forgejo/forgejo:14.0.3-rootless@sha256:3bde16a366e57f37c09599b77ceb83ed05b1934f8224072f8140bc66cf243608
           imagePullPolicy: IfNotPresent
           name: init-app-ini
           resources:
@@ -173,7 +173,7 @@ spec:
                   name: forgejo-admin
             - name: GITEA_ADMIN_PASSWORD_MODE
               value: keepUpdated
-          image: code.forgejo.org/forgejo/forgejo:14.0.3-rootless
+          image: code.forgejo.org/forgejo/forgejo:14.0.3-rootless@sha256:3bde16a366e57f37c09599b77ceb83ed05b1934f8224072f8140bc66cf243608
           imagePullPolicy: IfNotPresent
           name: configure-gitea
           resources:

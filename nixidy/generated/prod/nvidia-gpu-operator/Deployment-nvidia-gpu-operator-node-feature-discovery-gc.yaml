@@ -32,7 +32,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-          image: registry.k8s.io/nfd/node-feature-discovery:v0.16.6
+          image: registry.k8s.io/nfd/node-feature-discovery:v0.16.6@sha256:19ebca8b3804bfe2ee7324de4873875ab0a9112b51e0ace9dfd7c470beecf4a9
           imagePullPolicy: IfNotPresent
           name: gc
           ports:

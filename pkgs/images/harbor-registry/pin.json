@@ -1,0 +1,9 @@
+{
+  "version": "v2.14.3",
+  "digest": "sha256:6533fc396cbce57131053faec55e1bd1da8b92aed318410c203ff1c7a9b910ab",
+  "source": {
+    "type": "oci-tag",
+    "repository": "goharbor/registry-photon"
+  },
+  "follows": "charts/harbor"
+}

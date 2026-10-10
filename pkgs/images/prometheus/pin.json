@@ -1,0 +1,9 @@
+{
+  "version": "v3.12.0-distroless",
+  "digest": "sha256:f39df5334dee301b885f77e0ff1159f5d8a43bf9db518f885544594799a1e3c2",
+  "source": {
+    "type": "oci-tag",
+    "repository": "quay.io/prometheus/prometheus"
+  },
+  "follows": "charts/kube-prometheus-stack"
+}

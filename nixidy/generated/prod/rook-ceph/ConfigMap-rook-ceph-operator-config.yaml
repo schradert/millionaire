@@ -221,18 +221,18 @@ data:
           memory: 256Mi
   ROOK_CEPH_ALLOW_LOOP_DEVICES: "false"
   ROOK_CEPH_COMMANDS_TIMEOUT_SECONDS: "15"
-  ROOK_CSI_ATTACHER_IMAGE: registry.k8s.io/sig-storage/csi-attacher:v4.11.0
-  ROOK_CSI_CEPH_IMAGE: quay.io/cephcsi/cephcsi:v3.16.2
+  ROOK_CSIADDONS_IMAGE: quay.io/csiaddons/k8s-sidecar:v0.14.0@sha256:69092d026323307933fba2bed9c57d864f2a92cfd385d644b478442ded0d2886
+  ROOK_CSI_ATTACHER_IMAGE: registry.k8s.io/sig-storage/csi-attacher:v4.11.0@sha256:b74b05b39501565022883fc128002b4cb857a7bb6c858606bcb3fdedba0b0b80
+  ROOK_CSI_CEPH_IMAGE: quay.io/cephcsi/cephcsi:v3.16.2@sha256:c7aa23eb86b3e36e9c3ee677356c0e72e9bb9cee856518db99901d60b18721f8
   ROOK_CSI_DISABLE_DRIVER: "false"
   ROOK_CSI_ENABLE_CEPHFS: "true"
   ROOK_CSI_ENABLE_NFS: "false"
   ROOK_CSI_ENABLE_RBD: "true"
   ROOK_CSI_IMAGE_PULL_POLICY: IfNotPresent
-  ROOK_CSI_PROVISIONER_IMAGE: registry.k8s.io/sig-storage/csi-provisioner:v6.1.1
-  ROOK_CSI_REGISTRAR_IMAGE: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.16.0
-  ROOK_CSI_RESIZER_IMAGE: registry.k8s.io/sig-storage/csi-resizer:v2.1.0
-  ROOK_CSI_SNAPSHOTTER_IMAGE: registry.k8s.io/sig-storage/csi-snapshotter:v8.5.0
-  ROOK_CSIADDONS_IMAGE: quay.io/csiaddons/k8s-sidecar:v0.14.0
+  ROOK_CSI_PROVISIONER_IMAGE: registry.k8s.io/sig-storage/csi-provisioner:v6.1.1@sha256:d992c36d4ddd6dfa37c81b487e5a673920e1360e2977eb779051df8da1c5787d
+  ROOK_CSI_REGISTRAR_IMAGE: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.16.0@sha256:ab482308a4921e28a6df09a16ab99a457e9af9641ff44fb1be1a690d07ce8b70
+  ROOK_CSI_RESIZER_IMAGE: registry.k8s.io/sig-storage/csi-resizer:v2.1.0@sha256:589e525cddef6d768e68da1f0bc9ffd0a24bf3add3dd010648eb7189976fde79
+  ROOK_CSI_SNAPSHOTTER_IMAGE: registry.k8s.io/sig-storage/csi-snapshotter:v8.5.0@sha256:da081c27e8a6d91f36042c1942362d0515ced8d06e18c11b8f893e58c4d6d797
   ROOK_ENABLE_DISCOVERY_DAEMON: "true"
   ROOK_LOG_LEVEL: INFO
   ROOK_OBC_ALLOW_ADDITIONAL_CONFIG_FIELDS: maxObjects,maxSize

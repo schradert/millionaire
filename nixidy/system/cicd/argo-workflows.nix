@@ -1,13 +1,14 @@
 {config, ...}: let
   inherit (config.canivete.meta) domain;
   hostname = "workflows.${domain}";
-  nixImage = "nixos/nix:2.28.3";
 in {
   nixidy = {
     lib,
     pinned,
     ...
-  }: {
+  }: let
+    nixImage = with pinned.images.nix; "${repository}:${tag}@${digest}";
+  in {
     applications.argo-workflows-crds.namespace = "kube-system";
     canivete.crds.argo-workflows = {
       application = "argo-workflows-crds";
@@ -60,6 +61,13 @@ in {
       helm.releases.argo-workflows = {
         chart = pinned.charts.argo-workflows;
         values = {
+          controller.image.tag = with pinned.images.workflow-controller; "${tag}@${digest}";
+          server.image.tag = with pinned.images.argocli; "${tag}@${digest}";
+          executor.image.tag = with pinned.images.argoexec; "${tag}@${digest}";
+          crds.upgradeJob.image = with pinned.images.argo-workflows-kubectl; {
+            inherit repository;
+            tag = "${tag}@${digest}";
+          };
           server = {
             authModes = ["sso"];
             extraArgs = ["--auth-mode=sso" "--secure"];

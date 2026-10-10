@@ -62,7 +62,7 @@ spec:
                 name: harbor-exporter-env
             - secretRef:
                 name: harbor-exporter
-          image: goharbor/harbor-exporter:v2.14.3
+          image: goharbor/harbor-exporter:v2.14.3@sha256:dab60feca79fc2e14d9df879651a0a1d3a0671718ca6bf483332193dda6f73e6
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:

@@ -1,0 +1,9 @@
+{
+  "version": "v4.0.5",
+  "digest": "sha256:fbe7d1b5fb6fbb81f8e404905eba07b40e0667f9c1a7d66472d3ed523a4a6bd7",
+  "source": {
+    "type": "oci-tag",
+    "repository": "quay.io/argoproj/argocli"
+  },
+  "follows": "charts/argo-workflows"
+}

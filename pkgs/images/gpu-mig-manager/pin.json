@@ -1,0 +1,9 @@
+{
+  "version": "v0.10.0-ubuntu20.04",
+  "digest": "sha256:932afee5f38785a64e3949ab05689bcab8ec14827a1dd5cd769acdfda592bca0",
+  "source": {
+    "type": "oci-tag",
+    "repository": "nvcr.io/nvidia/cloud-native/k8s-mig-manager"
+  },
+  "follows": "charts/gpu-operator"
+}

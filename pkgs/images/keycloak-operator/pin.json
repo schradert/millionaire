@@ -1,0 +1,9 @@
+{
+  "version": "v0.5.0",
+  "digest": "sha256:4df91a7b6863f474aad203601957dc884747f09ea33c5a0c5eb362e8c54dffde",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/hostzero-gmbh/keycloak-operator"
+  },
+  "follows": "charts/keycloak-operator"
+}

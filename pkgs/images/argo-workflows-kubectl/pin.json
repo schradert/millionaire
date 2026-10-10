@@ -1,0 +1,9 @@
+{
+  "version": "v1.36.1",
+  "digest": "sha256:d08f476d04d0e30f426f06bc6ff6c38913aaa4591943046b77e2f74a72d3611c",
+  "source": {
+    "type": "oci-tag",
+    "repository": "registry.k8s.io/kubectl"
+  },
+  "follows": "charts/argo-workflows"
+}

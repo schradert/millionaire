@@ -42,14 +42,14 @@ spec:
             - name: ENABLE_EXPERIMENTAL_FEATURES
               value: "false"
             - name: TOOLHIVE_RUNNER_IMAGE
-              value: ghcr.io/stacklok/toolhive/proxyrunner:v0.6.9
+              value: ghcr.io/stacklok/toolhive/proxyrunner:v0.6.9@sha256:a01c65ac3d483ccef09c2b14c1b21869da6df2c84f567407239c5d8fe0e74bfd
             - name: VMCP_IMAGE
-              value: ghcr.io/stacklok/toolhive/vmcp:v0.6.9
+              value: ghcr.io/stacklok/toolhive/vmcp:v0.6.9@sha256:cb0e15caaae57fee1339f56a3b1a9c9bd270341e15ca6e98687b02c8ebecdc7c
             - name: TOOLHIVE_PROXY_HOST
               value: 0.0.0.0
             - name: TOOLHIVE_REGISTRY_API_IMAGE
-              value: ghcr.io/stacklok/thv-registry-api:v0.3.1
-          image: ghcr.io/stacklok/toolhive/operator:v0.6.9
+              value: ghcr.io/stacklok/thv-registry-api:v0.3.1@sha256:25145c07157cc2234eeebb87a6c22320e0f01823b366c0cad3b4be44c0c8049f
+          image: ghcr.io/stacklok/toolhive/operator:v0.6.9@sha256:939104f6f0a841376f0e3ebaf874c052dd5c3d7e46573866ff71aaf25ca6aa48
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:

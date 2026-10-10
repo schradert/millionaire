@@ -1,0 +1,9 @@
+{
+  "version": "1.31.1",
+  "digest": "sha256:95cf004f559831017cdf4628aaf1bb30133677be8702a8c5f2994629f637a209",
+  "source": {
+    "type": "oci-tag",
+    "repository": "docker.io/library/busybox"
+  },
+  "follows": "charts/grafana"
+}

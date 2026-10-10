@@ -43,6 +43,8 @@
       helm.releases.forgejo = {
         chart = pinned.charts.forgejo;
         values = {
+          # digest only: the chart appends -rootless to its appVersion tag.
+          image.digest = pinned.images.forgejo.digest;
           service.ssh = {
             type = "LoadBalancer";
             port = 22;

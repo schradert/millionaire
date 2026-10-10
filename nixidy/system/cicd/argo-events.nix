@@ -20,6 +20,10 @@
       helm.releases.argo-events = {
         chart = pinned.charts.argo-events;
         values = {
+          global.image = with pinned.images.argo-events; {
+            inherit repository;
+            tag = "${tag}@${digest}";
+          };
           crds.install = false;
           controller.metrics.enabled = true;
           controller.metrics.serviceMonitor.enabled = true;

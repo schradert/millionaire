@@ -22,6 +22,10 @@
       helm.releases.external-secrets = {
         chart = pinned.charts.external-secrets;
         values = {
+          image.tag = with pinned.images.external-secrets; "${tag}@${digest}";
+          webhook.image.tag = with pinned.images.external-secrets; "${tag}@${digest}";
+          certController.image.tag = with pinned.images.external-secrets; "${tag}@${digest}";
+          bitwarden-sdk-server.image.tag = with pinned.images.bitwarden-sdk-server; "${tag}@${digest}";
           installCRDs = false;
           serviceMonitor.enabled = true;
         };

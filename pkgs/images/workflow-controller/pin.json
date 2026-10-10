@@ -1,0 +1,9 @@
+{
+  "version": "v4.0.5",
+  "digest": "sha256:4001b58f3c34bb65015c79919157e45f51f4d7450806c64987abdb7dc86f8453",
+  "source": {
+    "type": "oci-tag",
+    "repository": "quay.io/argoproj/workflow-controller"
+  },
+  "follows": "charts/argo-workflows"
+}

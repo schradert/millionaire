@@ -1,0 +1,9 @@
+{
+  "version": "v0.2.2",
+  "digest": "sha256:ea68d596acd35e304b54b397550dc140baf8b807e7214e981dacf910a2bd788f",
+  "source": {
+    "type": "oci-tag",
+    "repository": "nvcr.io/nvidia/cloud-native/k8s-kata-manager"
+  },
+  "follows": "charts/gpu-operator"
+}

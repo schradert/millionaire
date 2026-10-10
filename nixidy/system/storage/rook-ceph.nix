@@ -29,6 +29,15 @@ in {
         chart = pinned.charts.rook-ceph;
         values = lib.mkMerge [
           {
+            image.tag = with pinned.images.rook-ceph; "${tag}@${digest}";
+            csi.cephcsi.tag = with pinned.images.cephcsi; "${tag}@${digest}";
+            csi.registrar.tag = with pinned.images.csi-node-driver-registrar; "${tag}@${digest}";
+            csi.provisioner.tag = with pinned.images.csi-provisioner; "${tag}@${digest}";
+            csi.snapshotter.tag = with pinned.images.csi-snapshotter; "${tag}@${digest}";
+            csi.attacher.tag = with pinned.images.csi-attacher; "${tag}@${digest}";
+            csi.resizer.tag = with pinned.images.csi-resizer; "${tag}@${digest}";
+            csi.csiAddons.tag = with pinned.images.csiaddons-sidecar; "${tag}@${digest}";
+            ceph-csi-operator.controllerManager.manager.image.tag = with pinned.images.ceph-csi-operator; "${tag}@${digest}";
             csi.cephFSKernelMountOptions = "ms_mode=prefer-crc";
             csi.enableCephfsDriver = true;
             csi.enableCephfsSnapshotter = true;
@@ -114,6 +123,7 @@ in {
           resources: map patch resources ++ [builtinMgr];
         chart = pinned.charts.rook-ceph-cluster;
         values = {
+          cephImage.tag = with pinned.images.ceph; "${tag}@${digest}";
           operatorNamespace = "storage";
           cephClusterSpec = {
             cephConfig.global = {

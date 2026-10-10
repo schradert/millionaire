@@ -63,6 +63,8 @@
           };
 
           windmill = {
+            tag = with pinned.images.windmill; "${tag}@${digest}";
+            windmillExtra.tag = with pinned.images.windmill-extra; "${tag}@${digest}";
             baseDomain = hostname;
             baseProtocol = "https";
             appReplicas = 1;

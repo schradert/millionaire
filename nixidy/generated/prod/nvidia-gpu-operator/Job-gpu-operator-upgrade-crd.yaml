@@ -28,7 +28,7 @@ spec:
             - -c
             - |
               kubectl apply -f /opt/gpu-operator/nvidia.com_clusterpolicies.yaml; kubectl apply -f /opt/gpu-operator/nvidia.com_nvidiadrivers.yaml; kubectl apply -f /opt/gpu-operator/nfd-api-crds.yaml;
-          image: nvcr.io/nvidia/gpu-operator:v24.9.2
+          image: nvcr.io/nvidia/gpu-operator:v24.9.2@sha256:92f5262bb4934e0ea29eb10ec0ad4fc293164f2f2f94d48a935922791abbfdac
           imagePullPolicy: IfNotPresent
           name: upgrade-crd
       restartPolicy: OnFailure

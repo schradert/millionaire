@@ -8,6 +8,7 @@
         # (e.g. ExternalSecrets whose Bitwarden keys are added after deploy).
         # syncAfterRestart stays false (chart default) so Reloader's own startup
         # replay of existing resources does not restart anything.
+        values.image.tag = with pinned.images.reloader; "${tag}@${digest}";
         values.reloader = {
           reloadOnCreate = true;
           syncAfterRestart = false;

@@ -1,0 +1,9 @@
+{
+  "version": "v1.19.6",
+  "digest": "sha256:eab4005612a6d10cac3d947f9846380ea13ecd2336c7397f519f0009578329c2",
+  "source": {
+    "type": "oci-tag",
+    "repository": "docker.io/rook/ceph"
+  },
+  "follows": "charts/rook-ceph"
+}

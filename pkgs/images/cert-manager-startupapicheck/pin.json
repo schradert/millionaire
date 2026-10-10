@@ -1,0 +1,9 @@
+{
+  "version": "v1.20.2",
+  "digest": "sha256:4e2a69b4a0cc9627905bbeecf720f95d5153ca39cacdab923d2748e73556792b",
+  "source": {
+    "type": "oci-tag",
+    "repository": "quay.io/jetstack/cert-manager-startupapicheck"
+  },
+  "follows": "charts/cert-manager"
+}

@@ -1,0 +1,9 @@
+{
+  "version": "1.672.0",
+  "digest": "sha256:c4b5dbcd2c8b1e585f6c773fd3337bc0ccd05be83b6e56806f124901fd4fb479",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/windmill-labs/windmill-extra"
+  },
+  "follows": "charts/windmill"
+}

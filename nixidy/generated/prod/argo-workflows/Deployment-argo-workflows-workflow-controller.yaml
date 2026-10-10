@@ -34,7 +34,7 @@ spec:
             - --configmap
             - argo-workflows-workflow-controller-configmap
             - --executor-image
-            - quay.io/argoproj/argoexec:v4.0.5
+            - quay.io/argoproj/argoexec:v4.0.5@sha256:0cb732e24c7d13385066c920e2943fdddfa1d15e6bf5ad99f02e48c50625d022
             - --loglevel
             - info
             - --gloglevel
@@ -56,7 +56,7 @@ spec:
                   fieldPath: metadata.name
             - name: LEADER_ELECTION_DISABLE
               value: "true"
-          image: quay.io/argoproj/workflow-controller:v4.0.5
+          image: quay.io/argoproj/workflow-controller:v4.0.5@sha256:4001b58f3c34bb65015c79919157e45f51f4d7450806c64987abdb7dc86f8453
           imagePullPolicy: Always
           livenessProbe:
             failureThreshold: 3

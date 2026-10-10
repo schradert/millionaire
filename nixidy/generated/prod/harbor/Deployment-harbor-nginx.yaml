@@ -42,7 +42,7 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - image: goharbor/nginx-photon:v2.14.3
+        - image: goharbor/nginx-photon:v2.14.3@sha256:e31b5290e31938fde76590e4f5d7b8eb3d8038ad1485879bdad7a480538dc858
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:

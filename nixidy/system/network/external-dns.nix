@@ -26,6 +26,7 @@
       helm.releases.external-dns = {
         inherit chart;
         values = {
+          image.tag = with pinned.images.external-dns; "${tag}@${digest}";
           provider.name = "cloudflare";
           env = lib.toList {
             name = "CF_API_TOKEN";

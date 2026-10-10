@@ -1,0 +1,9 @@
+{
+  "version": "v0.16.6",
+  "digest": "sha256:19ebca8b3804bfe2ee7324de4873875ab0a9112b51e0ace9dfd7c470beecf4a9",
+  "source": {
+    "type": "oci-tag",
+    "repository": "registry.k8s.io/nfd/node-feature-discovery"
+  },
+  "follows": "charts/gpu-operator"
+}

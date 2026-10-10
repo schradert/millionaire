@@ -22,6 +22,8 @@
           # The CRD is owned by dragonflydb-crds above; the chart's copy (with a
           # helm keep annotation) made the two apps fight over it.
           crds.install = false;
+          manager.image.tag = with pinned.images.dragonfly-operator; "${tag}@${digest}";
+          rbacProxy.image.tag = with pinned.images.dragonfly-operator-rbac-proxy; "${tag}@${digest}";
           serviceMonitor.enabled = true;
           # FIXME activate with grafana
           # grafanaDashboard.enabled = true;

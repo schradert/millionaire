@@ -1,0 +1,9 @@
+{
+  "version": "v24.9.2",
+  "digest": "sha256:92f5262bb4934e0ea29eb10ec0ad4fc293164f2f2f94d48a935922791abbfdac",
+  "source": {
+    "type": "oci-tag",
+    "repository": "nvcr.io/nvidia/gpu-operator"
+  },
+  "follows": "charts/gpu-operator"
+}

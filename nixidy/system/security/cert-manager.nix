@@ -19,6 +19,11 @@ in {
       helm.releases.cert-manager = {
         chart = pinned.charts.cert-manager;
         values = {
+          image = {inherit (pinned.images.cert-manager-controller) tag digest;};
+          webhook.image = {inherit (pinned.images.cert-manager-webhook) tag digest;};
+          cainjector.image = {inherit (pinned.images.cert-manager-cainjector) tag digest;};
+          acmesolver.image = {inherit (pinned.images.cert-manager-acmesolver) tag digest;};
+          startupapicheck.image = {inherit (pinned.images.cert-manager-startupapicheck) tag digest;};
           crds.enabled = false;
           dns01RecursiveNameservers = builtins.concatStringsSep "," [
             "https://1.1.1.1:443/dns-query"
