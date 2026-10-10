@@ -28,7 +28,7 @@ spec:
               value: "8096"
             - name: SEERR_URL
               value: http://seerr.media.svc.cluster.local:5055
-          image: harbor.trdos.me/library/app-bootstrap:0.7.0@sha256:1293a36d3ba089aa011dfe1c7130559407f5f024e32961842df7f6d66cd28bf6
+          image: harbor.trdos.me/library/app-bootstrap:0.10.0@sha256:86e6b7640c92e52254803a96defa575ca91774c296f61df26104d04dfb47116b
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
