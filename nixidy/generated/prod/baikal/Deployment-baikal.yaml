@@ -31,7 +31,10 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - envFrom:
+        - env:
+            - name: BAIKAL_SKIP_CHOWN
+              value: "true"
+          envFrom:
             - secretRef:
                 name: baikal
           image: ckulka/baikal:0.10.1-nginx@sha256:434bdd162247cc6aa6f878c9b4dce6216e39e79526b980453b13812d5f8ebf4b

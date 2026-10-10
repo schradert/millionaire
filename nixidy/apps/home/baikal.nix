@@ -42,6 +42,9 @@ in {
             containers.baikal = {
               image = pinned.images.baikal;
               envFrom = [{secretRef.name = "baikal";}];
+              # The install initContainer chowns config/ and Specific/; the image's
+              # own chown -R over all of /var/www/baikal outlived the startup probe.
+              env.BAIKAL_SKIP_CHOWN = "true";
               ports = [
                 {
                   name = "http";
