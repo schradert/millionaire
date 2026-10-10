@@ -1,0 +1,11 @@
+{
+  "version": "2.5.30",
+  "hash": "sha256-j0uz+T7StnXUmjoDxpp7HREtLRake0sNozxwRhl2tig=",
+  "source": {
+    "type": "github-release",
+    "owner": "SteamGridDB",
+    "repo": "steam-rom-manager",
+    "tagPrefix": "v"
+  },
+  "hold": "parser presets only (files/presets); keep at the nixpkgs steam-rom-manager version"
+}
