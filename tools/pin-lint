@@ -3,6 +3,12 @@
 # outside pkgs/ (pin.json) and tool-managed lockfiles. Those belong in
 # pkgs/**/pin.json, read through `pinned` (lib/pins.nix).
 #
+# The rendered manifests (nixidy/generated) are checked too: every image ref
+# carries a digest, whether an `image:`/`imageName:` value, a bare
+# `image: <name>` with a sibling `version:` (gpu-operator's ClusterPolicy) or
+# a registry ref embedded in args, env or config. Allow those per image with
+# rule `rendered:<ref>`.
+#
 # Exceptions live in tools/pin-lint.allow as `<path> <rule|*> <reason>`; a
 # path ending in / is a prefix. An entry without a reason, or one that
 # matches nothing, fails too, so the list can only shrink.
@@ -54,6 +60,40 @@ findings=$(
       }' || true
 )
 
+# Image refs in the rendered manifests (CRD schemas only hold examples).
+rendered=$(
+  git ls-files -z 'nixidy/generated/*.yaml' |
+    xargs -0 awk '
+      function out(f, n, ref) { print f ":" n ":rendered:" ref }
+      # bare `image: <name>` entries awaiting a sibling `version:`, by indent
+      function pop(below) {
+        for (d in pv) if (d + 0 > below) { out(pf[d], pn[d], pv[d]); delete pv[d] }
+      }
+      FNR == 1 { pop(-1); crd = FILENAME ~ /\/CustomResourceDefinition-[^\/]*$/ }
+      crd { next }
+      {
+        l = $0
+        match(l, /^ */); pop(RLENGTH)
+        if (l ~ /^ *version: / && (RLENGTH in pv)) {
+          if (l !~ /@sha256:/) out(pf[RLENGTH], pn[RLENGTH], pv[RLENGTH])
+          delete pv[RLENGTH]
+        }
+        if (l ~ /^ *(- )?(image|imageName): /) {
+          v = l; sub(/^ *(- )?(image|imageName): */, "", v); gsub(/["'\'']/, "", v)
+          if (v ~ /@sha256:|^https?:\/\// || v == "") next
+          if (v ~ /[\/:]/) { out(FILENAME, FNR, v); next }
+          match(l, /^ *(- )?/); pv[RLENGTH] = v; pf[RLENGTH] = FILENAME; pn[RLENGTH] = FNR
+          next
+        }
+        while (match(l, /[a-z0-9-]+(\.[a-z0-9-]+)+(:[0-9]+)?\/[a-z0-9._\/-]+:[A-Za-z0-9_][A-Za-z0-9_.-]*/)) {
+          ref = substr(l, RSTART, RLENGTH); pre = substr(l, 1, RSTART - 1); l = substr(l, RSTART + RLENGTH)
+          if (pre !~ /:\/\/$/ && l !~ /^@sha256:/) out(FILENAME, FNR, ref)
+        }
+      }
+      END { pop(-1) }' || true
+)
+findings=$(printf '%s\n%s\n' "$findings" "$rendered")
+
 [ -f "$allow" ] || : >"$allow"
 out=$(awk -v allowfile="$allow" '
   BEGIN {
@@ -69,7 +109,8 @@ out=$(awk -v allowfile="$allow" '
   {
     i = index($0, ":"); p = substr($0, 1, i - 1)
     rest = substr($0, i + 1); j = index(rest, ":"); rest = substr(rest, j + 1)
-    k = index(rest, ":"); r = substr(rest, 1, k - 1)
+    k = index(rest, ":"); r = substr(rest, 1, k - 1); t = substr(rest, k + 1)
+    if (r == "rendered") r = r ":" t
     ok = 0
     for (e in path)
       if ((p == path[e] || (path[e] ~ /\/$/ && index(p, path[e]) == 1)) && (rul[e] == r || rul[e] == "*")) { used[e] = 1; ok = 1 }
@@ -82,6 +123,6 @@ out=$(awk -v allowfile="$allow" '
 printf '%s\n' "$out" | sed '/^$/d'
 cat >&2 <<'EOF'
 pin-lint: hashes, revs and image refs belong in pkgs/**/pin.json (pinned.*);
-images need tag+digest. Justified exceptions: tools/pin-lint.allow.
+images need tag+digest, in the source and in the render (nixidy/generated). Justified exceptions: tools/pin-lint.allow.
 EOF
 exit 1

@@ -4,3 +4,17 @@ nixidy/apps/development/sveltekit-demo.nix * never published to Harbor, so no di
 nixidy/apps/home/org-bridge.nix image-tag ghcr.io/schradert/org-bridge is not published (registry 403), so no digest exists
 nixidy/apps/printing/mooncord.nix image-tag ghcr.io/eliteschwein/mooncord does not exist (registry 403), so no digest exists
 nixidy/system/ai/heretic.nix image-tag ghcr.io/p-e-w/heretic does not exist (registry 403), so no digest exists
+nixidy/generated/prod/dragonflydb/Pod-dragonflydb-dragonfly-operator-test-connection.yaml * helm test hook; Argo CD never runs it
+nixidy/generated/prod/forgejo/Pod-forgejo-test-connection.yaml * helm test hook; Argo CD never runs it
+nixidy/generated/prod/grafana/Pod-grafana-test.yaml * helm test hook; Argo CD never runs it
+nixidy/generated/prod/jitsi/Pod-jitsi-jitsi-meet-web-test-connection.yaml * helm test hook; Argo CD never runs it
+nixidy/generated/prod/jitsi/Pod-jitsi-prosody-test-connection.yaml * helm test hook; Argo CD never runs it
+nixidy/generated/prod/k8tz/Pod-k8tz-health-test.yaml * helm test hook; Argo CD never runs it
+nixidy/generated/prod/kubelet-csr-approver/Job-kubelet-csr-approver-test-connection.yaml * helm test hook; Argo CD never runs it
+nixidy/generated/prod/loki/Pod-loki-helm-test.yaml * helm test hook; Argo CD never runs it
+nixidy/generated/prod/nvidia-gpu-operator/ClusterPolicy-cluster-policy.yaml rendered:driver driver disabled (NixOS ships it); the operator appends the OS to the tag, so the chart's tag has no digest
+nixidy/generated/prod/nvidia-gpu-operator/ClusterPolicy-cluster-policy.yaml rendered:gdrdrv gdrcopy disabled; the operator appends the OS to the tag, so the chart's tag has no digest
+nixidy/generated/prod/nvidia-gpu-operator/ClusterPolicy-cluster-policy.yaml rendered:vgpu-manager vgpuManager disabled; NVIDIA ships no public image (repository/version unset)
+nixidy/generated/prod/nvidia-gpu-operator/ClusterPolicy-cluster-policy.yaml rendered:nvcr.io/nvidia/cloud-native/kata-gpu-artifacts:ubuntu22.04-535.54.03 kataManager disabled; artifact URL, not a pulled image
+nixidy/generated/prod/nvidia-gpu-operator/ClusterPolicy-cluster-policy.yaml rendered:nvcr.io/nvidia/cloud-native/kata-gpu-artifacts:ubuntu22.04-535.86.10-snp kataManager disabled; artifact URL, not a pulled image
+nixidy/generated/prod/org-bridge/Deployment-org-bridge.yaml rendered:ghcr.io/schradert/org-bridge:latest not published (registry 403), so no digest exists
