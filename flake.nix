@@ -382,7 +382,8 @@
             canivete = {
               args = inputs;
               builder = modules:
-                inputs.nixos-raspberrypi.lib.nixosInstaller {
+                inputs.nixos-raspberrypi.lib.nixosSystem {
+                  inherit (inputs) nixpkgs;
                   specialArgs = config.canivete.args;
                   modules = [modules];
                 };

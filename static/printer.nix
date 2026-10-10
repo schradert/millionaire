@@ -235,6 +235,9 @@
     };
   };
 
+  # moonraker's allowSystemControl asserts on polkit
+  security.polkit.enable = true;
+
   services.moonraker = {
     enable = true;
     address = "0.0.0.0";
