@@ -16,13 +16,16 @@
 #    so no secret needs provisioning. falcon's host key is authorized too so its
 #    daemon can fan `build-all` out to the nodes (falcon itself has no
 #    nix-remote-builder user, so nodes cannot yet use it as a builder: that
-#    needs a change in falcon's own config, schradert/dotfiles).
+#    needs a change in falcon's own config, schradert/dotfiles). The cluster's
+#    deps-update job builds here too, with an ssh key generated in-cluster
+#    whose public half is committed to generated.json.
 {
   config,
   lib,
   ...
 }: let
   pool = import ./builders.nix;
+  generated = lib.optionalAttrs (builtins.pathExists ./generated.json) (lib.importJSON ./generated.json);
   name = config.networking.hostName;
   me = pool.nodes.${name};
   peers = lib.filterAttrs (n: _: n != name) pool.nodes;
@@ -57,7 +60,10 @@ in {
         publicKey = p.hostKey;
       })
     peers;
-  roles.nix-remote-builder.schedulerPublicKeys = map (p: p.hostKey) (lib.attrValues peers) ++ [pool.falcon.hostKey];
+  roles.nix-remote-builder.schedulerPublicKeys =
+    map (p: p.hostKey) (lib.attrValues peers)
+    ++ [pool.falcon.hostKey]
+    ++ lib.optional (generated ? deps_update_builder_pubkey) generated.deps_update_builder_pubkey;
   # A remote client's build runs in this node's daemon, which would otherwise
   # re-dispatch it through its own `builders` below (hopping it onward to a weaker
   # peer and back). The forced command starts the daemon proxy with builders
