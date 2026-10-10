@@ -1,0 +1,9 @@
+{
+  "version": "26.1.5-optimized",
+  "digest": "sha256:cffa3b4907818010375bb96785e49e09d50f29be50c67acc7b90431beba3fd98",
+  "source": {
+    "type": "oci-tag",
+    "repository": "harbor.trdos.me/library/keycloak",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)-optimized"
+  }
+}

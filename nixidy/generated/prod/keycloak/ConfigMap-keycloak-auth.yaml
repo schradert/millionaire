@@ -1,6 +1,86 @@
 apiVersion: v1
 data:
   realm-default.json: '{"authenticationFlows":[{"alias":"browser-passkey","authenticationExecutions":[{"authenticator":"auth-cookie","authenticatorFlow":false,"priority":10,"requirement":"ALTERNATIVE","userSetupAllowed":false},{"authenticator":"identity-provider-redirector","authenticatorFlow":false,"priority":20,"requirement":"ALTERNATIVE","userSetupAllowed":false},{"authenticatorFlow":true,"flowAlias":"browser-passkey forms","priority":30,"requirement":"ALTERNATIVE","userSetupAllowed":false}],"builtIn":false,"description":"Passkey first, password + second factor fallback","providerId":"basic-flow","topLevel":true},{"alias":"browser-passkey forms","authenticationExecutions":[{"authenticator":"auth-username-form","authenticatorFlow":false,"priority":10,"requirement":"REQUIRED","userSetupAllowed":false},{"authenticatorFlow":true,"flowAlias":"browser-passkey method","priority":20,"requirement":"REQUIRED","userSetupAllowed":false}],"builtIn":false,"description":"Username, then a method","providerId":"basic-flow","topLevel":false},{"alias":"browser-passkey method","authenticationExecutions":[{"authenticator":"webauthn-authenticator-passwordless","authenticatorFlow":false,"priority":10,"requirement":"ALTERNATIVE","userSetupAllowed":false},{"authenticatorFlow":true,"flowAlias":"browser-passkey password","priority":20,"requirement":"ALTERNATIVE","userSetupAllowed":false}],"builtIn":false,"description":"Passkey, or password + second factor","providerId":"basic-flow","topLevel":false},{"alias":"browser-passkey password","authenticationExecutions":[{"authenticator":"auth-password-form","authenticatorFlow":false,"priority":10,"requirement":"REQUIRED","userSetupAllowed":false},{"authenticatorFlow":true,"flowAlias":"browser-passkey 2fa","priority":20,"requirement":"CONDITIONAL","userSetupAllowed":false}],"builtIn":false,"description":"Password, then a configured second factor","providerId":"basic-flow","topLevel":false},{"alias":"browser-passkey 2fa","authenticationExecutions":[{"authenticator":"conditional-user-configured","authenticatorFlow":false,"priority":10,"requirement":"REQUIRED","userSetupAllowed":false},{"authenticator":"auth-otp-form","authenticatorFlow":false,"priority":20,"requirement":"ALTERNATIVE","userSetupAllowed":false},{"authenticator":"webauthn-authenticator","authenticatorFlow":false,"priority":30,"requirement":"ALTERNATIVE","userSetupAllowed":false}],"builtIn":false,"description":"OTP or security key, if configured","providerId":"basic-flow","topLevel":false}],"browserFlow":"browser-passkey","realm":"default"}'
+  users.sh: |+
+    set -euo pipefail
+    export HOME=/tmp
+    kc() { /opt/keycloak/bin/kcadm.sh "$@" --config /tmp/kcadm.config; }
+    for i in $(seq 60); do
+      kc config credentials --server "$KEYCLOAK_URL" --realm master \
+        --user "$KEYCLOAK_USER" --password "$KEYCLOAK_PASSWORD" >/dev/null 2>&1 && break
+      [ "$i" = 60 ] && { echo "keycloak admin login failed"; exit 1; }
+      sleep 5
+    done
+    R=default
+    U=$(kc get users -r $R -q username=tristan -q exact=true --fields id --format csv --noquotes)
+    [ -n "$U" ] || { echo "user tristan not found yet"; exit 1; }
+
+    # One-time initial password (generated, in Bitwarden), temporary so the
+    # first login replaces it. The realm attribute stops it ever repeating.
+    if kc get realms/$R | grep -q '"homelab.initial-password.tristan"'; then
+      echo "initial password already set once"
+    else
+      printf '{"type":"password","temporary":true,"value":"%s"}' "$(cat /secrets/initial/password)" > /tmp/pw.json
+      kc update users/$U/reset-password -r $R -f /tmp/pw.json
+      rm -f /tmp/pw.json
+      kc update realms/$R --merge -s 'attributes."homelab.initial-password.tristan"='"$(date -u +%FT%TZ)"
+      echo "set temporary initial password"
+    fi
+
+    # Prompt for whatever is missing: a passkey and TOTP. Keycloak drops each
+    # action once done, and nothing is re-added after enrollment.
+    norm() { tr ' ' '\n' | sed '/^$/d' | sort -u | paste -sd, -; }
+    creds=$(kc get users/$U/credentials -r $R --fields type --format csv --noquotes)
+    current=$(kc get users/$U -r $R --fields requiredActions | grep -o '"[A-Za-z_-]*"' | sed '/"requiredActions"/d' | tr '\n' ' ')
+    want=$current
+    grep -qx webauthn-passwordless <<<"$creds" || want="$want "'"webauthn-register-passwordless"'
+    grep -qx otp <<<"$creds" || want="$want "'"CONFIGURE_TOTP"'
+    want=$(norm <<<"$want")
+    have=$(norm <<<"$current")
+    if [ "$want" != "$have" ]; then
+      kc update users/$U -r $R --merge -s "requiredActions=[$want]"
+      echo "required actions: [$want]"
+    else
+      echo "required actions unchanged: [$have]"
+    fi
+
+    scopes=$(kc get client-scopes -r $R --fields name,id --format csv --noquotes)
+    ensure_scopes() {
+      local client=$1 kind=$2 cid have other n sid
+      shift 2
+      cid=$(kc get clients -r $R -q clientId="$client" -q exact=true --fields id --format csv --noquotes)
+      [ -n "$cid" ] || { echo "client $client not created yet"; return 0; }
+      have=$(kc get "clients/$cid/default-client-scopes" -r $R --fields name --format csv --noquotes)
+      other=$(kc get "clients/$cid/optional-client-scopes" -r $R --fields name --format csv --noquotes)
+      for n in "$@"; do
+        grep -qx "$n" <<<"$have"$'\n'"$other" && continue
+        sid=$(while IFS=, read -r name id; do if [ "$name" = "$n" ]; then echo "$id"; fi; done <<<"$scopes")
+        [ -n "$sid" ] || continue # e.g. "openid" is implicit, not a scope
+        kc update "clients/$cid/$kind-client-scopes/$sid" -r $R -n
+        echo "client $client: added $kind scope $n"
+      done
+    }
+    ensure_scopes argo-workflows default openid profile email groups
+    ensure_scopes argocd default openid profile email
+    ensure_scopes bifrost default openid profile email
+    ensure_scopes bulwark default openid profile email
+    ensure_scopes chirpstack default openid profile email
+    ensure_scopes contextforge default openid profile email
+    ensure_scopes forgejo default openid profile email
+    ensure_scopes harbor default openid profile email groups
+    ensure_scopes home-assistant default openid profile email groups
+    ensure_scopes immich default openid profile email groups
+    ensure_scopes jellyfin default openid profile email groups
+    ensure_scopes kavita default openid profile email roles groups
+    ensure_scopes kavita optional offline_access
+    ensure_scopes librechat default openid profile email
+    ensure_scopes mealie default openid profile email
+    ensure_scopes oauth2-proxy default openid profile email
+    ensure_scopes promptfoo default openid profile email
+    ensure_scopes sure default openid profile email
+    ensure_scopes toolhive default openid profile email
+    ensure_scopes windmill default openid profile email groups
+
 kind: ConfigMap
 metadata:
   name: keycloak-auth

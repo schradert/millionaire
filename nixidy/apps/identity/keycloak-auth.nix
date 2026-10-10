@@ -163,7 +163,12 @@ in {
     };
   in {
     applications.keycloak.resources = {
-      configMaps.keycloak-auth.data."realm-default.json" = builtins.toJSON realm;
+      # The script lives here too: ArgoCD doesn't diff hook Jobs, so a change
+      # only triggers a sync (and so the PostSync job) via a regular resource.
+      configMaps.keycloak-auth.data = {
+        "realm-default.json" = builtins.toJSON realm;
+        "users.sh" = script;
+      };
 
       # Break-glass-free first login: random once, never refreshed, readable in
       # Bitwarden. Only ever applied once (see marker above).
@@ -258,9 +263,14 @@ in {
             containers = lib.toList {
               name = "users";
               image = with pinned.images.keycloak; "${repository}:${tag}@${digest}";
-              command = ["/bin/bash" "-c" script];
+              command = ["/bin/bash" "/config/users.sh"];
               env = keycloakEnv;
               volumeMounts = [
+                {
+                  name = "config";
+                  mountPath = "/config";
+                  readOnly = true;
+                }
                 {
                   name = "initial";
                   mountPath = "/secrets/initial";
