@@ -6,17 +6,17 @@
   ...
 }: let
   system = builtins.currentSystem;
-  linuxSystem = builtins.replaceStrings ["darwin"] ["linux"] system;
-  n2c = inputs.nix2container.packages.${linuxSystem}.nix2container;
-  linuxPkgs = import inputs.nixpkgs {system = linuxSystem;};
   domain = "trdos.me";
 in {
   imports = inputs.canivete.canivete.${system}.devenv.modules;
 
+  # Name -> description for the `image` CLI. The images themselves are
+  # legacyPackages.<system>.images (modules/images.nix), built on demand, so
+  # entering the shell no longer instantiates a linux nixpkgs.
   options.images = lib.mkOption {
-    type = lib.types.attrsOf lib.types.package;
+    type = lib.types.attrsOf lib.types.str;
     default = {};
-    description = "nix2container image derivations keyed by name, pushed to Harbor via push-image CLI";
+    description = "Image names known to the `image` CLI, keyed by name, valued by a short description";
   };
 
   config = lib.mkMerge [
@@ -390,56 +390,7 @@ in {
         hcloud-upload-image
       ];
 
-      # Home Assistant image
-      images.ha = let
-        customComponents = with linuxPkgs.home-assistant-custom-components; [
-          adaptive_lighting
-          alarmo
-          auth_oidc
-          better_thermostat
-          frigate
-          gpio
-          moonraker
-          ntfy
-          prometheus_sensor
-          samsungtv-smart
-          scene_presets
-          smartir
-          spook
-          versatile_thermostat
-          waste_collection_schedule
-        ];
-        customComponentsDir = linuxPkgs.runCommand "ha-custom-components" {} (
-          ''
-            mkdir -p $out/custom_components
-          ''
-          + builtins.concatStringsSep "\n" (map (
-              comp: ''
-                for dir in ${comp}/lib/python*/site-packages/custom_components/*/; do
-                  name=$(basename "$dir")
-                  ln -s "$dir" "$out/custom_components/$name"
-                done
-              ''
-            )
-            customComponents)
-        );
-      in
-        n2c.buildImage {
-          name = "harbor.${domain}/library/ha";
-          tag = "2026.3.4-custom";
-          config = {
-            Cmd = ["${linuxPkgs.home-assistant}/bin/hass" "--config" "/config"];
-            ExposedPorts."8123/tcp" = {};
-            Volumes."/config" = {};
-          };
-          layers = [
-            (n2c.buildLayer {deps = [linuxPkgs.home-assistant];})
-            (n2c.buildLayer {
-              deps = customComponents;
-              copyToRoot = [customComponentsDir];
-            })
-          ];
-        };
+      images.ha = "Home Assistant with custom components";
     }
   ];
 }
