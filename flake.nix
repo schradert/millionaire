@@ -15,11 +15,8 @@
       nixpkgs.follows = "nixpkgs";
       flake-parts.follows = "flake-parts";
     };
-    # home-manager (below) is on release-26.05 to pair with the locked
-    # nixpkgs (26.05, from before the branch-off). nixos-unstable is 26.11pre
-    # now, so the next nixpkgs bump must move home-manager to master in the
-    # same change, or stay on 26.05 by switching to the line below.
-    # nixpkgs.url = "github:nixos/nixpkgs/release-26.05";
+    # home-manager (below) tracks master to pair with nixos-unstable; move both
+    # to a release branch together.
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     devenv.url = "github:cachix/devenv";
     devenv-agents.url = "github:cachix/devenv-ai-agents";
@@ -42,7 +39,7 @@
     # already deploy a lot — a fair trade for cache hits.
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
-    home-manager.url = "github:nix-community/home-manager/release-26.05";
+    home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     nix-darwin.url = "github:nix-darwin/nix-darwin";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";

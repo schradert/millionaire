@@ -13,12 +13,21 @@
       flake,
       lib,
       perSystem,
+      pkgs,
       ...
     }: let
       inherit (import flake.inputs.kdl {inherit lib;}) kdlNode toKDL;
       pluginSettings = {};
+      plugins =
+        (with pkgs.zellijPlugins; [
+          room
+          monocle
+          zellij-forgot
+          zj-quit
+          zellij-choose-tree
+        ])
+        ++ [perSystem.inputs'.zjstatus.packages.default];
     in {
-      imports = [flake.inputs.mynur.homeManagerModules.zellij-plugins];
       config = lib.mkMerge [
         {
           programs.zellij = {
@@ -26,15 +35,13 @@
             # Auto-starts a zellij session in every interactive zsh shell
             # outside an existing session; start zellij explicitly instead.
             enableZshIntegration = false;
-            plugins = ps:
-              (with ps; [
-                room
-                monocle
-                zellij-forgot
-                zj-quit
-                zellij-choose-tree
-              ])
-              ++ [perSystem.inputs'.zjstatus.packages.default];
+            # Aliases only, as mynur's zellij-plugins module did; home-manager's
+            # own `plugins` option also auto-loads them.
+            settings.plugins = lib.listToAttrs (map (p:
+              lib.nameValuePair p.pname {
+                location = "file:${p.outPath}/bin/${p.filename or p.pname}.wasm";
+              })
+            plugins);
           };
           xdg.configFile."zellij/config.kdl".text = let
             plugins = toKDL {} [
