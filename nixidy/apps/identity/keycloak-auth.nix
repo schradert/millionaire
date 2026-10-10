@@ -17,6 +17,7 @@ in {
   nixidy = {
     config,
     lib,
+    pinned,
     ...
   }: let
     clientScopes = lib.concatStrings (lib.mapAttrsToList (_: c: let
@@ -215,7 +216,7 @@ in {
             };
             initContainers = lib.toList {
               name = "flows";
-              image = "docker.io/adorsys/keycloak-config-cli:6.5.1-26.1.0@sha256:1b22dfaa9ae0c71f74b0342f9221a6510f272da5def683dbba26a98e6b1b1411";
+              image = with pinned.images.keycloak-config-cli; "${repository}:${tag}@${digest}";
               env =
                 keycloakEnv
                 ++ [
@@ -256,7 +257,7 @@ in {
             };
             containers = lib.toList {
               name = "users";
-              image = "quay.io/keycloak/keycloak:26.1.5@sha256:be6a86215213145bfb4fb3e2b3ab982a806d00262655abdcf3ffa6a38d241c7c";
+              image = with pinned.images.keycloak; "${repository}:${tag}@${digest}";
               command = ["/bin/bash" "-c" script];
               env = keycloakEnv;
               volumeMounts = [
