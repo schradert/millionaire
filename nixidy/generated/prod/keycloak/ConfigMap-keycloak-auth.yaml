@@ -81,6 +81,7 @@ data:
     ensure_scopes mealie default openid profile email groups
     ensure_scopes oauth2-proxy default openid profile email
     ensure_scopes promptfoo default openid profile email
+    ensure_scopes ryot default openid profile email groups
     ensure_scopes sure default openid profile email groups
     ensure_scopes toolhive default openid profile email
     ensure_scopes windmill default openid profile email groups
