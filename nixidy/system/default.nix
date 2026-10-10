@@ -35,6 +35,7 @@
     ./observability/loki.nix
     ./observability/node-exporter.nix
     ./observability/prometheus.nix
+    ./observability/smartctl-exporter.nix
     ./security/cert-manager.nix
     ./security/external-secrets
     ./security/generated-secrets.nix

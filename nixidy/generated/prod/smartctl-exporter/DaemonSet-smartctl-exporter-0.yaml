@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/instance: smartctl-exporter
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: prometheus-smartctl-exporter
+    idx: i0
+  name: smartctl-exporter-0
+  namespace: observability
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: smartctl-exporter
+      app.kubernetes.io/name: prometheus-smartctl-exporter
+      idx: i0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: smartctl-exporter
+        app.kubernetes.io/name: prometheus-smartctl-exporter
+        idx: i0
+    spec:
+      containers:
+        - args:
+            - --smartctl.path=/usr/sbin/smartctl
+            - --smartctl.interval=120s
+            - --web.listen-address=0.0.0.0:9633
+            - --web.telemetry-path=/metrics
+          image: quay.io/prometheuscommunity/smartctl-exporter:v0.15.0@sha256:a76e08dbf5db4781fefd1ed81c65ad46ae8d2849dae6b6d3acebcde2fc4e59d6
+          imagePullPolicy: IfNotPresent
+          name: main
+          ports:
+            - containerPort: 9633
+              name: http
+              protocol: TCP
+          resources: {}
+          securityContext:
+            privileged: true
+            runAsUser: 0
+          volumeMounts:
+            - mountPath: /hostdev
+              name: dev
+      dnsPolicy: ClusterFirst
+      hostNetwork: false
+      restartPolicy: Always
+      serviceAccountName: smartctl-exporter
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+      volumes:
+        - hostPath:
+            path: /dev
+          name: dev
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate
