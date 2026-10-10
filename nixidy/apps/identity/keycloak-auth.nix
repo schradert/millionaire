@@ -6,10 +6,25 @@
 # Per-user state can't be declarative (the operator re-PUTs users every 5 min,
 # so requiredActions in the CR would re-prompt forever), so a kcadm step only
 # adds what's missing.
+#
+# The same step assigns client scopes: the operator only sends
+# defaultClientScopes/optionalClientScopes when it creates a client, and
+# Keycloak ignores them on update. It adds whatever a keycloakClients entry
+# lists that Keycloak lacks, and never removes anything.
 {config, ...}: let
   inherit (config.canivete.meta) people;
 in {
-  nixidy = {lib, ...}: let
+  nixidy = {
+    config,
+    lib,
+    ...
+  }: let
+    clientScopes = lib.concatStrings (lib.mapAttrsToList (_: c: let
+      d = c.spec.definition;
+      line = kind: names: lib.optionalString (names != []) "ensure_scopes ${d.clientId} ${kind} ${lib.concatStringsSep " " names}\n";
+    in
+      line "default" (d.defaultClientScopes or []) + line "optional" (d.optionalClientScopes or []))
+    config.applications.keycloak.resources.keycloakClients);
     exec = authenticator: requirement: priority: {
       inherit authenticator requirement priority;
       authenticatorFlow = false;
@@ -101,6 +116,24 @@ in {
       else
         echo "required actions unchanged: [$have]"
       fi
+
+      scopes=$(kc get client-scopes -r $R --fields name,id --format csv --noquotes)
+      ensure_scopes() {
+        local client=$1 kind=$2 cid have other n sid
+        shift 2
+        cid=$(kc get clients -r $R -q clientId="$client" -q exact=true --fields id --format csv --noquotes)
+        [ -n "$cid" ] || { echo "client $client not created yet"; return 0; }
+        have=$(kc get "clients/$cid/default-client-scopes" -r $R --fields name --format csv --noquotes)
+        other=$(kc get "clients/$cid/optional-client-scopes" -r $R --fields name --format csv --noquotes)
+        for n in "$@"; do
+          grep -qx "$n" <<<"$have"$'\n'"$other" && continue
+          sid=$(while IFS=, read -r name id; do if [ "$name" = "$n" ]; then echo "$id"; fi; done <<<"$scopes")
+          [ -n "$sid" ] || continue # e.g. "openid" is implicit, not a scope
+          kc update "clients/$cid/$kind-client-scopes/$sid" -r $R -n
+          echo "client $client: added $kind scope $n"
+        done
+      }
+      ${clientScopes}
     '';
     keycloakEnv = [
       {
