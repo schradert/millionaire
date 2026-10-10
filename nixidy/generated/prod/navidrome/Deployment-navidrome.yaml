@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 3ac966271c1c6db123ee12c58a1af5cfd72e66e2db677025d2ad410b19721f53
+        checksum/configMaps: f0ad1c7437662b3b36be6927b09555b3891a9e9b6132783bc0123da77ff3e080
       labels:
         app.kubernetes.io/controller: navidrome
         app.kubernetes.io/instance: navidrome
