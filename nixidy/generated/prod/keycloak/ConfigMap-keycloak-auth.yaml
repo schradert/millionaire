@@ -60,6 +60,7 @@ data:
         echo "client $client: added $kind scope $n"
       done
     }
+    ensure_scopes actual default openid profile email groups
     ensure_scopes argo-workflows default openid profile email groups
     ensure_scopes argocd default openid profile email groups
     ensure_scopes audiobookshelf default openid profile email groups
