@@ -36,6 +36,10 @@ in {
     };
     applications.bifrost = {
       namespace = "ai";
+      volsync.pvcs.bifrost-data = {
+        title = "bifrost-data";
+        restore = false;
+      };
       helm.releases.bifrost = {
         chart = pinned.charts.bifrost;
         values = {

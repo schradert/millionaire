@@ -1,0 +1,22 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: volsync--media-storage--media-music-src
+  namespace: media
+spec:
+  restic:
+    cacheAccessModes:
+      - ReadWriteOnce
+    copyMethod: Direct
+    moverSecurityContext:
+      fsGroup: 101
+    pruneIntervalDays: 8
+    repository: volsync--media-storage--media-music
+    retain:
+      daily: 1
+      monthly: 1
+      weekly: 1
+      yearly: 1
+  sourcePVC: media-music
+  trigger:
+    schedule: 0 4 * * *

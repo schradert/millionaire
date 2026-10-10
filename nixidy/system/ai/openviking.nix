@@ -16,6 +16,10 @@ in {
   }: {
     applications.openviking = {
       namespace = "ai";
+      volsync.pvcs.openviking = {
+        title = "openviking";
+        restore = false;
+      };
       # Root key for the server API and the /mcp endpoint; referenced from ov.conf as ${OPENVIKING_ROOT_API_KEY}.
       generatedSecrets.openviking-root-api-key = {
         key = "OPENVIKING_ROOT_API_KEY";
