@@ -12,8 +12,9 @@
           fullnameOverride = "smartctl-exporter";
           # The chart's own rules are generic; ours are in prometheus.nix.
           prometheusRules.enabled = false;
-          # v0.15.0 answers 500 on any host with SCSI disks (its verify-error metrics
-          # miss a Describe entry); fixed on master (#329), no release yet.
+          # Stay on v0.14.0: v0.15.0 and master answer HTTP 500 on any host with SCSI
+          # disks (the new verify-error metrics are missing from Describe, so the
+          # whole scrape fails). v0.14.0 just doesn't export the verify counters.
           image = {
             inherit (pinned.images.smartctl-exporter) repository;
             tag = with pinned.images.smartctl-exporter; "${tag}@${digest}";
