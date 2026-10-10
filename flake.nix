@@ -239,6 +239,10 @@
                 User tristan
                 IdentityFile /Users/tristan/.ssh/personal
                 IdentitiesOnly yes
+                # Parallel builds otherwise trip sshd's MaxStartups.
+                ControlMaster auto
+                ControlPath ~/.ssh/cm-%C
+                ControlPersist 60
               Host 192.184.168.248
                 IdentityFile /Users/tristan/.ssh/personal
                 IdentitiesOnly yes
