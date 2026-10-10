@@ -1,0 +1,11 @@
+apiVersion: v1
+data:
+  ov.conf: '{"embedding":{"dense":{"api_base":"http://bifrost.ai.svc.cluster.local:8000/v1","api_key":"bifrost","dimension":1536,"model":"openai/text-embedding-3-small","provider":"openai"}},"server":{"auth_mode":"api_key","host":"0.0.0.0","port":1933,"root_api_key":"${OPENVIKING_ROOT_API_KEY}"},"storage":{"agfs":{"backend":"local"},"vectordb":{"backend":"local","name":"context"},"workspace":"/app/.openviking/data"},"vlm":{"api_base":"http://bifrost.ai.svc.cluster.local:8000/v1","api_key":"bifrost","model":"openai/gpt-4.1-mini","provider":"openai"}}'
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: openviking
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openviking
+  name: openviking
+  namespace: ai
