@@ -232,6 +232,43 @@ class Millionaire:
             },
             opts=pulumi.ResourceOptions(depends_on=[headscale_cluster_node_key]),
         )
+        # Personal devices (falcon, axolotl, …) join as user `tristan`, untagged,
+        # with one reusable key in secrets/sops/personal.yaml — a file only
+        # tristan and those hosts' ssh host keys can decrypt (.sops.yaml), so they
+        # never see cluster secrets. Read by static/tailnet-personal.nix.
+        headscale_user_tristan = command.local.Command(
+            "headscale_user_tristan",
+            create=ssh_to_hyena.apply(
+                lambda s: f"{s} 'headscale users create tristan 2>/dev/null || true'"
+            ),
+            triggers=[hyena_server.id],
+            opts=pulumi.ResourceOptions(depends_on=[hyena.refresh]),
+        )
+        headscale_personal_key = command.local.Command(
+            "headscale_preauthkey_personal",
+            create=ssh_to_hyena.apply(
+                lambda s: (
+                    f"{s} 'headscale preauthkeys create --user \"$(headscale users list -o json"
+                    " | jq -r '\\''.[] | select(.name == \"tristan\").id'\\'')\""
+                    " --reusable --expiration 8760h -o json' | jq -r .key"
+                )
+            ),
+            triggers=[hyena_server.id],
+            opts=pulumi.ResourceOptions(
+                depends_on=[headscale_user_tristan],
+                additional_secret_outputs=["stdout"],
+            ),
+        )
+        command.local.Command(
+            "headscale_personal_key_sops",
+            create=(
+                f'cd "{millionaire.Nix.root}" && '
+                "printf '%s' \"$TS_AUTHKEY\" | jq -Rs . | "
+                'sops set secrets/sops/personal.yaml \'["headscale"]["preauth-key"]["personal"]\' --value-stdin'
+            ),
+            environment={"TS_AUTHKEY": headscale_personal_key.stdout.apply(strip)},
+            opts=pulumi.ResourceOptions(depends_on=[headscale_personal_key]),
+        )
         headscale_worker_key = command.local.Command(
             "headscale_preauthkey_cloud_worker",
             create=ssh_to_hyena.apply(

@@ -1,9 +1,18 @@
 keys:
   - &server age15g8wd8rqnz4rxdxcz7jlrm3yqlfj6jqeru5m3xrjhzp0fn2r4v8sd5ehh3
   - &tristan age1kr4my68wnc3en2ajhcwj26ffk3tgdlrx9uknjxrlvjf76lw5h4kqyslt62
+  # Personal devices decrypt with their ssh host key (ssh-to-age)
+  - &falcon age1srke2eegqn7rwp8gn8hvxxs9le4w48ffj2jqvk7p87kp9gk9gemqrdpqcu
+  - &axolotl age1stun0l8j2sspafr6aqh0yl49mh2dkqddlzuhfsggllly8dwrnf3sjldasu
 creation_rules:
   - path_regex: secrets/sops/default\.yaml
     key_groups:
       - age:
           - *server
           - *tristan
+  - path_regex: secrets/sops/personal\.yaml
+    key_groups:
+      - age:
+          - *tristan
+          - *falcon
+          - *axolotl
