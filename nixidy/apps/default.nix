@@ -8,6 +8,7 @@
     ./finance/sure.nix
     ./health/mealie.nix
     ./home/chirpstack.nix
+    ./home/excalidraw.nix
     ./home/frigate.nix
     ./home/govee2mqtt.nix
     ./home/home-assistant.nix
