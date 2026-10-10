@@ -1,12 +1,12 @@
 {config, ...}: let
   inherit (config.canivete.meta) domain;
 in {
-  nixidy = {charts, ...}: {
+  nixidy = {pinned, ...}: {
     applications.coredns = {
       canivete.bootstrap.enable = true;
       namespace = "kube-system";
       helm.releases.coredns = {
-        chart = charts.coredns.coredns;
+        chart = pinned.charts.coredns;
         values = {
           service.clusterIP = "10.43.0.10";
           # Cluster DNS is on every pod's critical path: two replicas on

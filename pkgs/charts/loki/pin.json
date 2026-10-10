@@ -1,0 +1,9 @@
+{
+  "version": "7.0.0",
+  "hash": "sha256-7/sn+8D370BJV0F3BxgFiaUHBIrPXPO+zzzB0USxxWc=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://grafana.github.io/helm-charts/",
+    "chart": "loki"
+  }
+}

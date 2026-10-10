@@ -1,0 +1,9 @@
+{
+  "version": "0.28.2",
+  "hash": "sha256-72JIAEZ9bc2z/qYhugF5RkhP0O8wkAAUgduxxMbdZUY=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://cloudnative-pg.github.io/charts/",
+    "chart": "cloudnative-pg"
+  }
+}

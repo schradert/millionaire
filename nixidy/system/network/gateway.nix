@@ -6,14 +6,13 @@
   inherit (config.canivete.meta) domain;
 in {
   nixidy = {
-    charts,
     pinned,
     pkgs,
     ...
   }: {
     # TODO figure out a better way to patch in HTTPRoutev1
     nixidy.charts.bjw-s-labs.app-template-patched = pkgs.runCommand "app-template-patched" {} ''
-      cp -r ${charts.bjw-s-labs.app-template} $out
+      cp -r ${pinned.charts.app-template} $out
       chmod -R u+w $out
       sed -i 's|gateway.networking.k8s.io/v1alpha2|gateway.networking.k8s.io/v1|g' \
         $out/charts/common/templates/classes/_route.tpl

@@ -1,0 +1,9 @@
+{
+  "version": "5.0.1",
+  "hash": "sha256-Ig1wn+788ZPrZVHO9DP7djIm7cbN2jPzpDoZZqT4wyA=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://bjw-s-labs.github.io/helm-charts/",
+    "chart": "app-template"
+  }
+}

@@ -51,8 +51,8 @@ enum Cmd {
 
 #[derive(Args)]
 struct Filter {
-    /// What to update: src, chart, image, flake, nixhelm, devenv, cargo, uv,
-    /// bun (comma-separated; default all)
+    /// What to update: src, chart, image, flake, devenv, cargo, uv, bun
+    /// (comma-separated; default all)
     #[arg(long, value_delimiter = ',')]
     only: Vec<String>,
     /// Single items: pin ids (tailscale, charts/multus) or
@@ -64,7 +64,6 @@ struct Filter {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum Eco {
     Flake,
-    Nixhelm,
     Devenv,
     Cargo,
     Uv,
@@ -72,9 +71,8 @@ enum Eco {
 }
 
 impl Eco {
-    const ALL: [Eco; 6] = [
+    const ALL: [Eco; 5] = [
         Eco::Flake,
-        Eco::Nixhelm,
         Eco::Devenv,
         Eco::Cargo,
         Eco::Uv,
@@ -88,7 +86,6 @@ impl Eco {
     fn name(self) -> &'static str {
         match self {
             Eco::Flake => "flake",
-            Eco::Nixhelm => "nixhelm",
             Eco::Devenv => "devenv",
             Eco::Cargo => "cargo",
             Eco::Uv => "uv",
@@ -99,7 +96,6 @@ impl Eco {
     fn gates(self) -> &'static [Gate] {
         match self {
             Eco::Flake => &[Gate::Hosts, Gate::Nixidy],
-            Eco::Nixhelm => &[Gate::Nixidy],
             Eco::Devenv => &[Gate::Devenv],
             Eco::Cargo => &[Gate::Cargo],
             Eco::Uv => &[Gate::Uv],
@@ -111,7 +107,7 @@ impl Eco {
     fn files(self, root: &Path) -> Vec<PathBuf> {
         let j = |p: &str| root.join(p);
         match self {
-            Eco::Flake | Eco::Nixhelm => vec![j("flake.lock")],
+            Eco::Flake => vec![j("flake.lock")],
             Eco::Devenv => eco::DEVENV_DIRS
                 .iter()
                 .map(|d| j(d).join("devenv.lock"))
@@ -159,7 +155,7 @@ impl Filter {
             match p.split_once(':') {
                 Some((e, name)) => {
                     let e = Eco::parse(e)
-                        .filter(|e| *e != Eco::Devenv && *e != Eco::Nixhelm)
+                        .filter(|e| *e != Eco::Devenv)
                         .with_context(|| format!("bad --pkg {p:?}"))?;
                     eco_pkgs.entry(e).or_default().push(name.to_string());
                 }
@@ -371,8 +367,7 @@ impl Run {
         let root = self.root.clone();
         let res = match eco {
             Eco::Flake if !pkgs.is_empty() => eco::flake(&root, pkgs),
-            Eco::Flake => eco::flake_all_but_separate(&root),
-            Eco::Nixhelm => eco::flake(&root, &["nixhelm".to_string()]),
+            Eco::Flake => eco::flake_all(&root),
             Eco::Devenv => eco::devenv(&root),
             Eco::Cargo if self.major && pkgs.is_empty() => return self.cargo_major(),
             Eco::Cargo => eco::cargo(&root, pkgs),

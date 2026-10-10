@@ -4,7 +4,6 @@
   nixImage = "nixos/nix:2.28.3";
 in {
   nixidy = {
-    charts,
     lib,
     pinned,
     ...
@@ -59,7 +58,7 @@ in {
         };
       };
       helm.releases.argo-workflows = {
-        chart = charts.argoproj.argo-workflows;
+        chart = pinned.charts.argo-workflows;
         values = {
           server = {
             authModes = ["sso"];
@@ -370,7 +369,7 @@ in {
               }
               {
                 name = "kinds";
-                value = "src,chart,image,flake,nixhelm,devenv,cargo,uv,bun";
+                value = "src,chart,image,flake,devenv,cargo,uv,bun";
               }
             ];
             volumes = lib.toList {

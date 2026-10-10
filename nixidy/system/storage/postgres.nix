@@ -4,7 +4,6 @@
 in {
   nixidy = {
     can,
-    charts,
     lib,
     pinned,
     ...
@@ -19,7 +18,7 @@ in {
     applications.postgres = {
       namespace = "storage";
       helm.releases.postgres = {
-        chart = charts.cloudnative-pg.cloudnative-pg;
+        chart = pinned.charts.cloudnative-pg;
         values = {
           crds.create = false;
           monitoring = {

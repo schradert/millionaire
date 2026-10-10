@@ -1,6 +1,6 @@
 {config, ...}: {
   nixidy = {
-    charts,
+    pinned,
     lib,
     ...
   }: {
@@ -15,7 +15,7 @@
         };
       };
       helm.releases.external-dns-internal = {
-        chart = charts.external-dns.external-dns;
+        chart = pinned.charts.external-dns;
         values = {
           fullnameOverride = "external-dns-internal";
           provider.name = "webhook";

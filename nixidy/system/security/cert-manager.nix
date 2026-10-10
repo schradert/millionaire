@@ -3,7 +3,6 @@
   inherit (people.my.profiles.default) email;
 in {
   nixidy = {
-    charts,
     lib,
     pinned,
     ...
@@ -18,7 +17,7 @@ in {
     applications.cert-manager = {
       namespace = "security";
       helm.releases.cert-manager = {
-        chart = charts.jetstack.cert-manager;
+        chart = pinned.charts.cert-manager;
         values = {
           crds.enabled = false;
           dns01RecursiveNameservers = builtins.concatStringsSep "," [
