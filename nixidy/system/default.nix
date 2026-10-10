@@ -17,6 +17,7 @@
     # ./cicd/capi-cluster.nix
     # ./cicd/capi-operator.nix
     # ./cicd/cluster-autoscaler.nix
+    ./cicd/bootstrap.nix
     ./cicd/descheduler.nix
     ./cicd/harbor.nix
     ./cicd/reloader.nix

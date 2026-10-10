@@ -24,6 +24,16 @@
                 default = false;
                 description = "Digits only (always valid hex, for apps that parse the value as hex)";
               };
+              upper = lib.mkOption {
+                type = lib.types.bool;
+                default = false;
+                description = "Allow uppercase letters (apps with password complexity rules)";
+              };
+              bitwarden = lib.mkOption {
+                type = lib.types.nullOr lib.types.str;
+                default = null;
+                description = "Bitwarden key to push the value to (break-glass admin passwords, e.g. `<app>/admin-password`)";
+              };
             };
           });
         };
@@ -35,7 +45,7 @@
                 then secret.length
                 else 10;
               symbols = 0;
-              noUpper = true;
+              noUpper = !secret.upper;
               allowRepeat = true;
             };
             externalSecrets.${name}.spec = {
@@ -50,6 +60,21 @@
                   regexp = {
                     source = "password";
                     target = secret.key;
+                  };
+                };
+              };
+            };
+            pushSecrets = lib.optionalAttrs (secret.bitwarden != null) {
+              ${name}.spec = {
+                secretStoreRefs = lib.toList {
+                  name = "bitwarden";
+                  kind = "ClusterSecretStore";
+                };
+                selector.secret.name = name;
+                data = lib.toList {
+                  match = {
+                    secretKey = secret.key;
+                    remoteRef.remoteKey = secret.bitwarden;
                   };
                 };
               };
