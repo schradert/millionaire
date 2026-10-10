@@ -83,22 +83,9 @@
               ' "$f" > "$f.new" && mv "$f.new" "$f"
             done
           '';
-        home.packages = with pkgs; [
-          bottom
-          gping
-          hwatch
-          iftop
-          klipper-estimator
-          lnav
-          lsof
-          procps
-          trippy
-          zenith
-        ];
+        home.packages = [pkgs.klipper-estimator];
         programs = {
           bat.enable = true;
-          btop.enable = true;
-          btop.settings.vim_keys = true;
           carapace.enable = true;
           dircolors.enable = true;
           elvish.initExtra = "eval (${lib.getExe config.programs.carapace.package} _carapace elvish | slurp)";
@@ -144,7 +131,6 @@
           navi.enable = true;
           rbw.enable = true;
           spotify-player.enable = true;
-          wezterm.enable = true;
           # FIXME why do I keep having to rebuild this?!
           zed-editor.enable = true;
           zed-editor.userSettings.agent_servers.gemini = {
