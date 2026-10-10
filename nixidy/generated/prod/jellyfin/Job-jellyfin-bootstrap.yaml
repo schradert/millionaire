@@ -19,7 +19,7 @@ spec:
               value: http://maintainerr.media.svc.cluster.local:6246
             - name: ADMIN_PASSWORD_FILE
               value: /secrets/admin/password
-          image: harbor.trdos.me/library/jellyfin-bootstrap:0.2.0
+          image: harbor.trdos.me/library/jellyfin-bootstrap:0.2.0@sha256:b5f0b93064efa481469c8b93c86a17fc54f39a0900bb943058791e6fe35245f5
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false

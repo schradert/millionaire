@@ -166,7 +166,7 @@ in {
             };
             containers = lib.toList {
               name = "bootstrap";
-              image = "harbor.${domain}/library/app-bootstrap:0.2.0";
+              image = with pinned.images.app-bootstrap; "${repository}:${tag}@${digest}";
               args = ["openviking"];
               env = [
                 {

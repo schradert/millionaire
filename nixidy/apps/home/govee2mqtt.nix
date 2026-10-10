@@ -3,12 +3,12 @@
 # No HTTPRoute — this is a background bridge, talks only to mosquitto and the
 # Govee cloud API. Probes are disabled because govee2mqtt doesn't expose an
 # HTTP health endpoint.
-{config, ...}: let
-  inherit (config.canivete.meta) domain;
-in {
-  nixidy = {charts, ...}: let
-    tag = "2026.03.25-ab9deb66";
-  in {
+{
+  nixidy = {
+    charts,
+    pinned,
+    ...
+  }: {
     applications.govee2mqtt = {
       namespace = "home";
       volsync.pvcs.govee2mqtt.title = "govee2mqtt";
@@ -22,8 +22,7 @@ in {
               dnsPolicy = "ClusterFirstWithHostNet";
             };
             containers.govee2mqtt = {
-              image.repository = "harbor.${domain}/library/govee2mqtt";
-              image.tag = tag;
+              image = pinned.images.govee2mqtt;
               env = {
                 GOVEE_MQTT_HOST = "mosquitto.home.svc.cluster.local";
                 GOVEE_MQTT_PORT = "1883";

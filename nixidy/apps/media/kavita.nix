@@ -187,7 +187,7 @@ in {
             };
             containers = lib.toList {
               name = "bootstrap";
-              image = "harbor.${domain}/library/app-bootstrap:0.1.1";
+              image = with pinned.images.app-bootstrap-kavita; "${repository}:${tag}@${digest}";
               args = ["kavita"];
               env = [
                 {

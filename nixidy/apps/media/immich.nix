@@ -281,7 +281,7 @@ in {
             };
             containers = lib.toList {
               name = "bootstrap";
-              image = "harbor.${domain}/library/app-bootstrap:0.1.0";
+              image = with pinned.images.app-bootstrap-immich; "${repository}:${tag}@${digest}";
               args = ["immich"];
               env = [
                 {
