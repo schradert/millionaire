@@ -1,0 +1,10 @@
+{
+  "version": "jvb-2.3-280-g159a678e5-1",
+  "digest": "sha256:27d74c778b7215c51267bc140006fc4fe19d06275c00dc87783eb0cbb888884f",
+  "source": {
+    "type": "oci-tag",
+    "repository": "jitsi/jvb",
+    "tagPattern": "jvb-(\\d+\\.\\d+)-(\\d+)-g[0-9a-f]+-1"
+  },
+  "hold": "jitsi components move together with charts/jitsi-meet; bump them as a set by hand"
+}

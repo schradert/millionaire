@@ -1,0 +1,9 @@
+{
+  "version": "latest-alpine",
+  "digest": "sha256:f6614336ab80cb143e817f90409013332493207a0cdd5a78b22ab361bea60bd5",
+  "source": {
+    "type": "oci-tag",
+    "repository": "actualbudget/actual-server",
+    "track": "digest"
+  }
+}

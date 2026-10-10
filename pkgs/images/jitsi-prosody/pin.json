@@ -1,0 +1,10 @@
+{
+  "version": "prosody-13.0.4",
+  "digest": "sha256:51dd47542eda780cf51815404459c415a2af49b77385b6c5ba091e79001a3a81",
+  "source": {
+    "type": "oci-tag",
+    "repository": "jitsi/prosody",
+    "tagPattern": "prosody-(\\d+\\.\\d+\\.\\d+)"
+  },
+  "hold": "jitsi components move together with charts/jitsi-meet; bump them as a set by hand"
+}

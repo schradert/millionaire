@@ -1,0 +1,10 @@
+{
+  "version": "jibri-8.0-194-g71e6738-1",
+  "digest": "sha256:d757a5cb8a55d8e9afb9e53f27b558cade750eeeba89050435cc97af0aa5f902",
+  "source": {
+    "type": "oci-tag",
+    "repository": "jitsi/jibri",
+    "tagPattern": "jibri-(\\d+\\.\\d+)-(\\d+)-g[0-9a-f]+-1"
+  },
+  "hold": "jitsi components move together with charts/jitsi-meet; bump them as a set by hand"
+}

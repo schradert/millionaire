@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -21,11 +22,7 @@
           controllers.siyuan = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.siyuan = {
-              image = {
-                repository = "b3log/siyuan";
-                tag = "v3.6.1";
-                digest = "sha256:e14f3958fa9d7be867053b0e681f97ad4ec2e410c275b67670690083f81f05db";
-              };
+              image = pinned.images.siyuan;
               env = {
                 # The entrypoint starts as root, creates the user and drops to it.
                 PUID = "1000";

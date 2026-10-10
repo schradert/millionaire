@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -19,9 +20,7 @@
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.actual.containers.actual = {
-            image.repository = "actualbudget/actual-server";
-            image.tag = "latest-alpine";
-            image.digest = "sha256:f6614336ab80cb143e817f90409013332493207a0cdd5a78b22ab361bea60bd5";
+            image = pinned.images.actual-server;
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
             probes.startup.enabled = true;

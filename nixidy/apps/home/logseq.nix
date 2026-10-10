@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -22,11 +23,7 @@
           controllers.logseq = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.logseq = {
-              image = {
-                repository = "ghcr.io/logseq/logseq-webapp";
-                tag = "latest";
-                digest = "sha256:de87c4a26986278b52f778d4d28c03e32d68a7c7f42bae128614bcaa3f26c231";
-              };
+              image = pinned.images.logseq-webapp;
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
               probes.startup.enabled = true;

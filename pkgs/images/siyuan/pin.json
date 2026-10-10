@@ -1,0 +1,8 @@
+{
+  "version": "v3.6.1",
+  "digest": "sha256:e14f3958fa9d7be867053b0e681f97ad4ec2e410c275b67670690083f81f05db",
+  "source": {
+    "type": "oci-tag",
+    "repository": "b3log/siyuan"
+  }
+}

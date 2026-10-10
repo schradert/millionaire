@@ -1,0 +1,9 @@
+{
+  "version": "version-6.5.4",
+  "digest": "sha256:6ae1b92eb73b4ae8a8e7e038440b93fba46267e05b5b903c62316b8cb03779af",
+  "source": {
+    "type": "oci-tag",
+    "repository": "fireflyiii/core",
+    "tagPattern": "version-(\\d+\\.\\d+\\.\\d+)"
+  }
+}
