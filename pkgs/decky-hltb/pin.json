@@ -1,0 +1,13 @@
+{
+  "version": "c18f2c5f550fb65b8e655e3489ab1228c0c9fd4c",
+  "hash": "sha256-L9LEPF1hoSk4hMRJr6EqII3C48zLhtDfdokdsKROZRw=",
+  "hashes": {
+    "pnpmDeps": "sha256-6I5NqWOMFsd8nO7W1m25lszVp80Ie7FV+xzTejCrj0k="
+  },
+  "source": {
+    "type": "git-commit",
+    "owner": "SDH-Stewardship",
+    "repo": "hltb-for-deck",
+    "branch": "main"
+  }
+}

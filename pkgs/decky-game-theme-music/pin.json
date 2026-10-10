@@ -1,0 +1,13 @@
+{
+  "version": "1.6.0",
+  "hash": "sha256-zgQ+mLsLS+077CSIze6qJZThNaKzRaUPQ4dim1G3mZ4=",
+  "hashes": {
+    "pnpmDeps": "sha256-gdtadniUnG19vHQRxA55IsFUId3mtbJcn/QVoNCv+fY="
+  },
+  "source": {
+    "type": "github-release",
+    "owner": "OMGDuke",
+    "repo": "SDH-GameThemeMusic",
+    "tagPrefix": "v"
+  }
+}

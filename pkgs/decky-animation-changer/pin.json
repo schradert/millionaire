@@ -1,0 +1,13 @@
+{
+  "version": "eacfbfa7c82153791d03986e5ad6ef04c308b2c9",
+  "hash": "sha256-7h3cbF533BRWuyCfg/aNSCdxeC5EmwP9VDyr/iARUO4=",
+  "hashes": {
+    "pnpmDeps": "sha256-RAQZif5q0vFrQmu8eCAe05mdAjVDeEi/rGfSMH2Sr1w="
+  },
+  "source": {
+    "type": "git-commit",
+    "owner": "TheLogicMaster",
+    "repo": "SDH-AnimationChanger",
+    "branch": "main"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "version": "b0043b9a4660f5029b0c17d73e06b5e34eaddd40",
+  "hash": "sha256-Jfq3sJLmzp4943l5dkJpU/tyecDAfwfyDH6jxuRiSUA=",
+  "hashes": {
+    "pnpmDeps": "sha256-MX3eblbWD4hFNU6JCama28cZyGOSG95sGext+T/6fs4="
+  },
+  "source": {
+    "type": "git-commit",
+    "owner": "libvibrant",
+    "repo": "vibrantDeck",
+    "branch": "main"
+  }
+}

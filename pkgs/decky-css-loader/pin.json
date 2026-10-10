@@ -1,0 +1,13 @@
+{
+  "version": "2.1.2",
+  "hash": "sha256-dEhK1LcOMerSQsOiUahMm/RX78ABNsKReQfRfspyw68=",
+  "hashes": {
+    "pnpmDeps": "sha256-PKfWPZ7qi/mIDa76tG3/S7CYwVxJTBhXM7s4OcGBwx8="
+  },
+  "source": {
+    "type": "github-release",
+    "owner": "DeckThemes",
+    "repo": "SDH-CssLoader",
+    "tagPrefix": "v"
+  }
+}

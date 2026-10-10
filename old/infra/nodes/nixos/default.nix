@@ -167,42 +167,6 @@ in {
     # };
     # TODO deploy
     echidna.platform.wsl = {};
-    # TODO deploy
-    systeamadeck = {
-      platform.prem.install_host = "192.168.50.155";
-      system = {pkgs, ...}: {
-        imports = [inputs.jovian.nixosModules.jovian];
-        disko = diskoZfs "/dev/disk/by-id/nvme-Phison_ESMP001TMN48C3-E21TS_23445M001T05978" [] {};
-        dotfiles.profiles.client.enable = true;
-        dotfiles.profiles.client.gaming.enable = true;
-        dotfiles.nixpkgs.config.allowUnfreePackages = [
-          "steam-run"
-          "steam-jupiter-original"
-          "steam-jupiter-unwrapped"
-          "steamcmd"
-          "steamdeck-hw-theme"
-          "steam-original"
-        ];
-        environment.systemPackages = with pkgs; [maliit-keyboard maliit-framework];
-        jovian.decky-loader = {
-          enable = true;
-          package = pkgs.decky-loader-prerelease;
-        };
-        jovian.devices.steamdeck = {
-          enable = true;
-          autoUpdate = true;
-          enableGyroDsuService = true;
-        };
-        jovian.steam = {
-          enable = true;
-          autoStart = true;
-          desktopSession = "plasma";
-          user = config.canivete.meta.people.me;
-        };
-        networking.hostId = "58ea3dec";
-        networking.networkmanager.enable = true;
-      };
-    };
     # Unported remainder of falcon (rest lives in static/falcon-system.nix)
     falcon = {
       system = {

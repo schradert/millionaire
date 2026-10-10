@@ -1,0 +1,13 @@
+{
+  "version": "08c28f309f06ef7a7f1faa18bc617529d20d4cf3",
+  "hash": "sha256-kIdIzYTUag/FfNe1jqe9Bkj0OggFOvk2HcH4sq1i9p4=",
+  "hashes": {
+    "pnpmDeps": "sha256-n/XsFUIR0+Nwvo1Qia1rZ1PEPbV+IBwqDRNVQfE1CcE="
+  },
+  "source": {
+    "type": "git-commit",
+    "owner": "saumya-banthia",
+    "repo": "volume-boost",
+    "branch": "master"
+  }
+}
