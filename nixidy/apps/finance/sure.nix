@@ -1,4 +1,6 @@
-{config, ...}: {
+{config, ...}: let
+  inherit (config.canivete.meta) people;
+in {
   nixidy = {
     charts,
     lib,
@@ -17,6 +19,22 @@
       {configMapRef.name = "sure";}
       {secretRef.name = "sure";}
     ];
+    bootstrapScript = ''
+      email = ENV.fetch("ADMIN_EMAIL").strip.downcase
+      first, last = ENV.fetch("ADMIN_NAME").split(" ", 2)
+      User.transaction do
+        if User.find_by(email: email)
+          puts "sure-bootstrap: user exists, nothing to do"
+        else
+          User.create!(
+            email: email, first_name: first, last_name: last,
+            password: ENV.fetch("ADMIN_PASSWORD"),
+            family: Family.create!, role: :super_admin
+          )
+          puts "sure-bootstrap: created super_admin"
+        end
+      end
+    '';
   in {
     applications.keycloak.resources.keycloakClients.sure.spec = {
       realmRef.name = "default";
@@ -34,7 +52,7 @@
         directAccessGrantsEnabled = false;
         redirectUris = ["https://${hostname}/auth/oidc/callback"];
         webOrigins = ["https://${hostname}"];
-        defaultClientScopes = ["openid" "profile" "email"];
+        defaultClientScopes = ["openid" "profile" "email" "groups"];
       };
     };
 
@@ -47,6 +65,11 @@
       postgres.enable = true;
       postgres.database = "sure_production";
       volsync.pvcs.sure.title = "sure";
+      generatedSecrets.sure-admin = {
+        key = "password";
+        upper = true;
+        bitwarden = "sure/admin-password";
+      };
 
       helm.releases.sure = {
         chart = charts.bjw-s-labs.app-template-patched;
@@ -97,7 +120,10 @@
             DB_PORT = "5432";
             POSTGRES_USER = "sure";
             REDIS_URL = "redis://sure-dragonfly.finance.svc.cluster.local:6379/0";
-            ONBOARDING_STATE = "invite_only";
+            # Self-registration closed and no JIT account creation: the only account is
+            # the bootstrapped one, which the Keycloak login links to once.
+            ONBOARDING_STATE = "closed";
+            AUTH_JIT_MODE = "link_only";
             APP_DOMAIN = hostname;
             OIDC_ISSUER = "https://keycloak.${domain}/realms/default";
             OIDC_REDIRECT_URI = "https://${hostname}/auth/oidc/callback";
@@ -122,6 +148,59 @@
           backendRefs = lib.toList {
             name = "sure";
             port = 3000;
+          };
+        };
+      };
+
+      # Idempotent first-user bootstrap (README "Conventions"): creates the family
+      # and the super_admin only when no account with this email exists. Sure
+      # links an OIDC identity to a user only after a one-time password
+      # confirmation, so tristan's first Keycloak login lands on the link page
+      # where he enters this email and sure/admin-password from Bitwarden.
+      resources.jobs.sure-bootstrap = {
+        metadata.annotations = {
+          "argocd.argoproj.io/hook" = "PostSync";
+          "argocd.argoproj.io/hook-delete-policy" = "BeforeHookCreation";
+        };
+        spec = {
+          backoffLimit = 6;
+          activeDeadlineSeconds = 1200;
+          template.spec = {
+            restartPolicy = "OnFailure";
+            automountServiceAccountToken = false;
+            securityContext = {
+              runAsNonRoot = true;
+              runAsUser = 1000;
+              runAsGroup = 1000;
+              seccompProfile.type = "RuntimeDefault";
+            };
+            containers = lib.toList {
+              name = "bootstrap";
+              image = with pinned.images.sure; "${repository}:${tag}@${digest}";
+              args = ["./bin/rails" "runner" bootstrapScript];
+              inherit envFrom;
+              env = [
+                {
+                  name = "ADMIN_EMAIL";
+                  value = people.my.profiles.personal.email;
+                }
+                {
+                  name = "ADMIN_NAME";
+                  value = people.my.name;
+                }
+                {
+                  name = "ADMIN_PASSWORD";
+                  valueFrom.secretKeyRef = {
+                    name = "sure-admin";
+                    key = "password";
+                  };
+                }
+              ];
+              securityContext = {
+                allowPrivilegeEscalation = false;
+                capabilities.drop = ["ALL"];
+              };
+            };
           };
         };
       };
