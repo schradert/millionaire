@@ -1,0 +1,20 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: volsync--bifrost--bifrost-data-src
+  namespace: ai
+spec:
+  restic:
+    copyMethod: Direct
+    moverSecurityContext:
+      fsGroup: 101
+    pruneIntervalDays: 8
+    repository: volsync--bifrost--bifrost-data
+    retain:
+      daily: 1
+      monthly: 1
+      weekly: 1
+      yearly: 1
+  sourcePVC: bifrost-data
+  trigger:
+    schedule: 0 4 * * *
