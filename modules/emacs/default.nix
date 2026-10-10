@@ -109,8 +109,7 @@
             extraBinPackages = with config.programs; [ripgrep.package git.package fd.package];
             tangle.config = ''
               ;; org-directory must be set before org loads.
-              ;; TODO confirm the path (old config: ~/Projects/sabedoria).
-              (setq org-directory "${config.home.homeDirectory}/org")
+              (setq org-directory "${config.home.homeDirectory}/Projects/sabedoria")
               (setq! delete-by-moving-to-trash t)
             '';
             tangle.init = {
