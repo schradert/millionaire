@@ -25,6 +25,7 @@ data:
     registration:
       allowedDomains:
       - trdos.me
+      - pm.me
       socialLogins:
       - openid
     version: 1.2.1

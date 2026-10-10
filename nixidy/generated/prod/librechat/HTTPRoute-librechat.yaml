@@ -12,6 +12,5 @@ spec:
       sectionName: https
   rules:
     - backendRefs:
-        - name: oauth2-proxy
-          namespace: identity
-          port: 4180
+        - name: librechat
+          port: 3080
