@@ -1,0 +1,61 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: actual-bootstrap
+  namespace: finance
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - actual
+          env:
+            - name: ACTUAL_PUBLIC_URL
+              value: https://actual.trdos.me
+            - name: ACTUAL_URL
+              value: http://actual.finance.svc.cluster.local:5006
+            - name: ADMIN_PASSWORD_FILE
+              value: /secrets/admin/password
+            - name: ADMIN_USER
+              value: tristan
+            - name: OIDC_AUTHORITY
+              value: https://keycloak.trdos.me/realms/default
+            - name: OIDC_CLIENT_ID
+              value: actual
+            - name: OIDC_CLIENT_SECRET_FILE
+              value: /secrets/oidc/client_secret
+          image: harbor.trdos.me/library/app-bootstrap:0.12.0@sha256:6e9c8a9052997eab9d35f243be3091270afe41f7e67a50e7d2f2ec4786d9abc7
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /secrets/admin
+              name: admin
+              readOnly: true
+            - mountPath: /secrets/oidc
+              name: oidc
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - name: admin
+          secret:
+            secretName: actual-admin
+        - name: oidc
+          secret:
+            secretName: actual-oidc
