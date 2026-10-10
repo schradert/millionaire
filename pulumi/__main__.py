@@ -8,6 +8,11 @@ import pulumi_tls as tls
 
 import pulumi
 
+# Replacing any of these destroys state that can't be regenerated: rotated
+# secrets (restic, harbor keys) orphan what they encrypt or sign. Protect blocks
+# replace/delete; an intended rotation goes through `pulumi state unprotect`.
+PROTECTED = pulumi.ResourceOptions(protect=True)
+
 BW_ORGANIZATION_ID = "ce96e43f-f2ce-4cd7-a36f-b30e0149eeaf"
 
 
@@ -91,13 +96,14 @@ class Millionaire:
             # The live VM was rebuilt onto the golden BIOS snapshot (image id
             # 396270192) 2026-06-11; `image` only matters at creation, so ignore
             # its drift rather than let an untargeted `up` rebuild headscale's host.
-            opts=pulumi.ResourceOptions(ignore_changes=["image"]),
+            opts=pulumi.ResourceOptions(ignore_changes=["image"], protect=True),
         )
         # AdGuard admin password — bcrypt hash must be in SOPS before hyena
         # deploys, so its sops-templated AdGuardHome.yaml renders correctly.
         # The plaintext password also lands in BWS for the external-dns webhook.
         adguard_admin_password = rand.RandomPassword(
-            "adguard_admin_password", length=24, special=False
+            "adguard_admin_password", length=24, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "adguard/admin/password",
@@ -443,7 +449,8 @@ class Millionaire:
         # millionaire.NixOS("piper", "piper", "--phases disko,install,reboot")
 
         tunnel = cf.ZeroTrustTunnelCloudflared(
-            "main", account_id=account_id, name="main", config_src="local"
+            "main", account_id=account_id, name="main", config_src="local",
+            opts=PROTECTED,
         )
         tunnel_token = cf.get_zero_trust_tunnel_cloudflared_token_output(
             account_id=account_id, tunnel_id=tunnel.id
@@ -453,7 +460,8 @@ class Millionaire:
         )
 
         ceph_dashboard_password = rand.RandomPassword(
-            "ceph_dashboard_password", length=24, special=False
+            "ceph_dashboard_password", length=24, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "ceph/dashboard/password",
@@ -488,13 +496,14 @@ class Millionaire:
         )
 
         restic_password = rand.RandomPassword(
-            "restic_password", length=24, special=False
+            "restic_password", length=24, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "volsync/restic/password", restic_password.result, "VolSync Restic password"
         )
 
-        firefly_app_key = rand.RandomBytes("firefly_app_key", length=32)
+        firefly_app_key = rand.RandomBytes("firefly_app_key", length=32, opts=PROTECTED)
         Secret(
             "firefly/app_key",
             firefly_app_key.base64.apply(lambda b: f"base64:{b}"),
@@ -502,7 +511,8 @@ class Millionaire:
         )
 
         stalwart_admin_password = rand.RandomPassword(
-            "stalwart_admin_password", length=24, special=False
+            "stalwart_admin_password", length=24, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "stalwart/admin/password",
@@ -511,7 +521,8 @@ class Millionaire:
         )
 
         bulwark_session_secret = rand.RandomPassword(
-            "bulwark_session_secret", length=32, special=False
+            "bulwark_session_secret", length=32, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "bulwark/session-secret",
@@ -520,12 +531,14 @@ class Millionaire:
         )
 
         grafana_admin_password = rand.RandomPassword(
-            "grafana_admin_password", length=21, special=False
+            "grafana_admin_password", length=21, special=False,
+            opts=PROTECTED,
         )
         Secret("grafana", grafana_admin_password.result, "Grafana admin password")
 
         actualbudget_admin_password = rand.RandomPassword(
-            "actualbudget_admin_password", length=24, special=False
+            "actualbudget_admin_password", length=24, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "actualbudget/admin/password",
@@ -547,7 +560,8 @@ class Millionaire:
 
         # --- Keycloak ---
         keycloak_admin_password = rand.RandomPassword(
-            "keycloak_admin_password", length=24, special=False
+            "keycloak_admin_password", length=24, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "keycloak/admin/password",
@@ -556,7 +570,8 @@ class Millionaire:
         )
 
         oauth2_proxy_client_secret = rand.RandomPassword(
-            "oauth2_proxy_client_secret", length=32, special=False
+            "oauth2_proxy_client_secret", length=32, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "oauth2-proxy/client-secret",
@@ -565,7 +580,8 @@ class Millionaire:
         )
 
         oauth2_proxy_cookie_secret = rand.RandomPassword(
-            "oauth2_proxy_cookie_secret", length=32, special=False
+            "oauth2_proxy_cookie_secret", length=32, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "oauth2-proxy/cookie-secret",
@@ -574,7 +590,8 @@ class Millionaire:
         )
 
         sure_secret_key_base = rand.RandomPassword(
-            "sure_secret_key_base", length=128, special=False
+            "sure_secret_key_base", length=128, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "sure/secret_key_base",
@@ -584,7 +601,8 @@ class Millionaire:
 
         # --- Home Assistant ---
         ha_admin_password = rand.RandomPassword(
-            "ha_admin_password", length=24, special=False
+            "ha_admin_password", length=24, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "ha/admin/password",
@@ -594,7 +612,8 @@ class Millionaire:
 
         # --- Harbor ---
         harbor_robot_secret = rand.RandomPassword(
-            "harbor_robot_secret", length=32, special=False
+            "harbor_robot_secret", length=32, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "harbor/robot/secret",
@@ -603,7 +622,8 @@ class Millionaire:
         )
 
         harbor_cosign_password = rand.RandomPassword(
-            "harbor_cosign_password", length=32, special=False
+            "harbor_cosign_password", length=32, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "harbor/cosign/password",
@@ -632,7 +652,8 @@ class Millionaire:
         )
 
         harbor_admin_password = rand.RandomPassword(
-            "harbor_admin_password", length=24, special=False
+            "harbor_admin_password", length=24, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "harbor/admin/password",
@@ -641,7 +662,8 @@ class Millionaire:
         )
 
         harbor_secret_key = rand.RandomPassword(
-            "harbor_secret_key", length=16, special=False
+            "harbor_secret_key", length=16, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "harbor/secret-key",
@@ -650,14 +672,16 @@ class Millionaire:
         )
 
         harbor_core_csrf = rand.RandomPassword(
-            "harbor_core_csrf", length=32, special=False
+            "harbor_core_csrf", length=32, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "harbor/core/csrf-key", harbor_core_csrf.result, "Harbor core CSRF/XSRF key"
         )
 
         harbor_core_secret = rand.RandomPassword(
-            "harbor_core_secret", length=16, special=False
+            "harbor_core_secret", length=16, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "harbor/core/secret",
@@ -666,7 +690,8 @@ class Millionaire:
         )
 
         harbor_token_key = tls.PrivateKey(
-            "harbor_token_key", algorithm="RSA", rsa_bits=2048
+            "harbor_token_key", algorithm="RSA", rsa_bits=2048,
+            opts=PROTECTED,
         )
         harbor_token_cert = tls.SelfSignedCert(
             "harbor_token_cert",
@@ -675,6 +700,7 @@ class Millionaire:
             validity_period_hours=87600,
             allowed_uses=["cert_signing", "digital_signature", "key_encipherment"],
             is_ca_certificate=True,
+            opts=PROTECTED,
         )
         # Base64-encode PEM values to avoid bws CLI multiline/dash issues
         import base64
@@ -695,7 +721,8 @@ class Millionaire:
         )
 
         harbor_jobservice_secret = rand.RandomPassword(
-            "harbor_jobservice_secret", length=16, special=False
+            "harbor_jobservice_secret", length=16, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "harbor/jobservice/secret",
@@ -704,7 +731,8 @@ class Millionaire:
         )
 
         harbor_registry_http_secret = rand.RandomPassword(
-            "harbor_registry_http_secret", length=16, special=False
+            "harbor_registry_http_secret", length=16, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "harbor/registry/http-secret",
@@ -713,7 +741,8 @@ class Millionaire:
         )
 
         harbor_registry_password = rand.RandomPassword(
-            "harbor_registry_password", length=16, special=False
+            "harbor_registry_password", length=16, special=False,
+            opts=PROTECTED,
         )
         Secret(
             "harbor/registry/password",
