@@ -106,7 +106,36 @@ in {
         "pulumi/sdks"
         "apps/sveltekit-demo/bun.nix"
       ];
-      git-hooks.hooks = {
+      # Fast checks on commit, everything on push. canivete defaults every hook
+      # to pre-commit+pre-push, which made each commit run the whole tree's
+      # ty/statix/lychee.
+      git-hooks.default_stages = lib.mkForce ["pre-push" "manual"];
+      # devenv wires `prek run -a` (every hook, whole tree) into enterTest, and
+      # in practice it runs on every shell entry — 10+ minutes per direnv load.
+      # Hooks belong to git, not to the shell.
+      tasks."devenv:git-hooks:run".before = lib.mkForce [];
+      git-hooks.hooks = let
+        onCommit = {stages = ["pre-commit" "pre-push" "manual"];};
+      in {
+        alejandra = onCommit;
+        check-added-large-files = onCommit;
+        check-case-conflicts = onCommit;
+        check-executables-have-shebangs = onCommit;
+        check-merge-conflicts = onCommit;
+        check-symlinks = onCommit;
+        end-of-file-fixer = onCommit;
+        fix-byte-order-marker = onCommit;
+        forbid-new-submodules = onCommit;
+        gitleaks = onCommit;
+        mixed-line-endings = onCommit;
+        python-debug-statements = onCommit;
+        # Regex (search semantics), not a glob — the previous "pulumi/sdks/**"
+        # is an invalid pattern ("repeat of a repeat") and the hook runner
+        # refuses to parse the whole config, blocking every commit in the repo.
+        ruff = onCommit // {excludes = ["pulumi/sdks/"];};
+        ruff-format = onCommit;
+        trim-trailing-whitespace = onCommit;
+        typos = onCommit;
         lychee.toml.accept = [200 403 405 406];
         lychee.toml.exclude = [
           # In-cluster service DNS (lychee normalizes with a trailing slash)
@@ -139,10 +168,6 @@ in {
           "^.+/dns-query$"
         ];
         no-commit-to-branch.enable = lib.mkForce false;
-        # Regex (search semantics), not a glob — the previous "pulumi/sdks/**"
-        # is an invalid pattern ("repeat of a repeat") and the hook runner
-        # refuses to parse the whole config, blocking every commit in the repo.
-        ruff.excludes = ["pulumi/sdks/"];
         # statix walks the whole tree, so pre-existing findings anywhere block
         # every commit. Keep the hook, but disable the two codes the existing
         # codebase trips tree-wide (empty_pattern ×41, manual_inherit_from ×6)
