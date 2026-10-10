@@ -23,7 +23,7 @@ spec:
               value: https://keycloak.trdos.me/realms/default
             - name: SSO_SECRET_FILE
               value: /secrets/oidc/client_secret
-          image: harbor.trdos.me/library/jellyfin-bootstrap:0.2.0@sha256:b5f0b93064efa481469c8b93c86a17fc54f39a0900bb943058791e6fe35245f5
+          image: harbor.trdos.me/library/jellyfin-bootstrap:0.3.0@sha256:803c10a5548ff8124a5e1a195a7c2a950c24d62f6c7f4bf17dea19fb3ca01db2
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
