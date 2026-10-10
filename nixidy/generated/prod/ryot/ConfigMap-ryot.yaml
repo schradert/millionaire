@@ -1,6 +1,11 @@
 apiVersion: v1
 data:
+  FRONTEND_OIDC_BUTTON_LABEL: Continue with Keycloak
+  FRONTEND_URL: https://ryot.trdos.me
   SERVER_INSECURE_COOKIE: "false"
+  SERVER_OIDC_CLIENT_ID: ryot
+  SERVER_OIDC_ISSUER_URL: https://keycloak.trdos.me/realms/default
+  USERS_ALLOW_REGISTRATION: "true"
   VIDEO_GAMES_TWITCH_CLIENT_ID: ""
   VIDEO_GAMES_TWITCH_CLIENT_SECRET: ""
 kind: ConfigMap
