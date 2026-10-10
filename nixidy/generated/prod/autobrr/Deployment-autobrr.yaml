@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: fbec8fb3a8aff5ca537df37169a877ad9044ba84e779315422dcbd6794f7e841
+        checksum/configMaps: 71fa535693c5595c5e686cc4cdbb23b88a36904ef027a06539c4c9f17f5e5539
       labels:
         app.kubernetes.io/controller: autobrr
         app.kubernetes.io/instance: autobrr
@@ -58,6 +58,9 @@ spec:
               port: 7474
             timeoutSeconds: 1
           volumeMounts:
+            - mountPath: /admin
+              name: admin
+              readOnly: true
             - mountPath: /config
               name: config
             - mountPath: /secrets
@@ -74,11 +77,67 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
+      initContainers:
+        - args:
+            - |
+              pw=$(cat /admin/password)
+              i=0
+              while :; do
+                rc=0
+                out=$(printf '%s\n' "$pw" | autobrrctl --config /config change-password "$ADMIN_USER" 2>&1) || rc=$?
+                if [ "$rc" = 0 ]; then echo "user $ADMIN_USER present"; exit 0; fi
+                case "$out" in
+                  *"failed to get user"*)
+                    printf '%s\n' "$pw" | autobrrctl --config /config create-user "$ADMIN_USER"
+                    echo "user $ADMIN_USER created"; exit 0 ;;
+                esac
+                i=$((i + 1))
+                if [ "$i" -ge 60 ]; then echo "bootstrap failed: $out" >&2; exit 1; fi
+                sleep 5
+              done
+          command:
+            - /bin/sh
+            - -ec
+          env:
+            - name: ADMIN_USER
+              value: tristan
+            - name: AUTOBRR__DATABASE_TYPE
+              value: postgres
+            - name: AUTOBRR__POSTGRES_DATABASE
+              value: autobrr
+            - name: AUTOBRR__POSTGRES_HOST
+              value: autobrr-rw.media.svc.cluster.local
+            - name: AUTOBRR__POSTGRES_PASSWORD_FILE
+              value: /secrets/db_password.txt
+            - name: AUTOBRR__POSTGRES_PORT
+              value: "5432"
+            - name: AUTOBRR__POSTGRES_USER
+              value: autobrr
+          image: ghcr.io/autobrr/autobrr:v1.74.0@sha256:6f37217bbc0496fff0c7ffb4264545036bf735775e484188b80b31f21daa06e2
+          name: bootstrap
+          volumeMounts:
+            - mountPath: /admin
+              name: admin
+              readOnly: true
+            - mountPath: /config
+              name: config
+            - mountPath: /secrets
+              name: secrets
+              readOnly: true
+            - mountPath: /config/log
+              name: tmpfs
+              subPath: log
+            - mountPath: /tmp
+              name: tmpfs
+              subPath: tmp
       securityContext:
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
       serviceAccountName: autobrr
       volumes:
+        - name: admin
+          secret:
+            secretName: autobrr-admin
         - name: config
           persistentVolumeClaim:
             claimName: autobrr
