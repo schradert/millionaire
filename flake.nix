@@ -15,9 +15,10 @@
       nixpkgs.follows = "nixpkgs";
       flake-parts.follows = "flake-parts";
     };
-    # Fallback: switch to release-26.05 if nixos-unstable jumps to 26.11pre
-    # before the next coordinated bump (home-manager below is pinned to
-    # release-26.05 and must stay paired with nixpkgs' version).
+    # home-manager (below) is on release-26.05 to pair with the locked
+    # nixpkgs (26.05, from before the branch-off). nixos-unstable is 26.11pre
+    # now, so the next nixpkgs bump must move home-manager to master in the
+    # same change, or stay on 26.05 by switching to the line below.
     # nixpkgs.url = "github:nixos/nixpkgs/release-26.05";
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     devenv.url = "github:cachix/devenv";
