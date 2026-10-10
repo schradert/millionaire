@@ -319,21 +319,6 @@
         "type": "github"
       }
     },
-    "crane": {
-      "locked": {
-        "lastModified": 1776396856,
-        "narHash": "sha256-aRJpIJUlZLaf06ekPvqjuU46zvO9K90IxJGpbqodkPs=",
-        "owner": "ipetkov",
-        "repo": "crane",
-        "rev": "28462d6d55c33206ffa5a56c7907ca3125ed788f",
-        "type": "github"
-      },
-      "original": {
-        "owner": "ipetkov",
-        "repo": "crane",
-        "type": "github"
-      }
-    },
     "crate2nix": {
       "inputs": {
         "cachix": "cachix_2",
@@ -1470,30 +1455,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1779726825,
-        "narHash": "sha256-RUkMrREjKDQrA+dA9+xZviGAxM5W1aVdyOr/bSYpHrE=",
+        "lastModified": 1791642191,
+        "narHash": "sha256-0bK0A59rVUn1SRZzo4cNi4VSqAe7vR1gL2/MZl53Frw=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "b179bde238977f7d4454fc770b1a727eaf55111c",
+        "rev": "c58f54c733a7894d84fa2fdff26cc12088c4b78c",
         "type": "github"
       },
       "original": {
         "owner": "nix-community",
-        "ref": "release-26.05",
         "repo": "home-manager",
         "type": "github"
-      }
-    },
-    "kdl": {
-      "flake": false,
-      "locked": {
-        "narHash": "sha256-sck4ySQBnpvo2Uf96gWTUiOwfFoJKBP9GCdvF2XXcAg=",
-        "type": "file",
-        "url": "https://raw.githubusercontent.com/jrobsonchase/nixos-config/8ea380ad196e630044846f06945131602ec7056f/lib/kdl.nix"
-      },
-      "original": {
-        "type": "file",
-        "url": "https://raw.githubusercontent.com/jrobsonchase/nixos-config/8ea380ad196e630044846f06945131602ec7056f/lib/kdl.nix"
       }
     },
     "libpng": {
@@ -1549,11 +1521,11 @@
         "systems": "systems_8"
       },
       "locked": {
-        "lastModified": 1773129940,
-        "narHash": "sha256-bwrQvDyzaGPiWLSVc6OzLe2hV6fBfBrJO2uAANDwpto=",
+        "lastModified": 1787507727,
+        "narHash": "sha256-bckvsiO5lzI5KWF2qLNc7wasAh8xSY6XYqw8+1hWz7k=",
         "owner": "schradert",
         "repo": "nur",
-        "rev": "0a382bc7a46fdc7b486acb80613dc383475fc424",
+        "rev": "c22627ea064ddf39232ef572be84e0ee4f4b8f9a",
         "type": "github"
       },
       "original": {
@@ -2431,7 +2403,6 @@
         "gastown": "gastown",
         "helix": "helix",
         "home-manager": "home-manager",
-        "kdl": "kdl",
         "mac-app-util": "mac-app-util",
         "mynur": "mynur",
         "nix-darwin": "nix-darwin",
@@ -2452,7 +2423,6 @@
         "stylix": "stylix",
         "wezterm": "wezterm",
         "yazi": "yazi",
-        "zjstatus": "zjstatus",
         "zsh-helix-mode": "zsh-helix-mode"
       }
     },
@@ -3040,33 +3010,6 @@
       "original": {
         "owner": "sxyazi",
         "repo": "yazi",
-        "type": "github"
-      }
-    },
-    "zjstatus": {
-      "inputs": {
-        "crane": "crane",
-        "flake-utils": [
-          "flake-utils"
-        ],
-        "nixpkgs": [
-          "nixpkgs"
-        ],
-        "rust-overlay": [
-          "rust-overlay"
-        ]
-      },
-      "locked": {
-        "lastModified": 1776491188,
-        "narHash": "sha256-sjMs63OaRhwCrl46v1A+K2EJdqnw63Pc7BMnHqiU790=",
-        "owner": "dj95",
-        "repo": "zjstatus",
-        "rev": "f7f58bd3cb30352a8da85926636b8ec41770098a",
-        "type": "github"
-      },
-      "original": {
-        "owner": "dj95",
-        "repo": "zjstatus",
         "type": "github"
       }
     },
