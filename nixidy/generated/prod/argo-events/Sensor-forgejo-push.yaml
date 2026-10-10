@@ -29,16 +29,12 @@ spec:
               src:
                 dataKey: body.after
                 dependencyName: push
-            - dest: spec.arguments.parameters.3.value
-              src:
-                dataKey: body.after
-                dependencyName: push
           source:
             resource:
               apiVersion: argoproj.io/v1alpha1
               kind: Workflow
               metadata:
-                generateName: build-deploy-
+                generateName: build-push-
               spec:
                 arguments:
                   parameters:
@@ -46,11 +42,6 @@ spec:
                     - name: revision
                     - name: image-name
                       value: sveltekit-demo
-                    - name: image-tag
-                    - name: rollout-name
-                      value: sveltekit-demo
-                    - name: rollout-namespace
-                      value: development
                 workflowTemplateRef:
-                  name: build-and-deploy
-        name: build-and-deploy
+                  name: build-and-push
+        name: build-and-push

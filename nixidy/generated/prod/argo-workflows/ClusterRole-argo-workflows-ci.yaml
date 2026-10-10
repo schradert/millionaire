@@ -6,13 +6,6 @@ rules:
   - apiGroups:
       - argoproj.io
     resources:
-      - rollouts
-    verbs:
-      - get
-      - patch
-  - apiGroups:
-      - argoproj.io
-    resources:
       - workflowtaskresults
     verbs:
       - create

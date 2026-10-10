@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
-  name: build-and-deploy
+  name: build-and-push
   namespace: cicd
 spec:
   arguments:
@@ -10,10 +10,6 @@ spec:
       - default: main
         name: revision
       - name: image-name
-      - name: image-tag
-      - name: rollout-name
-      - default: development
-        name: rollout-namespace
   entrypoint: ci-pipeline
   serviceAccountName: argo-workflows-ci
   templates:
@@ -23,8 +19,6 @@ spec:
             template: clone
         - - name: build-push
             template: build-push
-        - - name: deploy
-            template: deploy
     - container:
         args:
           - git clone {{workflow.parameters.repo-url}} /workspace/src && cd /workspace/src && git checkout {{workflow.parameters.revision}}
@@ -65,14 +59,6 @@ spec:
             name: registry-auth
             readOnly: true
       name: build-push
-    - container:
-        args:
-          - kubectl argo rollouts set image {{workflow.parameters.rollout-name}} '*=harbor.trdos.me/library/{{workflow.parameters.image-name}}:{{workflow.parameters.image-tag}}' -n {{workflow.parameters.rollout-namespace}}
-        command:
-          - sh
-          - -c
-        image: bitnamilegacy/kubectl:1.32@sha256:9524faf8e3cefb47fa28244a5d15f95ec21a73d963273798e593e61f80712333
-      name: deploy
   volumeClaimTemplates:
     - metadata:
         name: workspace
