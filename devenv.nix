@@ -100,7 +100,10 @@ in {
       # noise (dict()-vs-{}, unused lambda args, README heading style, an
       # upstream comment typo) and any hand-edit is overwritten on regen,
       # so exclude them tree-wide like nixidy/generated.
+      # old/ is the imported schradert/dotfiles history, kept verbatim as a
+      # reference while it is migrated piece by piece; it is never evaluated.
       git-hooks.excludes = [
+        "^old/"
         "nixidy/generated"
         "embedded/templates"
         "pulumi/sdks"
@@ -176,7 +179,7 @@ in {
         # its findings tree-wide first (statix fix).
         statix.entry = lib.mkForce "${lib.getExe pkgs.statix} check --config ${(pkgs.formats.toml {}).generate "statix.toml" {
           disabled = ["repeated_keys" "empty_pattern" "manual_inherit_from"];
-          ignore = [".claude"];
+          ignore = [".claude" "old"];
         }} --format errfmt";
         # tagref: disabled — the repo uses no tag/ref annotations, and the
         # generated tailscale CRDs contain literal bracketed tag:k8s strings
@@ -312,6 +315,7 @@ in {
       editors.zed.enable = true;
       editors.helix.enable = true;
       treefmt.config.settings.global.walk = "filesystem";
+      treefmt.config.settings.global.excludes = ["old/**"];
       treefmt.config.settings.formatter.dprint.options = ["--allow-no-files"];
 
       # Packages
