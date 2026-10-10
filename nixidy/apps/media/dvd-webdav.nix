@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -36,10 +37,7 @@
           controllers.dvd-webdav = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.dvd-webdav = {
-              image = {
-                repository = "hacdias/webdav";
-                tag = "v5.11.3";
-              };
+              image = pinned.images.webdav;
               args = ["--config" "/config/webdav.yml"];
               env.DVD_PASSWORD.valueFrom.secretKeyRef = {
                 name = "dvd-webdav";

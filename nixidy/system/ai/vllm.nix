@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: {
     applications.vllm = {
@@ -22,8 +23,7 @@
               securityContext.supplementalGroups = [0];
             };
             containers.vllm = {
-              image.repository = "vllm/vllm-openai";
-              image.tag = "v0.8.5";
+              image = pinned.images.vllm-openai;
               args = [
                 "--model"
                 "mistralai/Mistral-7B-Instruct-v0.3"

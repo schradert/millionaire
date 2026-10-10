@@ -38,7 +38,7 @@ spec:
               value: mqtt://mosquitto.home.svc.cluster.local:1883
             - name: ZIGBEE2MQTT_CONFIG_SERIAL_PORT
               value: /dev/serial/by-id/TBD-zigbee-stick
-          image: koenkk/zigbee2mqtt:2.12.0
+          image: koenkk/zigbee2mqtt:2.12.0@sha256:1debff565ab6841417bd9f7ce8ad44f8c5f25a8b02a24ce3fd79e4779a4763a5
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0

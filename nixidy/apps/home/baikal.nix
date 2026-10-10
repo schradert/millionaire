@@ -5,6 +5,7 @@ in {
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: {
     gatus.endpoints.baikal = {
@@ -24,10 +25,7 @@ in {
           controllers.baikal = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.baikal = {
-              image = {
-                repository = "ckulka/baikal";
-                tag = "0.10.1-nginx";
-              };
+              image = pinned.images.baikal;
               envFrom = [{secretRef.name = "baikal";}];
               ports = [
                 {

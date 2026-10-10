@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     pkgs,
     ...
   }: let
@@ -41,8 +42,7 @@
               ];
             };
             containers.frigate = {
-              image.repository = "ghcr.io/blakeblackshear/frigate";
-              image.tag = "0.15.1";
+              image = pinned.images.frigate;
               securityContext.privileged = true;
               env = {
                 TZ = "America/Los_Angeles";

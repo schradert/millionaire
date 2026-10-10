@@ -5,6 +5,7 @@ in {
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: {
     # Keycloak OIDC client for promptfoo dashboard
@@ -35,8 +36,7 @@ in {
           controllers.promptfoo = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.promptfoo = {
-              image.repository = "ghcr.io/promptfoo/promptfoo";
-              image.tag = "latest";
+              image = pinned.images.promptfoo;
               args = ["share" "--yes"];
               env = {
                 PROMPTFOO_SHARE_STORE_TYPE = "sqlite";

@@ -45,7 +45,7 @@ spec:
           envFrom:
             - secretRef:
                 name: openclaw
-          image: ghcr.io/openclaw/openclaw:latest
+          image: ghcr.io/openclaw/openclaw:latest@sha256:7f10d5cc975a90b65192eaa099454fe33ce8ce2390806c61c65cd868e9ef730d
           name: openclaw
           ports:
             - containerPort: 18789

@@ -3,7 +3,11 @@
 # Anonymous access is OK because the service is not exposed outside the cluster.
 # No gatus endpoint: raw MQTT doesn't speak HTTP.
 {...}: {
-  nixidy = {charts, ...}: let
+  nixidy = {
+    charts,
+    pinned,
+    ...
+  }: let
     probe = {
       enabled = true;
       custom = true;
@@ -19,8 +23,7 @@
           controllers.mosquitto = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.mosquitto = {
-              image.repository = "eclipse-mosquitto";
-              image.tag = "2.0";
+              image = pinned.images.mosquitto;
               probes.liveness = probe;
               probes.readiness = probe;
               probes.startup = probe;

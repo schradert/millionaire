@@ -31,7 +31,7 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - image: ghcr.io/mainsail-crew/mainsail:v2.13.1
+        - image: ghcr.io/mainsail-crew/mainsail:v2.13.1@sha256:bc681d561db387c5dbc2dbc3b6bfd054ba40770c85d68e8a1c4acb97f1309302
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0

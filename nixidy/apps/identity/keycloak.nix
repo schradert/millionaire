@@ -5,6 +5,7 @@ in {
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: {
     gatus.endpoints.keycloak = {
@@ -20,8 +21,7 @@ in {
           controllers.keycloak = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.keycloak = {
-              image.repository = "quay.io/keycloak/keycloak";
-              image.tag = "26.1";
+              image = pinned.images.keycloak;
               args = ["start"];
               env = {
                 KC_DB = "postgres";

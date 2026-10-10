@@ -5,6 +5,7 @@ in {
   nixidy = {
     charts,
     lib,
+    pinned,
     pkgs,
     ...
   }: let
@@ -343,8 +344,7 @@ in {
         values = {
           controllers.homepage = {
             containers.homepage = {
-              image.repository = "ghcr.io/gethomepage/homepage";
-              image.tag = "v1.2.0";
+              image = pinned.images.homepage;
               env.HOMEPAGE_ALLOWED_HOSTS = hostname;
               ports = lib.toList {
                 name = "http";

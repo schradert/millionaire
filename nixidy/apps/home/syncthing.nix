@@ -5,6 +5,7 @@ in {
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: {
     gatus.endpoints.syncthing = {
@@ -24,10 +25,7 @@ in {
           controllers.syncthing = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.syncthing = {
-              image = {
-                repository = "syncthing/syncthing";
-                tag = "1.29";
-              };
+              image = pinned.images.syncthing;
               env = {
                 STGUIADDRESS = "0.0.0.0:8384";
                 STNODEFAULTFOLDER = "true";

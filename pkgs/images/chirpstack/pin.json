@@ -1,0 +1,9 @@
+{
+  "version": "4",
+  "digest": "sha256:cecb45bd2dfc9de55d32c620d6674093f859a899f4de36eb82924c7aa3bda8de",
+  "source": {
+    "type": "oci-tag",
+    "repository": "chirpstack/chirpstack",
+    "track": "digest"
+  }
+}

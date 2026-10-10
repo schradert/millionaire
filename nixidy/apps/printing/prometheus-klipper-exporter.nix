@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     metricsProbe = {
@@ -17,8 +18,7 @@
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.prometheus-klipper-exporter.containers.prometheus-klipper-exporter = {
-            image.repository = "ghcr.io/scross01/prometheus-klipper-exporter";
-            image.tag = "v0.15.0";
+            image = pinned.images.prometheus-klipper-exporter;
             ports = lib.toList {
               name = "metrics";
               containerPort = 9101;

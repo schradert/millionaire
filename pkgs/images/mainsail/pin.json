@@ -1,0 +1,9 @@
+{
+  "version": "v2.13.1",
+  "digest": "sha256:bc681d561db387c5dbc2dbc3b6bfd054ba40770c85d68e8a1c4acb97f1309302",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/mainsail-crew/mainsail",
+    "tagPattern": "v(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}

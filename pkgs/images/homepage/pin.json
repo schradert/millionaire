@@ -1,0 +1,9 @@
+{
+  "version": "v1.2.0",
+  "digest": "sha256:5e6bcbb595c4e857540577135e0f8b3ffc2e97c23d6e0ddc7df183de5bfdd442",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/gethomepage/homepage",
+    "tagPattern": "v(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}

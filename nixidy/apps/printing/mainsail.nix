@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -20,8 +21,7 @@
           controllers.mainsail = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.mainsail = {
-              image.repository = "ghcr.io/mainsail-crew/mainsail";
-              image.tag = "v2.13.1";
+              image = pinned.images.mainsail;
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
               probes.startup.enabled = true;

@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -26,8 +27,7 @@
           controllers.web = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.web = {
-              image.repository = "thespaghettidetective/web";
-              image.tag = "latest";
+              image = pinned.images.obico-web;
               env = {
                 DEBUG = "False";
                 SITE_USES_HTTPS = "True";
@@ -50,8 +50,7 @@
           };
           controllers.ml = {
             containers.ml = {
-              image.repository = "thespaghettidetective/ml_api";
-              image.tag = "latest";
+              image = pinned.images.obico-ml-api;
               env.ML_API_TOKEN = "$(ML_API_TOKEN)";
               envFrom = [
                 {secretRef.name = "obico";}
@@ -61,8 +60,7 @@
           };
           controllers.redis = {
             containers.redis = {
-              image.repository = "ghcr.io/dragonflydb/dragonfly";
-              image.tag = "v1.25.5";
+              image = pinned.images.dragonfly;
               args = ["--maxmemory" "256mb" "--proactor_threads" "1"];
             };
           };

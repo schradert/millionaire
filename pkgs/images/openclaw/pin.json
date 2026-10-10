@@ -1,0 +1,9 @@
+{
+  "version": "latest",
+  "digest": "sha256:7f10d5cc975a90b65192eaa099454fe33ce8ce2390806c61c65cd868e9ef730d",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/openclaw/openclaw",
+    "track": "digest"
+  }
+}

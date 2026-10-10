@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -24,8 +25,7 @@
               nodeSelector."kubernetes.io/hostname" = "sirver";
             };
             containers.zwave-js-ui = {
-              image.repository = "zwavejs/zwave-js-ui";
-              image.tag = "9.31.0";
+              image = pinned.images.zwave-js-ui;
               securityContext.privileged = true;
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;

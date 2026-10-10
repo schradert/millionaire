@@ -1,0 +1,9 @@
+{
+  "version": "latest",
+  "digest": "sha256:a0463b85904d239f9de9c66f1b5583674d24440c6df5778f897b4a952589fed7",
+  "source": {
+    "type": "oci-tag",
+    "repository": "thespaghettidetective/web",
+    "track": "digest"
+  }
+}

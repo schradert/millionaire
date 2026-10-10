@@ -35,7 +35,7 @@ spec:
                 name: obico
             - secretRef:
                 name: obico-ml-api-token
-          image: thespaghettidetective/ml_api:latest
+          image: thespaghettidetective/ml_api:latest@sha256:1b3d07c5d9c6fddbcd207024830accdef964aff626654cbb7a5f38af7024cdf9
           name: ml
       dnsPolicy: ClusterFirst
       enableServiceLinks: false

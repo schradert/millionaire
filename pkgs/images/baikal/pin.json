@@ -1,0 +1,9 @@
+{
+  "version": "0.10.1-nginx",
+  "digest": "sha256:434bdd162247cc6aa6f878c9b4dce6216e39e79526b980453b13812d5f8ebf4b",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ckulka/baikal",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)-nginx"
+  }
+}

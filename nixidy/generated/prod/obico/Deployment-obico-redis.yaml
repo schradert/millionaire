@@ -32,7 +32,7 @@ spec:
             - 256mb
             - --proactor_threads
             - "1"
-          image: ghcr.io/dragonflydb/dragonfly:v1.25.5
+          image: ghcr.io/dragonflydb/dragonfly:v1.25.5@sha256:b01819940a86415d49bf9a692af3e148665bef23e3b8b78f075e00d0ba7e687d
           name: redis
       dnsPolicy: ClusterFirst
       enableServiceLinks: false

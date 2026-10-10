@@ -5,6 +5,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -49,8 +50,7 @@
           controllers.chirpstack = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.chirpstack = {
-              image.repository = "chirpstack/chirpstack";
-              image.tag = "4";
+              image = pinned.images.chirpstack;
               # -c takes the config directory; chirpstack.toml is mounted into it below.
               args = ["-c" "/etc/chirpstack"];
               envFrom = [{secretRef.name = "chirpstack";}];
