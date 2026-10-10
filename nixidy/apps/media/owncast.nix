@@ -23,7 +23,25 @@
             annotations."reloader.stakater.com/auto" = "true";
             containers.owncast = {
               image = pinned.images.owncast;
-              envFrom = [{secretRef.name = "owncast";}];
+              # Owncast reads no OWNCAST_* env vars, only flags. Kubernetes expands
+              # $(VAR) in args from the container env, and the flags are applied on
+              # every start: -adminpassword rotates the stored admin password (the
+              # default is the well-known `abc123`), and -streamkey REPLACES every
+              # stream key in the database (the default key is also `abc123`).
+              env = {
+                OWNCAST_ADMIN_PASSWORD.valueFrom.secretKeyRef = {
+                  name = "owncast-admin";
+                  key = "password";
+                };
+                OWNCAST_STREAM_KEY.valueFrom.secretKeyRef = {
+                  name = "owncast";
+                  key = "OWNCAST_STREAM_KEY";
+                };
+              };
+              args = [
+                "-adminpassword=$(OWNCAST_ADMIN_PASSWORD)"
+                "-streamkey=$(OWNCAST_STREAM_KEY)"
+              ];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
               probes.startup.enabled = true;
@@ -52,7 +70,11 @@
               namespace = "kube-system";
               sectionName = "https";
             };
-            # Explicit rule: multiple services exist (http + rtmp LB), route HTTP to owncast.
+            # Owncast has no OIDC for admins, and oauth2-proxy can't front /admin:
+            # it rewrites the Authorization header (pass-basic-auth), which breaks
+            # Owncast's basic-auth admin login. So /admin stays direct behind the
+            # generated admin password. Multiple services exist (http + rtmp LB),
+            # so the backend is explicit.
             rules = lib.toList {
               backendRefs = lib.toList {
                 name = "owncast";
@@ -62,29 +84,18 @@
           };
         };
       };
-      # Random once, never refreshed: read it from the secret to configure the
-      # streaming client.
-      resources.passwords.owncast.spec = {
-        length = 32;
-        digits = 10;
-        symbols = 0;
-        noUpper = false;
-        allowRepeat = true;
-      };
-      resources.externalSecrets.owncast.spec = {
-        refreshPolicy = "CreatedOnce";
-        dataFrom = lib.toList {
-          sourceRef.generatorRef = {
-            apiVersion = "generators.external-secrets.io/v1alpha1";
-            kind = "Password";
-            name = "owncast";
-          };
-          rewrite = lib.toList {
-            regexp = {
-              source = "password";
-              target = "OWNCAST_STREAM_KEY";
-            };
-          };
+      # Both generated once and never refreshed. The stream key keeps its
+      # existing value (same generator spec); both are pushed to Bitwarden.
+      generatedSecrets = {
+        owncast = {
+          key = "OWNCAST_STREAM_KEY";
+          upper = true;
+          bitwarden = "owncast/stream-key";
+        };
+        owncast-admin = {
+          key = "password";
+          upper = true;
+          bitwarden = "owncast/admin-password";
         };
       };
     };
