@@ -101,6 +101,30 @@
           settings.aliases.co = "pr checkout";
         };
         programs.gh-dash.enable = true;
+        home.packages = [pkgs.glab];
+      }
+      {
+        # Other git UIs
+        home.packages = with pkgs; [code-maat gitu serie tig];
+        programs.gitui.enable = true;
+      }
+      {
+        # Doom: magit + forge
+        programs.doom-emacs = {
+          extraPackages = e: [e.magit-todos];
+          tangle.init = {
+            tools.magit = ["+forge"];
+            ui.vc-gutter = ["+pretty"];
+          };
+          tangle.config = ''
+            (setq! user-full-name "${user.name}"
+                   user-mail-address "${email}")
+            (after! magit
+              (magit-todos-mode 1)
+              (setq! magit-revision-show-gravatars '("^Author:     " . "^Commit:     ")
+                     magit-diff-refine-hunk 'all))
+          '';
+        };
       }
       {
         # Signing
