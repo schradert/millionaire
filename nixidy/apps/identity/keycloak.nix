@@ -63,7 +63,11 @@ in {
                 custom = true;
                 spec.httpGet.path = "/health/started";
                 spec.httpGet.port = "management";
-                spec.failureThreshold = 60;
+                # The stock image re-augments at boot (build options in env),
+                # chmod-ing every lib jar: an overlay copy-up of ~285MB. On a node
+                # with saturated disk I/O that took >10min and the probe killed it
+                # on every attempt (2026-10-10, octopus). 30min budget.
+                spec.failureThreshold = 180;
                 spec.periodSeconds = 10;
               };
             };
