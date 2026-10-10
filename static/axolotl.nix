@@ -4,7 +4,7 @@
   lib,
   ...
 }: {
-  imports = [./facter ./zfs-legacy.nix flake.inputs.srvos.nixosModules.desktop];
+  imports = [./facter ./tailnet-personal.nix ./zfs-legacy.nix flake.inputs.srvos.nixosModules.desktop];
   profiles.client.enable = true;
   profiles.workstation.enable = true;
   # Installed by the old dotfiles repo
