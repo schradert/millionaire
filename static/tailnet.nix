@@ -8,6 +8,7 @@
   config,
   flake,
   lib,
+  pinned,
   pkgs,
   ...
 }: let
@@ -98,19 +99,8 @@ in {
         # re-asserts it via `tailscale set` on already-running/rebooted nodes.
         extraUpFlags = ["--login-server=https://headscale.${domain}" "--accept-dns=false"];
         useRoutingFeatures = "server";
-        # 1.98 sets net.ipv4.conf.all.src_valid_mark=1, which drops Cilium's
-        # Envoy upstream replies (to-proxy mark 0x200): every Gateway route 503s.
-        # tailscale/tailscale#19796, cilium/cilium#48706.
-        package = pkgs.tailscale.overrideAttrs {
-          version = "1.96.4";
-          src = pkgs.fetchFromGitHub {
-            owner = "tailscale";
-            repo = "tailscale";
-            tag = "v1.96.4";
-            hash = "sha256-VnAEfY8W+2QPnQLvVFJA7/XyvSnppSdRvgAOgpmRFGM=";
-          };
-          vendorHash = "sha256-rhuWEEN+CtumVxOw6Dy/IRxWIrZ2x6RJb6ULYwXCQc4=";
-        };
+        # Held below 1.98 (src_valid_mark breaks Cilium Envoy); see pkgs/tailscale.
+        package = pinned.tailscale;
       };
       sops.secrets = lib.mkIf (cfg.authKeyFile == "") {
         tailscale-authkey.key = "headscale/preauth-key/cluster-node";
