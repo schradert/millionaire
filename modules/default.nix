@@ -22,6 +22,7 @@
         # "discord"
         # "orca-slicer"
         "siyuan"
+        "spotify"
       ];
     };
   };
@@ -125,10 +126,10 @@
               # FIXME get bitwarden desktop app back up!
               # NOTE compiler-rt-libc failing to build
               # bitwarden-desktop
-              spotify
             ]
             (lib.mkIf stdenv.hostPlatform.isLinux [
               beeper
+              spotify
               discord
               brave
               # FIXME darwin: compiler-rt-libc build failure — restore to the
@@ -145,7 +146,16 @@
           spotify-player.enable = true;
           wezterm.enable = true;
           # FIXME why do I keep having to rebuild this?!
-          # zed-editor.enable = true;
+          zed-editor.enable = true;
+          zed-editor.userSettings.agent_servers.gemini = {
+            type = "registry";
+            env = {
+              GOOGLE_GENAI_USE_VERTEXAI = "true";
+              GOOGLE_CLOUD_PROJECT = "";
+              GOOGLE_CLOUD_LOCATION = "";
+              GOOGLE_APPLICATION_CREDENTIALS = "";
+            };
+          };
         };
       })
     ]);
