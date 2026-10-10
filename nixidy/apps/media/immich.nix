@@ -1,4 +1,6 @@
-{config, ...}: {
+{config, ...}: let
+  inherit (config.canivete.meta) people;
+in {
   nixidy = {
     charts,
     lib,
@@ -37,7 +39,7 @@
       group = "internal";
       conditions = ["[STATUS] == any(200, 302, 401)"];
     };
-    # Immich supports native OIDC — configured via the admin UI pointing at this client.
+    # Immich native OIDC: wired up in IMMICH_CONFIG_FILE (immich-config Secret below).
     applications.keycloak.resources.keycloakClients.immich.spec = {
       realmRef.name = "default";
       clientSecretRef = {
@@ -104,9 +106,11 @@
             primary = true;
             port = 2283;
           };
+          # immich.json (oauth + break-glass password login) rendered by ESO so the
+          # client secret never lands in a ConfigMap.
           persistence.config = {
-            type = "configMap";
-            name = "immich-server-immich-server-files";
+            type = "secret";
+            name = "immich-config";
           };
           persistence.secrets = {
             type = "secret";
@@ -118,7 +122,6 @@
             size = "200Gi";
             advancedMounts.immich-server.immich-server = [{path = "/usr/src/app/upload";}];
           };
-          configMaps.immich-server-files.data."immich.json" = builtins.toJSON {};
           configMaps.immich-server.data = {
             IMMICH_CONFIG_FILE = "/config/immich.json";
             DB_HOSTNAME = "immich-rw.media.svc.cluster.local";
@@ -179,6 +182,124 @@
         args = ["--proactor_threads" "2"];
         resources.requests.memory = "512Mi";
         resources.limits.memory = "1Gi";
+      };
+
+      resources.externalSecrets.immich-config.spec = {
+        data = lib.toList {
+          secretKey = "client_secret";
+          remoteRef.key = "immich";
+          remoteRef.property = "client-secret";
+          sourceRef.storeRef.name = "kubernetes-identity";
+          sourceRef.storeRef.kind = "ClusterSecretStore";
+        };
+        target.template.data."immich.json" = builtins.toJSON {
+          server.externalDomain = "https://${hostname}";
+          # Break-glass: the generated admin password (Bitwarden immich/admin-password).
+          passwordLogin.enabled = true;
+          oauth = {
+            enabled = true;
+            issuerUrl = "https://keycloak.${domain}/realms/default";
+            clientId = "immich";
+            clientSecret = "{{ .client_secret }}";
+            scope = "openid email profile";
+            buttonText = "Login with Keycloak";
+            autoRegister = true;
+            autoLaunch = false;
+          };
+        };
+      };
+
+      # Admin password: random once, never refreshed (CreatedOnce), pushed to
+      # Bitwarden so the human can read it. Consumed by the bootstrap job.
+      resources.passwords.immich-admin.spec = {
+        length = 32;
+        digits = 10;
+        symbols = 0;
+        noUpper = false;
+        allowRepeat = true;
+      };
+      resources.externalSecrets.immich-admin.spec = {
+        refreshPolicy = "CreatedOnce";
+        dataFrom = lib.toList {
+          sourceRef.generatorRef = {
+            apiVersion = "generators.external-secrets.io/v1alpha1";
+            kind = "Password";
+            name = "immich-admin";
+          };
+        };
+      };
+      resources.pushSecrets.immich-admin.spec = {
+        secretStoreRefs = lib.toList {
+          name = "bitwarden";
+          kind = "ClusterSecretStore";
+        };
+        selector.secret.name = "immich-admin";
+        data = lib.toList {
+          match = {
+            secretKey = "password";
+            remoteRef.remoteKey = "immich/admin-password";
+          };
+        };
+      };
+      # Idempotent post-sync bootstrap: first admin via /api/auth/admin-sign-up if
+      # the server is uninitialized, then checks login and that OAuth is live
+      # (apps/app-bootstrap). Reruns after every sync, so it must stay a no-op.
+      # Image: `image publish app-bootstrap` (modules/images.nix) -> Harbor.
+      resources.jobs.immich-bootstrap = {
+        metadata.annotations = {
+          "argocd.argoproj.io/hook" = "PostSync";
+          "argocd.argoproj.io/hook-delete-policy" = "BeforeHookCreation";
+        };
+        spec = {
+          backoffLimit = 6;
+          activeDeadlineSeconds = 1200;
+          template.spec = {
+            restartPolicy = "OnFailure";
+            securityContext = {
+              runAsNonRoot = true;
+              runAsUser = 65534;
+              runAsGroup = 65534;
+              seccompProfile.type = "RuntimeDefault";
+            };
+            containers = lib.toList {
+              name = "bootstrap";
+              image = "harbor.${domain}/library/app-bootstrap:0.1.0";
+              args = ["immich"];
+              env = [
+                {
+                  name = "IMMICH_URL";
+                  value = "http://immich-server.media.svc.cluster.local:2283";
+                }
+                {
+                  name = "ADMIN_EMAIL";
+                  value = people.my.profiles.personal.email;
+                }
+                {
+                  name = "ADMIN_PASSWORD_FILE";
+                  value = "/secrets/admin/password";
+                }
+                {
+                  name = "REQUIRE_OAUTH";
+                  value = "1";
+                }
+              ];
+              volumeMounts = lib.toList {
+                name = "admin";
+                mountPath = "/secrets/admin";
+                readOnly = true;
+              };
+              securityContext = {
+                allowPrivilegeEscalation = false;
+                readOnlyRootFilesystem = true;
+                capabilities.drop = ["ALL"];
+              };
+            };
+            volumes = lib.toList {
+              name = "admin";
+              secret.secretName = "immich-admin";
+            };
+          };
+        };
       };
 
       # Not "immich-server": CNPG owns a Secret of that name (the cluster's

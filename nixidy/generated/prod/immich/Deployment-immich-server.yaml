@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 98eca514c3695bf1933ad09f3dbf2bbf8d15baa3701bd1701c6b6dab2948d493
+        checksum/configMaps: 52cd64fa201c0114310cea040c6dde8825becd18b67ae8d031369a54eaae71c3
       labels:
         app.kubernetes.io/controller: immich-server
         app.kubernetes.io/instance: immich-server
@@ -74,9 +74,9 @@ spec:
       hostPID: false
       serviceAccountName: immich-server
       volumes:
-        - configMap:
-            name: immich-server-immich-server-files
-          name: config
+        - name: config
+          secret:
+            secretName: immich-config
         - name: library
           persistentVolumeClaim:
             claimName: immich-server
