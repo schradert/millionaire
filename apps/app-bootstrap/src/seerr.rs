@@ -106,7 +106,13 @@ pub async fn run() -> Result<()> {
 
     let current = get("/api/v1/settings/jellyfin".into()).await?;
     let keep = ids(&current["libraries"], true).join(",");
-    let synced = retry("syncing jellyfin libraries", 24, || get(format!("/api/v1/settings/jellyfin/library?sync=true&enable={keep}"))).await?;
+    // Seerr rejects an empty `enable`, so leave it off when nothing is enabled yet.
+    let sync_path = if keep.is_empty() {
+        "/api/v1/settings/jellyfin/library?sync=true".to_string()
+    } else {
+        format!("/api/v1/settings/jellyfin/library?sync=true&enable={keep}")
+    };
+    let synced = retry("syncing jellyfin libraries", 24, || get(sync_path.clone())).await?;
     let all = ids(&synced, false);
     if all.is_empty() {
         return Err("jellyfin has no libraries yet; not marking seerr initialised".into());
