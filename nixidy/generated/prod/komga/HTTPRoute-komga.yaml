@@ -20,7 +20,7 @@ spec:
     - backendRefs:
         - group: ""
           kind: Service
-          name: oauth2-proxy
-          namespace: identity
-          port: 4180
+          name: komga
+          namespace: media
+          port: 25600
           weight: 1
