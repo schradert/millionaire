@@ -1,0 +1,9 @@
+{
+  "version": "0.20.0",
+  "hash": "sha256-z5jST0PCIZtsvHKF6RFsvWZ+6ilrTX8EmgfVzE00pdc=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://k8tz.github.io/k8tz",
+    "chart": "k8tz"
+  }
+}
