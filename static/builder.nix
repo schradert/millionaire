@@ -13,10 +13,10 @@
 #    resolve on their own; the bare node names are deliberately NOT aliased, they
 #    are what rke2 and attic use). A node's own ssh host key is its client
 #    identity: every peer authorizes the others' host keys for nix-remote-builder,
-#    so no secret needs provisioning. falcon's host key is authorized too so its
-#    daemon can fan `build-all` out to the nodes (falcon itself has no
-#    nix-remote-builder user, so nodes cannot yet use it as a builder: that
-#    needs a change in falcon's own config, schradert/dotfiles).
+#    so no secret needs provisioning. falcon is in the pool both ways: its host
+#    key is authorized so its daemon can fan `build-all` out to the nodes, and
+#    nodes build on it as nix-remote-builder by its LAN name (its tailnet IP
+#    changes on re-registration), authorized in static/falcon-system.nix.
 {
   config,
   lib,
@@ -27,6 +27,16 @@
   me = pool.nodes.${name};
   peers = lib.filterAttrs (n: _: n != name) pool.nodes;
   alias = n: "${n}.tailnet";
+  inherit (pool) falcon;
+  machine = hostName: p: {
+    inherit hostName;
+    sshUser = p.user;
+    sshKey = "/etc/ssh/ssh_host_ed25519_key";
+    protocol = "ssh-ng";
+    inherit (p) systems speedFactor;
+    supportedFeatures = p.features;
+    maxJobs = p.jobs;
+  };
 in {
   nix.daemonCPUSchedPolicy = "idle";
   nix.daemonIOSchedClass = "idle";
@@ -49,14 +59,21 @@ in {
   # nodes run accept-dns=false, so nothing else resolves them.
   networking.hosts =
     lib.mapAttrs' (n: p: lib.nameValuePair p.tailnet [(alias n)]) peers
-    // lib.mapAttrs' (n: p: lib.nameValuePair p.lan [n]) peers;
+    // lib.mapAttrs' (n: p: lib.nameValuePair p.lan [n]) peers
+    // {${falcon.lan} = ["falcon"];};
   programs.ssh.knownHosts =
     lib.mapAttrs' (n: p:
       lib.nameValuePair "builder-${n}" {
         hostNames = [(alias n) p.tailnet];
         publicKey = p.hostKey;
       })
-    peers;
+    peers
+    // {
+      builder-falcon = {
+        hostNames = ["falcon" falcon.lan];
+        publicKey = falcon.hostKey;
+      };
+    };
   roles.nix-remote-builder.schedulerPublicKeys = map (p: p.hostKey) (lib.attrValues peers) ++ [pool.falcon.hostKey];
   # A remote client's build runs in this node's daemon, which would otherwise
   # re-dispatch it through its own `builders` below (hopping it onward to a weaker
@@ -68,14 +85,10 @@ in {
 
   nix.distributedBuilds = true;
   nix.buildMachines =
-    lib.mapAttrsToList (n: p: {
-      hostName = alias n;
-      sshUser = p.user;
-      sshKey = "/etc/ssh/ssh_host_ed25519_key";
-      protocol = "ssh-ng";
-      inherit (p) systems speedFactor;
-      supportedFeatures = p.features;
-      maxJobs = p.jobs;
-    })
-    peers;
+    lib.mapAttrsToList (n: machine (alias n)) peers
+    # Same store URI => falcon's native and emulated entries share its slots.
+    ++ map (machine "falcon") [
+      (falcon // {user = falcon.builderUser;})
+      (falcon // falcon.emulated // {user = falcon.builderUser;})
+    ];
 }

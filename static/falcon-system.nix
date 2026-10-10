@@ -1,7 +1,8 @@
 # falcon (Dell Precision 7820): NixOS desktop, MCU flash host (./falcon.nix
-# profiles) and the Mac's preferred remote builder.
+# profiles) and the fleet's biggest builder (static/builders.nix).
 # Unported: vscode + Continue extension (old/infra/nodes/nixos/default.nix).
 {
+  config,
   flake,
   lib,
   ...
@@ -54,5 +55,14 @@
   # ACPI DSDT bug for Super IO + UART: keep the kernel off the 8250 ports
   boot.kernelParams = ["8250.nr_uarts=0"];
 
-  roles.nix-remote-builder.schedulerPublicKeys = [flake.config.canivete.meta.people.my.profiles.personal.sshPubKey];
+  # Fleet builder (static/builders.nix): the dev host and every cluster node (by
+  # ssh host key). Uncapped, but idle-scheduled so the desktop stays responsive.
+  nix.daemonIOSchedClass = "idle";
+  roles.nix-remote-builder.schedulerPublicKeys =
+    [flake.config.canivete.meta.people.my.profiles.personal.sshPubKey]
+    ++ map (p: p.hostKey) (lib.attrValues (import ./builders.nix).nodes);
+  # Builds that arrive over ssh run here, never re-dispatched (as static/builder.nix)
+  users.users.nix-remote-builder.openssh.authorizedKeys.keys = lib.mkForce (map
+    (key: ''restrict,command="nix-daemon --stdio --option builders \"\"" ${key}'')
+    config.roles.nix-remote-builder.schedulerPublicKeys);
 }
