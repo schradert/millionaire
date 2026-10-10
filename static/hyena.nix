@@ -140,18 +140,14 @@ in {
       # --accept-dns=false (static/tailnet.nix) so their resolution never routes
       # through hyena/the tailnet.
       #
-      # Failover: AdGuard down must not take all tailnet DNS with it, so global
-      # adds a public fallback (ad-blocking is lost, DNS is not). Tailscale races
-      # all global upstreams with no preference for list order, so AdGuard is not
-      # guaranteed to win. Internal names resolve ONLY via AdGuard (split route),
-      # because a public resolver would return the wrong answer for *.trdos.me.
+      # AdGuard is the only resolver on purpose. Tailscale races every global
+      # upstream (first answer wins, and 1.1.1.1 also gets an immediate DoH
+      # query), so a public fallback silently bypasses ad-blocking all the time,
+      # not just during an outage. AdGuard only restarts on config changes.
       dns = {
         magic_dns = false;
         override_local_dns = true;
-        nameservers = {
-          global = ["100.64.0.1" "1.1.1.1"];
-          split."trdos.me" = ["100.64.0.1"];
-        };
+        nameservers.global = ["100.64.0.1"];
       };
     };
   };
