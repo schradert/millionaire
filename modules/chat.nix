@@ -1,6 +1,6 @@
 # Chat clients: TUIs, desktop apps (linux clients / darwin casks), IRC in Doom.
-# beeper/discord/legcord live in modules/{default,client}.nix. Dropped: quiet,
-# webcord, slack (unfree-allowed but not installed today).
+# beeper/discord/legcord live in modules/{default,client}.nix, slack in
+# modules/work. Dropped: quiet, webcord.
 {
   darwin = {
     config,

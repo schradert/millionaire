@@ -19,7 +19,7 @@
       home.packages = with pkgs;
         lib.mkMerge [
           [lazydocker ngrok]
-          (lib.mkIf pkgs.stdenv.hostPlatform.isLinux [snowsql])
+          (lib.mkIf pkgs.stdenv.hostPlatform.isLinux [slack snowsql])
         ];
       home.sessionPath = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin [
         "/Applications/SnowSQL.app/Contents/MacOS"
@@ -43,6 +43,7 @@
     config = lib.mkIf (config.profile == "work" && config.profiles.workstation.enable) {
       homebrew.casks = [
         "docker-desktop"
+        "slack"
         "snowflake-snowsql"
       ];
       # TODO get this to work without homebrew
