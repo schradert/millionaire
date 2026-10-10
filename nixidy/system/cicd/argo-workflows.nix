@@ -320,8 +320,10 @@ in {
                   readOnly = true;
                 }
               ];
+              # Small CPU request (no limit, so builds still burst): with ceph
+              # and loki on bonobo/chinchilla a full core left it Pending.
               resources.requests = {
-                cpu = "1";
+                cpu = "250m";
                 memory = "4Gi";
               };
               resources.limits.memory = "12Gi";
