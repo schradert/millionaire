@@ -123,9 +123,14 @@ in {
         };
       };
 
+      # Apps map admin rights from the groups claim ("admin"). Apps that only
+      # read a role claim get it from group attributes plus a client mapper.
       keycloakGroups.admin.spec = {
         realmRef.name = "default";
-        definition.name = "admin";
+        definition = {
+          name = "admin";
+          attributes.immich_role = ["admin"];
+        };
       };
       keycloakGroups.family.spec = {
         realmRef.name = "default";

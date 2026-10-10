@@ -16,6 +16,7 @@ spec:
       - profile
       - email
       - roles
+      - groups
     directAccessGrantsEnabled: false
     enabled: true
     name: Kavita

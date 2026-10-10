@@ -18,6 +18,9 @@ in {
     };
     # Kavita native OIDC: the bootstrap job writes the settings (needs the client
     # secret, mirrored into media below). Callback paths are fixed by Kavita.
+    # Logins link to an existing user by verified email (tristan -> the
+    # bootstrapped admin). Kavita can only sync roles from a roles claim, which
+    # also rewrites libraries on every login, so admin stays on that account.
     applications.keycloak.resources.keycloakClients.kavita.spec = {
       realmRef.name = "default";
       clientSecretRef = {
@@ -36,7 +39,7 @@ in {
         webOrigins = ["https://${hostname}"];
         attributes."post.logout.redirect.uris" = "https://${hostname}/signout-callback-oidc";
         # Kavita requests openid profile offline_access roles email.
-        defaultClientScopes = ["openid" "profile" "email" "roles"];
+        defaultClientScopes = ["openid" "profile" "email" "roles" "groups"];
         optionalClientScopes = ["offline_access"];
       };
     };
@@ -86,6 +89,8 @@ in {
               }
             ];
           };
+          # Native OIDC, no oauth2-proxy. OPDS clients (e-readers) use the same
+          # route: Kavita enforces its per-user API key on /api/opds.
           route.kavita = {
             hostnames = [hostname];
             parentRefs = lib.toList {
@@ -94,38 +99,6 @@ in {
               sectionName = "https";
             };
             rules = lib.toList {
-              backendRefs = lib.toList {
-                name = "oauth2-proxy";
-                namespace = "identity";
-                port = 4180;
-              };
-            };
-          };
-          # OPDS clients (e-readers) can't complete OIDC, so these paths skip
-          # oauth2-proxy. Kavita enforces its per-user API key on /api/opds
-          # (feed, downloads, page streaming); /api/image only serves covers.
-          route.kavita-opds = {
-            hostnames = [hostname];
-            parentRefs = lib.toList {
-              name = "internal";
-              namespace = "kube-system";
-              sectionName = "https";
-            };
-            rules = lib.toList {
-              matches = [
-                {
-                  path = {
-                    type = "PathPrefix";
-                    value = "/api/opds";
-                  };
-                }
-                {
-                  path = {
-                    type = "PathPrefix";
-                    value = "/api/image";
-                  };
-                }
-              ];
               backendRefs = lib.toList {
                 name = "kavita";
                 port = 5000;
@@ -274,10 +247,6 @@ in {
           };
         };
       };
-    };
-    oauth2Proxy.upstreams."${hostname}" = {
-      url = "http://kavita.media.svc.cluster.local:5000";
-      namespace = "media";
     };
   };
 }
