@@ -28,7 +28,7 @@ findings=$(
   git grep -nIE --no-color \
     -e "$RE_SRI" -e "$RE_HEX" -e "$RE_B32" -e "$RE_ATTR" -e "$RE_REV" \
     -e "$RE_IMG" -e "$RE_YIMG" -e "$RE_TAG" -- \
-    ':(exclude)pkgs/' ':(exclude)nixidy/generated/' ":(exclude)$allow" \
+    ':(exclude)pkgs/' ':(exclude)old/' ':(exclude)nixidy/generated/' ":(exclude)$allow" \
     ':(exclude,glob)**/flake.lock' ':(exclude,glob)**/devenv.lock' \
     ':(exclude,glob)**/Cargo.lock' ':(exclude,glob)**/uv.lock' \
     ':(exclude,glob)**/bun.lock' ':(exclude,glob)**/bun.nix' \
