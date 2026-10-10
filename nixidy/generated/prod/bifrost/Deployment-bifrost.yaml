@@ -16,7 +16,8 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 64984e1bb4b52e43c84a1f669e951cab65f11e9893a8922b3577e58b7903d974
+        checksum/config: 8037914e711d7931ae8bee7b13a9fb285d9e03ceb10e4142ad302303e35c5a6a
+        reloader.stakater.com/auto: "true"
       labels:
         app.kubernetes.io/instance: bifrost
         app.kubernetes.io/managed-by: Helm
@@ -37,7 +38,8 @@ spec:
           envFrom:
             - secretRef:
                 name: bifrost
-          image: docker.io/maximhq/bifrost:v1.3.36
+                optional: true
+          image: docker.io/maximhq/bifrost:v1.5.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3
