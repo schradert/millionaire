@@ -23,6 +23,7 @@
 17. TODO rotate secrets once the cluster is in a state I'm happy with. Known exposures this session: the Cloudflare account token (printed to a local pulumi preview log, since deleted) and a few characters of Maintainerr's Jellyfin API key
 18. TODO daily email digest of alerts (Alertmanager now notifies via ntfy only; per-alert email was removed)
 19. TODO obico postponed until the Voron is back in service
+20. TODO enroll Keycloak strong auth: log in at https://keycloak.trdos.me/realms/default/account as `tristan` with Bitwarden `keycloak/tristan/initial-password`, set a new password, register a passkey (phone/laptop/YubiKey with a FIDO2 PIN), set up TOTP, optionally add a backup YubiKey
 
 ## Conventions
 
