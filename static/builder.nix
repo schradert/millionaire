@@ -44,7 +44,12 @@ in {
     max-jobs = me.jobs;
   };
 
-  networking.hosts = lib.mapAttrs' (n: p: lib.nameValuePair p.tailnet [(alias n)]) peers;
+  # Bare peer names resolve to their LAN address: rke2 joins via
+  # https://sirver:9345 and the attic substituter is http://sirver:8199, and
+  # nodes run accept-dns=false, so nothing else resolves them.
+  networking.hosts =
+    lib.mapAttrs' (n: p: lib.nameValuePair p.tailnet [(alias n)]) peers
+    // lib.mapAttrs' (n: p: lib.nameValuePair p.lan [n]) peers;
   programs.ssh.knownHosts =
     lib.mapAttrs' (n: p:
       lib.nameValuePair "builder-${n}" {
