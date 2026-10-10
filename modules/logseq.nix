@@ -2,21 +2,10 @@
   home = {
     config,
     lib,
+    pinned,
     pkgs,
     ...
   }: let
-    lsq = pkgs.buildGoModule {
-      pname = "lsq";
-      version = "1.5.0";
-      src = pkgs.fetchFromGitHub {
-        owner = "jrswab";
-        repo = "lsq";
-        rev = "v1.5.0";
-        hash = "sha256-sgCYjkV39dG40v4KuX1BOCr5FIrB66l2oueBzHeoNwI=";
-      };
-      vendorHash = "sha256-ZSyfmwhc0FhQ+lLNBVNvJZB/OfR2zwGR6j1ddpY3QxQ=";
-      meta.description = "Ultra-fast CLI companion for Logseq";
-    };
     c = config.lib.stylix.colors.withHashtag;
     logseqThemeCSS = ''
       .dark-theme,
@@ -143,7 +132,7 @@
     config = lib.mkIf config.profiles.workstation.enable {
       home.packages = [
         pkgs.logseq
-        lsq
+        pinned.lsq
       ];
       # Generated theme CSS available at ~/.config/logseq/custom.css
       # Copy or symlink into any graph's logseq/custom.css directory
