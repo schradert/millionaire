@@ -31,7 +31,7 @@ spec:
 
               # One-time initial password (generated, in Bitwarden), temporary so the
               # first login replaces it. The realm attribute stops it ever repeating.
-              if kc get realms/$R --fields attributes | grep -q '"homelab.initial-password.tristan"'; then
+              if kc get realms/$R | grep -q '"homelab.initial-password.tristan"'; then
                 echo "initial password already set once"
               else
                 printf '{"type":"password","temporary":true,"value":"%s"}' "$(cat /secrets/initial/password)" > /tmp/pw.json

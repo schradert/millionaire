@@ -75,7 +75,7 @@ in {
 
       # One-time initial password (generated, in Bitwarden), temporary so the
       # first login replaces it. The realm attribute stops it ever repeating.
-      if kc get realms/$R --fields attributes | grep -q '"${marker}"'; then
+      if kc get realms/$R | grep -q '"${marker}"'; then
         echo "initial password already set once"
       else
         printf '{"type":"password","temporary":true,"value":"%s"}' "$(cat /secrets/initial/password)" > /tmp/pw.json
