@@ -21,6 +21,7 @@
     ./home/mosquitto.nix
     ./home/zigbee2mqtt.nix
     ./home/baikal.nix
+    ./home/dashy.nix
     ./home/homepage.nix
     ./home/syncthing.nix
     ./home/webdav.nix

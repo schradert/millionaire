@@ -1,0 +1,28 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: dashy
+  namespace: identity
+spec:
+  definition:
+    attributes:
+      pkce.code.challenge.method: S256
+    clientId: dashy
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+      - groups
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Dashy
+    protocol: openid-connect
+    publicClient: true
+    redirectUris:
+      - https://dashy.trdos.me
+      - https://dashy.trdos.me/*
+    standardFlowEnabled: true
+    webOrigins:
+      - https://dashy.trdos.me
+  realmRef:
+    name: default

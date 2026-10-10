@@ -1,0 +1,489 @@
+apiVersion: v1
+data:
+  bookmarks.html: |
+    <!DOCTYPE NETSCAPE-Bookmark-file-1>
+    <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+    <TITLE>Bookmarks</TITLE>
+    <H1>Bookmarks</H1>
+    <DL><p>
+      <DT><H3>Homelab</H3>
+      <DL><p>
+      <DT><H3>AI</H3>
+      <DL><p>
+          <DT><A HREF="https://bifrost.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/bifrost.svg">bifrost</A>
+          <DT><A HREF="https://mcp.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/contextforge.svg">contextforge</A>
+          <DT><A HREF="https://chat.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/librechat.svg">librechat</A>
+          <DT><A HREF="https://promptfoo.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/promptfoo.svg">promptfoo</A>
+        </DL><p>
+      <DT><H3>CI/CD</H3>
+      <DL><p>
+          <DT><A HREF="https://argocd.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/argo.svg">argo</A>
+          <DT><A HREF="https://rollouts.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/argo-rollouts.svg">argo-rollouts</A>
+          <DT><A HREF="https://workflows.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/argo-workflows.svg">argo-workflows</A>
+          <DT><A HREF="https://harbor.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/harbor.svg">harbor</A>
+        </DL><p>
+      <DT><H3>Development</H3>
+      <DL><p>
+          <DT><A HREF="https://atuin.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/atuin.svg">atuin</A>
+          <DT><A HREF="https://git.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/forgejo.svg">forgejo</A>
+          <DT><A HREF="https://demo.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/sveltekit-demo.svg">sveltekit-demo</A>
+          <DT><A HREF="https://windmill.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/windmill.svg">windmill</A>
+        </DL><p>
+      <DT><H3>Finance</H3>
+      <DL><p>
+          <DT><A HREF="https://actual.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/actual.svg">actual</A>
+          <DT><A HREF="https://firefly.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/firefly.svg">firefly</A>
+          <DT><A HREF="https://sure.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/sure.svg">sure</A>
+        </DL><p>
+      <DT><H3>Health</H3>
+      <DL><p>
+          <DT><A HREF="https://mealie.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/mealie.svg">mealie</A>
+        </DL><p>
+      <DT><H3>Home</H3>
+      <DL><p>
+          <DT><A HREF="https://dashy.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/dashy.svg">Dashy</A>
+          <DT><A HREF="https://cal.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/baikal.svg">baikal</A>
+          <DT><A HREF="https://chirpstack.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/chirpstack.svg">chirpstack</A>
+          <DT><A HREF="https://excalidraw.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/excalidraw.svg">excalidraw</A>
+          <DT><A HREF="https://frigate.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/frigate.svg">frigate</A>
+          <DT><A HREF="https://hass.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ha.svg">ha</A>
+          <DT><A HREF="https://home.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/homepage.svg">homepage</A>
+          <DT><A HREF="https://kosync.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/kosync.svg">kosync</A>
+          <DT><A HREF="https://logseq.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/logseq.svg">logseq</A>
+          <DT><A HREF="https://siyuan.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/siyuan.svg">siyuan</A>
+          <DT><A HREF="https://sync.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/syncthing.svg">syncthing</A>
+          <DT><A HREF="https://dav.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/webdav.svg">webdav</A>
+          <DT><A HREF="https://zigbee.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/zigbee2mqtt.svg">zigbee2mqtt</A>
+          <DT><A HREF="https://zwave.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/zwave-js-ui.svg">zwave-js-ui</A>
+        </DL><p>
+      <DT><H3>Identity</H3>
+      <DL><p>
+          <DT><A HREF="https://keycloak.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/keycloak.svg">keycloak</A>
+        </DL><p>
+      <DT><H3>Mail</H3>
+      <DL><p>
+          <DT><A HREF="https://webmail.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/bulwark.svg">bulwark</A>
+        </DL><p>
+      <DT><H3>Media</H3>
+      <DL><p>
+          <DT><A HREF="https://audiobookshelf.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/audiobookshelf.svg">audiobookshelf</A>
+          <DT><A HREF="https://autobrr.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/autobrr.svg">autobrr</A>
+          <DT><A HREF="https://bazarr.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/bazarr.svg">bazarr</A>
+          <DT><A HREF="https://dvd.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/dvd-webdav.svg">dvd-webdav</A>
+          <DT><A HREF="https://games.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/games-webdav.svg">games-webdav</A>
+          <DT><A HREF="https://immich.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/immich.svg">immich</A>
+          <DT><A HREF="https://jellyfin.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/jellyfin.svg">jellyfin</A>
+          <DT><A HREF="https://jitsi.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/jitsi.svg">jitsi</A>
+          <DT><A HREF="https://kavita.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/kavita.svg">kavita</A>
+          <DT><A HREF="https://komga.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/komga.svg">komga</A>
+          <DT><A HREF="https://lidarr.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/lidarr.svg">lidarr</A>
+          <DT><A HREF="https://maintainerr.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/maintainerr.svg">maintainerr</A>
+          <DT><A HREF="https://maloja.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/maloja.svg">maloja</A>
+          <DT><A HREF="https://multi-scrobbler.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/multi-scrobbler.svg">multi-scrobbler</A>
+          <DT><A HREF="https://music-assistant.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/music-assistant.svg">music-assistant</A>
+          <DT><A HREF="https://navidrome.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/navidrome.svg">navidrome</A>
+          <DT><A HREF="https://owncast.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/owncast.svg">owncast</A>
+          <DT><A HREF="https://prowlarr.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/prowlarr.svg">prowlarr</A>
+          <DT><A HREF="https://qbittorrent.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/qbittorrent.svg">qbittorrent</A>
+          <DT><A HREF="https://radarr.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/radarr.svg">radarr</A>
+          <DT><A HREF="https://ryot.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ryot.svg">ryot</A>
+          <DT><A HREF="https://seerr.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/seerr.svg">seerr</A>
+          <DT><A HREF="https://shoko.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/shoko.svg">shoko</A>
+          <DT><A HREF="https://sonarr.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/sonarr.svg">sonarr</A>
+        </DL><p>
+      <DT><H3>Observability</H3>
+      <DL><p>
+          <DT><A HREF="https://alertmanager.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/alertmanager.svg">alertmanager</A>
+          <DT><A HREF="https://gatus.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/gatus.svg">gatus</A>
+          <DT><A HREF="https://grafana.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/grafana.svg">grafana</A>
+          <DT><A HREF="https://prometheus.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/prometheus.svg">prometheus</A>
+        </DL><p>
+      <DT><H3>Printing</H3>
+      <DL><p>
+          <DT><A HREF="https://mainsail.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/mainsail.svg">mainsail</A>
+          <DT><A HREF="https://obico.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/obico.svg">obico</A>
+          <DT><A HREF="https://spoolman.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/spoolman.svg">spoolman</A>
+        </DL><p>
+      <DT><H3>Storage</H3>
+      <DL><p>
+          <DT><A HREF="https://rook.trdos.me" ICON_URI="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/rook-ceph.svg">rook-ceph</A>
+        </DL><p>
+      </DL><p>
+    </DL><p>
+  catalog.json: '[{"description":"","groups":[],"icon":"bifrost","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/bifrost.svg","name":"bifrost","section":"AI","title":"bifrost","url":"https://bifrost.trdos.me"},{"description":"","groups":[],"icon":"contextforge","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/contextforge.svg","name":"contextforge","section":"AI","title":"contextforge","url":"https://mcp.trdos.me"},{"description":"","groups":[],"icon":"librechat","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/librechat.svg","name":"librechat","section":"AI","title":"librechat","url":"https://chat.trdos.me"},{"description":"","groups":[],"icon":"promptfoo","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/promptfoo.svg","name":"promptfoo","section":"AI","title":"promptfoo","url":"https://promptfoo.trdos.me"},{"description":"","groups":[],"icon":"argo","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/argo.svg","name":"argo","section":"CI/CD","title":"argo","url":"https://argocd.trdos.me"},{"description":"","groups":[],"icon":"argo-rollouts","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/argo-rollouts.svg","name":"argo-rollouts","section":"CI/CD","title":"argo-rollouts","url":"https://rollouts.trdos.me"},{"description":"","groups":[],"icon":"argo-workflows","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/argo-workflows.svg","name":"argo-workflows","section":"CI/CD","title":"argo-workflows","url":"https://workflows.trdos.me"},{"description":"","groups":[],"icon":"harbor","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/harbor.svg","name":"harbor","section":"CI/CD","title":"harbor","url":"https://harbor.trdos.me"},{"description":"","groups":[],"icon":"atuin","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/atuin.svg","name":"atuin","section":"Development","title":"atuin","url":"https://atuin.trdos.me"},{"description":"","groups":[],"icon":"forgejo","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/forgejo.svg","name":"forgejo","section":"Development","title":"forgejo","url":"https://git.trdos.me"},{"description":"","groups":[],"icon":"sveltekit-demo","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/sveltekit-demo.svg","name":"sveltekit-demo","section":"Development","title":"sveltekit-demo","url":"https://demo.trdos.me"},{"description":"","groups":[],"icon":"windmill","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/windmill.svg","name":"windmill","section":"Development","title":"windmill","url":"https://windmill.trdos.me"},{"description":"","groups":[],"icon":"actual","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/actual.svg","name":"actual","section":"Finance","title":"actual","url":"https://actual.trdos.me"},{"description":"","groups":[],"icon":"firefly","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/firefly.svg","name":"firefly","section":"Finance","title":"firefly","url":"https://firefly.trdos.me"},{"description":"","groups":[],"icon":"sure","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/sure.svg","name":"sure","section":"Finance","title":"sure","url":"https://sure.trdos.me"},{"description":"","groups":[],"icon":"mealie","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/mealie.svg","name":"mealie","section":"Health","title":"mealie","url":"https://mealie.trdos.me"},{"description":"Portal","groups":[],"icon":"dashy","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/dashy.svg","name":"dashy","section":"Home","title":"Dashy","url":"https://dashy.trdos.me"},{"description":"","groups":[],"icon":"baikal","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/baikal.svg","name":"baikal","section":"Home","title":"baikal","url":"https://cal.trdos.me"},{"description":"","groups":[],"icon":"chirpstack","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/chirpstack.svg","name":"chirpstack","section":"Home","title":"chirpstack","url":"https://chirpstack.trdos.me"},{"description":"","groups":[],"icon":"excalidraw","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/excalidraw.svg","name":"excalidraw","section":"Home","title":"excalidraw","url":"https://excalidraw.trdos.me"},{"description":"","groups":[],"icon":"frigate","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/frigate.svg","name":"frigate","section":"Home","title":"frigate","url":"https://frigate.trdos.me"},{"description":"","groups":[],"icon":"ha","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ha.svg","name":"ha","section":"Home","title":"ha","url":"https://hass.trdos.me"},{"description":"","groups":[],"icon":"homepage","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/homepage.svg","name":"homepage","section":"Home","title":"homepage","url":"https://home.trdos.me"},{"description":"","groups":[],"icon":"kosync","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/kosync.svg","name":"kosync","section":"Home","title":"kosync","url":"https://kosync.trdos.me"},{"description":"","groups":[],"icon":"logseq","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/logseq.svg","name":"logseq","section":"Home","title":"logseq","url":"https://logseq.trdos.me"},{"description":"","groups":[],"icon":"siyuan","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/siyuan.svg","name":"siyuan","section":"Home","title":"siyuan","url":"https://siyuan.trdos.me"},{"description":"","groups":[],"icon":"syncthing","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/syncthing.svg","name":"syncthing","section":"Home","title":"syncthing","url":"https://sync.trdos.me"},{"description":"","groups":[],"icon":"webdav","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/webdav.svg","name":"webdav","section":"Home","title":"webdav","url":"https://dav.trdos.me"},{"description":"","groups":[],"icon":"zigbee2mqtt","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/zigbee2mqtt.svg","name":"zigbee2mqtt","section":"Home","title":"zigbee2mqtt","url":"https://zigbee.trdos.me"},{"description":"","groups":[],"icon":"zwave-js-ui","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/zwave-js-ui.svg","name":"zwave-js-ui","section":"Home","title":"zwave-js-ui","url":"https://zwave.trdos.me"},{"description":"","groups":[],"icon":"keycloak","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/keycloak.svg","name":"keycloak","section":"Identity","title":"keycloak","url":"https://keycloak.trdos.me"},{"description":"","groups":[],"icon":"bulwark","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/bulwark.svg","name":"bulwark","section":"Mail","title":"bulwark","url":"https://webmail.trdos.me"},{"description":"","groups":[],"icon":"audiobookshelf","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/audiobookshelf.svg","name":"audiobookshelf","section":"Media","title":"audiobookshelf","url":"https://audiobookshelf.trdos.me"},{"description":"","groups":[],"icon":"autobrr","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/autobrr.svg","name":"autobrr","section":"Media","title":"autobrr","url":"https://autobrr.trdos.me"},{"description":"","groups":[],"icon":"bazarr","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/bazarr.svg","name":"bazarr","section":"Media","title":"bazarr","url":"https://bazarr.trdos.me"},{"description":"","groups":[],"icon":"dvd-webdav","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/dvd-webdav.svg","name":"dvd-webdav","section":"Media","title":"dvd-webdav","url":"https://dvd.trdos.me"},{"description":"","groups":[],"icon":"games-webdav","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/games-webdav.svg","name":"games-webdav","section":"Media","title":"games-webdav","url":"https://games.trdos.me"},{"description":"","groups":[],"icon":"immich","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/immich.svg","name":"immich","section":"Media","title":"immich","url":"https://immich.trdos.me"},{"description":"","groups":[],"icon":"jellyfin","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/jellyfin.svg","name":"jellyfin","section":"Media","title":"jellyfin","url":"https://jellyfin.trdos.me"},{"description":"","groups":[],"icon":"jitsi","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/jitsi.svg","name":"jitsi","section":"Media","title":"jitsi","url":"https://jitsi.trdos.me"},{"description":"","groups":[],"icon":"kavita","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/kavita.svg","name":"kavita","section":"Media","title":"kavita","url":"https://kavita.trdos.me"},{"description":"","groups":[],"icon":"komga","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/komga.svg","name":"komga","section":"Media","title":"komga","url":"https://komga.trdos.me"},{"description":"","groups":[],"icon":"lidarr","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/lidarr.svg","name":"lidarr","section":"Media","title":"lidarr","url":"https://lidarr.trdos.me"},{"description":"","groups":[],"icon":"maintainerr","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/maintainerr.svg","name":"maintainerr","section":"Media","title":"maintainerr","url":"https://maintainerr.trdos.me"},{"description":"","groups":[],"icon":"maloja","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/maloja.svg","name":"maloja","section":"Media","title":"maloja","url":"https://maloja.trdos.me"},{"description":"","groups":[],"icon":"multi-scrobbler","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/multi-scrobbler.svg","name":"multi-scrobbler","section":"Media","title":"multi-scrobbler","url":"https://multi-scrobbler.trdos.me"},{"description":"","groups":[],"icon":"music-assistant","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/music-assistant.svg","name":"music-assistant","section":"Media","title":"music-assistant","url":"https://music-assistant.trdos.me"},{"description":"","groups":[],"icon":"navidrome","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/navidrome.svg","name":"navidrome","section":"Media","title":"navidrome","url":"https://navidrome.trdos.me"},{"description":"","groups":[],"icon":"owncast","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/owncast.svg","name":"owncast","section":"Media","title":"owncast","url":"https://owncast.trdos.me"},{"description":"","groups":[],"icon":"prowlarr","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/prowlarr.svg","name":"prowlarr","section":"Media","title":"prowlarr","url":"https://prowlarr.trdos.me"},{"description":"","groups":[],"icon":"qbittorrent","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/qbittorrent.svg","name":"qbittorrent","section":"Media","title":"qbittorrent","url":"https://qbittorrent.trdos.me"},{"description":"","groups":[],"icon":"radarr","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/radarr.svg","name":"radarr","section":"Media","title":"radarr","url":"https://radarr.trdos.me"},{"description":"","groups":[],"icon":"ryot","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ryot.svg","name":"ryot","section":"Media","title":"ryot","url":"https://ryot.trdos.me"},{"description":"","groups":[],"icon":"seerr","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/seerr.svg","name":"seerr","section":"Media","title":"seerr","url":"https://seerr.trdos.me"},{"description":"","groups":[],"icon":"shoko","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/shoko.svg","name":"shoko","section":"Media","title":"shoko","url":"https://shoko.trdos.me"},{"description":"","groups":[],"icon":"sonarr","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/sonarr.svg","name":"sonarr","section":"Media","title":"sonarr","url":"https://sonarr.trdos.me"},{"description":"","groups":[],"icon":"alertmanager","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/alertmanager.svg","name":"alertmanager","section":"Observability","title":"alertmanager","url":"https://alertmanager.trdos.me"},{"description":"","groups":[],"icon":"gatus","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/gatus.svg","name":"gatus","section":"Observability","title":"gatus","url":"https://gatus.trdos.me"},{"description":"","groups":[],"icon":"grafana","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/grafana.svg","name":"grafana","section":"Observability","title":"grafana","url":"https://grafana.trdos.me"},{"description":"","groups":[],"icon":"prometheus","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/prometheus.svg","name":"prometheus","section":"Observability","title":"prometheus","url":"https://prometheus.trdos.me"},{"description":"","groups":[],"icon":"mainsail","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/mainsail.svg","name":"mainsail","section":"Printing","title":"mainsail","url":"https://mainsail.trdos.me"},{"description":"","groups":[],"icon":"obico","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/obico.svg","name":"obico","section":"Printing","title":"obico","url":"https://obico.trdos.me"},{"description":"","groups":[],"icon":"spoolman","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/spoolman.svg","name":"spoolman","section":"Printing","title":"spoolman","url":"https://spoolman.trdos.me"},{"description":"","groups":[],"icon":"rook-ceph","iconUrl":"https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/rook-ceph.svg","name":"rook-ceph","section":"Storage","title":"rook-ceph","url":"https://rook.trdos.me"}]'
+  conf.yml: |
+    appConfig:
+      auth:
+        enableOidc: true
+        oidc:
+          adminGroup: admin
+          clientId: dashy
+          endpoint: https://keycloak.trdos.me/realms/default
+          scope: openid profile email groups
+      customCss: "@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz@9..40&display=swap');\n\
+        html[data-theme='dracula'] {\n  --font-body: 'DM Sans', sans-serif;\n  --font-headings:\
+        \ 'DM Sans', sans-serif;\n  --primary: #bd93f9;\n  --background: #282a36;\n  --background-darker:\
+        \ #15161d;\n  --item-background: #44475a46;\n  --item-background-hover: #44475a91;\n\
+        \  --item-text-color: #f8f8f2;\n  --description-tooltip-color: #bd93f9;\n}\n"
+      disableConfigurationForNonAdmin: true
+      enableServiceWorker: true
+      iconSize: medium
+      layout: auto
+      preventWriteToDisk: true
+      theme: dracula
+    pageInfo:
+      navLinks:
+      - path: /bookmarks.html
+        title: Bookmarks
+      - path: /catalog.json
+        title: Catalog
+      title: Homelab
+    sections:
+    - items:
+      - description: ''
+        icon: hl-bifrost
+        target: newtab
+        title: bifrost
+        url: https://bifrost.trdos.me
+      - description: ''
+        icon: hl-contextforge
+        target: newtab
+        title: contextforge
+        url: https://mcp.trdos.me
+      - description: ''
+        icon: hl-librechat
+        target: newtab
+        title: librechat
+        url: https://chat.trdos.me
+      - description: ''
+        icon: hl-promptfoo
+        target: newtab
+        title: promptfoo
+        url: https://promptfoo.trdos.me
+      name: AI
+    - items:
+      - description: ''
+        icon: hl-argo
+        target: newtab
+        title: argo
+        url: https://argocd.trdos.me
+      - description: ''
+        icon: hl-argo-rollouts
+        target: newtab
+        title: argo-rollouts
+        url: https://rollouts.trdos.me
+      - description: ''
+        icon: hl-argo-workflows
+        target: newtab
+        title: argo-workflows
+        url: https://workflows.trdos.me
+      - description: ''
+        icon: hl-harbor
+        target: newtab
+        title: harbor
+        url: https://harbor.trdos.me
+      name: CI/CD
+    - items:
+      - description: ''
+        icon: hl-atuin
+        target: newtab
+        title: atuin
+        url: https://atuin.trdos.me
+      - description: ''
+        icon: hl-forgejo
+        target: newtab
+        title: forgejo
+        url: https://git.trdos.me
+      - description: ''
+        icon: hl-sveltekit-demo
+        target: newtab
+        title: sveltekit-demo
+        url: https://demo.trdos.me
+      - description: ''
+        icon: hl-windmill
+        target: newtab
+        title: windmill
+        url: https://windmill.trdos.me
+      name: Development
+    - items:
+      - description: ''
+        icon: hl-actual
+        target: newtab
+        title: actual
+        url: https://actual.trdos.me
+      - description: ''
+        icon: hl-firefly
+        target: newtab
+        title: firefly
+        url: https://firefly.trdos.me
+      - description: ''
+        icon: hl-sure
+        target: newtab
+        title: sure
+        url: https://sure.trdos.me
+      name: Finance
+    - items:
+      - description: ''
+        icon: hl-mealie
+        target: newtab
+        title: mealie
+        url: https://mealie.trdos.me
+      name: Health
+    - items:
+      - description: Portal
+        icon: hl-dashy
+        target: newtab
+        title: Dashy
+        url: https://dashy.trdos.me
+      - description: ''
+        icon: hl-baikal
+        target: newtab
+        title: baikal
+        url: https://cal.trdos.me
+      - description: ''
+        icon: hl-chirpstack
+        target: newtab
+        title: chirpstack
+        url: https://chirpstack.trdos.me
+      - description: ''
+        icon: hl-excalidraw
+        target: newtab
+        title: excalidraw
+        url: https://excalidraw.trdos.me
+      - description: ''
+        icon: hl-frigate
+        target: newtab
+        title: frigate
+        url: https://frigate.trdos.me
+      - description: ''
+        icon: hl-ha
+        target: newtab
+        title: ha
+        url: https://hass.trdos.me
+      - description: ''
+        icon: hl-homepage
+        target: newtab
+        title: homepage
+        url: https://home.trdos.me
+      - description: ''
+        icon: hl-kosync
+        target: newtab
+        title: kosync
+        url: https://kosync.trdos.me
+      - description: ''
+        icon: hl-logseq
+        target: newtab
+        title: logseq
+        url: https://logseq.trdos.me
+      - description: ''
+        icon: hl-siyuan
+        target: newtab
+        title: siyuan
+        url: https://siyuan.trdos.me
+      - description: ''
+        icon: hl-syncthing
+        target: newtab
+        title: syncthing
+        url: https://sync.trdos.me
+      - description: ''
+        icon: hl-webdav
+        target: newtab
+        title: webdav
+        url: https://dav.trdos.me
+      - description: ''
+        icon: hl-zigbee2mqtt
+        target: newtab
+        title: zigbee2mqtt
+        url: https://zigbee.trdos.me
+      - description: ''
+        icon: hl-zwave-js-ui
+        target: newtab
+        title: zwave-js-ui
+        url: https://zwave.trdos.me
+      name: Home
+    - items:
+      - description: ''
+        icon: hl-keycloak
+        target: newtab
+        title: keycloak
+        url: https://keycloak.trdos.me
+      name: Identity
+    - items:
+      - description: ''
+        icon: hl-bulwark
+        target: newtab
+        title: bulwark
+        url: https://webmail.trdos.me
+      name: Mail
+    - items:
+      - description: ''
+        icon: hl-audiobookshelf
+        target: newtab
+        title: audiobookshelf
+        url: https://audiobookshelf.trdos.me
+      - description: ''
+        icon: hl-autobrr
+        target: newtab
+        title: autobrr
+        url: https://autobrr.trdos.me
+      - description: ''
+        icon: hl-bazarr
+        target: newtab
+        title: bazarr
+        url: https://bazarr.trdos.me
+      - description: ''
+        icon: hl-dvd-webdav
+        target: newtab
+        title: dvd-webdav
+        url: https://dvd.trdos.me
+      - description: ''
+        icon: hl-games-webdav
+        target: newtab
+        title: games-webdav
+        url: https://games.trdos.me
+      - description: ''
+        icon: hl-immich
+        target: newtab
+        title: immich
+        url: https://immich.trdos.me
+      - description: ''
+        icon: hl-jellyfin
+        target: newtab
+        title: jellyfin
+        url: https://jellyfin.trdos.me
+      - description: ''
+        icon: hl-jitsi
+        target: newtab
+        title: jitsi
+        url: https://jitsi.trdos.me
+      - description: ''
+        icon: hl-kavita
+        target: newtab
+        title: kavita
+        url: https://kavita.trdos.me
+      - description: ''
+        icon: hl-komga
+        target: newtab
+        title: komga
+        url: https://komga.trdos.me
+      - description: ''
+        icon: hl-lidarr
+        target: newtab
+        title: lidarr
+        url: https://lidarr.trdos.me
+      - description: ''
+        icon: hl-maintainerr
+        target: newtab
+        title: maintainerr
+        url: https://maintainerr.trdos.me
+      - description: ''
+        icon: hl-maloja
+        target: newtab
+        title: maloja
+        url: https://maloja.trdos.me
+      - description: ''
+        icon: hl-multi-scrobbler
+        target: newtab
+        title: multi-scrobbler
+        url: https://multi-scrobbler.trdos.me
+      - description: ''
+        icon: hl-music-assistant
+        target: newtab
+        title: music-assistant
+        url: https://music-assistant.trdos.me
+      - description: ''
+        icon: hl-navidrome
+        target: newtab
+        title: navidrome
+        url: https://navidrome.trdos.me
+      - description: ''
+        icon: hl-owncast
+        target: newtab
+        title: owncast
+        url: https://owncast.trdos.me
+      - description: ''
+        icon: hl-prowlarr
+        target: newtab
+        title: prowlarr
+        url: https://prowlarr.trdos.me
+      - description: ''
+        icon: hl-qbittorrent
+        target: newtab
+        title: qbittorrent
+        url: https://qbittorrent.trdos.me
+      - description: ''
+        icon: hl-radarr
+        target: newtab
+        title: radarr
+        url: https://radarr.trdos.me
+      - description: ''
+        icon: hl-ryot
+        target: newtab
+        title: ryot
+        url: https://ryot.trdos.me
+      - description: ''
+        icon: hl-seerr
+        target: newtab
+        title: seerr
+        url: https://seerr.trdos.me
+      - description: ''
+        icon: hl-shoko
+        target: newtab
+        title: shoko
+        url: https://shoko.trdos.me
+      - description: ''
+        icon: hl-sonarr
+        target: newtab
+        title: sonarr
+        url: https://sonarr.trdos.me
+      name: Media
+    - items:
+      - description: ''
+        icon: hl-alertmanager
+        target: newtab
+        title: alertmanager
+        url: https://alertmanager.trdos.me
+      - description: ''
+        icon: hl-gatus
+        target: newtab
+        title: gatus
+        url: https://gatus.trdos.me
+      - description: ''
+        icon: hl-grafana
+        target: newtab
+        title: grafana
+        url: https://grafana.trdos.me
+      - description: ''
+        icon: hl-prometheus
+        target: newtab
+        title: prometheus
+        url: https://prometheus.trdos.me
+      name: Observability
+    - items:
+      - description: ''
+        icon: hl-mainsail
+        target: newtab
+        title: mainsail
+        url: https://mainsail.trdos.me
+      - description: ''
+        icon: hl-obico
+        target: newtab
+        title: obico
+        url: https://obico.trdos.me
+      - description: ''
+        icon: hl-spoolman
+        target: newtab
+        title: spoolman
+        url: https://spoolman.trdos.me
+      name: Printing
+    - items:
+      - description: ''
+        icon: hl-rook-ceph
+        target: newtab
+        title: rook-ceph
+        url: https://rook.trdos.me
+      name: Storage
+kind: ConfigMap
+metadata:
+  name: dashy
+  namespace: home
