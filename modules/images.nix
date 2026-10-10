@@ -221,6 +221,30 @@
           };
         };
 
+      # org-bridge: org files <-> CalDAV reconciliation worker. amd64 as above.
+      org-bridge = let
+        amd64Pkgs = import inputs.nixpkgs {system = "x86_64-linux";};
+        src = ../org-bridge;
+        pkg = amd64Pkgs.rustPlatform.buildRustPackage {
+          pname = "org-bridge";
+          version = "0.1.0";
+          inherit src;
+          cargoLock.lockFile = "${src}/Cargo.lock";
+          nativeBuildInputs = [amd64Pkgs.pkg-config];
+          buildInputs = [amd64Pkgs.openssl];
+        };
+      in
+        n2c.buildImage {
+          name = "${registry}/library/org-bridge";
+          tag = pkg.version;
+          arch = "amd64";
+          config = {
+            Entrypoint = ["${pkg}/bin/org-bridge"];
+            Env = ["SSL_CERT_FILE=${amd64Pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"];
+          };
+          layers = [(n2c.buildLayer {deps = [pkg amd64Pkgs.cacert];})];
+        };
+
       govee2mqtt = n2c.buildImage {
         name = "${registry}/library/govee2mqtt";
         tag = linuxPkgs.govee2mqtt.version;
