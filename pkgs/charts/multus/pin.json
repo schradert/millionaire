@@ -1,0 +1,10 @@
+{
+  "version": "7.0.0",
+  "hash": "sha256-8zIVmWsA1Sd3P/fNGXuhEYadA47uZtEdb0cEIvy6gtA=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://angelnu.github.io/helm-charts",
+    "chart": "multus"
+  },
+  "hold": "angelnu re-publishes 7.0.0 in place (chartHash drifts, common library changes); re-pin the hash and re-verify the render by hand, never auto-bump"
+}

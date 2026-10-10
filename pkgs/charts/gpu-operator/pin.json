@@ -1,0 +1,9 @@
+{
+  "version": "v24.9.2",
+  "hash": "sha256-OZTki30gm8nNOb0nZqPTvvRLDt34G3DgkbqP5mfVjAU=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://helm.ngc.nvidia.com/nvidia",
+    "chart": "gpu-operator"
+  }
+}

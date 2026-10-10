@@ -1,5 +1,9 @@
 {config, ...}: {
-  nixidy = {lib, ...}: let
+  nixidy = {
+    lib,
+    pinned,
+    ...
+  }: let
     inherit (config.canivete.meta) domain;
     hostname = "harbor.${domain}";
     namespace = "cicd";
@@ -44,12 +48,7 @@
             r.kind or ""
             != "Secret"
             || !builtins.elem (r.metadata.name or "") managedSecrets);
-        chart = lib.helm.downloadHelmChart {
-          chart = "harbor";
-          version = "1.18.3";
-          repo = "https://helm.goharbor.io";
-          chartHash = "sha256-fQdrdJhG33EOaESKRVYmPHVZUg7oVrX5TqLFWw/b6nY=";
-        };
+        chart = pinned.charts.harbor;
         values = {
           externalURL = "https://${hostname}";
           expose.type = "clusterIP";

@@ -17,12 +17,7 @@ in {
     applications.volsync = {
       namespace = "storage";
       helm.releases.volsync = {
-        chart = lib.helm.downloadHelmChart {
-          chart = "volsync";
-          version = "0.15.0";
-          repo = "https://backube.github.io/helm-charts";
-          chartHash = "sha256-MZxxd26S9wST2Jy7fFhriQX2T4n1gNKu2d+jtlPYpEs=";
-        };
+        chart = pinned.charts.volsync;
         values.manageCRDs = false;
       };
     };

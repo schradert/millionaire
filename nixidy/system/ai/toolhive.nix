@@ -1,13 +1,8 @@
 {config, ...}: let
   inherit (config.canivete.meta) domain;
 in {
-  nixidy = {lib, ...}: let
-    crdChart = lib.helm.downloadHelmChart {
-      chart = "toolhive-operator-crds";
-      version = "0.0.55";
-      repo = "oci://ghcr.io/stacklok/toolhive";
-      chartHash = "sha256-5xFM9vwSzHV8DQY+Bl9dfjfvqgvq/IwItyGt7fshaNo=";
-    };
+  nixidy = {pinned, ...}: let
+    crdChart = pinned.charts.toolhive-operator-crds;
   in {
     # Keycloak OIDC client for ToolHive-managed MCP servers
     # Consumed by MCPExternalAuthConfig CRs authored per-MCPServer in follow-up work.
@@ -38,12 +33,7 @@ in {
     applications.toolhive = {
       namespace = "ai";
       helm.releases.toolhive = {
-        chart = lib.helm.downloadHelmChart {
-          chart = "toolhive-operator";
-          version = "0.5.5";
-          repo = "oci://ghcr.io/stacklok/toolhive";
-          chartHash = "sha256-HtHlH/C79k2SFf8ANTD6u75suQIrq+wOWx5FEamCiCM=";
-        };
+        chart = pinned.charts.toolhive-operator;
         values = {
           crds.install = false;
         };

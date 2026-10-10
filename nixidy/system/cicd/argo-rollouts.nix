@@ -23,12 +23,7 @@ in {
     applications.argo-rollouts = {
       namespace = "cicd";
       helm.releases.argo-rollouts = {
-        chart = lib.helm.downloadHelmChart {
-          chart = "argo-rollouts";
-          version = "2.40.9";
-          repo = "https://argoproj.github.io/argo-helm";
-          chartHash = "sha256-mmv2qZaz0nvCx4Jwbha2CF52s+coL0xZ23PuOfF4P5A=";
-        };
+        chart = pinned.charts.argo-rollouts;
         values = {
           installCRDs = false;
           dashboard = {

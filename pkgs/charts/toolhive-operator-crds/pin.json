@@ -1,0 +1,9 @@
+{
+  "version": "0.0.55",
+  "hash": "sha256-5xFM9vwSzHV8DQY+Bl9dfjfvqgvq/IwItyGt7fshaNo=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "oci://ghcr.io/stacklok/toolhive",
+    "chart": "toolhive-operator-crds"
+  }
+}

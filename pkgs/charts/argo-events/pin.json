@@ -1,0 +1,9 @@
+{
+  "version": "2.4.21",
+  "hash": "sha256-I2seJPvPXti08DSnWFbjH9wj4ysx8zYLSN4D8CU4aHQ=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://argoproj.github.io/argo-helm",
+    "chart": "argo-events"
+  }
+}

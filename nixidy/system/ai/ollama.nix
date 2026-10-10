@@ -2,7 +2,11 @@
   inherit (config.canivete.meta) domain;
   hostname = "ollama.${domain}";
 in {
-  nixidy = {lib, ...}: {
+  nixidy = {
+    lib,
+    pinned,
+    ...
+  }: {
     gatus.endpoints.ollama = {
       url = "http://ollama.ai.svc.cluster.local:11434/";
       group = "internal";
@@ -11,12 +15,7 @@ in {
     applications.ollama = {
       namespace = "ai";
       helm.releases.ollama = {
-        chart = lib.helm.downloadHelmChart {
-          chart = "ollama";
-          version = "1.12.0";
-          repo = "https://otwld.github.io/ollama-helm/";
-          chartHash = "sha256-U5tBXc49GzKtCfCEV7G9nN7tQKXF5A+rUvS8OZJ2rPg=";
-        };
+        chart = pinned.charts.ollama;
         values = {
           ollama = {
             gpu = {

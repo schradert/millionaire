@@ -9,6 +9,7 @@ in {
   nixidy = {
     config,
     lib,
+    pinned,
     pkgs,
     ...
   }: {
@@ -31,12 +32,7 @@ in {
         namespace = "observability";
         postgres.enable = true;
         helm.releases.gatus = {
-          chart = lib.helm.downloadHelmChart {
-            chart = "gatus";
-            version = "1.5.0";
-            repo = "https://twin.github.io/helm-charts";
-            chartHash = "sha256-5Xr+CFgE1o62Tc+xkJvtvTmpMg2uMVx4zAJ7ank99cg=";
-          };
+          chart = pinned.charts.gatus;
           values = {
             image.tag = "v5.34.0";
             annotations."secret.reloader.stakater.com/auto" = "true";

@@ -90,18 +90,9 @@
     applications.multus = {
       namespace = "kube-system";
       helm.releases.multus = {
-        chart = lib.helm.downloadHelmChart {
-          chart = "multus";
-          version = "7.0.0";
-          repo = "https://angelnu.github.io/helm-charts";
-          # angelnu re-publishes the 7.0.0 tarball in place periodically (a
-          # mutable tag — old bytes vanish from the repo), so this chartHash
-          # drifts and must be re-pinned each time, re-verifying the render
-          # after since content can shift. Currently: common library 5.0.1,
-          # appVersion 4.3.0 (rendered image multus-cni:4.3.0-thick). Values
-          # below are adapted for common 5.x behavior.
-          chartHash = "sha256-8zIVmWsA1Sd3P/fNGXuhEYadA47uZtEdb0cEIvy6gtA=";
-        };
+        # Held: angelnu re-publishes 7.0.0 in place (see pkgs/charts/multus);
+        # values below are adapted for its common 5.x library.
+        chart = pinned.charts.multus;
         # The CRD is owned by the multus-crds application above.
         includeCRDs = false;
         values = {

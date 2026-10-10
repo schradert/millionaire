@@ -1,0 +1,9 @@
+{
+  "version": "7.2.1",
+  "hash": "sha256-0dChbwLDBrLsPoFwmLWYU0NsOyv/KioEZ/vwv4vqE6Q=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "oci://ghcr.io/prometheus-community/charts",
+    "chart": "kube-state-metrics"
+  }
+}

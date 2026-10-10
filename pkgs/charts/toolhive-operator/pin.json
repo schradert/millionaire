@@ -1,0 +1,9 @@
+{
+  "version": "0.5.5",
+  "hash": "sha256-HtHlH/C79k2SFf8ANTD6u75suQIrq+wOWx5FEamCiCM=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "oci://ghcr.io/stacklok/toolhive",
+    "chart": "toolhive-operator"
+  }
+}

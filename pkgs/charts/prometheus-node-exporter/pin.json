@@ -1,0 +1,9 @@
+{
+  "version": "4.52.1",
+  "hash": "sha256-44nu8ZcaxFkbwygc11LUo2YOug0iUnKhQxQBqV4dM3o=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "oci://ghcr.io/prometheus-community/charts",
+    "chart": "prometheus-node-exporter"
+  }
+}
