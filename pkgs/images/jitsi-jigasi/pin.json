@@ -1,0 +1,10 @@
+{
+  "version": "jigasi-1.1-407-g1e3a7ac-1",
+  "digest": "sha256:2f063da007903bacc756c79e751e189b339703f2f7a8e58492792e60c4984e72",
+  "source": {
+    "type": "oci-tag",
+    "repository": "jitsi/jigasi",
+    "tagPattern": "jigasi-(\\d+\\.\\d+)-(\\d+)-g[0-9a-f]+-1"
+  },
+  "hold": "jitsi components move together with charts/jitsi-meet; bump them as a set by hand"
+}

@@ -1,0 +1,10 @@
+{
+  "version": "jicofo-1.0-1174-1",
+  "digest": "sha256:b4f9adfa4d752e87c82428aa7241a8a4e3aaafa9db370d57ba3c0e179d0d57da",
+  "source": {
+    "type": "oci-tag",
+    "repository": "jitsi/jicofo",
+    "tagPattern": "jicofo-(\\d+\\.\\d+)-(\\d+)-1"
+  },
+  "hold": "jitsi components move together with charts/jitsi-meet; bump them as a set by hand"
+}

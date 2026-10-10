@@ -5,6 +5,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -31,9 +32,7 @@
             annotations."reloader.stakater.com/auto" = "true";
             pod.securityContext.fsGroup = 33;
             containers.firefly = {
-              image.repository = "fireflyiii/core";
-              image.tag = "version-6.5.4";
-              image.digest = "sha256:6ae1b92eb73b4ae8a8e7e038440b93fba46267e05b5b903c62316b8cb03779af";
+              image = pinned.images.firefly-core;
               ports = lib.toList {
                 name = "http";
                 containerPort = 8080;
@@ -88,9 +87,7 @@
           controllers.firefly-importer = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.firefly-importer = {
-              image.repository = "fireflyiii/data-importer";
-              image.tag = "version-2.2.1";
-              image.digest = "sha256:98cb3aa6dbd6681cbdc590a5d70dd7d964b637bac863d947bcbc20448ac56b8a";
+              image = pinned.images.firefly-data-importer;
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
               probes.startup.enabled = true;

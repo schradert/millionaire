@@ -1,0 +1,9 @@
+{
+  "version": "version-2.2.1",
+  "digest": "sha256:98cb3aa6dbd6681cbdc590a5d70dd7d964b637bac863d947bcbc20448ac56b8a",
+  "source": {
+    "type": "oci-tag",
+    "repository": "fireflyiii/data-importer",
+    "tagPattern": "version-(\\d+\\.\\d+\\.\\d+)"
+  }
+}

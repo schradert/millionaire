@@ -7,6 +7,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -47,9 +48,7 @@
           controllers.mealie = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.mealie = {
-              image.repository = "ghcr.io/mealie-recipes/mealie";
-              image.tag = "v3.0.1";
-              image.digest = "sha256:4d7542becc4f5a2a87c13f1073c974430006f56207278ade541bd93450b8fb5f";
+              image = pinned.images.mealie;
               envFrom = [{configMapRef.name = "mealie";}];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
