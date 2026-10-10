@@ -81,5 +81,5 @@ For a real restore, use the same Cluster spec under the original name after dele
 - ReplicationSources with no sync ever: forgejo (data-forgejo-0), baikal, ha-config, syncthing, zwave-js-ui, audiobookshelf, prosody.
 - Stale: actual (last sync 2026-03-17), jitsi jibri (2026-10-07), media-dvd (2026-10-09).
 - CNPG ScheduledBackups with no recent backup: windmill and chirpstack (93d), immich (107d), hydra/keto/kratos (205d, clusters no longer exist).
-- No VolSync source at all for the CephFS media libraries (`media-movies` 500Gi, `media-tv`, `media-music`, ...), frigate-media,
-  ai model caches, and a number of other PVCs.
+- No VolSync source for any PVC in `ai`, for `frigate-media`, or for the CephFS media libraries except `media-dvd`
+  (`media-movies` 500Gi, `media-tv`, `media-music`, ...).
