@@ -34,14 +34,16 @@ in {
             metrics.enabled = true;
             metrics.serviceMonitor.enabled = true;
           };
-          controller.trafficRouterPlugins = lib.toList {
+          # The controller downloads the plugin at startup and checks sha256.
+          # Asset is "gatewayapi-plugin-…"; "gateway-api-plugin-…" 404s.
+          controller.trafficRouterPlugins = lib.toList (with pinned.argo-rollouts-gatewayapi.pin; {
             name = "argoproj-labs/gatewayAPI";
-            # Asset is "gatewayapi-plugin-…" upstream; the previous
-            # "gateway-api-plugin-…" name 404s and would crashloop the controller.
-            location = "https://github.com/argoproj-labs/rollouts-plugin-trafficrouter-gatewayapi/releases/download/v0.15.0/gatewayapi-plugin-linux-amd64";
-            # Tamper-evident pin — the controller downloads this at startup
-            sha256 = "24816da0e613836b3f180a2b50f6199431668c72d7f4adeef09284bffc6582a1";
-          };
+            location = builtins.replaceStrings ["{version}"] [version] source.url;
+            sha256 = builtins.convertHash {
+              inherit hash;
+              toHashFormat = "base16";
+            };
+          });
         };
       };
       # Dashboard has no native auth — front with oauth2-proxy
