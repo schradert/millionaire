@@ -1,0 +1,9 @@
+{
+  "version": "2.47.2",
+  "digest": "sha256:062a01ad7a0eb17cff382bc5e26086b4d710e56dfdfdf001109a49b6d9bd378c",
+  "source": {
+    "type": "oci-tag",
+    "repository": "alpine/git",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}

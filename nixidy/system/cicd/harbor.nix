@@ -258,7 +258,7 @@
             restartPolicy = "OnFailure";
             initContainers = lib.toList {
               name = "wait-for-harbor";
-              image = "curlimages/curl:8.13.0";
+              image = with pinned.images.curl; "${repository}:${tag}@${digest}";
               command = ["sh" "-c"];
               args = [
                 ''
@@ -271,7 +271,7 @@
             };
             containers = lib.toList {
               name = "init";
-              image = "curlimages/curl:8.13.0";
+              image = with pinned.images.curl; "${repository}:${tag}@${digest}";
               command = ["sh" "-c"];
               args = let
                 api = "http://harbor.${namespace}.svc.cluster.local/api/v2.0";

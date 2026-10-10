@@ -43,7 +43,7 @@ spec:
             - secretRef:
                 name: bifrost
                 optional: true
-          image: docker.io/maximhq/bifrost:v1.5.0
+          image: docker.io/maximhq/bifrost:v1.5.0@sha256:42d73fff0e8296f8f2f852904ce36351242847f0ccc8ffa8ddcbeb9026f36f29
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3

@@ -1,0 +1,9 @@
+{
+  "version": "v0.81.0",
+  "digest": "sha256:959d47672fbff2776a04ec62b8afcec89e8c036af84dc5fade50019dab212746",
+  "source": {
+    "type": "oci-tag",
+    "repository": "quay.io/prometheus-operator/prometheus-config-reloader",
+    "tagPattern": "v(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}

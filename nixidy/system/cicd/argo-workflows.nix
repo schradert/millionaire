@@ -483,7 +483,7 @@ in {
             {
               name = "clone";
               container = {
-                image = "alpine/git:2.47.2";
+                image = with pinned.images.alpine-git; "${repository}:${tag}@${digest}";
                 command = ["sh" "-c"];
                 args = ["git clone {{workflow.parameters.repo-url}} /workspace/src && cd /workspace/src && git checkout {{workflow.parameters.revision}}"];
                 volumeMounts = lib.toList {
@@ -495,7 +495,7 @@ in {
             {
               name = "build-push";
               container = {
-                image = "nixos/nix:2.28.3";
+                image = with pinned.images.nix; "${repository}:${tag}@${digest}";
                 command = ["sh" "-c"];
                 args = [
                   ''
@@ -532,7 +532,7 @@ in {
             {
               name = "deploy";
               container = {
-                image = "bitnami/kubectl:1.32";
+                image = with pinned.images.kubectl; "${repository}:${tag}@${digest}";
                 command = ["sh" "-c"];
                 args = [
                   "kubectl argo rollouts set image {{workflow.parameters.rollout-name}} '*=harbor.${domain}/library/{{workflow.parameters.image-name}}:{{workflow.parameters.image-tag}}' -n {{workflow.parameters.rollout-namespace}}"

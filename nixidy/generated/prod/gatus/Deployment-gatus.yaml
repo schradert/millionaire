@@ -33,7 +33,7 @@ spec:
                 name: gatus
             - secretRef:
                 name: gatus
-          image: twinproduction/gatus:v5.34.0
+          image: twinproduction/gatus:v5.34.0@sha256:3fff895e77d35ee62e898860f4613755bc2344127d93e3f326429d40270e2115
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:

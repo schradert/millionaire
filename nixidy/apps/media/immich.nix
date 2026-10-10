@@ -93,7 +93,7 @@ in {
         # bootstrap would die on CREATE EXTENSION. Use immich's purpose-built
         # operand image (bundles VectorChord + pgvecto.rs compat).
         # "vector" must precede "vchord" (dependency; no CASCADE emitted).
-        image = "ghcr.io/immich-app/postgres:17-vectorchord0.4.3-pgvectors0.3.0";
+        image = with pinned.images.immich-postgres; "${repository}:${tag}@${digest}";
         # That image's postgres user is 999, not CNPG's default 26 (initdb dies
         # with "could not look up effective user ID 26").
         uid = 999;

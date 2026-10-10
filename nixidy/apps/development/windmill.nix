@@ -201,7 +201,7 @@
             restartPolicy = "OnFailure";
             initContainers = lib.toList {
               name = "wait-for-windmill";
-              image = "curlimages/curl:8.13.0";
+              image = with pinned.images.curl; "${repository}:${tag}@${digest}";
               command = ["sh" "-c"];
               args = [
                 ''
@@ -214,7 +214,7 @@
             };
             containers = lib.toList {
               name = "configure-oidc";
-              image = "curlimages/curl:8.13.0";
+              image = with pinned.images.curl; "${repository}:${tag}@${digest}";
               command = ["sh" "-c"];
               args = [
                 ''

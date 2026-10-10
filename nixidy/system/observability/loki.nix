@@ -21,8 +21,7 @@
             storage.type = "filesystem";
             # FIXME why specify buckets when using filesystem?
             storage.bucketNames.chunks = "loki-chunks";
-            image.repository = "grafana/loki";
-            image.tag = "3.5.2";
+            image = {inherit (pinned.images.loki) repository tag digest;};
             compactor = {
               working_directory = "/var/loki/compactor/retention";
               delete_request_store = "filesystem";

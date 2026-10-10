@@ -41,7 +41,7 @@ in {
         values = {
           replicaCount = 1;
           # Chart 1.5.0 ships appVersion 1.5.0; the old v1.3.36 tag predates its config schema
-          image.tag = "v1.5.0";
+          image.tag = with pinned.images.bifrost; "${tag}@${digest}";
           service.port = 8000;
           # Provider keys come from the bifrost Secret (Bitwarden); the Secret is optional
           # so the gateway starts before the keys exist.

@@ -11,7 +11,7 @@
         values = {
           replicas = 1;
           kind = "Deployment";
-          image.tag = "v0.35.1";
+          image.tag = with pinned.images.descheduler; "${tag}@${digest}";
           deschedulerPolicyAPIVersion = "descheduler/v1alpha2";
           deschedulerPolicy.profiles = lib.toList {
             name = "Default";

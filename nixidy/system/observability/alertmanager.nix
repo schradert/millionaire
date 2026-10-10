@@ -79,7 +79,7 @@
             ];
           };
           configmapReload.enabled = true;
-          configmapReload.image.tag = "v0.81.0";
+          configmapReload.image.tag = with pinned.images.prometheus-config-reloader; "${tag}@${digest}";
           statefulSet.annotations."reloader.stakater.com/auto" = "true";
         };
       };
