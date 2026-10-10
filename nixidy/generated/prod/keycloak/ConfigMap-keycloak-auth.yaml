@@ -75,6 +75,7 @@ data:
     ensure_scopes jellyfin default openid profile email groups
     ensure_scopes kavita default openid profile email roles groups
     ensure_scopes kavita optional offline_access
+    ensure_scopes komga default openid profile email groups
     ensure_scopes librechat default openid profile email
     ensure_scopes mealie default openid profile email
     ensure_scopes oauth2-proxy default openid profile email
