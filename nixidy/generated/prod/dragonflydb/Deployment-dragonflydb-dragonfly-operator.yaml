@@ -36,7 +36,7 @@ spec:
             - --upstream=http://127.0.0.1:8080/
             - --logtostderr=true
             - --v=0
-          image: quay.io/brancz/kube-rbac-proxy:v0.20.2
+          image: quay.io/brancz/kube-rbac-proxy:v0.20.2@sha256:ad0fa9f0adc928b557663297bd22c610533960d77acdec289ce8a636f0ea2114
           imagePullPolicy: IfNotPresent
           name: kube-rbac-proxy
           ports:
@@ -60,7 +60,7 @@ spec:
             - --metrics-bind-address=127.0.0.1:8080
           command:
             - /manager
-          image: docker.dragonflydb.io/dragonflydb/operator:v1.4.0
+          image: docker.dragonflydb.io/dragonflydb/operator:v1.4.0@sha256:b6ceebe49d4687a4fc3e485724a0cfcf0ca2dfba1d5508375543b8db46a66fc1
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:

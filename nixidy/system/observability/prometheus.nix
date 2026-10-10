@@ -28,6 +28,14 @@
       helm.releases.prometheus = {
         chart = pinned.charts.kube-prometheus-stack;
         values = {
+          prometheusOperator = {
+            image.sha = lib.removePrefix "sha256:" pinned.images.prometheus-operator.digest;
+            admissionWebhooks.deployment.image.sha = lib.removePrefix "sha256:" pinned.images.prometheus-admission-webhook.digest;
+            admissionWebhooks.patch.image.sha = lib.removePrefix "sha256:" pinned.images.kube-webhook-certgen.digest;
+            prometheusConfigReloader.image.sha = lib.removePrefix "sha256:" pinned.images.prometheus-operator-config-reloader.digest;
+            thanosImage.sha = lib.removePrefix "sha256:" pinned.images.thanos.digest;
+          };
+          prometheus.prometheusSpec.image.sha = lib.removePrefix "sha256:" pinned.images.prometheus.digest;
           crds.enabled = false;
           kubelet.enabled = true;
           kubeApiServer.enabled = true;

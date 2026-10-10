@@ -1,0 +1,9 @@
+{
+  "version": "v0.6.9",
+  "digest": "sha256:cb0e15caaae57fee1339f56a3b1a9c9bd270341e15ca6e98687b02c8ebecdc7c",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/stacklok/toolhive/vmcp"
+  },
+  "follows": "charts/toolhive-operator"
+}

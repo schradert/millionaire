@@ -1,0 +1,9 @@
+{
+  "version": "v8.5.0",
+  "digest": "sha256:da081c27e8a6d91f36042c1942362d0515ced8d06e18c11b8f893e58c4d6d797",
+  "source": {
+    "type": "oci-tag",
+    "repository": "registry.k8s.io/sig-storage/csi-snapshotter"
+  },
+  "follows": "charts/rook-ceph"
+}

@@ -44,7 +44,7 @@ spec:
               value: "true"
             - name: WINDMILL_BASE_URL
               value: http://windmill-app:8000
-          image: ghcr.io/windmill-labs/windmill-extra:1.672.0
+          image: ghcr.io/windmill-labs/windmill-extra:1.672.0@sha256:c4b5dbcd2c8b1e585f6c773fd3337bc0ccd05be83b6e56806f124901fd4fb479
           imagePullPolicy: Always
           name: windmill-extra
           ports:

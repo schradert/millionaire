@@ -1,0 +1,9 @@
+{
+  "version": "v6.1.1",
+  "digest": "sha256:d992c36d4ddd6dfa37c81b487e5a673920e1360e2977eb779051df8da1c5787d",
+  "source": {
+    "type": "oci-tag",
+    "repository": "registry.k8s.io/sig-storage/csi-provisioner"
+  },
+  "follows": "charts/rook-ceph"
+}

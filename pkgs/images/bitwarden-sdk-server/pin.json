@@ -1,0 +1,9 @@
+{
+  "version": "v0.6.0",
+  "digest": "sha256:8c5491554fe1069e8e07e6aa1813e7f8198679604dd271d4f778d238f5ca9337",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/external-secrets/bitwarden-sdk-server"
+  },
+  "follows": "charts/external-secrets"
+}

@@ -101,7 +101,7 @@ spec:
                 secretKeyRef:
                   key: redisURL
                   name: harbor-trivy
-          image: goharbor/trivy-adapter-photon:v2.14.3
+          image: goharbor/trivy-adapter-photon:v2.14.3@sha256:5c6f7162804cd94d41672a694579f136ccc9730d024dda9ad24e0f42bdae6f36
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 10

@@ -1,0 +1,9 @@
+{
+  "version": "v2.14.3",
+  "digest": "sha256:e2b0298e894d725d68954b786c61c5dd607114f6129534756c8f7985124c07a6",
+  "source": {
+    "type": "oci-tag",
+    "repository": "goharbor/harbor-jobservice"
+  },
+  "follows": "charts/harbor"
+}

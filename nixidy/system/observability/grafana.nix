@@ -21,6 +21,9 @@
       helm.releases.grafana = {
         chart = pinned.charts.grafana;
         values = {
+          image.sha = lib.removePrefix "sha256:" pinned.images.grafana.digest;
+          sidecar.image.sha = lib.removePrefix "sha256:" pinned.images.grafana-sidecar.digest;
+          initChownData.image.sha = lib.removePrefix "sha256:" pinned.images.grafana-busybox.digest;
           # TODO dashboards + providers + plugins
           admin.existingSecret = "grafana-admin";
           annotations."reloader.stakater.com/auto" = "true";

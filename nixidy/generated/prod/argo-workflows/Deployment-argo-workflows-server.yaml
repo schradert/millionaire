@@ -53,7 +53,7 @@ spec:
                   fieldPath: metadata.namespace
             - name: ARGO_BASE_HREF
               value: /
-          image: quay.io/argoproj/argocli:v4.0.5
+          image: quay.io/argoproj/argocli:v4.0.5@sha256:fbe7d1b5fb6fbb81f8e404905eba07b40e0667f9c1a7d66472d3ed523a4a6bd7
           imagePullPolicy: Always
           name: argo-server
           ports:

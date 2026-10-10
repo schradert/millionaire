@@ -122,7 +122,12 @@
               # 4.3.0 → multus-cni:4.3.0-thick is a 404). Pin the project's
               # rolling stable-thick by digest; the chart's multus-installer
               # init container reuses .tag, resolving to the same image.
-              image = pinned.images.multus;
+              # tag@digest, not .digest: the multus-installer init container
+              # reuses only repository:tag.
+              image = with pinned.images.multus; {
+                inherit repository;
+                tag = "${tag}@${digest}";
+              };
               resources.requests.memory = "100Mi";
               resources.limits.memory = "1Gi";
             };
@@ -137,12 +142,15 @@
           # renders broken anyway (the test Job references a "multus-test" NAD
           # while the rawResource is named "multus").
           controllers.test.enabled = false;
+          controllers.multus.initContainers.cni-installer.image.tag = with pinned.images.cni-plugins; "${tag}@${digest}";
           rawResources.test.enabled = false;
           # The uninstall Job stays (ArgoCD honors helm.sh/hook pre-delete, so
           # deleting the app sweeps multus's files off a node). Single Job, not a
           # DaemonSet, so cleanup is best-effort one-node — acceptable.
         };
       };
+      # The chart's own values hardcode alpine:latest for its uninstall hook.
+      resources.jobs.multus-uninstall.spec.template.spec.containers.main.image = lib.mkForce (with pinned.images.multus-uninstall; "${repository}:${tag}@${digest}");
       # Secondary-NIC definition for pods on the home LAN: macvlan subinterface
       # of br0 in bridge mode, addressed by the router via DHCP (requires the
       # cni-dhcp daemon above). Lives in `media` for music-assistant; macvlan

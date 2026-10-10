@@ -1,0 +1,9 @@
+{
+  "version": "v0.6.9",
+  "digest": "sha256:939104f6f0a841376f0e3ebaf874c052dd5c3d7e46573866ff71aaf25ca6aa48",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/stacklok/toolhive/operator"
+  },
+  "follows": "charts/toolhive-operator"
+}

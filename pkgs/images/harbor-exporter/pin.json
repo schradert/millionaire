@@ -1,0 +1,9 @@
+{
+  "version": "v2.14.3",
+  "digest": "sha256:dab60feca79fc2e14d9df879651a0a1d3a0671718ca6bf483332193dda6f73e6",
+  "source": {
+    "type": "oci-tag",
+    "repository": "goharbor/harbor-exporter"
+  },
+  "follows": "charts/harbor"
+}

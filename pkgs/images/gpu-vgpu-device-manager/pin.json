@@ -1,0 +1,9 @@
+{
+  "version": "v0.2.8",
+  "digest": "sha256:7edd7a0413dcb39b6e3bcefaf06812f3293c8e480ca10783e821a561ed686200",
+  "source": {
+    "type": "oci-tag",
+    "repository": "nvcr.io/nvidia/cloud-native/vgpu-device-manager"
+  },
+  "follows": "charts/gpu-operator"
+}

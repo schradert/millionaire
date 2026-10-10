@@ -1,0 +1,9 @@
+{
+  "version": "1.13.1",
+  "digest": "sha256:9b9128672209474da07c91439bf15ed704ae05ad918dd6454e5b6ae14e35fee6",
+  "source": {
+    "type": "oci-tag",
+    "repository": "coredns/coredns"
+  },
+  "follows": "charts/coredns"
+}

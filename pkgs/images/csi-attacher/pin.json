@@ -1,0 +1,9 @@
+{
+  "version": "v4.11.0",
+  "digest": "sha256:b74b05b39501565022883fc128002b4cb857a7bb6c858606bcb3fdedba0b0b80",
+  "source": {
+    "type": "oci-tag",
+    "repository": "registry.k8s.io/sig-storage/csi-attacher"
+  },
+  "follows": "charts/rook-ceph"
+}

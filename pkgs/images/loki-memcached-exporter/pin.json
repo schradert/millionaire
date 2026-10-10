@@ -1,0 +1,9 @@
+{
+  "version": "v0.15.4",
+  "digest": "sha256:b6763ecb3c47f2408e0398518851b7f8c5fc46232b2649f8c78a321130c54266",
+  "source": {
+    "type": "oci-tag",
+    "repository": "prom/memcached-exporter"
+  },
+  "follows": "charts/loki"
+}

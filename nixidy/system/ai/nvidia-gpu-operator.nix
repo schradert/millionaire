@@ -1,6 +1,7 @@
 {...}: {
   nixidy = {pinned, ...}: let
     chart = pinned.charts.gpu-operator;
+    v = i: "${i.tag}@${i.digest}";
   in {
     applications.nvidia-gpu-operator-crds = {
       namespace = "kube-system";
@@ -16,6 +17,27 @@
       helm.releases.nvidia-gpu-operator = {
         inherit chart;
         values = {
+          # The operator builds <repository>/<image>:<version>, so version
+          # carries tag@digest.
+          operator.version = v pinned.images.gpu-operator;
+          operator.initContainer.version = v pinned.images.gpu-cuda;
+          validator.version = v pinned.images.gpu-validator;
+          nodeStatusExporter.version = v pinned.images.gpu-validator;
+          devicePlugin.version = v pinned.images.gpu-device-plugin;
+          gfd.version = v pinned.images.gpu-device-plugin;
+          dcgmExporter.version = v pinned.images.gpu-dcgm-exporter;
+          dcgm.version = v pinned.images.gpu-dcgm;
+          migManager.version = v pinned.images.gpu-mig-manager;
+          sandboxDevicePlugin.version = v pinned.images.gpu-sandbox-device-plugin;
+          vfioManager.version = v pinned.images.gpu-cuda;
+          vgpuDeviceManager.version = v pinned.images.gpu-vgpu-device-manager;
+          toolkit.version = v pinned.images.gpu-toolkit;
+          ccManager.version = v pinned.images.gpu-cc-manager;
+          kataManager.version = v pinned.images.gpu-kata-manager;
+          driver.manager.version = v pinned.images.gpu-driver-manager;
+          vfioManager.driverManager.version = v pinned.images.gpu-driver-manager;
+          vgpuManager.driverManager.version = v pinned.images.gpu-driver-manager;
+          node-feature-discovery.image.tag = v pinned.images.node-feature-discovery;
           # NixOS handles NVIDIA drivers and container toolkit at the OS level
           driver.enabled = false;
           toolkit.enabled = false;

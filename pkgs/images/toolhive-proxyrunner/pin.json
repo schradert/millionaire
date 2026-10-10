@@ -1,0 +1,9 @@
+{
+  "version": "v0.6.9",
+  "digest": "sha256:a01c65ac3d483ccef09c2b14c1b21869da6df2c84f567407239c5d8fe0e74bfd",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/stacklok/toolhive/proxyrunner"
+  },
+  "follows": "charts/toolhive-operator"
+}

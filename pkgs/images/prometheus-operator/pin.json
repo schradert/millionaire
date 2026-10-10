@@ -1,0 +1,9 @@
+{
+  "version": "v0.91.0",
+  "digest": "sha256:9e53e13139218aca79ee000172de73355e9174ef2904585bfad9497fc71aae2d",
+  "source": {
+    "type": "oci-tag",
+    "repository": "quay.io/prometheus-operator/prometheus-operator"
+  },
+  "follows": "charts/kube-prometheus-stack"
+}

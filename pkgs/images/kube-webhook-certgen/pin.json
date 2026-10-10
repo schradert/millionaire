@@ -1,0 +1,9 @@
+{
+  "version": "1.8.3",
+  "digest": "sha256:8ce13c365c8e9ced0aad5ef350a53c50b7ca5817f99d856b9eec895db1056728",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/jkroepke/kube-webhook-certgen"
+  },
+  "follows": "charts/kube-prometheus-stack"
+}

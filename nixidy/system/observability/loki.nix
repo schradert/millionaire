@@ -9,6 +9,12 @@
       helm.releases.loki = {
         chart = pinned.charts.loki;
         values = {
+          # tag@digest: with .digest the chart drops the tag.
+          lokiCanary.image.tag = with pinned.images.loki-canary; "${tag}@${digest}";
+          gateway.image.tag = with pinned.images.loki-gateway; "${tag}@${digest}";
+          memcached.image.tag = with pinned.images.loki-memcached; "${tag}@${digest}";
+          memcachedExporter.image.tag = with pinned.images.loki-memcached-exporter; "${tag}@${digest}";
+          sidecar.image.tag = with pinned.images.loki-sidecar; "${tag}@${digest}";
           deploymentMode = "SingleBinary";
           backend.replicas = 0;
           gateway.replicas = 0;

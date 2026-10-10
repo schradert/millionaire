@@ -1,0 +1,9 @@
+{
+  "version": "v3.16.2",
+  "digest": "sha256:c7aa23eb86b3e36e9c3ee677356c0e72e9bb9cee856518db99901d60b18721f8",
+  "source": {
+    "type": "oci-tag",
+    "repository": "quay.io/cephcsi/cephcsi"
+  },
+  "follows": "charts/rook-ceph"
+}

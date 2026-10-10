@@ -1,0 +1,9 @@
+{
+  "version": "v24.9.2",
+  "digest": "sha256:34eab99d7992a57c35803ec5e0afd538d16e997341e951fef4c4019afb08793e",
+  "source": {
+    "type": "oci-tag",
+    "repository": "nvcr.io/nvidia/cloud-native/gpu-operator-validator"
+  },
+  "follows": "charts/gpu-operator"
+}

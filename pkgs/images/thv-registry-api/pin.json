@@ -1,0 +1,9 @@
+{
+  "version": "v0.3.1",
+  "digest": "sha256:25145c07157cc2234eeebb87a6c22320e0f01823b366c0cad3b4be44c0c8049f",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/stacklok/thv-registry-api"
+  },
+  "follows": "charts/toolhive-operator"
+}

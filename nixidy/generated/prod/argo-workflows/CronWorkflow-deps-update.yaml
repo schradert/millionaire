@@ -125,7 +125,7 @@ spec:
           envFrom:
             - secretRef:
                 name: argo-workflows-github
-          image: nixos/nix:2.28.3
+          image: nixos/nix:2.28.3@sha256:e623d73af9cac82d1b50784c83e0cf2a4b83bfd2cfe8d5b67809a2fc94e043ac
           resources:
             limits:
               memory: 12Gi
@@ -141,7 +141,7 @@ spec:
             command:
               - sh
               - -c
-            image: nixos/nix:2.28.3
+            image: nixos/nix:2.28.3@sha256:e623d73af9cac82d1b50784c83e0cf2a4b83bfd2cfe8d5b67809a2fc94e043ac
             name: seed-nix-store
             volumeMounts:
               - mountPath: /cache

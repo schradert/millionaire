@@ -1,0 +1,9 @@
+{
+  "version": "v0.20.2",
+  "digest": "sha256:ad0fa9f0adc928b557663297bd22c610533960d77acdec289ce8a636f0ea2114",
+  "source": {
+    "type": "oci-tag",
+    "repository": "quay.io/brancz/kube-rbac-proxy"
+  },
+  "follows": "dragonfly-operator"
+}

@@ -1,0 +1,9 @@
+{
+  "version": "v0.91.0",
+  "digest": "sha256:7d9e4eea5f1139e602508871f422b0116c60e87c662f3dcd234d5ab60cd0d8c1",
+  "source": {
+    "type": "oci-tag",
+    "repository": "quay.io/prometheus-operator/prometheus-config-reloader"
+  },
+  "follows": "charts/kube-prometheus-stack"
+}

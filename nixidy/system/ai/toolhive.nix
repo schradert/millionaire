@@ -36,6 +36,12 @@ in {
         chart = pinned.charts.toolhive-operator;
         values = {
           crds.install = false;
+          operator = {
+            image = with pinned.images.toolhive-operator; "${repository}:${tag}@${digest}";
+            toolhiveRunnerImage = with pinned.images.toolhive-proxyrunner; "${repository}:${tag}@${digest}";
+            vmcpImage = with pinned.images.toolhive-vmcp; "${repository}:${tag}@${digest}";
+          };
+          registryAPI.image = with pinned.images.thv-registry-api; "${repository}:${tag}@${digest}";
         };
       };
       # TODO: author MCPServer/VirtualMCPServer/MCPExternalAuthConfig resources using

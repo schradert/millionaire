@@ -50,7 +50,7 @@ spec:
               value: "true"
             - name: WORKER_GROUP
               value: native
-          image: ghcr.io/windmill-labs/windmill:1.672.0
+          image: ghcr.io/windmill-labs/windmill:1.672.0@sha256:b1e3af47adf684aab3aac68b69143f4d7fd6f3a644c0c39ea5e171d1f05c3a6e
           imagePullPolicy: Always
           name: windmill-worker
           ports:

@@ -39,7 +39,7 @@ spec:
   enableOTLPReceiver: false
   externalUrl: http://prometheus-kube-prometheus-prometheus.observability:9090
   hostNetwork: false
-  image: quay.io/prometheus/prometheus:v3.12.0-distroless
+  image: quay.io/prometheus/prometheus:v3.12.0-distroless@sha256:f39df5334dee301b885f77e0ff1159f5d8a43bf9db518f885544594799a1e3c2
   imagePullPolicy: IfNotPresent
   listenLocal: false
   logFormat: logfmt

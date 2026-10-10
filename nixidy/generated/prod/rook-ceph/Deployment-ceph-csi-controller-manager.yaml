@@ -40,7 +40,7 @@ spec:
               value: ""
             - name: KUBERNETES_CLUSTER_DOMAIN
               value: cluster.local
-          image: quay.io/cephcsi/ceph-csi-operator:v0.6.0
+          image: quay.io/cephcsi/ceph-csi-operator:v0.6.0@sha256:4e009d4c6c26e86175b31aa83f0b2c69ae1d53df7ee5f39be9f1fe841346a4c3
           livenessProbe:
             httpGet:
               path: /healthz

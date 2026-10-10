@@ -1,0 +1,9 @@
+{
+  "version": "v0.31.1",
+  "digest": "sha256:88b605de9aba0410775c1eb3438f951115054e0d307f23f274a4c705f51630c1",
+  "source": {
+    "type": "oci-tag",
+    "repository": "quay.io/prometheus/alertmanager"
+  },
+  "follows": "charts/alertmanager"
+}

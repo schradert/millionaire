@@ -48,7 +48,7 @@ spec:
             - https://raw.githubusercontent.com/argoproj/argo-helm/argo-workflows-1.0.14/charts/argo-workflows/files/crds/full/argoproj.io_workflowtasksets.yaml
             - -f
             - https://raw.githubusercontent.com/argoproj/argo-helm/argo-workflows-1.0.14/charts/argo-workflows/files/crds/full/argoproj.io_workflowtemplates.yaml
-          image: registry.k8s.io/kubectl:v1.36.1
+          image: registry.k8s.io/kubectl:v1.36.1@sha256:d08f476d04d0e30f426f06bc6ff6c38913aaa4591943046b77e2f74a72d3611c
           name: apply
       restartPolicy: Never
       serviceAccountName: argo-workflows-crd-install

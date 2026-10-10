@@ -1,0 +1,9 @@
+{
+  "version": "v1.9.10",
+  "digest": "sha256:a83d2699ae536c54fcd83c25e1a10f0193e57411628172a358f8c8e775743e94",
+  "source": {
+    "type": "oci-tag",
+    "repository": "quay.io/argoproj/argo-events"
+  },
+  "follows": "charts/argo-events"
+}

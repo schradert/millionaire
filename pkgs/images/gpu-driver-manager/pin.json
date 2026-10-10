@@ -1,0 +1,9 @@
+{
+  "version": "v0.7.0",
+  "digest": "sha256:b072c5793be65eee556eaff1b9cbbd115a1ef29982be95b2959adfcb4bc72382",
+  "source": {
+    "type": "oci-tag",
+    "repository": "nvcr.io/nvidia/cloud-native/k8s-driver-manager"
+  },
+  "follows": "charts/gpu-operator"
+}

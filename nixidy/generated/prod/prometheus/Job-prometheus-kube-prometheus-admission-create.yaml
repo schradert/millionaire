@@ -37,7 +37,7 @@ spec:
             - --host=prometheus-kube-prometheus-operator,prometheus-kube-prometheus-operator.observability.svc,prometheus-kube-prometheus-operator-webhook,prometheus-kube-prometheus-operator-webhook.observability.svc
             - --namespace=observability
             - --secret-name=prometheus-kube-prometheus-admission
-          image: ghcr.io/jkroepke/kube-webhook-certgen:1.8.3
+          image: ghcr.io/jkroepke/kube-webhook-certgen:1.8.3@sha256:8ce13c365c8e9ced0aad5ef350a53c50b7ca5817f99d856b9eec895db1056728
           imagePullPolicy: IfNotPresent
           name: create
           resources: {}

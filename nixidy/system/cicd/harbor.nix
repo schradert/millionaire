@@ -50,6 +50,38 @@
             || !builtins.elem (r.metadata.name or "") managedSecrets);
         chart = pinned.charts.harbor;
         values = {
+          nginx.image = with pinned.images.harbor-nginx; {
+            inherit repository;
+            tag = "${tag}@${digest}";
+          };
+          portal.image = with pinned.images.harbor-portal; {
+            inherit repository;
+            tag = "${tag}@${digest}";
+          };
+          core.image = with pinned.images.harbor-core; {
+            inherit repository;
+            tag = "${tag}@${digest}";
+          };
+          jobservice.image = with pinned.images.harbor-jobservice; {
+            inherit repository;
+            tag = "${tag}@${digest}";
+          };
+          registry.registry.image = with pinned.images.harbor-registry; {
+            inherit repository;
+            tag = "${tag}@${digest}";
+          };
+          registry.controller.image = with pinned.images.harbor-registryctl; {
+            inherit repository;
+            tag = "${tag}@${digest}";
+          };
+          trivy.image = with pinned.images.harbor-trivy-adapter; {
+            inherit repository;
+            tag = "${tag}@${digest}";
+          };
+          exporter.image = with pinned.images.harbor-exporter; {
+            inherit repository;
+            tag = "${tag}@${digest}";
+          };
           externalURL = "https://${hostname}";
           expose.type = "clusterIP";
           expose.tls.enabled = false;

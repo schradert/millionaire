@@ -20,6 +20,7 @@ in {
       helm.releases.postgres = {
         chart = pinned.charts.cloudnative-pg;
         values = {
+          image.tag = with pinned.images.cloudnative-pg; "${tag}@${digest}";
           crds.create = false;
           monitoring = {
             grafanaDashboard.create = true;
@@ -89,6 +90,8 @@ in {
                 imageName =
                   if db.image != ""
                   then db.image
+                  else if db.version == pinned.images.postgresql.tag
+                  then with pinned.images.postgresql; "${repository}:${tag}@${digest}"
                   else "ghcr.io/cloudnative-pg/postgresql:${db.version}";
                 # null leaves CNPG's default (26) in place.
                 postgresUID =
@@ -152,10 +155,12 @@ in {
                     # Declare the CRD defaults so ArgoCD's diff stays clean.
                     ensure = "present";
                     databaseReclaimPolicy = "retain";
-                    extensions = map (ext: {
-                      name = ext;
-                      ensure = "present";
-                    }) db.extensions;
+                    extensions =
+                      map (ext: {
+                        name = ext;
+                        ensure = "present";
+                      })
+                      db.extensions;
                   };
                 };
               scheduledBackups.${name}.spec = {

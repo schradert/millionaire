@@ -1,0 +1,9 @@
+{
+  "version": "3.6.7",
+  "digest": "sha256:0dac7d5cb383adb8d3723676a70ed0c65b582e636846f4ce48703556dd509ad1",
+  "source": {
+    "type": "oci-tag",
+    "repository": "docker.io/grafana/loki-canary"
+  },
+  "follows": "charts/loki"
+}

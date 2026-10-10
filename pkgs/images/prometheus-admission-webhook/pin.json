@@ -1,0 +1,9 @@
+{
+  "version": "v0.91.0",
+  "digest": "sha256:a439031b5e76132c2083fb2c4b59b1a6755ac0f9afb70421ef8954ea0a55a212",
+  "source": {
+    "type": "oci-tag",
+    "repository": "quay.io/prometheus-operator/admission-webhook"
+  },
+  "follows": "charts/kube-prometheus-stack"
+}

@@ -1,0 +1,9 @@
+{
+  "version": "v1.9.0",
+  "digest": "sha256:13346024500167f71815e1dcd7671f46378137e726ef03b2baf69a188224f813",
+  "source": {
+    "type": "oci-tag",
+    "repository": "quay.io/argoproj/argo-rollouts"
+  },
+  "follows": "charts/argo-rollouts"
+}

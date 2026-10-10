@@ -1,0 +1,9 @@
+{
+  "version": "v2.14.3",
+  "digest": "sha256:5c6f7162804cd94d41672a694579f136ccc9730d024dda9ad24e0f42bdae6f36",
+  "source": {
+    "type": "oci-tag",
+    "repository": "goharbor/trivy-adapter-photon"
+  },
+  "follows": "charts/harbor"
+}

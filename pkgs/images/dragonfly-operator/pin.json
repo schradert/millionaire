@@ -1,0 +1,9 @@
+{
+  "version": "v1.4.0",
+  "digest": "sha256:b6ceebe49d4687a4fc3e485724a0cfcf0ca2dfba1d5508375543b8db46a66fc1",
+  "source": {
+    "type": "oci-tag",
+    "repository": "docker.dragonflydb.io/dragonflydb/operator"
+  },
+  "follows": "dragonfly-operator"
+}

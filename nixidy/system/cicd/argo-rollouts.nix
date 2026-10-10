@@ -25,6 +25,8 @@ in {
       helm.releases.argo-rollouts = {
         chart = pinned.charts.argo-rollouts;
         values = {
+          controller.image.tag = with pinned.images.argo-rollouts; "${tag}@${digest}";
+          dashboard.image.tag = with pinned.images.kubectl-argo-rollouts; "${tag}@${digest}";
           installCRDs = false;
           dashboard = {
             enabled = true;

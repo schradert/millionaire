@@ -31,7 +31,7 @@ spec:
             - dashboard
             - --loglevel=info
             - --kloglevel=0
-          image: quay.io/argoproj/kubectl-argo-rollouts:v1.9.0
+          image: quay.io/argoproj/kubectl-argo-rollouts:v1.9.0@sha256:86e1040c5d12cf4ec5c0d6205c5ca9f51677ad8ddc478a1f0790de9296f190e7
           imagePullPolicy: IfNotPresent
           name: argo-rollouts-dashboard
           ports:

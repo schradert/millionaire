@@ -18,7 +18,11 @@ in {
       namespace = "storage";
       helm.releases.volsync = {
         chart = pinned.charts.volsync;
-        values.manageCRDs = false;
+        values =
+          {manageCRDs = false;}
+          // lib.genAttrs ["image" "rclone" "restic" "rsync" "rsync-tls" "syncthing"] (_: {
+            image = with pinned.images.volsync; "${repository}:${tag}@${digest}";
+          });
       };
     };
     # Attaches VolSync replication mechanisms to target PVCs and back up to Backblaze B2
@@ -94,32 +98,32 @@ in {
                   restic =
                     cache
                     // {
-                    moverSecurityContext.fsGroup = gid;
-                    copyMethod = "Direct";
-                    pruneIntervalDays = 8;
-                    inherit repository;
-                    retain = {
-                      daily = 1;
-                      weekly = 1;
-                      monthly = 1;
-                      yearly = 1;
+                      moverSecurityContext.fsGroup = gid;
+                      copyMethod = "Direct";
+                      pruneIntervalDays = 8;
+                      inherit repository;
+                      retain = {
+                        daily = 1;
+                        weekly = 1;
+                        monthly = 1;
+                        yearly = 1;
+                      };
                     };
-                  };
                 };
                 replicationDestinations = lib.mkIf restore {
-                "${repository}-dst".spec = {
-                  # Override this to track restoration
-                  trigger.manual = lib.mkDefault "1";
-                  restic =
-                    cache
-                    // {
-                    moverSecurityContext.runAsGroup = gid;
-                    moverSecurityContext.runAsUser = uid;
-                    copyMethod = "Direct";
-                    destinationPVC = title;
-                    inherit repository;
+                  "${repository}-dst".spec = {
+                    # Override this to track restoration
+                    trigger.manual = lib.mkDefault "1";
+                    restic =
+                      cache
+                      // {
+                        moverSecurityContext.runAsGroup = gid;
+                        moverSecurityContext.runAsUser = uid;
+                        copyMethod = "Direct";
+                        destinationPVC = title;
+                        inherit repository;
+                      };
                   };
-                };
                 };
               }
             ]));

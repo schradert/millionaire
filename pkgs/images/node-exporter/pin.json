@@ -1,0 +1,9 @@
+{
+  "version": "v1.10.2",
+  "digest": "sha256:337ff1d356b68d39cef853e8c6345de11ce7556bb34cda8bd205bcf2ed30b565",
+  "source": {
+    "type": "oci-tag",
+    "repository": "quay.io/prometheus/node-exporter"
+  },
+  "follows": "charts/prometheus-node-exporter"
+}

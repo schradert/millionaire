@@ -1,0 +1,9 @@
+{
+  "version": "v0.1.1",
+  "digest": "sha256:f916e3a6017f0c376b5a933c93b550dcbc1d40b2b36de16ddf96169f80e67bcb",
+  "source": {
+    "type": "oci-tag",
+    "repository": "nvcr.io/nvidia/cloud-native/k8s-cc-manager"
+  },
+  "follows": "charts/gpu-operator"
+}
