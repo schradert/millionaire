@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: atuin-bootstrap
+  namespace: development
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - atuin
+          env:
+            - name: ATUIN_URL
+              value: http://atuin.development.svc.cluster.local:8888
+            - name: ATUIN_USER
+              value: tristan
+            - name: ATUIN_EMAIL
+              value: t0rdos@pm.me
+            - name: ATUIN_PASSWORD_FILE
+              value: /secrets/password
+          image: harbor.trdos.me/library/app-bootstrap:0.4.0@sha256:8c8773894446288a8f19d6babb2cc531ef2c233d2f511c703c6f88b1c5cdc1ab
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /secrets
+              name: password
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - name: password
+          secret:
+            secretName: atuin-tristan
