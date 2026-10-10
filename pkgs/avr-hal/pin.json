@@ -1,0 +1,11 @@
+{
+  "version": "e5c8f37fe48419956e722490a82b9ca9b9fc61a2",
+  "hash": "sha256-hQisPjmKROf1Sc4WMYQbPSMwpQ8D5uYRKhfVX4A3RK4=",
+  "source": {
+    "type": "git-commit",
+    "owner": "rahix",
+    "repo": "avr-hal",
+    "branch": "main"
+  },
+  "hold": "embedded/**/Cargo.toml pin arduino-hal to this rev (pin-lint enforces the match); bump them, embedded/Cargo.lock and this pin together"
+}
