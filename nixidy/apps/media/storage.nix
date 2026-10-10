@@ -35,6 +35,11 @@
         cacheAccessModes = ["ReadWriteOnce"];
         restore = false;
       };
+      volsync.pvcs.media-games = {
+        title = "media-games";
+        cacheAccessModes = ["ReadWriteOnce"];
+        restore = false;
+      };
       resources.persistentVolumeClaims = let
         cephfsPVC = size: {
           # Never let a sync or app removal delete library data.
@@ -56,6 +61,8 @@
         media-downloads = cephfsPVC "50Gi";
         # Full-disc DVD backups (ISOs): the originals behind media-movies, played with menus in Kodi.
         media-dvd = cephfsPVC "1Ti";
+        # ROMs, BIOS and game installers (games-webdav.nix, docs/games.md)
+        media-games = cephfsPVC "250Gi";
       };
     };
   };
