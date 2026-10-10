@@ -2,6 +2,20 @@ apiVersion: v1
 data:
   alertmanager.yml: |
     global: {}
+    inhibit_rules:
+    - equal:
+      - namespace
+      - alertname
+      source_matchers:
+      - severity = critical
+      target_matchers:
+      - severity =~ warning|info
+    - equal:
+      - namespace
+      source_matchers:
+      - severity = warning
+      target_matchers:
+      - severity = info
     receivers:
     - name: "null"
     - name: gatus-heartbeat
@@ -33,6 +47,9 @@ data:
         repeat_interval: 2m
       - matchers:
         - alertname = InfoInhibitor
+        receiver: "null"
+      - matchers:
+        - severity = info
         receiver: "null"
     templates:
     - /etc/alertmanager/*.tmpl
