@@ -1,3 +1,4 @@
 {
-  "attic_pubkey": "main:ciY/99gEx2g2gKWzp30gpmbY7RBtj/HBXYAmLoWzkZ4="
+  "attic_pubkey": "main:ciY/99gEx2g2gKWzp30gpmbY7RBtj/HBXYAmLoWzkZ4=",
+  "deps_update_builder_pubkey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA9KVHkN0Hy/NwTA1r5mT068ii2CFwNMTrVAO2F3wUef deps-update"
 }
