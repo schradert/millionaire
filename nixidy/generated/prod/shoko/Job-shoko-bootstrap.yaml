@@ -1,0 +1,47 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: shoko-bootstrap
+  namespace: media
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - shoko
+          env:
+            - name: ADMIN_PASSWORD_FILE
+              value: /secrets/admin/password
+            - name: ADMIN_USER
+              value: admin
+            - name: SHOKO_URL
+              value: http://shoko.media.svc.cluster.local:8111
+          image: harbor.trdos.me/library/app-bootstrap:0.13.0@sha256:521495088dbcba2c993aef6ffc2586fa0095d1710a0498d74dc3338ceb7719ad
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /secrets/admin
+              name: admin
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - name: admin
+          secret:
+            secretName: shoko-admin
