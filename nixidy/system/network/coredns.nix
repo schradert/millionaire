@@ -49,6 +49,16 @@ in {
                     fallthrough
                   '';
                 }
+                # No AAAA: answer NODATA, not SERVFAIL. musl resolvers (Alpine
+                # images) fail the whole lookup when the AAAA query errors.
+                {
+                  name = "template";
+                  parameters = "IN AAAA ${domain}";
+                  configBlock = ''
+                    match .*\.${domain}\.$
+                    rcode NOERROR
+                  '';
+                }
                 {
                   name = "cache";
                   parameters = "30";
