@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: generic-device-plugin
+    app.kubernetes.io/instance: generic-device-plugin
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: generic-device-plugin
+  name: generic-device-plugin
+  namespace: kube-system
+spec:
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: generic-device-plugin
+      app.kubernetes.io/instance: generic-device-plugin
+      app.kubernetes.io/name: generic-device-plugin
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: e3992b382205e13881cbac2bda793c7f969949ace0bb0f11f3899224786c8492
+      labels:
+        app.kubernetes.io/controller: generic-device-plugin
+        app.kubernetes.io/instance: generic-device-plugin
+        app.kubernetes.io/name: generic-device-plugin
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - --config
+            - /config/config.yaml
+          image: ghcr.io/squat/generic-device-plugin:0.2.0@sha256:66c8d5c270eb2b721f1064c549b9b7898152a6d2f0163380a5d37dc7636c20ff
+          name: generic-device-plugin
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /config/config.yaml
+              name: config
+              readOnly: true
+              subPath: config.yaml
+            - mountPath: /dev
+              name: dev
+              readOnly: true
+            - mountPath: /var/lib/kubelet/device-plugins
+              name: device-plugins
+            - mountPath: /sys
+              name: sys
+              readOnly: true
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      priorityClassName: system-node-critical
+      serviceAccountName: generic-device-plugin
+      tolerations:
+        - operator: Exists
+      volumes:
+        - configMap:
+            name: generic-device-plugin
+          name: config
+        - hostPath:
+            path: /dev
+          name: dev
+        - hostPath:
+            path: /var/lib/kubelet/device-plugins
+          name: device-plugins
+        - hostPath:
+            path: /sys
+          name: sys

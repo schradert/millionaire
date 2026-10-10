@@ -20,6 +20,7 @@
     ./cicd/descheduler.nix
     ./cicd/harbor.nix
     ./cicd/reloader.nix
+    ./cluster/generic-device-plugin.nix
     ./cluster/k8tz.nix
     ./mail/bulwark.nix
     ./mail/stalwart.nix
