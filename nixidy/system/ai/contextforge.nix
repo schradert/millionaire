@@ -85,6 +85,8 @@ in {
                 OIDC_ISSUER_URL = "https://keycloak.${domain}/realms/default";
                 OIDC_CLIENT_ID = "contextforge";
                 OIDC_CLIENT_SECRET_ENV = "OIDC_CLIENT_SECRET";
+                # Gateways are cluster Services; SSRF protection blocks private ranges by default (422).
+                SSRF_ALLOWED_NETWORKS = builtins.toJSON ["10.43.0.0/16"];
                 # ToolHive vMCP as upstream MCP source
                 TOOLHIVE_VMCP_URL = "http://homelab-vmcp.ai.svc.cluster.local:8080";
               };
