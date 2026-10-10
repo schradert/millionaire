@@ -65,6 +65,10 @@
       # treefmt-nix.follows = "treefmt";
     };
     nixos-facter-modules.url = "github:nix-community/nixos-facter-modules";
+    # Steam Deck. Held at a commit that evaluates against the nixpkgs lock (May 2026):
+    # later Jovian needs newer pnpm fetchers. Move it with nixpkgs.
+    jovian.url = "github:Jovian-Experiments/Jovian-NixOS/4b81cbddc037e480c2f3c20dee1a6457c6bb99b8";
+    jovian.inputs.nixpkgs.follows = "nixpkgs";
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
     srvos.url = "github:nix-community/srvos";
@@ -313,6 +317,14 @@
           sshOpts = ["-J" "tristan@192.184.168.248"];
           remoteBuild = true;
           profiles.system.canivete.configuration.imports = [./static/axolotl.nix];
+        };
+        # Steam Deck OLED on Jovian (./static/systeamadeck.nix).
+        systeamadeck = {
+          hostname = "192.168.50.155";
+          sshUser = "tristan";
+          sshOpts = ["-J" "tristan@192.184.168.248"];
+          remoteBuild = true;
+          profiles.system.canivete.configuration.imports = [./static/systeamadeck.nix];
         };
         # Cloud-burst worker image config — never deployed via pulumi or
         # deploy-rs; defined as a node only so it gets the canivete.kubernetes
