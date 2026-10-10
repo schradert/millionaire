@@ -21,7 +21,8 @@ spec:
       database: chirpstack
       owner: chirpstack
       postInitApplicationSQL: []
-      postInitSQL: []
+      postInitSQL:
+        - CREATE EXTENSION IF NOT EXISTS pg_trgm;
   imageName: ghcr.io/cloudnative-pg/postgresql:17@sha256:148c715c10007a5c0c31f7fdb54bc9991ffbb73c74efa2b35d1fedd3f8103251
   instances: 1
   monitoring:

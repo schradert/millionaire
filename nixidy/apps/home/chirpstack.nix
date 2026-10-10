@@ -51,7 +51,12 @@ in {
     };
     applications.chirpstack = {
       namespace = "home";
-      postgres.enable = true;
+      postgres = {
+        enable = true;
+        # The initial migration indexes with gin_trgm_ops but leaves creating the
+        # extension to the DBA; without it every migration silently rolls back.
+        extensions = ["pg_trgm"];
+      };
       generatedSecrets.chirpstack-admin = {
         key = "password";
         bitwarden = "chirpstack/admin-password";
