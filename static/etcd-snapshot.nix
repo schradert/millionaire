@@ -5,7 +5,9 @@
 #
 # Credentials are the existing VolSync B2 key, read at run time from a
 # VolSync-managed secret in the cluster (no sops, no new secret). Snapshots land
-# under etcd/ in the VolSync bucket; unencrypted, so the bucket must stay private.
+# under etcd/ in the VolSync bucket. Secrets inside are AES-CBC ciphertext
+# (rke2 secrets-encryption, on by default); everything else in etcd (ConfigMaps,
+# node objects, ...) is plaintext, so the bucket must stay private.
 # TODO once rke2 is restarted anyway: etcd-s3 + etcd-s3-config-secret, drop this.
 {
   flake,
