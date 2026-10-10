@@ -1,0 +1,47 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: komga-bootstrap
+  namespace: media
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - komga
+          env:
+            - name: ADMIN_EMAIL
+              value: t0rdos@pm.me
+            - name: ADMIN_PASSWORD_FILE
+              value: /secrets/admin/password
+            - name: KOMGA_URL
+              value: http://komga.media.svc.cluster.local:25600
+          image: harbor.trdos.me/library/app-bootstrap:0.5.0@sha256:d6dc59fafe36b46c1e8abe5b74f265bc8f89f84d063e0f0a88775511eda0b860
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /secrets/admin
+              name: admin
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - name: admin
+          secret:
+            secretName: komga-admin

@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 9bfefc5e950820cf5ce5b0015e3fc78a5ba7a3220d838eb813bd145fa9adf691
+        checksum/configMaps: f6039ebc57ed0fdb9d477427fe7e082c284109180933dae54045a706ee11026a
       labels:
         app.kubernetes.io/controller: oauth2-proxy
         app.kubernetes.io/instance: oauth2-proxy
