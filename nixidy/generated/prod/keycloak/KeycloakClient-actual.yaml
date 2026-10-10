@@ -1,0 +1,28 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: actual
+  namespace: identity
+spec:
+  clientSecretRef:
+    create: true
+    name: actual
+  definition:
+    clientId: actual
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+      - groups
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Actual Budget
+    protocol: openid-connect
+    publicClient: false
+    redirectUris:
+      - https://actual.trdos.me/openid/callback
+    standardFlowEnabled: true
+    webOrigins:
+      - https://actual.trdos.me
+  realmRef:
+    name: default
