@@ -23,7 +23,7 @@ in {
         directAccessGrantsEnabled = false;
         redirectUris = ["https://argocd.${domain}/auth/callback"];
         webOrigins = ["https://argocd.${domain}"];
-        defaultClientScopes = ["openid" "profile" "email"];
+        defaultClientScopes = ["openid" "profile" "email" "groups"];
       };
     };
 
@@ -55,23 +55,23 @@ in {
           # repoServer.autoscaling.minReplicas = 2;
           # applicationSet.replicas = 2;
           dex.enabled = false;
-          server = {
-            extraArgs = ["--insecure"];
-            config."oidc.config" = builtins.toJSON {
-              name = "Keycloak";
-              issuer = "https://keycloak.${domain}/realms/default";
-              clientID = "$oidc.argocd.clientID";
-              clientSecret = "$oidc.argocd.clientSecret";
-              requestedScopes = ["openid" "profile" "email"];
-            };
+          server.extraArgs = ["--insecure"];
+          # Keycloak SSO; the local admin stays enabled as break-glass
+          # (argocd-initial-admin-secret, pushed to Bitwarden below).
+          configs.cm."oidc.config" = builtins.toJSON {
+            name = "Keycloak";
+            issuer = "https://keycloak.${domain}/realms/default";
+            clientID = "$oidc.argocd.clientID";
+            clientSecret = "$oidc.argocd.clientSecret";
+            requestedScopes = ["openid" "profile" "email" "groups"];
           };
+          configs.rbac."policy.csv" = "g, admin, role:admin";
           # ServerSideApply can't strip controller-/apiserver-defaulted fields,
           # so ExternalSecret + HTTPRoute render minimal in git but gain defaults
           # live -> perpetual OutOfSync across nearly every app (self-heal then
           # backs off). Ignore the defaulted fields cluster-wide via argocd-cm.
           # NOTE: configs.cm, NOT server.config — server.config is a no-op in this
-          # chart version (the server.config."oidc.config" above likewise never
-          # reaches the rendered argocd-cm; flagged for separate follow-up). One
+          # chart version. One
           # place covers every current + future app; resources are functional, so
           # this is cosmetic diff-suppression, not a behaviour change.
           configs.cm = {
@@ -171,6 +171,21 @@ in {
             remoteRef.property = "client-secret";
           }
         ];
+      };
+
+      # Break-glass local admin password (argocd generates it on install).
+      resources.pushSecrets.argocd-admin.spec = {
+        secretStoreRefs = lib.toList {
+          name = "bitwarden";
+          kind = "ClusterSecretStore";
+        };
+        selector.secret.name = "argocd-initial-admin-secret";
+        data = lib.toList {
+          match = {
+            secretKey = "password";
+            remoteRef.remoteKey = "argocd/admin-password";
+          };
+        };
       };
 
       resources.secrets.argocd-in-cluster = {
