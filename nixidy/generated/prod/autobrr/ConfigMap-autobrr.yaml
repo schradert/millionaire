@@ -4,6 +4,12 @@ data:
   AUTOBRR__DATABASE_TYPE: postgres
   AUTOBRR__HOST: 0.0.0.0
   AUTOBRR__LOG_LEVEL: INFO
+  AUTOBRR__OIDC_CLIENT_ID: autobrr
+  AUTOBRR__OIDC_CLIENT_SECRET_FILE: /secrets/oidc_client_secret.txt
+  AUTOBRR__OIDC_DISABLE_BUILT_IN_LOGIN: "false"
+  AUTOBRR__OIDC_ENABLED: "true"
+  AUTOBRR__OIDC_ISSUER: https://keycloak.trdos.me/realms/default
+  AUTOBRR__OIDC_REDIRECT_URL: https://autobrr.trdos.me/api/auth/oidc/callback
   AUTOBRR__POSTGRES_DATABASE: autobrr
   AUTOBRR__POSTGRES_HOST: autobrr-rw.media.svc.cluster.local
   AUTOBRR__POSTGRES_PASSWORD_FILE: /secrets/db_password.txt
