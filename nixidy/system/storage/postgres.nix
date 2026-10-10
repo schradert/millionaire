@@ -63,6 +63,7 @@ in {
           };
           monitoring = can.enable "Prometheus PodMonitor" {default = true;};
           backup = {
+            enable = can.enable "barman-cloud WAL archiving and base backups to B2 (needs the barman tools in the operand image)" {default = true;};
             schedule = can.str "Cron schedule for base backups" {default = "0 0 * * *";};
             retentionPolicy = can.str "Backup retention policy" {default = "30d";};
           };
@@ -115,7 +116,7 @@ in {
                     ++ db.initSQL;
                   postInitApplicationSQL = db.initApplicationSQL;
                 };
-                backup = {
+                backup = lib.mkIf db.backup.enable {
                   barmanObjectStore = {
                     destinationPath = "s3://${bucketName}/cnpg/${name}/";
                     endpointURL = "https://s3.${region}.backblazeb2.com";
@@ -163,12 +164,14 @@ in {
                       db.extensions;
                   };
                 };
+            }
+            (lib.mkIf db.backup.enable {
               scheduledBackups.${name}.spec = {
                 schedule = db.backup.schedule;
                 backupOwnerReference = "self";
                 cluster.name = name;
               };
-            }
+            })
             (lib.mkIf db.pooler.enable {
               poolers.${name}.spec = {
                 cluster.name = name;
