@@ -62,9 +62,11 @@ in {
       };
 
       # The ReadWriteOnce data PVC can't be shared by old and new pods during a rollout.
-      resources.deployments.bifrost.spec.strategy = {
-        type = "Recreate";
-        rollingUpdate = null;
+      # SSA can't drop the API-defaulted rollingUpdate block when switching to Recreate
+      # (rendering `rollingUpdate = null` omits it), so sync this Deployment with replace.
+      resources.deployments.bifrost = {
+        metadata.annotations."argocd.argoproj.io/sync-options" = "Replace=true";
+        spec.strategy.type = "Recreate";
       };
 
       # The dashboard (:8000/) is only reachable via oauth2-proxy (Keycloak): Bifrost's
