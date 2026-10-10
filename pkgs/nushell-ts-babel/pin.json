@@ -1,0 +1,10 @@
+{
+  "version": "17da6b0144502b0f0f182585bfcf53274fed238b",
+  "hash": "sha256-uE10s1Zfs/n1vWGb/yL1F6+WcFoMOzUrxd5j7uSVrvk=",
+  "source": {
+    "type": "git-commit",
+    "owner": "herbertjones",
+    "repo": "nushell-ts-babel",
+    "branch": "main"
+  }
+}
