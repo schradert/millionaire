@@ -4,10 +4,9 @@
 {
   flake,
   lib,
-  pinned,
   ...
 }: {
-  imports = [./zfs-legacy.nix] ++ (with flake.inputs.srvos.nixosModules; [desktop roles-nix-remote-builder]);
+  imports = [./tailnet-personal.nix ./zfs-legacy.nix] ++ (with flake.inputs.srvos.nixosModules; [desktop roles-nix-remote-builder]);
   profiles = {
     client.enable = true;
     gaming.enable = true;
@@ -54,14 +53,6 @@
   boot.extraModprobeConfig = "options e1000e EEE=0";
   # ACPI DSDT bug for Super IO + UART: keep the kernel off the 8250 ports
   boot.kernelParams = ["8250.nr_uarts=0"];
-
-  # Personal tailnet client (not tailnet.nix: that is cluster-node routing)
-  services.tailscale = {
-    enable = true;
-    package = pinned.tailscale;
-    useRoutingFeatures = "client";
-    extraUpFlags = ["--login-server=https://headscale.${flake.config.canivete.meta.domain}"];
-  };
 
   roles.nix-remote-builder.schedulerPublicKeys = [flake.config.canivete.meta.people.my.profiles.personal.sshPubKey];
 }
