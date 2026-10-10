@@ -1,16 +1,16 @@
 {
-  dotfiles.home-manager = {
+  home = {
+    can,
     config,
     lib,
     pkgs,
     ...
   }: {
-    options.dotfiles.programs.rust.enable = lib.mkEnableOption "rust";
-    config = lib.mkIf config.dotfiles.programs.rust.enable {
+    options.languages.rust.enable = can.enable "rust toolchain" {default = config.profiles.languages.enable;};
+    config = lib.mkIf config.languages.rust.enable {
       home.sessionVariables.CARGO_HOME = "${config.xdg.dataHome}/cargo";
-      programs.vim.plugins = [pkgs.vimPlugins.rust-vim];
+      home.packages = with pkgs; [cargo clippy rust-analyzer rustc rustfmt];
       programs.doom-emacs = {
-        extraBinPackages = with pkgs; [cargo rust-analyzer rustc];
         tangle.init.lang.rust = ["+lsp" "+tree-sitter"];
         tangle.config = ''
           (after! dap-mode
