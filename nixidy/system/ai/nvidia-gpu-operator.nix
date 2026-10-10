@@ -26,7 +26,8 @@
             enabled = true;
             serviceMonitor.enabled = true;
           };
-          # Node Feature Discovery to label GPU nodes
+          # The cluster's only Node Feature Discovery (all sources: pci, usb, system, ...).
+          # A standalone NFD would collide with these CRDs and labels.
           nfd.enabled = true;
           # Disable GDS and GDRCopy (not needed for inference)
           gds.enabled = false;
