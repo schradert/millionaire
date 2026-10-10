@@ -62,18 +62,6 @@
           };
         }
       ];
-      # NOTE v4l2loopback hardening support won't be available until 31.1
-      nixpkgs.overlays = [
-        (final: prev: {
-          obs-studio = prev.obs-studio.overrideAttrs (old: {
-            version = "31.1.0-rc1";
-            src = old.src.override {
-              hash = "sha256-z6BMgddmq3+IsVkt0a/FP+gShvGi1tI6qBbJlAcHgW8=";
-            };
-            nativeBuildInputs = old.nativeBuildInputs ++ [final.extra-cmake-modules];
-          });
-        })
-      ];
       # TODO declarative pipewire config of a VAC loopback to use Droidcam OBS monitoring audio as mic input
       # NOTE pactl module-null-sink ...
       # NOTE pactl module-remap-source ...

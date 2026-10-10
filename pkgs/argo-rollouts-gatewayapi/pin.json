@@ -1,0 +1,11 @@
+{
+  "version": "0.15.0",
+  "hash": "sha256-JIFtoOYTg2s/GAorUPYZlDFmjHLX9K3u8JKEv/xlgqE=",
+  "source": {
+    "type": "url-template",
+    "url": "https://github.com/argoproj-labs/rollouts-plugin-trafficrouter-gatewayapi/releases/download/v{version}/gatewayapi-plugin-linux-amd64",
+    "owner": "argoproj-labs",
+    "repo": "rollouts-plugin-trafficrouter-gatewayapi",
+    "tagPrefix": "v"
+  }
+}
