@@ -1,0 +1,30 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: audiobookshelf
+  namespace: identity
+spec:
+  clientSecretRef:
+    create: true
+    name: audiobookshelf
+  definition:
+    clientId: audiobookshelf
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+      - groups
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Audiobookshelf
+    protocol: openid-connect
+    publicClient: false
+    redirectUris:
+      - https://audiobookshelf.trdos.me/auth/openid/callback
+      - https://audiobookshelf.trdos.me/auth/openid/mobile-redirect
+      - audiobookshelf://oauth
+    standardFlowEnabled: true
+    webOrigins:
+      - https://audiobookshelf.trdos.me
+  realmRef:
+    name: default
