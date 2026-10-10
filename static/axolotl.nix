@@ -1,4 +1,5 @@
 # axolotl (Dell Precision 7510 laptop) driving DisplayLink docks.
+# The DisplayLink driver needs a one-time manual download: docs/displaylink.md.
 {
   flake,
   lib,
@@ -7,7 +8,7 @@
   imports = [./facter ./tailnet-personal.nix ./zfs-legacy.nix flake.inputs.srvos.nixosModules.desktop];
   profiles.client.enable = true;
   profiles.workstation.enable = true;
-  # Installed by the old dotfiles repo
+  # Existing install (checked 2026-10-10): NixOS 25.11, pool root/{root,home,tmp}, 1G ESP
   system.stateVersion = "25.11";
   home-manager.sharedModules = [{home.stateVersion = "25.11";}];
   # node hostname is the LAN IP (ssh target)
