@@ -54,6 +54,9 @@ spec:
         disabled: false
       osd:
         disabled: false
+  labels:
+    monitoring:
+      release: prometheus
   logCollector:
     enabled: true
     maxLogSize: 500M
