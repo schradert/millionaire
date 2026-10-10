@@ -8,7 +8,8 @@
 # (ControlMaster) so they do not trip sshd's MaxStartups, and every host key is
 # pinned. Cluster nodes are used as `nix-remote-builder` (forced command
 # `nix-daemon --stdio`, authorized for the personal key by static/server.nix);
-# falcon is a login box with no such user, so it is used as tristan.
+# falcon is also the dev host's login and `build-all --remote` box, so it is
+# used as tristan.
 #
 # The caps that keep builds from starving etcd live on the nodes themselves
 # (static/builder.nix); maxJobs here is only this client's share.

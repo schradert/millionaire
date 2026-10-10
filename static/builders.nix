@@ -18,9 +18,9 @@
 # Etcd servers get 25% of their cores, agents 50%, and dingo (a 4-core etcd
 # server with ~4G of RAM to spare) a single core. The small boxes carry the
 # lowest weight, and omitting `big-parallel` keeps heavy derivations off them.
-# falcon (`falcon` below) is not an RKE2 node and its nix-daemon is configured
-# outside this repo (schradert/dotfiles), so no caps are set for it here: when
-# that config is merged here it should get the same daemon CPU/IO scheduling.
+# falcon (`falcon` below) is not an RKE2 node: the biggest builder, uncapped,
+# with idle CPU/IO scheduling so its desktop stays responsive
+# (static/falcon-system.nix).
 #
 # lan/tailnet are the box's addresses; hostKey pins its ssh host key (also its
 # build-client identity towards peers, see static/builder.nix).
@@ -115,13 +115,16 @@ in {
   };
 
   # Not an RKE2 node: x86_64 natively, aarch64-linux by binfmt emulation (no
-  # kvm), reached as its login user. No nix-remote-builder user exists there.
+  # kvm). The dev host reaches it as its login user (`Host falcon` is also its
+  # ssh/`build-all --remote` target); the nodes as nix-remote-builder, over the
+  # LAN (its tailnet IP is not stable). See static/builder.nix.
   falcon = {
     cores = 32;
     lan = "192.168.50.215";
     tailnet = "100.64.0.8";
     hostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfpkvVrcUgze90HfVLMVsjEUCN3RGynuJC9z4EHKVnA";
     user = "tristan";
+    builderUser = "nix-remote-builder";
     jobs = 12;
     speedFactor = 8;
     systems = ["x86_64-linux" "i686-linux"];
