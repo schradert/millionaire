@@ -19,14 +19,26 @@ in {
         title = "baikal";
         restore = false;
       };
-      # Admin password; org-bridge reads the same Secret.
-      generatedSecrets.baikal.key = "BAIKAL_ADMIN_PASSWORD";
+      # Admin password (web admin and the DAV user `admin`); org-bridge reads the
+      # same Secret. Break-glass and the CalDAV login for clients.
+      generatedSecrets.baikal = {
+        key = "BAIKAL_ADMIN_PASSWORD";
+        bitwarden = "baikal/admin-password";
+      };
 
       helm.releases.baikal = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.baikal = {
             annotations."reloader.stakater.com/auto" = "true";
+            # The image ignores BAIKAL_ADMIN_PASSWORD and leaves Baïkal to its web
+            # installer. This does that install (idempotent, every start) and keeps
+            # the admin + DAV user password in sync with the Secret.
+            initContainers.install = {
+              image = pinned.images.baikal;
+              command = ["sh" "-ec" "php /bootstrap/install.php && chown -R 101:101 /var/www/baikal/config /var/www/baikal/Specific"];
+              envFrom = [{secretRef.name = "baikal";}];
+            };
             containers.baikal = {
               image = pinned.images.baikal;
               envFrom = [{secretRef.name = "baikal";}];
@@ -52,9 +64,39 @@ in {
             type = "persistentVolumeClaim";
             accessMode = "ReadWriteOnce";
             size = "256Mi";
-            advancedMounts.baikal.baikal = [{path = "/var/www/baikal/Specific";}];
+            # config/ (baikal.yaml) lives on the same volume, so the install persists.
+            advancedMounts.baikal = lib.genAttrs ["baikal" "install"] (_: [
+              {path = "/var/www/baikal/Specific";}
+              {
+                path = "/var/www/baikal/config";
+                subPath = "config";
+              }
+            ]);
+          };
+          configMaps.install.data."install.php" = builtins.readFile ./baikal-install.php;
+          persistence.install = {
+            type = "configMap";
+            identifier = "install";
+            advancedMounts.baikal.install = [{path = "/bootstrap";}];
           };
 
+          # CalDAV/CardDAV clients can't pass oauth2-proxy; Baïkal's own Digest auth
+          # protects these paths. The web UI stays behind oauth2-proxy.
+          route.baikal-dav = {
+            hostnames = [hostname];
+            parentRefs = lib.toList {
+              name = "internal";
+              namespace = "kube-system";
+              sectionName = "https";
+            };
+            rules = lib.toList {
+              matches = map (path: {path = {type = "PathPrefix"; value = path;};}) ["/dav.php" "/.well-known/caldav" "/.well-known/carddav"];
+              backendRefs = lib.toList {
+                name = "baikal";
+                port = 80;
+              };
+            };
+          };
           route.baikal = {
             hostnames = [hostname];
             parentRefs = lib.toList {
