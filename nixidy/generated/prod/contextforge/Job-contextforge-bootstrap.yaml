@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: contextforge-bootstrap
+  namespace: ai
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - contextforge
+          env:
+            - name: CONTEXTFORGE_URL
+              value: http://contextforge.ai.svc.cluster.local:8080
+            - name: ADMIN_PASSWORD_FILE
+              value: /secrets/admin/PLATFORM_ADMIN_PASSWORD
+            - name: UPSTREAM_TOKEN_FILE
+              value: /secrets/openviking/OPENVIKING_AGENT_API_KEY
+            - name: GATEWAY_URL
+              value: http://openviking.ai.svc.cluster.local:1933/mcp
+          image: harbor.trdos.me/library/app-bootstrap:0.2.0
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /secrets/admin
+              name: admin
+              readOnly: true
+            - mountPath: /secrets/openviking
+              name: openviking
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - name: admin
+          secret:
+            secretName: contextforge-admin
+        - name: openviking
+          secret:
+            secretName: openviking-agent-key

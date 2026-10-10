@@ -126,6 +126,79 @@ in {
         };
       };
 
+      # Idempotent post-sync bootstrap (apps/app-bootstrap): register OpenViking as an MCP
+      # gateway (Bearer = the agent key from the openviking-bootstrap job). Reruns are a no-op.
+      resources.jobs.contextforge-bootstrap = {
+        metadata.annotations = {
+          "argocd.argoproj.io/hook" = "PostSync";
+          "argocd.argoproj.io/hook-delete-policy" = "BeforeHookCreation";
+        };
+        spec = {
+          backoffLimit = 6;
+          activeDeadlineSeconds = 1200;
+          template.spec = {
+            restartPolicy = "OnFailure";
+            automountServiceAccountToken = false;
+            securityContext = {
+              runAsNonRoot = true;
+              runAsUser = 65534;
+              runAsGroup = 65534;
+              seccompProfile.type = "RuntimeDefault";
+            };
+            containers = lib.toList {
+              name = "bootstrap";
+              image = "harbor.${domain}/library/app-bootstrap:0.2.0";
+              args = ["contextforge"];
+              env = [
+                {
+                  name = "CONTEXTFORGE_URL";
+                  value = "http://contextforge.ai.svc.cluster.local:8080";
+                }
+                {
+                  name = "ADMIN_PASSWORD_FILE";
+                  value = "/secrets/admin/PLATFORM_ADMIN_PASSWORD";
+                }
+                {
+                  name = "UPSTREAM_TOKEN_FILE";
+                  value = "/secrets/openviking/OPENVIKING_AGENT_API_KEY";
+                }
+                {
+                  name = "GATEWAY_URL";
+                  value = "http://openviking.ai.svc.cluster.local:1933/mcp";
+                }
+              ];
+              volumeMounts = [
+                {
+                  name = "admin";
+                  mountPath = "/secrets/admin";
+                  readOnly = true;
+                }
+                {
+                  name = "openviking";
+                  mountPath = "/secrets/openviking";
+                  readOnly = true;
+                }
+              ];
+              securityContext = {
+                allowPrivilegeEscalation = false;
+                readOnlyRootFilesystem = true;
+                capabilities.drop = ["ALL"];
+              };
+            };
+            volumes = [
+              {
+                name = "admin";
+                secret.secretName = "contextforge-admin";
+              }
+              {
+                name = "openviking";
+                secret.secretName = "openviking-agent-key";
+              }
+            ];
+          };
+        };
+      };
+
       resources.httpRoutes.contextforge.spec = {
         hostnames = [hostname];
         parentRefs = lib.toList {
