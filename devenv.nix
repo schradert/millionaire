@@ -193,6 +193,47 @@ in {
       scripts.update.exec = ''
         exec nix run "${config.devenv.root}#update" --no-pure-eval -- "$@"
       '';
+      # `build-all [--system <sys>]...` — build legacyPackages.<sys>.build-all
+      # (modules/build-all.nix; linux evaluated and built on falcon, results left
+      # there; darwin locally) plus the native devenv shells, then print a
+      # pass/fail matrix. Env: BUILD_ALL_REMOTE (falcon), BUILD_ALL_JOBS (8),
+      # BUILD_ALL_CORES (4).
+      scripts.build-all.exec = ''
+        set -uo pipefail
+        jq=${lib.getExe pkgs.jq}
+        systems=()
+        while [ $# -gt 0 ]; do
+          case "$1" in
+            -s|--system) systems+=("$2"); shift 2 ;;
+            *) echo "Usage: build-all [--system aarch64-darwin|x86_64-linux|aarch64-linux]..." >&2; exit 2 ;;
+          esac
+        done
+        [ ''${#systems[@]} -gt 0 ] || systems=(aarch64-darwin x86_64-linux aarch64-linux)
+        out=$(mktemp -d -t build-all.XXXXXX)
+        cd "${config.devenv.root}"
+        for sys in "''${systems[@]}"; do
+          remote=()
+          [[ $sys == *-linux ]] && remote=(--remote "''${BUILD_ALL_REMOTE:-falcon}" --no-download
+            --option accept-flake-config true
+            -j "''${BUILD_ALL_JOBS:-8}" --option cores "''${BUILD_ALL_CORES:-4}")
+          ${lib.getExe pkgs.nix-fast-build} --flake ".#legacyPackages.$sys.build-all" --impure --no-nom --skip-cached \
+            --eval-workers 4 "''${remote[@]}" --result-format json --result-file "$out/$sys.json" >&2
+          [ -s "$out/$sys.json" ] || echo '{"results":[{"attr":"<flake>","type":"EVAL","success":false}]}' > "$out/$sys.json"
+          [ "$sys" = aarch64-darwin ] || continue
+          for dir in . embedded org-bridge apps/sveltekit-demo; do
+            ok=true; (cd "$dir" && devenv build shell) >&2 || ok=false
+            echo "{\"attr\":\"devenv.$dir\",\"type\":\"BUILD\",\"success\":$ok}"
+          done | $jq -s '{results: .}' > "$out/$sys-devenv.json"
+        done
+        for f in "$out"/*.json; do
+          sys=$(basename "$f" .json)
+          $jq -r --arg sys "''${sys%-devenv}" '.results | group_by(.attr)[] |
+            [$sys, .[0].attr, (if all(.success) then (if any(.type == "BUILD") then "built" else "cached" end)
+              else (map(select(.success | not))[0].type | ascii_downcase) + "-FAIL" end)] | @tsv' "$f"
+        done | sort | tee "$out/matrix.tsv" | column -t
+        echo "results: $out" >&2
+        ! grep -q FAIL "$out/matrix.tsv"
+      '';
       scripts.sync.exec = ''
         subcmd="$1"; shift
         IFS='/' read -r namespace name <<< "$1"
