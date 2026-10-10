@@ -1,4 +1,6 @@
-{
+{config, ...}: let
+  inherit (config.canivete.meta) domain;
+in {
   home = {
     config,
     lib,
@@ -11,7 +13,11 @@
     programs.atuin = {
       enable = true;
       daemon.enable = true;
-      settings.keymap_mode = "vim-normal";
+      settings = {
+        keymap_mode = "vim-normal";
+        # Self-hosted sync server (nixidy/apps/development/atuin.nix), tailnet-only.
+        sync_address = "https://atuin.${domain}";
+      };
     };
     # --force cleans up stale sockets left behind after rebuilds
     launchd.agents.atuin-daemon.config.ProgramArguments = let
