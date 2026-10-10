@@ -1,5 +1,7 @@
 mod github;
+mod helm;
 mod nix;
+mod oci;
 mod pin;
 mod resolve;
 mod version;
@@ -97,13 +99,6 @@ fn main() -> Result<()> {
 
     let mut failed = 0;
     for mut e in entries {
-        if !resolve::supported(&e) {
-            println!(
-                "{:<32} {:<14} skipped ({} not supported yet)",
-                e.id, e.pin.version, e.kind
-            );
-            continue;
-        }
         let latest = match resolve::latest(&ctx, &e, major) {
             Ok(l) => l,
             Err(err) => {
@@ -129,12 +124,13 @@ fn main() -> Result<()> {
         }
         let original = std::fs::read_to_string(&e.path)?;
         let from = e.pin.version.clone();
+        let to_s = to.to_string();
         match resolve::rehash(&ctx, &mut e, &to) {
-            Ok(()) => println!("{:<32} {from:<14} bumped to {to}", e.id),
+            Ok(()) => println!("{:<32} {from:<14} bumped to {to_s}", e.id),
             Err(err) => {
                 failed += 1;
                 resolve::restore(&e.path, &original)?;
-                println!("{:<32} {from:<14} failed to bump to {to}: {err:#}", e.id);
+                println!("{:<32} {from:<14} failed to bump to {to_s}: {err:#}", e.id);
             }
         }
     }
