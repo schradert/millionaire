@@ -45,10 +45,10 @@ Notes assembled from the repo on 2026-10-10. The sequence has never been run end
 - PVCs whose ReplicationSource never synced or is stale (forgejo, baikal, ha-config, syncthing, zwave-js-ui, audiobookshelf,
   prosody, actual since March): see the gap list in `docs/pvc-and-postgres-restore.md`. Home Assistant config is the worst of these.
 - CNPG clusters without a recent base backup: windmill, chirpstack, immich.
-- Anything written since the last 04:00 (VolSync, daily) or hourly (CNPG) backup, or since the last 6h etcd snapshot.
+- Anything written since the last 04:00 (VolSync, daily) or CNPG scheduled backup (hourly on the clusters inspected), or since the last 6h etcd snapshot.
 - The sops age identity, Bitwarden contents and the restic password if they are not backed up elsewhere. Nothing in this repo
   backs up Bitwarden itself.
-- Hyena state (headscale database: node registrations, AdGuard settings): not backed up in the repo as far as I checked; nodes would need
+- Hyena state (headscale database: node registrations, AdGuard settings): backup not verified (assumed absent; not checked); nodes would need
   re-registering with new pre-auth keys.
 - Pulumi state, if the backend is lost.
 - Etcd snapshots are unencrypted and contain all Secrets; they are as sensitive as Bitwarden itself.
