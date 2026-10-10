@@ -69,6 +69,9 @@
     # later Jovian needs newer pnpm fetchers. Move it with nixpkgs.
     jovian.url = "github:Jovian-Experiments/Jovian-NixOS/4b81cbddc037e480c2f3c20dee1a6457c6bb99b8";
     jovian.inputs.nixpkgs.follows = "nixpkgs";
+    # mkWindowsApp (wine prefixes for Windows-only games), called with our pkgs
+    erosanix.url = "github:emmanuelrosa/erosanix";
+    erosanix.flake = false;
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
     srvos.url = "github:nix-community/srvos";

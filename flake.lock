@@ -671,6 +671,22 @@
         "type": "github"
       }
     },
+    "erosanix": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1791315553,
+        "narHash": "sha256-1CEGmtNds46vd7XKy5rSgWwXViHja3PF54XHUmtBJvM=",
+        "owner": "emmanuelrosa",
+        "repo": "erosanix",
+        "rev": "e0117465845b8d2cf23dcca35d1cc11c929e9ab6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "emmanuelrosa",
+        "repo": "erosanix",
+        "type": "github"
+      }
+    },
     "fenix": {
       "inputs": {
         "nixpkgs": [
@@ -2469,6 +2485,7 @@
         "devenv": "devenv_2",
         "devenv-agents": "devenv-agents",
         "disko": "disko",
+        "erosanix": "erosanix",
         "flake-compat": "flake-compat_6",
         "flake-parts": "flake-parts_6",
         "flake-utils": "flake-utils",

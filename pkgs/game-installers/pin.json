@@ -1,0 +1,13 @@
+{
+  "version": "1",
+  "hashes": {
+    "Battle.net-Setup.exe": "sha256-JqNmqmPYs8LwMYO8EzubCxCU+xFLdITzx4ZT5CB5fDU=",
+    "InstallPirate101.exe": "sha256-+9gnfENkaN1wMs5vAG1CNKxToyNpT5XWWTRtdL+oZFw=",
+    "InstallWizard101.exe": "sha256-2ftofsBYx1PIeUvuBrieB3/AWJlvp36HtFd/xSk0jUs="
+  },
+  "source": {
+    "type": "url-set",
+    "url": "https://games.trdos.me/installers/{name}",
+    "executable": true
+  }
+}
