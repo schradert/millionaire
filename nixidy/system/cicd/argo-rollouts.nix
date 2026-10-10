@@ -4,7 +4,7 @@
 in {
   nixidy = {
     lib,
-    pkgs,
+    pinned,
     ...
   }: {
     applications.argo-rollouts-crds.namespace = "kube-system";
@@ -13,12 +13,7 @@ in {
       install = true;
       prefix = "manifests/crds";
       match = ".*-crd\\.yaml$"; # CRD files end in -crd.yaml, kustomization.yaml doesn't
-      src = pkgs.fetchFromGitHub {
-        owner = "argoproj";
-        repo = "argo-rollouts";
-        rev = "v1.9.0";
-        hash = "sha256-qpTilslCu9rmBVMo73lHnKD8NPxLHSzeBwkWhEB4If4=";
-      };
+      src = pinned.argo-rollouts;
     };
 
     gatus.endpoints.argo-rollouts = {

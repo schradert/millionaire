@@ -1,0 +1,10 @@
+{
+  "version": "1.13.2",
+  "hash": "sha256-qV96VA3kPzQSyn4Ff3l7Qh0BL9qKXGNax1rVAo+629g=",
+  "source": {
+    "type": "github-release",
+    "owner": "kubernetes-sigs",
+    "repo": "cluster-api",
+    "tagPrefix": "v"
+  }
+}

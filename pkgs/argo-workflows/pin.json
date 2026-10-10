@@ -1,0 +1,10 @@
+{
+  "version": "4.0.3",
+  "hash": "sha256-dfsWutL/hrl+/hjwHYBfuJ2iBCnn5Ly6OejqJ0ZHrR0=",
+  "source": {
+    "type": "github-release",
+    "owner": "argoproj",
+    "repo": "argo-workflows",
+    "tagPrefix": "v"
+  }
+}

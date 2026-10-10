@@ -8,7 +8,7 @@
 {...}: {
   nixidy = {
     lib,
-    pkgs,
+    pinned,
     ...
   }: {
     applications.namespaces.resources.namespaces = {
@@ -21,12 +21,7 @@
     canivete.crds.capi-operator = {
       application = "capi-operator";
       prefix = "config/crd/bases";
-      src = pkgs.fetchFromGitHub {
-        owner = "kubernetes-sigs";
-        repo = "cluster-api-operator";
-        rev = "v0.27.0";
-        hash = "sha256-tmdmi23AEc9BsslQSG6N88RpE9qGuy+acIzw/Ni9v5g=";
-      };
+      src = pinned.cluster-api-operator;
     };
 
     applications.capi-operator = {
@@ -54,7 +49,7 @@
           "argocd.argoproj.io/sync-wave" = "1";
           "argocd.argoproj.io/sync-options" = "SkipDryRunOnMissingResource=true";
         };
-        spec.version = "v1.13.2";
+        spec.version = "v${pinned.cluster-api.pin.version}";
       };
       resources.infrastructureProviders.hetzner = {
         metadata.namespace = "caph-system";
@@ -62,7 +57,7 @@
           "argocd.argoproj.io/sync-wave" = "1";
           "argocd.argoproj.io/sync-options" = "SkipDryRunOnMissingResource=true";
         };
-        spec.version = "v1.1.6";
+        spec.version = "v${pinned.cluster-api-provider-hetzner.pin.version}";
       };
     };
   };

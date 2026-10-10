@@ -1,0 +1,10 @@
+{
+  "version": "1.9.0",
+  "hash": "sha256-qpTilslCu9rmBVMo73lHnKD8NPxLHSzeBwkWhEB4If4=",
+  "source": {
+    "type": "github-release",
+    "owner": "argoproj",
+    "repo": "argo-rollouts",
+    "tagPrefix": "v"
+  }
+}
