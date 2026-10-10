@@ -27,7 +27,4 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/instance: smartctl-exporter
-      app.kubernetes.io/managed-by: Helm
       app.kubernetes.io/name: prometheus-smartctl-exporter
-      app.kubernetes.io/version: v0.14.0
-      helm.sh/chart: prometheus-smartctl-exporter-0.17.1
