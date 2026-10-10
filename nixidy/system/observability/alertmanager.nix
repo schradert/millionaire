@@ -50,8 +50,26 @@
                   matchers = ["alertname = InfoInhibitor"];
                   receiver = "null";
                 }
+                # Informational rules (CPUThrottlingHigh etc.) stay queryable but never page.
+                {
+                  matchers = ["severity = info"];
+                  receiver = "null";
+                }
               ];
             };
+            inhibit_rules = [
+              # A critical alert supersedes its own warning (same alert, same namespace).
+              {
+                source_matchers = ["severity = critical"];
+                target_matchers = ["severity =~ warning|info"];
+                equal = ["namespace" "alertname"];
+              }
+              {
+                source_matchers = ["severity = warning"];
+                target_matchers = ["severity = info"];
+                equal = ["namespace"];
+              }
+            ];
             receivers = [
               {name = "null";}
               {
