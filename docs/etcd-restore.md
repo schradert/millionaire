@@ -46,7 +46,7 @@ nix shell nixpkgs#etcd -c sh -c '
 ```
 
 Result: etcdutl 3.6.15 (cluster runs etcd v3.6.7); status: revision 122026024, 7737 total keys; the restored
-member was healthy, held 7733 `/registry/` keys and 1 `/bootstrap` key, 18 namespaces (ai, ai-sandbox, cicd, cilium-secrets,
+member was healthy, held 7733 `/registry/` keys and 1 `/bootstrap` key, 19 namespaces (ai, ai-sandbox, cicd, cilium-secrets,
 default, development, finance, health, home, identity, kube-*, mail, media, observability, printing, security, storage), the 5 nodes,
 163 PVCs. Throwaway etcd killed and data removed afterwards.
 
