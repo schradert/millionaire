@@ -195,11 +195,6 @@ in {
         # CI ServiceAccount for workflow pods
         serviceAccounts.argo-workflows-ci = {};
         clusterRoles.argo-workflows-ci.rules = [
-          {
-            apiGroups = ["argoproj.io"];
-            resources = ["rollouts"];
-            verbs = ["get" "patch"];
-          }
           # The argo-workflows v4 executor (wait container) reports step
           # results via WorkflowTaskResults; without this every workflow
           # errors at runtime. The chart's own workflow Role only binds the
@@ -434,8 +429,9 @@ in {
             };
           };
         };
-        # Reusable CI WorkflowTemplate: clone → build with Nix → push to Harbor → update Rollout
-        workflowTemplates.build-and-deploy.spec = {
+        # Reusable CI WorkflowTemplate: clone → build with Nix → push to Harbor.
+        # Deploying is a GitOps change (the workload's image pin), not a step.
+        workflowTemplates.build-and-push.spec = {
           serviceAccountName = "argo-workflows-ci";
           entrypoint = "ci-pipeline";
           arguments.parameters = [
@@ -445,12 +441,6 @@ in {
               default = "main";
             }
             {name = "image-name";}
-            {name = "image-tag";}
-            {name = "rollout-name";}
-            {
-              name = "rollout-namespace";
-              default = "development";
-            }
           ];
           volumeClaimTemplates = lib.toList {
             metadata.name = "workspace";
@@ -478,12 +468,6 @@ in {
                   {
                     name = "build-push";
                     template = "build-push";
-                  }
-                ]
-                [
-                  {
-                    name = "deploy";
-                    template = "deploy";
                   }
                 ]
               ];
@@ -535,16 +519,6 @@ in {
                   memory = "4Gi";
                 };
                 resources.limits.memory = "8Gi";
-              };
-            }
-            {
-              name = "deploy";
-              container = {
-                image = with pinned.images.kubectl; "${repository}:${tag}@${digest}";
-                command = ["sh" "-c"];
-                args = [
-                  "kubectl argo rollouts set image {{workflow.parameters.rollout-name}} '*=harbor.${domain}/library/{{workflow.parameters.image-name}}:{{workflow.parameters.image-tag}}' -n {{workflow.parameters.rollout-namespace}}"
-                ];
               };
             }
           ];

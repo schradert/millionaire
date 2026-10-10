@@ -113,7 +113,7 @@
           };
         };
 
-        # Sensor: triggers build-and-deploy workflow on push to main
+        # Sensor: triggers build-and-push workflow on push to main
         sensors.forgejo-push.spec = {
           template.serviceAccountName = "argo-events-sensor";
           dependencies = lib.toList {
@@ -128,30 +128,21 @@
           };
           triggers = lib.toList {
             template = {
-              name = "build-and-deploy";
+              name = "build-and-push";
               argoWorkflow = {
                 operation = "submit";
                 source.resource = {
                   apiVersion = "argoproj.io/v1alpha1";
                   kind = "Workflow";
-                  metadata.generateName = "build-deploy-";
+                  metadata.generateName = "build-push-";
                   spec = {
-                    workflowTemplateRef.name = "build-and-deploy";
+                    workflowTemplateRef.name = "build-and-push";
                     arguments.parameters = [
                       {name = "repo-url";}
                       {name = "revision";}
                       {
                         name = "image-name";
                         value = "sveltekit-demo";
-                      }
-                      {name = "image-tag";}
-                      {
-                        name = "rollout-name";
-                        value = "sveltekit-demo";
-                      }
-                      {
-                        name = "rollout-namespace";
-                        value = "development";
                       }
                     ];
                   };
@@ -170,13 +161,6 @@
                       dataKey = "body.after";
                     };
                     dest = "spec.arguments.parameters.1.value";
-                  }
-                  {
-                    src = {
-                      dependencyName = "push";
-                      dataKey = "body.after";
-                    };
-                    dest = "spec.arguments.parameters.3.value";
                   }
                 ];
               };
