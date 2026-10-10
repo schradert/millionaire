@@ -139,10 +139,12 @@
           namespace = "kube-system";
           sectionName = "https";
         };
+        # The importer has no auth of its own but holds a Firefly access token.
         rules = lib.toList {
           backendRefs = lib.toList {
-            name = "firefly-importer";
-            port = 8080;
+            name = "oauth2-proxy";
+            namespace = "identity";
+            port = 4180;
           };
         };
       };
@@ -169,6 +171,10 @@
           sourceRef.storeRef.kind = "ClusterSecretStore";
         };
       };
+    };
+    oauth2Proxy.upstreams."firefly-importer-${config.canivete.meta.people.me}.${domain}" = {
+      url = "http://firefly-importer.finance.svc.cluster.local:8080";
+      namespace = "finance";
     };
     oauth2Proxy.upstreams."${hostname}" = {
       url = "http://firefly.finance.svc.cluster.local:8080";
