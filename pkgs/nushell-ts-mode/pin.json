@@ -1,0 +1,10 @@
+{
+  "version": "e07ecc59762fab8d5fa35bc6d3f522f74e580a2f",
+  "hash": "sha256-C4RRph7zaO4PQkZcUSsFg2jWuLcZGtRjaPcNICj3JG0=",
+  "source": {
+    "type": "git-commit",
+    "owner": "herbertjones",
+    "repo": "nushell-ts-mode",
+    "branch": "main"
+  }
+}
