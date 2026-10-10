@@ -208,9 +208,13 @@ in {
         exec nix run "${config.devenv.root}#update" --no-pure-eval -- "$@"
       '';
       # `build-all [--system <sys>]...` — build legacyPackages.<sys>.build-all
-      # (modules/build-all.nix; linux evaluated and built on falcon, results left
-      # there; darwin locally) plus the native devenv shells, then print a
-      # pass/fail matrix. Env: BUILD_ALL_REMOTE (falcon), BUILD_ALL_JOBS (8),
+      # (modules/build-all.nix; linux evaluated on falcon, which also fans builds
+      # out to the cluster nodes, results left there; darwin locally) plus the
+      # native devenv shells, then print a pass/fail matrix. The pool is
+      # static/builders.nix, spelled as a `builders` option for falcon's daemon:
+      # nodes by LAN IP, authenticated with falcon's ssh host key (authorized on
+      # the nodes by static/builder.nix), host keys pinned inline. Env:
+      # BUILD_ALL_REMOTE (falcon), BUILD_ALL_JOBS (8; falcon's own slots),
       # BUILD_ALL_CORES (4).
       scripts.build-all.exec = ''
         set -uo pipefail
@@ -224,11 +228,13 @@ in {
         done
         [ ''${#systems[@]} -gt 0 ] || systems=(aarch64-darwin x86_64-linux aarch64-linux)
         out=$(mktemp -d -t build-all.XXXXXX)
+        pool=$(echo '${builtins.toJSON (import ./static/builders.nix).nodes}' | $jq -r 'to_entries | map(.value |
+          "ssh-ng://\(.user)@\(.lan) \(.systems | join(",")) /etc/ssh/ssh_host_ed25519_key \(.jobs) \(.speedFactor) \(.features | join(",")) - \(.hostKey | @base64)") | join(";")')
         cd "${config.devenv.root}"
         for sys in "''${systems[@]}"; do
           remote=()
           [[ $sys == *-linux ]] && remote=(--remote "''${BUILD_ALL_REMOTE:-falcon}" --no-download
-            --option accept-flake-config true
+            --option accept-flake-config true --option builders "$pool" --option builders-use-substitutes true
             -j "''${BUILD_ALL_JOBS:-8}" --option cores "''${BUILD_ALL_CORES:-4}")
           ${lib.getExe pkgs.nix-fast-build} --flake ".#legacyPackages.$sys.build-all" --impure --no-nom --skip-cached \
             --eval-workers 4 "''${remote[@]}" --result-format json --result-file "$out/$sys.json" >&2
