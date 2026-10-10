@@ -8,7 +8,9 @@
 #   "hashes": {"vendorHash": …},   optional derived hashes
 #   "source": {"type": …, …},      required; see `sources` below
 #   "constraint": "<2.0",          optional; comma-separated version bounds
-#   "hold": "reason"               optional; blocks updates
+#   "hold": "reason",              optional; blocks updates
+#   "follows": "charts/cilium"     optional; version must equal that pin's,
+#                                  bumped (and rehashed) together with it
 # }
 {lib}: let
   # type -> { required params; optional params }
@@ -38,7 +40,7 @@
       optional = ["owner" "repo" "tagPrefix"];
     };
   };
-  topKeys = ["version" "hash" "digest" "hashes" "source" "constraint" "hold"];
+  topKeys = ["version" "hash" "digest" "hashes" "source" "constraint" "hold" "follows"];
 
   validate = file: pin: let
     fail = msg: throw "pin ${toString file}: ${msg}";
@@ -57,6 +59,7 @@
       [(lib.all lib.isString (lib.attrValues (pin.hashes or {}))) "hashes must be strings"]
       [(!(pin ? constraint) || isStr "constraint") "constraint must be a string"]
       [(!(pin ? hold) || isStr "hold") "hold must be a string"]
+      [(!(pin ? follows) || isStr "follows") "follows must be a string"]
     ];
     failed = lib.findFirst (c: !(builtins.head c)) null checks;
   in

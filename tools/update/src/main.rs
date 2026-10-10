@@ -229,8 +229,45 @@ fn pin_gates(root: &Path, e: &Entry) -> BTreeSet<Gate> {
     g
 }
 
+/// A bumped pin file: its original and new contents.
+struct Bumped {
+    e: Entry,
+    original: String,
+    new: String,
+}
+
+/// A bumped pin plus the pins that follow it; gated and held as one.
+struct Group {
+    lead: Bumped,
+    followers: Vec<Bumped>,
+    to: Update,
+}
+
+impl Group {
+    fn files(&self) -> impl Iterator<Item = &Bumped> {
+        std::iter::once(&self.lead).chain(&self.followers)
+    }
+
+    fn label(&self) -> String {
+        let f: Vec<&str> = self.followers.iter().map(|b| b.e.id.as_str()).collect();
+        if f.is_empty() {
+            format!("`{}`", self.lead.e.id)
+        } else {
+            format!("`{}` (+ `{}`)", self.lead.e.id, f.join("`, `"))
+        }
+    }
+}
+
+/// Pins whose `follows` names `id`.
+fn followers<'a>(all: &'a [Entry], id: &'a str) -> impl Iterator<Item = &'a Entry> {
+    all.iter()
+        .filter(move |f| f.pin.follows.as_deref() == Some(id))
+}
+
 struct Run {
     root: PathBuf,
+    /// every pin, for resolving `follows`
+    all: Vec<Entry>,
     ctx: Ctx,
     gates: Gates,
     no_gate: bool,
@@ -258,10 +295,38 @@ impl Run {
         Ok(())
     }
 
-    /// Bump a group of pins: gate them together; on failure retry each alone
-    /// and hold the ones that still fail.
+    /// Rehash the followers of `lead` to `version`; on error restore them.
+    fn bump_followers(&self, lead: &Entry, version: &str) -> Result<Vec<Bumped>, String> {
+        let mut done: Vec<Bumped> = Vec::new();
+        let to = Update {
+            version: version.to_string(),
+            digest: None,
+        };
+        for f in followers(&self.all, &lead.id) {
+            let mut f = f.clone();
+            let original = fs::read_to_string(&f.path).map_err(|e| e.to_string())?;
+            let res = if matches!(f.pin.source, pin::Source::OciTag { .. }) {
+                Err(anyhow::anyhow!("oci-tag pins can't follow"))
+            } else {
+                resolve::rehash(&self.ctx, &mut f, &to)
+            };
+            if let Err(err) = res {
+                let _ = resolve::restore(&f.path, &original);
+                for b in &done {
+                    let _ = resolve::restore(&b.e.path, &b.original);
+                }
+                return Err(format!("follower `{}`: {err:#}", f.id));
+            }
+            let new = fs::read_to_string(&f.path).map_err(|e| e.to_string())?;
+            done.push(Bumped { e: f, original, new });
+        }
+        Ok(done)
+    }
+
+    /// Bump a group of pins (and their followers): gate them together; on
+    /// failure retry each alone and hold the ones that still fail.
     fn pins(&mut self, entries: Vec<Entry>) -> Result<()> {
-        let mut bumped: Vec<(Entry, String, String, Update)> = Vec::new();
+        let mut bumped: Vec<Group> = Vec::new();
         for mut e in entries {
             let latest = match resolve::latest(&self.ctx, &e, self.major) {
                 Ok(l) => l,
@@ -281,58 +346,73 @@ impl Run {
                 continue;
             }
             let original = fs::read_to_string(&e.path)?;
-            match resolve::rehash(&self.ctx, &mut e, &to) {
-                Ok(()) => {
-                    let new = fs::read_to_string(&e.path)?;
-                    bumped.push((e, original, new, to));
-                }
+            if let Err(err) = resolve::rehash(&self.ctx, &mut e, &to) {
+                self.failed += 1;
+                resolve::restore(&e.path, &original)?;
+                self.note(format!("- `{}`: failed to bump to {to}: {err:#}", e.id));
+                continue;
+            }
+            let new = fs::read_to_string(&e.path)?;
+            match self.bump_followers(&e, &to.version) {
+                Ok(followers) => bumped.push(Group {
+                    lead: Bumped { e, original, new },
+                    followers,
+                    to,
+                }),
                 Err(err) => {
                     self.failed += 1;
                     resolve::restore(&e.path, &original)?;
-                    self.note(format!("- `{}`: failed to bump to {to}: {err:#}", e.id));
+                    self.note(format!("- `{}`: failed to bump to {to}: {err}", e.id));
                 }
             }
         }
         if bumped.is_empty() {
             return Ok(());
         }
-        let all: BTreeSet<Gate> = bumped
-            .iter()
-            .flat_map(|(e, ..)| pin_gates(&self.root, e))
-            .collect();
+        let root = self.root.clone();
+        let gates = |g: &Group| -> BTreeSet<Gate> {
+            g.files().flat_map(|b| pin_gates(&root, &b.e)).collect()
+        };
+        let all: BTreeSet<Gate> = bumped.iter().flat_map(&gates).collect();
         let together = self.gate(&all);
         if together.is_ok() || bumped.len() == 1 {
-            for (e, original, _, to) in &bumped {
+            for g in &bumped {
                 match &together {
-                    Ok(()) => {
-                        let from: pin::Pin = serde_json::from_str(original)?;
-                        self.note(format!("- `{}`: {} → {to}", e.id, from.version));
-                    }
-                    Err(why) => self.hold(e, original, to, why)?,
+                    Ok(()) => self.bumped(g)?,
+                    Err(why) => self.hold(g, why)?,
                 }
             }
             return Ok(());
         }
-        // isolate: start from all originals, re-apply one at a time
-        for (e, original, ..) in &bumped {
-            resolve::restore(&e.path, original)?;
+        // isolate: start from all originals, re-apply one group at a time
+        for b in bumped.iter().flat_map(Group::files) {
+            resolve::restore(&b.e.path, &b.original)?;
         }
-        for (e, original, new, to) in &bumped {
-            fs::write(&e.path, new)?;
-            match self.gate(&pin_gates(&self.root, e)) {
-                Ok(()) => {
-                    let from: pin::Pin = serde_json::from_str(original)?;
-                    self.note(format!("- `{}`: {} → {to}", e.id, from.version));
-                }
-                Err(why) => self.hold(e, original, to, &why)?,
+        for g in &bumped {
+            for b in g.files() {
+                fs::write(&b.e.path, &b.new)?;
+            }
+            match self.gate(&gates(g)) {
+                Ok(()) => self.bumped(g)?,
+                Err(why) => self.hold(g, &why)?,
             }
         }
         Ok(())
     }
 
-    /// Revert a pin and record why the update was refused.
-    fn hold(&mut self, e: &Entry, original: &str, to: &Update, why: &str) -> Result<()> {
-        let mut pin: pin::Pin = serde_json::from_str(original)?;
+    fn bumped(&mut self, g: &Group) -> Result<()> {
+        let from: pin::Pin = serde_json::from_str(&g.lead.original)?;
+        self.note(format!("- {}: {} → {}", g.label(), from.version, g.to));
+        Ok(())
+    }
+
+    /// Revert a group and record on its lead why the update was refused.
+    fn hold(&mut self, g: &Group, why: &str) -> Result<()> {
+        for b in &g.followers {
+            resolve::restore(&b.e.path, &b.original)?;
+        }
+        let to = &g.to;
+        let mut pin: pin::Pin = serde_json::from_str(&g.lead.original)?;
         if version::Version::parse(&to.version).is_some() && to.version != pin.version {
             let bound = format!("<{}", to.version);
             pin.constraint = Some(match pin.constraint {
@@ -342,9 +422,9 @@ impl Run {
         }
         let first = why.lines().next().unwrap_or(why);
         pin.hold = Some(format!("{to} {first} ({})", today()));
-        pin::write(&e.path, &pin)?;
+        pin::write(&g.lead.e.path, &pin)?;
         self.failed += 1;
-        self.note(format!("- `{}`: {to} {first}; now held", e.id));
+        self.note(format!("- {}: {to} {first}; now held", g.label()));
         Ok(())
     }
 
@@ -511,17 +591,33 @@ fn main() -> Result<()> {
             summary,
         } => (filter, true, *major, *no_gate, summary.clone()),
     };
-    let plan = filter.plan(bump)?;
+    let mut plan = filter.plan(bump)?;
     let all = pin::discover(&root)?;
-    for p in &plan.pins {
-        if !all.iter().any(|e| &e.id == p) {
+    for p in plan.pins.iter_mut() {
+        let Some(e) = all.iter().find(|e| &e.id == p) else {
             bail!("no pin {p:?}");
+        };
+        // a follower moves only with its lead
+        if let Some(lead) = &e.pin.follows {
+            if !all.iter().any(|l| &l.id == lead) {
+                bail!("{p}: follows unknown pin {lead:?}");
+            }
+            *p = lead.clone();
+        }
+    }
+    for e in &all {
+        if let Some(lead) = &e.pin.follows {
+            if !all.iter().any(|l| &l.id == lead) {
+                bail!("{}: follows unknown pin {lead:?}", e.id);
+            }
         }
     }
     let entries: Vec<Entry> = all
-        .into_iter()
+        .iter()
+        .filter(|e| e.pin.follows.is_none())
         .filter(|e| plan.kinds.contains(&e.kind))
         .filter(|e| plan.pins.is_empty() || plan.pins.contains(&e.id))
+        .cloned()
         .collect();
     let system = nix::current_system()?;
     let ctx = Ctx {
@@ -532,6 +628,13 @@ fn main() -> Result<()> {
 
     if !bump {
         let mut failed = 0;
+        for e in &all {
+            if let Some(lead) = e.pin.follows.as_deref() {
+                if entries.iter().any(|l| l.id == lead) {
+                    println!("{:<36} {:<14} follows {lead}", e.id, e.pin.version);
+                }
+            }
+        }
         for e in &entries {
             let line = match resolve::latest(&ctx, e, false) {
                 Ok(None) => "up to date".to_string(),
@@ -565,6 +668,7 @@ fn main() -> Result<()> {
     };
     let mut run = Run {
         root: root.clone(),
+        all: all.clone(),
         ctx,
         gates: Gates {
             system,
