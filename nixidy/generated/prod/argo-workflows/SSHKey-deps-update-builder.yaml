@@ -1,0 +1,8 @@
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: SSHKey
+metadata:
+  name: deps-update-builder
+  namespace: cicd
+spec:
+  comment: deps-update
+  keyType: ed25519

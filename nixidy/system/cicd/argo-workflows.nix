@@ -339,13 +339,31 @@ in {
             remoteRef.key = "github/update-bot/token";
           };
         };
+        # deps-update's identity towards the build pool. Generated in-cluster
+        # once; the public half is authorized on the nodes from
+        # static/generated.json (deps_update_builder_pubkey, static/builder.nix).
+        sshKeys.deps-update-builder.spec = {
+          keyType = "ed25519";
+          comment = "deps-update";
+        };
+        externalSecrets.deps-update-builder.spec = {
+          refreshPolicy = "CreatedOnce";
+          dataFrom = lib.toList {
+            sourceRef.generatorRef = {
+              apiVersion = "generators.external-secrets.io/v1alpha1";
+              kind = "SSHKey";
+              name = "deps-update-builder";
+            };
+          };
+        };
         persistentVolumeClaims.deps-update-nix.spec = {
           accessModes = ["ReadWriteOnce"];
           storageClassName = "ceph-block";
           resources.requests.storage = "60Gi";
         };
         # Weekly `update bump --only <kind>` per kind (tools/update), each
-        # gated and pushed to branch deps/<kind> with one PR per kind.
+        # gated and pushed to branch deps/<kind> with one PR per kind, then
+        # build-all (x86_64-linux) on a pool node; failures make the PR a draft.
         cronWorkflows.deps-update.spec = {
           # Unsuspend once github/update-bot/token exists in Bitwarden.
           suspend = true;
@@ -375,10 +393,19 @@ in {
                 value = "src,chart,image,flake,devenv,cargo,uv,bun";
               }
             ];
-            volumes = lib.toList {
-              name = "nix";
-              persistentVolumeClaim.claimName = "deps-update-nix";
-            };
+            volumes = [
+              {
+                name = "nix";
+                persistentVolumeClaim.claimName = "deps-update-nix";
+              }
+              {
+                name = "builder-ssh";
+                secret = {
+                  secretName = "deps-update-builder";
+                  defaultMode = 256;
+                };
+              }
+            ];
             templates = lib.toList {
               name = "update";
               affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms = lib.toList {
@@ -416,10 +443,27 @@ in {
                   "{{workflow.parameters.kinds}}"
                 ];
                 envFrom = lib.toList {secretRef.name = "argo-workflows-github";};
-                volumeMounts = lib.toList {
-                  name = "nix";
-                  mountPath = "/nix";
+                # Big builders first; the gate uses the first that accepts its key.
+                env = lib.toList {
+                  name = "BUILD_POOL";
+                  value = builtins.toJSON (lib.pipe (import ../../../static/builders.nix).nodes [
+                    (lib.filterAttrs (_: n: lib.elem "big-parallel" n.features))
+                    lib.attrValues
+                    (lib.sort (a: b: a.cores > b.cores))
+                    (map (n: {inherit (n) user lan hostKey;}))
+                  ]);
                 };
+                volumeMounts = [
+                  {
+                    name = "nix";
+                    mountPath = "/nix";
+                  }
+                  {
+                    name = "builder-ssh";
+                    mountPath = "/builder-ssh";
+                    readOnly = true;
+                  }
+                ];
                 resources.requests = {
                   cpu = "1";
                   memory = "4Gi";

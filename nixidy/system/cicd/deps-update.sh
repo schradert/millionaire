@@ -1,7 +1,8 @@
 set -euo pipefail
 # deps-update <repo-slug> <base> <kinds>
-# For each kind: fresh checkout of <base>, `update bump --only <kind>`, and
-# force-push branch deps/<kind> + open (or refresh) one PR per kind.
+# For each kind: fresh checkout of <base>, `update bump --only <kind>`, a
+# build-all gate (x86_64-linux), and force-push branch deps/<kind> + open (or
+# refresh) one PR per kind, as a draft listing the failures when the gate fails.
 SLUG="$1"; BASE="$2"; KINDS="$3"
 mkdir -p /etc/nix
 cat > /etc/nix/nix.conf <<NIXCONF
@@ -23,7 +24,7 @@ git clone -q --branch "$BASE" "$remote" "$work/repo"
 cd "$work/repo"
 git config user.name "millionaire-update"
 git config user.email "update@trdos.me"
-tools=$(nix build --no-pure-eval --no-link --print-out-paths --inputs-from . nixpkgs#gh nixpkgs#jq nixpkgs#gawk | sed 's|$|/bin|' | paste -sd:)
+tools=$(nix build --no-pure-eval --no-link --print-out-paths --inputs-from . nixpkgs#gh nixpkgs#jq nixpkgs#gawk nixpkgs#openssh nixpkgs#nix-eval-jobs | sed 's|$|/bin|' | paste -sd:)
 export PATH="$tools:$PATH"
 update=$(nix build --no-pure-eval --no-link --print-out-paths .#update)/bin/update
 system=$(nix eval --impure --raw --expr builtins.currentSystem)
@@ -44,6 +45,40 @@ sync_generated() {
   done
 }
 
+# build-all gate. The pod (12Gi) only evaluates; derivations build in the
+# store of the first pool node ($BUILD_POOL) that accepts the in-cluster key,
+# and outputs stay there. Writes a markdown verdict to $1; fails on failures.
+key=/builder-ssh/privateKey
+gate() {
+  local md="$1" store="" s n hk evals drvs outs bad
+  n=$(jq length <<<"$BUILD_POOL")
+  for ((i = 0; i < n; i++)); do
+    hk=$(jq -r ".[$i].hostKey | @base64" <<<"$BUILD_POOL")
+    s="ssh-ng://$(jq -r ".[$i] | .user + \"@\" + .lan" <<<"$BUILD_POOL")?ssh-key=$key&base64-ssh-public-host-key=$hk"
+    if nix store info --store "$s" >/dev/null 2>&1; then store="$s"; break; fi
+  done
+  if [ -z "$store" ]; then
+    printf 'build-all not run: no pool node accepts the deps-update key. Set `deps_update_builder_pubkey` in static/generated.json and deploy the nodes:\n\n    %s\n' "$(cat /builder-ssh/publicKey)" >"$md"
+    return 1
+  fi
+  evals="$work/eval.jsonl"
+  nix-eval-jobs --impure --workers 2 --max-memory-size 3072 --flake ".#legacyPackages.x86_64-linux.build-all" >"$evals" || true
+  mapfile -t drvs < <(jq -r 'select(.drvPath) | .drvPath + "^*"' "$evals")
+  [ "${#drvs[@]}" -eq 0 ] || nix build --no-pure-eval --eval-store auto --store "$store" --keep-going --no-link "${drvs[@]}" >&2 || true
+  outs=$(jq -r 'select(.outputs) | .outputs[]' "$evals")
+  bad=$({
+    jq -r 'select(.error) | "- `\(.attr)` (eval)"' "$evals"
+    [ -z "$outs" ] || nix-store --store "$store" --check-validity --print-invalid $outs 2>/dev/null |
+      while read -r o; do jq -r --arg o "$o" 'select(.outputs and (.outputs | map(. == $o) | any)) | "- `\(.attr)` (build)"' "$evals"; done
+  } | sort -u)
+  [ -s "$evals" ] || bad='- `<flake>` (eval)'
+  if [ -n "$bad" ]; then
+    printf 'build-all (x86_64-linux) failed on %s:\n\n%s\n' "${store%%\?*}" "$bad" >"$md"
+    return 1
+  fi
+  printf 'build-all (x86_64-linux) passed on %s.\n' "${store%%\?*}" >"$md"
+}
+
 failed=0
 for kind in ${KINDS//,/ }; do
   echo "=== $kind"
@@ -60,16 +95,20 @@ for kind in ${KINDS//,/ }; do
   [ -n "$before" ] && sync_generated "$before" "$(render)"
   if ! tools/pin-lint; then echo "[$kind] pin-lint failed, not pushing" >&2; failed=1; continue; fi
   git checkout -q -B "$branch"
-  git add -A
+  git add -A # flakes only see tracked files
+  verdict="$work/gate-$kind.md"
+  draft=
+  gate "$verdict" || draft=1
   git commit -q -m "chore(deps): update $kind"
   git push -q -f origin "$branch"
-  body=$(printf 'Weekly `update bump --only %s`.\n\n%s\n' "$kind" "$(cat "$summary")")
+  body=$(printf 'Weekly `update bump --only %s`.\n\n%s\n\n%s\n' "$kind" "$(cat "$summary")" "$(cat "$verdict")")
   pr=$(gh pr list -R "$SLUG" --head "$branch" --base "$BASE" --state open --json number -q '.[0].number')
   if [ -n "$pr" ]; then
     gh pr edit "$pr" -R "$SLUG" --body "$body" >/dev/null
-    echo "[$kind] refreshed #$pr"
+    if [ -n "$draft" ]; then gh pr ready --undo "$pr" -R "$SLUG" >/dev/null || true; else gh pr ready "$pr" -R "$SLUG" >/dev/null || true; fi
+    echo "[$kind] refreshed #$pr${draft:+ (draft)}"
   else
-    gh pr create -R "$SLUG" -B "$BASE" -H "$branch" -t "chore(deps): update $kind" -b "$body"
+    gh pr create -R "$SLUG" -B "$BASE" -H "$branch" -t "chore(deps): update $kind" -b "$body" ${draft:+--draft}
   fi
 done
 exit "$failed"
