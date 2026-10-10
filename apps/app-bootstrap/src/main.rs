@@ -1,0 +1,30 @@
+//! Idempotent first-run bootstraps, run as ArgoCD PostSync Jobs.
+//!
+//! `app-bootstrap <app>` where app is `immich` or `kavita`. Every step checks
+//! the current state first, so a rerun against a configured app changes nothing.
+
+mod common;
+mod immich;
+mod kavita;
+
+use std::{env, process::ExitCode};
+
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> ExitCode {
+    let app = env::args().nth(1).unwrap_or_default();
+    let res = match app.as_str() {
+        "immich" => immich::run().await,
+        "kavita" => kavita::run().await,
+        other => Err(format!("usage: app-bootstrap <immich|kavita> (got {other:?})").into()),
+    };
+    match res {
+        Ok(()) => {
+            println!("{app} bootstrap done");
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("{app} bootstrap failed: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}

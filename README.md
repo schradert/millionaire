@@ -23,6 +23,13 @@
 17. TODO rotate secrets once the cluster is in a state I'm happy with. Known exposures this session: the Cloudflare account token (printed to a local pulumi preview log, since deleted) and a few characters of Maintainerr's Jellyfin API key
 18. TODO daily email digest of alerts (Alertmanager now notifies via ntfy only; per-alert email was removed)
 
+## Conventions
+
+Agents and contributors: every app that needs a first-user or admin setup gets both of these, with no manual first-run wizard.
+
+1. **Idempotent declarative bootstrap.** An ArgoCD PostSync Job that creates the admin (and libraries and other required setup) only when missing, and is a no-op on every rerun. The admin password is generated in-cluster (ESO `Password` generator, `CreatedOnce`) and pushed to Bitwarden with a PushSecret. Use `apps/app-bootstrap` (`app-bootstrap <app>`) or `apps/jellyfin-bootstrap` as the pattern; images are built by `modules/images.nix` and published to Harbor.
+2. **Keycloak SSO.** A `keycloakClients` entry on the internal hostname, the client secret read through the `kubernetes-identity` ClusterSecretStore, and the app's OIDC wired up declaratively. Keep password login on as a break-glass.
+
 ## 3D Printing Stack (Voron 2.4 LDO)
 
 ### After first boot
