@@ -122,6 +122,8 @@ in {
               osd_class_update_on_start = "false";
               device_failure_prediction_mode = "local";
             };
+            # Recovery/backfill (e.g. draining an out OSD) yields to client IO.
+            cephConfig.osd.osd_mclock_profile = "high_client_ops";
             cleanupPolicy.wipeDevicesFromOtherClusters = true;
             csi.readAffinity.enabled = true;
             # Prometheus only selects monitors and rules labelled release=prometheus;
