@@ -129,7 +129,7 @@ in {
             labels.monitoring.release = "prometheus";
             dashboard.urlPrefix = "/";
             dashboard.ssl = false;
-            dashboard.prometheusEndpoint = "http" + "://prometheus-operated.monitoring.svc.cluster.local:9090";
+            dashboard.prometheusEndpoint = "http" + "://prometheus-operated.observability.svc.cluster.local:9090";
             mgr.modules = let
               enable = name: {
                 inherit name;
