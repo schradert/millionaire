@@ -99,6 +99,20 @@
           };
         };
       };
+      # Break-glass (and only) login: Maloja is single-user with no OIDC.
+      resources.pushSecrets.maloja-admin.spec = {
+        secretStoreRefs = lib.toList {
+          name = "bitwarden";
+          kind = "ClusterSecretStore";
+        };
+        selector.secret.name = "maloja-admin";
+        data = lib.toList {
+          match = {
+            secretKey = "password";
+            remoteRef.remoteKey = "maloja/admin-password";
+          };
+        };
+      };
       resources.externalSecrets.maloja.spec = {
         secretStoreRef.name = "kubernetes-media";
         secretStoreRef.kind = "ClusterSecretStore";
