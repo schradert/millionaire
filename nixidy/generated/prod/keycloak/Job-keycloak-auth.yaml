@@ -15,7 +15,7 @@ spec:
         - command:
             - /bin/bash
             - -c
-            - |
+            - |+
               set -euo pipefail
               export HOME=/tmp
               kc() { /opt/keycloak/bin/kcadm.sh "$@" --config /tmp/kcadm.config; }
@@ -57,6 +57,44 @@ spec:
               else
                 echo "required actions unchanged: [$have]"
               fi
+
+              scopes=$(kc get client-scopes -r $R --fields name,id --format csv --noquotes)
+              ensure_scopes() {
+                local client=$1 kind=$2 cid have other n sid
+                shift 2
+                cid=$(kc get clients -r $R -q clientId="$client" -q exact=true --fields id --format csv --noquotes)
+                [ -n "$cid" ] || { echo "client $client not created yet"; return 0; }
+                have=$(kc get "clients/$cid/default-client-scopes" -r $R --fields name --format csv --noquotes)
+                other=$(kc get "clients/$cid/optional-client-scopes" -r $R --fields name --format csv --noquotes)
+                for n in "$@"; do
+                  grep -qx "$n" <<<"$have"$'\n'"$other" && continue
+                  sid=$(while IFS=, read -r name id; do if [ "$name" = "$n" ]; then echo "$id"; fi; done <<<"$scopes")
+                  [ -n "$sid" ] || continue # e.g. "openid" is implicit, not a scope
+                  kc update "clients/$cid/$kind-client-scopes/$sid" -r $R -n
+                  echo "client $client: added $kind scope $n"
+                done
+              }
+              ensure_scopes argo-workflows default openid profile email groups
+              ensure_scopes argocd default openid profile email
+              ensure_scopes bifrost default openid profile email
+              ensure_scopes bulwark default openid profile email
+              ensure_scopes chirpstack default openid profile email
+              ensure_scopes contextforge default openid profile email
+              ensure_scopes forgejo default openid profile email
+              ensure_scopes harbor default openid profile email groups
+              ensure_scopes home-assistant default openid profile email groups
+              ensure_scopes immich default openid profile email groups
+              ensure_scopes jellyfin default openid profile email groups
+              ensure_scopes kavita default openid profile email roles groups
+              ensure_scopes kavita optional offline_access
+              ensure_scopes librechat default openid profile email
+              ensure_scopes mealie default openid profile email
+              ensure_scopes oauth2-proxy default openid profile email
+              ensure_scopes promptfoo default openid profile email
+              ensure_scopes sure default openid profile email
+              ensure_scopes toolhive default openid profile email
+              ensure_scopes windmill default openid profile email groups
+
           env:
             - name: KEYCLOAK_URL
               value: http://keycloak.identity.svc.cluster.local:8080
