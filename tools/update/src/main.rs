@@ -292,7 +292,7 @@ impl Run {
 
     /// Rehash the followers of `lead` to `version`; on error restore them.
     /// Image followers take the tag `lead`'s new charts default to
-    /// (`charts`: before and after).
+    /// (`charts`: before and after), keeping their digest when it's unchanged.
     fn bump_followers(
         &self,
         lead: &Entry,
@@ -306,6 +306,11 @@ impl Run {
             let res = match (f.pin.source.clone(), charts) {
                 (pin::Source::OciTag { repository, .. }, Some((old, new))) => {
                     defaults::tag(old, new, &repository, &f.pin.version).and_then(|tag| {
+                        // Same tag: keep the digest. A new digest is a new image
+                        // string, which restarts stateful workloads (Ceph, CNPG).
+                        if tag == f.pin.version {
+                            return Ok(());
+                        }
                         let digest = oci::Registry::new(&repository).digest(&tag)?;
                         let to = Update {
                             version: tag,
