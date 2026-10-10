@@ -757,6 +757,20 @@ class Millionaire:
             "Harbor registry htpasswd entry (bcrypt)",
         )
 
+        # Forge tokens (magit forge / code-review), moved out of the old dotfiles
+        # sops file. Values come from stack config so they never touch the repo:
+        #   pulumi config set --secret githubToken / gitlabToken
+        # Unset keys are skipped, so an `up` before they exist changes nothing.
+        config = pulumi.Config()
+        for forge in ("github", "gitlab"):
+            token = config.get_secret(f"{forge}Token")
+            if token is not None:
+                Secret(
+                    f"{forge}/code-review/token",
+                    token,
+                    f"{forge} personal access token for magit forge / code-review",
+                )
+
         # Embedded microcontrollers are deployed via canivete + deploy-rs, not
         # pulumi. See static/falcon.nix (lands with the embedded/ workspace PR)
         # for per-board profiles; `deploy '.#falcon'` flashes all reachable
