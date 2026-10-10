@@ -1,0 +1,9 @@
+{
+  "version": "1.2.15",
+  "hash": "sha256-708fcIVG7KsJnpHADeZNmWj2LmZGfClmtdREVwA9Ve0=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://postfinance.github.io/kubelet-csr-approver",
+    "chart": "kubelet-csr-approver"
+  }
+}
