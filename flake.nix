@@ -193,7 +193,8 @@
             profiles.workstation.enable = true;
             system.stateVersion = 6;
             home-manager.sharedModules = [{home.stateVersion = "25.11";}];
-            nix.linux-builder.enable = true;
+            # FIXME no room for this
+            # nix.linux-builder.enable = true;
             # Personal attic cache is NOT set system-wide on the dev host.
             # It's activated per-project via devenv's nix.settings to avoid
             # caching work builds on the personal cache.
