@@ -29,13 +29,16 @@
         directAccessGrantsEnabled = false;
         redirectUris = ["https://${hostname}/user/oauth2/keycloak/callback"];
         webOrigins = ["https://${hostname}"];
-        defaultClientScopes = ["openid" "profile" "email"];
+        defaultClientScopes = ["openid" "profile" "email" "groups"];
       };
     };
 
     applications.forgejo = {
       namespace = "development";
-      generatedSecrets.forgejo-admin-password.key = "password";
+      generatedSecrets.forgejo-admin-password = {
+        key = "password";
+        bitwarden = "forgejo/admin-password";
+      };
       postgres.enable = true;
       # Repos and attachments live on the chart's `persistence` PVC (the chart
       # names it gitea-shared-storage); forgejo-1 is the CNPG database volume.
@@ -70,7 +73,8 @@
                 existingSecret = "forgejo-oidc";
                 autoDiscoverUrl = "https://keycloak.${domain}/realms/default/.well-known/openid-configuration";
                 groupClaimName = "groups";
-                adminGroup = "/admin";
+                # Keycloak sends short group names (groups scope, full.path off).
+                adminGroup = "admin";
               }
             ];
 
@@ -101,7 +105,8 @@
                 DISABLE_REGISTRATION = false;
                 ALLOW_ONLY_EXTERNAL_REGISTRATION = true;
                 SHOW_REGISTRATION_BUTTON = false;
-                ENABLE_INTERNAL_SIGNIN = false;
+                # Password form kept for the break-glass forgejo-admin.
+                ENABLE_INTERNAL_SIGNIN = true;
               };
 
               oauth2_client = {
