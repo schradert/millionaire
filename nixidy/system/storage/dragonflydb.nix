@@ -1,11 +1,10 @@
 {
-  nixidy = {pkgs, ...}: let
-    repo = pkgs.fetchFromGitHub {
-      owner = "dragonflydb";
-      repo = "dragonfly-operator";
-      rev = "v1.4.0";
-      hash = "sha256-QBylTbY+8HcD0Z2VyqtwUYm+MeXCP7IwVtJpCCMswXs=";
-    };
+  nixidy = {
+    pinned,
+    pkgs,
+    ...
+  }: let
+    repo = pinned.dragonfly-operator;
   in {
     applications.dragonflydb-crds.namespace = "kube-system";
     canivete.crds.dragonflydb = {

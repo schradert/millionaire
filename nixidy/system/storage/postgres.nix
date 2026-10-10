@@ -6,7 +6,7 @@ in {
     can,
     charts,
     lib,
-    pkgs,
+    pinned,
     ...
   }: {
     applications.postgres-crds.namespace = "kube-system";
@@ -14,12 +14,7 @@ in {
       application = "postgres-crds";
       install = true;
       prefix = "config/crd/bases";
-      src = pkgs.fetchFromGitHub {
-        owner = "cloudnative-pg";
-        repo = "cloudnative-pg";
-        rev = "v1.28.1";
-        hash = "sha256-9NfjrVF0OtDLaGD5PPFSZcI8V3Vy/yOTm/JwnE3kMZE=";
-      };
+      src = pinned.cloudnative-pg;
     };
     applications.postgres = {
       namespace = "storage";

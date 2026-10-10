@@ -4,7 +4,7 @@ in {
   nixidy = {
     can,
     lib,
-    pkgs,
+    pinned,
     ...
   }: {
     applications.volsync-crds.namespace = "kube-system";
@@ -12,12 +12,7 @@ in {
       application = "volsync-crds";
       install = true;
       prefix = "config/crd/bases";
-      src = pkgs.fetchFromGitHub {
-        owner = "backube";
-        repo = "volsync";
-        rev = "v0.15.0";
-        hash = "sha256-dq+xNKWWmWTJBuw7npxfl5U/ehrAb7OWmijEwGSvNPQ=";
-      };
+      src = pinned.volsync;
     };
     applications.volsync = {
       namespace = "storage";

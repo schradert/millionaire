@@ -66,6 +66,7 @@
   };
   nixidy = {
     lib,
+    pinned,
     pkgs,
     ...
   }: {
@@ -84,12 +85,7 @@
       # The generator derives the attr name from the CRD's plural, which is
       # hyphenated for NADs — override to idiomatic camelCase.
       attrNameOverrides."network-attachment-definitions.k8s.cni.cncf.io" = "networkAttachmentDefinitions";
-      src = pkgs.fetchFromGitHub {
-        owner = "k8snetworkplumbingwg";
-        repo = "network-attachment-definition-client";
-        rev = "v1.7.7";
-        hash = "sha256-o5Gxm+lXZVPiWeOyEt8zKrGSRj4ZR60NT1DQASXe6gI=";
-      };
+      src = pinned.network-attachment-definition-client;
     };
     applications.multus = {
       namespace = "kube-system";

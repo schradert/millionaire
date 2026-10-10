@@ -4,7 +4,7 @@
     charts,
     config,
     lib,
-    pkgs,
+    pinned,
     ...
   }: let
     namespace = "security";
@@ -16,12 +16,7 @@
       install = true;
       prefix = "config/crds/bases";
       match = ".*_.*\\.yaml$"; # CRD files contain underscores, kustomization.yaml doesn't
-      src = pkgs.fetchFromGitHub {
-        owner = "external-secrets";
-        repo = "external-secrets";
-        rev = "v2.0.1";
-        hash = "sha256-VKsruSQIkSkmU7sAznO5Ex/DF3TsykR+Gd5epd42tlw=";
-      };
+      src = pinned.external-secrets;
     };
     applications.external-secrets = {
       namespace = "security";

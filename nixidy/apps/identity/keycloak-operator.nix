@@ -3,7 +3,7 @@
 in {
   nixidy = {
     lib,
-    pkgs,
+    pinned,
     ...
   }: {
     applications.keycloak-operator-crds.namespace = "identity";
@@ -11,12 +11,7 @@ in {
       application = "keycloak-operator-crds";
       install = true;
       prefix = "config/crd/bases";
-      src = pkgs.fetchFromGitHub {
-        owner = "Hostzero-GmbH";
-        repo = "keycloak-operator";
-        rev = "v0.5.0";
-        hash = "sha256-clKEPJdzV/4xulB4dEMOJdeNd8wHl6ev23FDhmIzRY0=";
-      };
+      src = pinned.keycloak-operator;
     };
     applications.keycloak-operator = {
       namespace = "identity";

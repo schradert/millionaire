@@ -1,0 +1,10 @@
+{
+  "version": "0.5.0",
+  "hash": "sha256-clKEPJdzV/4xulB4dEMOJdeNd8wHl6ev23FDhmIzRY0=",
+  "source": {
+    "type": "github-release",
+    "owner": "Hostzero-GmbH",
+    "repo": "keycloak-operator",
+    "tagPrefix": "v"
+  }
+}
