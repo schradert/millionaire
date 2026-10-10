@@ -35,6 +35,16 @@
     clippy.enable = true;
   };
 
+  # `update-deps` — bump this crate's Cargo deps to the latest the manifest
+  # allows. org-bridge is a standalone binary crate (not part of a workspace);
+  # its Cargo.lock is committed and tracked going forward, so the lock diff is
+  # reviewable.
+  scripts.update-deps.exec = ''
+    set -euo pipefail
+    echo "  -> org-bridge crate"
+    (cd "$DEVENV_ROOT" && cargo update)
+  '';
+
   processes = {
     org-bridge.exec = "cargo watch -x run";
     baikal.exec = "${pkgs.podman}/bin/podman run --rm -p 5232:80 -e BAIKAL_ADMIN_PASSWORD=admin ckulka/baikal:0.10.1-nginx";
