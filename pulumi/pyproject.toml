@@ -8,6 +8,7 @@ dependencies = [
   "pulumi>=3.206.0",
   "pulumi-cloudflare>=6.13.0",
   "pulumi-command>=1.1.3",
+  "pulumi-b2",
   "pulumi-bitwarden",
   "pulumi-random>=4.19.1",
   "pulumi-hcloud>=1.22.0",
@@ -20,4 +21,5 @@ dependencies = [
 dev = ["ruff>=0.14.6", "taplo>=0.9.3", "ty>=0.0.11"]
 
 [tool.uv.sources]
+pulumi-b2 = { path = "sdks/b2" }
 pulumi-bitwarden = { path = "sdks/bitwarden" }
