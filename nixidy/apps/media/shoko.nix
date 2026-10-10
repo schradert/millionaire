@@ -15,6 +15,23 @@
     };
     applications.shoko = {
       namespace = "media";
+      # Shoko has no OIDC: the UI stays behind oauth2-proxy and still asks for
+      # Shoko's own login. The bootstrap finishes the first-run wizard with this
+      # admin (apps/app-bootstrap shoko, >= 0.13.0).
+      generatedSecrets.shoko-admin = {
+        key = "password";
+        bitwarden = "shoko/admin-password";
+      };
+      bootstrap = lib.mkIf (pinned.images ? app-bootstrap-shoko) {
+        image = with pinned.images.app-bootstrap-shoko; "${repository}:${tag}@${digest}";
+        args = ["shoko"];
+        env = {
+          SHOKO_URL = "http://shoko.media.svc.cluster.local:8111";
+          ADMIN_USER = "admin";
+          ADMIN_PASSWORD_FILE = "/secrets/admin/password";
+        };
+        secrets.admin = "shoko-admin";
+      };
       volsync.pvcs.shoko.title = "shoko";
       helm.releases.shoko = {
         chart = charts.bjw-s-labs.app-template-patched;
