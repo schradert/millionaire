@@ -2,7 +2,14 @@
   inherit (config.canivete.meta) domain;
   hostname = "bifrost.${domain}";
 in {
-  nixidy = {lib, ...}: {
+  nixidy = {lib, ...}: let
+    providerKey = name: env: {
+      inherit name;
+      value = "env.${env}";
+      models = ["*"];
+      weight = 1;
+    };
+  in {
     # Keycloak OIDC client for Bifrost dashboard
     applications.keycloak.resources.keycloakClients.bifrost.spec = {
       realmRef.name = "default";
@@ -34,37 +41,23 @@ in {
         };
         values = {
           replicaCount = 1;
-          image.tag = "v1.3.36";
+          # Chart 1.5.0 ships appVersion 1.5.0; the old v1.3.36 tag predates its config schema
+          image.tag = "v1.5.0";
           service.port = 8000;
-          config = {
-            providers = {
-              ollama = {
-                type = "ollama";
-                base_url = "http://ollama.ai.svc.cluster.local:11434";
-              };
-              vllm = {
-                type = "openai";
-                base_url = "http://vllm.ai.svc.cluster.local:8000/v1";
-              };
-              anthropic = {
-                type = "anthropic";
-                api_key_env = "ANTHROPIC_API_KEY";
-              };
-              openai = {
-                type = "openai";
-                api_key_env = "OPENAI_API_KEY";
-              };
-              google = {
-                type = "google";
-                api_key_env = "GOOGLE_API_KEY";
-              };
-            };
-            routing = {
-              default_provider = "ollama";
-              fallback_order = ["ollama" "vllm" "anthropic" "openai"];
+          # Provider keys come from the bifrost Secret (Bitwarden); the Secret is optional
+          # so the gateway starts before the keys exist.
+          bifrost.providers = {
+            openai.keys = lib.toList (providerKey "openai" "OPENAI_API_KEY");
+            anthropic.keys = lib.toList (providerKey "anthropic" "ANTHROPIC_API_KEY");
+            gemini.keys = lib.toList (providerKey "gemini" "GOOGLE_API_KEY");
+          };
+          podAnnotations."reloader.stakater.com/auto" = "true";
+          envFrom = lib.toList {
+            secretRef = {
+              name = "bifrost";
+              optional = true;
             };
           };
-          envFrom = lib.toList {secretRef.name = "bifrost";};
         };
       };
 
