@@ -6,14 +6,19 @@
 //! 4. Create whichever libraries are missing; never touch existing ones.
 //! 5. Set the OIDC config in the server settings, POSTing only when it differs.
 //!    Password login stays on for everyone (break-glass).
+//! 6. Kavita only registers its OIDC handler at startup, so if OIDC is configured
+//!    but not active, delete the Kavita pod(s) once (Kubernetes API, needs RBAC
+//!    on pods) and wait for it to come back with OIDC enabled.
 
-use std::time::Duration;
+use std::{fs, time::Duration};
 
-use reqwest::Client;
+use reqwest::{Certificate, Client};
 use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::common::{ok, retry, secret, var, Result};
+
+const SA_DIR: &str = "/var/run/secrets/kubernetes.io/serviceaccount";
 
 /// (name, folder, LibraryType, FileTypeGroups). LibraryType: Comic=1, Book=2.
 /// FileTypeGroup: Archive=1, Epub=2, Pdf=3, Images=4.
@@ -97,6 +102,51 @@ async fn list_libraries(http: &Client, base: &str, token: &str) -> Result<Vec<Li
         .send()
         .await?;
     Ok(ok(r, "GET /api/Library/libraries").await?.json().await?)
+}
+
+/// Delete the pods behind `selector` so the Deployment recreates them.
+async fn restart_kavita(selector: &str) -> Result<()> {
+    let host = std::env::var("KUBERNETES_SERVICE_HOST")?;
+    let port = std::env::var("KUBERNETES_SERVICE_PORT")?;
+    let api = format!("https://{host}:{port}/api/v1/namespaces/{}/pods", var("NAMESPACE", "media"));
+    let token = fs::read_to_string(format!("{SA_DIR}/token"))?;
+    let ca = Certificate::from_pem(&fs::read(format!("{SA_DIR}/ca.crt"))?)?;
+    let kube = Client::builder()
+        .add_root_certificate(ca)
+        .timeout(Duration::from_secs(30))
+        .build()?;
+    let r = kube
+        .get(&api)
+        .bearer_auth(token.trim())
+        .query(&[("labelSelector", selector)])
+        .send()
+        .await?;
+    let pods: Value = ok(r, "list kavita pods").await?.json().await?;
+    let names: Vec<&str> = pods["items"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|p| p["metadata"]["name"].as_str())
+        .collect();
+    if names.is_empty() {
+        return Err(format!("no pods match {selector}").into());
+    }
+    for name in names {
+        println!("deleting pod {name} so kavita registers oidc at startup");
+        let r = kube
+            .delete(format!("{api}/{name}"))
+            .bearer_auth(token.trim())
+            .send()
+            .await?;
+        ok(r, &format!("delete pod {name}")).await?;
+    }
+    Ok(())
+}
+
+async fn oidc_enabled(http: &Client, base: &str) -> Result<bool> {
+    let r = http.get(format!("{base}/api/Settings/oidc")).send().await?;
+    let public: Value = ok(r, "GET /api/Settings/oidc").await?.json().await?;
+    Ok(public["enabled"] == json!(true))
 }
 
 pub async fn run() -> Result<()> {
@@ -201,26 +251,41 @@ pub async fn run() -> Result<()> {
         .send()
         .await?;
     let mut settings: Value = ok(r, "GET /api/Settings").await?.json().await?;
-    if !apply_oidc(&mut settings["oidcConfig"], &want, &library_ids) {
-        println!("oidc already configured, nothing to do");
+    if apply_oidc(&mut settings["oidcConfig"], &want, &library_ids) {
+        println!("configuring oidc against {}", want.authority);
+        let r = http
+            .post(format!("{base}/api/Settings"))
+            .bearer_auth(&token)
+            .json(&settings)
+            .send()
+            .await?;
+        // Kavita fetches the authority's discovery document itself here, so a
+        // success also proves the pod can reach and trust Keycloak.
+        ok(r, "POST /api/Settings (oidc)").await?;
+    } else {
+        println!("oidc settings already in place");
+    }
+
+    if oidc_enabled(&http, base).await? {
+        println!("oidc active");
         return Ok(());
     }
-    println!("configuring oidc against {}", want.authority);
-    let r = http
-        .post(format!("{base}/api/Settings"))
-        .bearer_auth(&token)
-        .json(&settings)
-        .send()
-        .await?;
-    // Kavita fetches the authority's discovery document itself here, so a
-    // success also proves the pod can reach and trust Keycloak.
-    ok(r, "POST /api/Settings (oidc)").await?;
-
-    let r = http.get(format!("{base}/api/Settings/oidc")).send().await?;
-    let public: Value = ok(r, "GET /api/Settings/oidc").await?.json().await?;
-    if public["enabled"] != json!(true) {
-        return Err(format!("oidc not enabled after update: {public}").into());
-    }
+    let selector = var(
+        "KAVITA_POD_SELECTOR",
+        "app.kubernetes.io/name=kavita,app.kubernetes.io/instance=kavita",
+    );
+    restart_kavita(&selector).await?;
+    tokio::time::sleep(Duration::from_secs(10)).await;
+    // The old pod keeps answering "disabled" until it is gone, so "enabled" means the new one is up.
+    retry("waiting for oidc after restart", 60, || async {
+        if oidc_enabled(&http, base).await? {
+            Ok(())
+        } else {
+            Err("oidc not enabled yet".into())
+        }
+    })
+    .await?;
+    println!("oidc active after restart");
     Ok(())
 }
 
