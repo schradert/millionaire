@@ -1,0 +1,85 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    release: prometheus
+  name: smart
+  namespace: observability
+spec:
+  groups:
+    - name: smart
+      rules:
+        - alert: DiskSmartFailing
+          annotations:
+            description: The drive reports failure imminent (SMART status not OK; SCSI ASC 0x5D on SAS disks). Replace it.
+            summary: SMART health check failed on {{ $labels.node }} {{ $labels.device }} ({{ $labels.model_name }} {{ $labels.serial_number }})
+          expr: (smartctl_device_smart_status == 0) * on (node, device) group_left (model_name, serial_number) smartctl_device
+          for: 10m
+          labels:
+            severity: critical
+        - alert: DiskGrownDefectsGrowing
+          annotations:
+            description: 'Grown defects (SAS) or reallocated/pending sectors (ATA) increased: the media is wearing out.'
+            summary: Bad sectors grew in the last day on {{ $labels.node }} {{ $labels.device }} ({{ $labels.model_name }} {{ $labels.serial_number }})
+          expr: |
+            (
+              delta(smartctl_scsi_grown_defect_list[1d]) > 0
+              or delta(smartctl_device_attribute{attribute_name=~"Reallocated_Sector_Ct|Reallocated_Event_Count|Current_Pending_Sector|Offline_Uncorrectable",attribute_value_type="raw"}[1d]) > 0
+            ) * on (node, device) group_left (model_name, serial_number) smartctl_device
+          for: 5m
+          labels:
+            severity: warning
+        - alert: DiskUncorrectedErrors
+          annotations:
+            description: The drive's lifetime read/write (SAS) or media (NVMe) uncorrected error counter is nonzero. The exporter does not export SAS verify errors.
+            summary: Uncorrected I/O errors on {{ $labels.node }} {{ $labels.device }} ({{ $labels.model_name }} {{ $labels.serial_number }})
+          expr: |
+            (
+              smartctl_read_total_uncorrected_errors > 0
+              or smartctl_write_total_uncorrected_errors > 0
+              or smartctl_device_media_errors > 0
+            ) * on (node, device) group_left (model_name, serial_number) smartctl_device
+          for: 10m
+          labels:
+            severity: warning
+        - alert: DiskUncorrectedErrorsGrowing
+          annotations:
+            description: 'Uncorrected errors grew within 6h: data on this drive is being lost or unreadable now.'
+            summary: Uncorrected I/O errors are increasing on {{ $labels.node }} {{ $labels.device }} ({{ $labels.model_name }} {{ $labels.serial_number }})
+          expr: |
+            (
+              delta(smartctl_read_total_uncorrected_errors[6h]) > 0
+              or delta(smartctl_write_total_uncorrected_errors[6h]) > 0
+              or delta(smartctl_device_media_errors[6h]) > 0
+            ) * on (node, device) group_left (model_name, serial_number) smartctl_device
+          for: 5m
+          labels:
+            severity: critical
+        - alert: DiskCriticalWarning
+          annotations:
+            summary: NVMe critical warning on {{ $labels.node }} {{ $labels.device }} ({{ $labels.model_name }} {{ $labels.serial_number }})
+          expr: (smartctl_device_critical_warning != 0) * on (node, device) group_left (model_name, serial_number) smartctl_device
+          for: 5m
+          labels:
+            severity: critical
+        - alert: DiskTemperatureHigh
+          annotations:
+            summary: '{{ $labels.node }} {{ $labels.device }} ({{ $labels.model_name }} {{ $labels.serial_number }}) is above 55C'
+          expr: (smartctl_device_temperature{temperature_type="current"} > 55) * on (node, device) group_left (model_name, serial_number) smartctl_device
+          for: 15m
+          labels:
+            severity: warning
+        - alert: DiskTemperatureCritical
+          annotations:
+            summary: '{{ $labels.node }} {{ $labels.device }} ({{ $labels.model_name }} {{ $labels.serial_number }}) is above 65C'
+          expr: (smartctl_device_temperature{temperature_type="current"} > 65) * on (node, device) group_left (model_name, serial_number) smartctl_device
+          for: 5m
+          labels:
+            severity: critical
+        - alert: SmartctlExporterDown
+          annotations:
+            summary: No disk SMART metrics from {{ $labels.node }}
+          expr: up{job="smartctl-exporter"} == 0
+          for: 15m
+          labels:
+            severity: warning

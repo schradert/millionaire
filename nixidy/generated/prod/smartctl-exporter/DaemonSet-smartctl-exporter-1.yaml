@@ -5,35 +5,27 @@ metadata:
     app.kubernetes.io/instance: smartctl-exporter
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: prometheus-smartctl-exporter
-    idx: i0
-  name: smartctl-exporter-0
+    idx: i1
+  name: smartctl-exporter-1
   namespace: observability
 spec:
   selector:
     matchLabels:
       app.kubernetes.io/instance: smartctl-exporter
       app.kubernetes.io/name: prometheus-smartctl-exporter
-      idx: i0
+      idx: i1
   template:
     metadata:
       labels:
         app.kubernetes.io/instance: smartctl-exporter
         app.kubernetes.io/name: prometheus-smartctl-exporter
-        idx: i0
+        idx: i1
     spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: kubernetes.io/hostname
-                    operator: NotIn
-                    values:
-                      - sirver
       containers:
         - args:
             - --smartctl.path=/usr/sbin/smartctl
             - --smartctl.interval=120s
+            - --smartctl.device-exclude=/dev/bus/.*
             - --web.listen-address=0.0.0.0:9633
             - --web.telemetry-path=/metrics
           image: quay.io/prometheuscommunity/smartctl-exporter:v0.14.0@sha256:cfe22c36d7d2fac48ebf619707305acb65eb0fb670656eb80f356e606d782bc1
@@ -43,7 +35,6 @@ spec:
             - containerPort: 9633
               name: http
               protocol: TCP
-          resources: {}
           securityContext:
             privileged: true
             runAsUser: 0
@@ -51,12 +42,12 @@ spec:
             - mountPath: /hostdev
               name: dev
       dnsPolicy: ClusterFirst
-      hostNetwork: false
+      nodeSelector:
+        kubernetes.io/hostname: sirver
       restartPolicy: Always
       serviceAccountName: smartctl-exporter
       tolerations:
-        - effect: NoSchedule
-          operator: Exists
+        - operator: Exists
       volumes:
         - hostPath:
             path: /dev
