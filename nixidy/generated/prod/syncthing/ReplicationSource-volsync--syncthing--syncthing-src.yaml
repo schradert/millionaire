@@ -15,6 +15,6 @@ spec:
       monthly: 1
       weekly: 1
       yearly: 1
-  sourcePVC: syncthing-state
+  sourcePVC: syncthing
   trigger:
     schedule: 0 4 * * *

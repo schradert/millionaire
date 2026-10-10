@@ -15,6 +15,6 @@ spec:
       monthly: 1
       weekly: 1
       yearly: 1
-  sourcePVC: audiobookshelf
+  sourcePVC: audiobookshelf-config
   trigger:
     schedule: 0 4 * * *

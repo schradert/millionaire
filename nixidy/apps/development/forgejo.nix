@@ -37,8 +37,12 @@
       namespace = "development";
       generatedSecrets.forgejo-admin-password.key = "password";
       postgres.enable = true;
-      # Forgejo chart deploys a StatefulSet; default PVC is `data-forgejo-0`
-      volsync.pvcs.data-forgejo-0.title = "data-forgejo-0";
+      # Repos and attachments live on the chart's `persistence` PVC (the chart
+      # names it gitea-shared-storage); forgejo-1 is the CNPG database volume.
+      volsync.pvcs.data-forgejo-0 = {
+        title = "gitea-shared-storage";
+        restore = false;
+      };
 
       helm.releases.forgejo = {
         chart = pinned.charts.forgejo;
