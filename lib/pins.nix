@@ -11,7 +11,9 @@
 #   "constraint": "<2.0",          optional; comma-separated version bounds
 #   "hold": "reason",              optional; blocks updates
 #   "follows": "charts/cilium"     optional; version must equal that pin's,
-#                                  bumped (and rehashed) together with it
+#                                  bumped (and rehashed) together with it. An
+#                                  image instead takes the tag that pin's
+#                                  charts default to
 # }
 {lib}: let
   # type -> { required params; optional params }

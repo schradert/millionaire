@@ -58,6 +58,20 @@ pub fn current_system() -> Result<String> {
     ]))
 }
 
+/// Build `<root>#<attr>`; its output path.
+pub fn build(root: &Path, attr: &str) -> Result<std::path::PathBuf> {
+    let out = run(Command::new("nix").current_dir(root).args([
+        "--extra-experimental-features",
+        "nix-command flakes",
+        "build",
+        "--no-link",
+        "--print-out-paths",
+        "--no-pure-eval",
+        &format!(".#{attr}"),
+    ]))?;
+    Ok(out.lines().last().unwrap_or_default().into())
+}
+
 /// The `got:` hash from a failed fixed-output build log.
 pub fn parse_got(log: &str) -> Option<String> {
     static RE: OnceLock<Regex> = OnceLock::new();

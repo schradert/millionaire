@@ -3,7 +3,8 @@
 #     with default.nix: callPackage'd with { pin, src }; else the fetched src
 #   pkgs/charts/<name>/pin.json           -> pinned.charts.<name> (helm chart)
 #   pkgs/images/<name>/pin.json           -> pinned.images.<name> ({repository, tag, digest})
-# A pin with `follows` must carry the same version as the pin it names.
+# A pin with `follows` must carry the same version as the pin it names; an
+# image that follows a chart instead carries the tag that chart defaults to.
 {
   lib,
   pins,
@@ -19,7 +20,12 @@
     pin = pins.read (dir + "/pin.json");
     lead = pins.read (./. + "/${pin.follows}/pin.json");
   in
-    if pin ? follows && lead.version != pin.version
+    if !(pin ? follows)
+    then pin
+    # an image follows a chart's default tag (tools/update), not its version
+    else if pin.source.type == "oci-tag"
+    then builtins.seq lead pin
+    else if lead.version != pin.version
     then throw "pin ${toString dir}: version ${pin.version} must equal ${pin.follows} (${lead.version})"
     else pin;
   fetch = pins.fetch {inherit pkgs kubelib;};

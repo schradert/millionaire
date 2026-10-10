@@ -193,7 +193,7 @@ pub fn fetch_url(pin: &Pin) -> Option<String> {
     }
 }
 
-fn attr(ctx: &Ctx, e: &Entry) -> String {
+pub fn attr(ctx: &Ctx, e: &Entry) -> String {
     format!("legacyPackages.{}.pinned.{}", ctx.system, e.attr())
 }
 

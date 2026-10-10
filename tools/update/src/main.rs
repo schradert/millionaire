@@ -1,3 +1,4 @@
+mod defaults;
 mod eco;
 mod gate;
 mod github;
@@ -71,13 +72,7 @@ enum Eco {
 }
 
 impl Eco {
-    const ALL: [Eco; 5] = [
-        Eco::Flake,
-        Eco::Devenv,
-        Eco::Cargo,
-        Eco::Uv,
-        Eco::Bun,
-    ];
+    const ALL: [Eco; 5] = [Eco::Flake, Eco::Devenv, Eco::Cargo, Eco::Uv, Eco::Bun];
 
     fn parse(s: &str) -> Option<Self> {
         Eco::ALL.into_iter().find(|e| e.name() == s)
@@ -296,19 +291,41 @@ impl Run {
     }
 
     /// Rehash the followers of `lead` to `version`; on error restore them.
-    fn bump_followers(&self, lead: &Entry, version: &str) -> Result<Vec<Bumped>, String> {
+    /// Image followers take the tag `lead`'s new charts default to
+    /// (`charts`: before and after).
+    fn bump_followers(
+        &self,
+        lead: &Entry,
+        version: &str,
+        charts: Option<&(Vec<defaults::Chart>, Vec<defaults::Chart>)>,
+    ) -> Result<Vec<Bumped>, String> {
         let mut done: Vec<Bumped> = Vec::new();
-        let to = Update {
-            version: version.to_string(),
-            digest: None,
-        };
         for f in followers(&self.all, &lead.id) {
             let mut f = f.clone();
             let original = fs::read_to_string(&f.path).map_err(|e| e.to_string())?;
-            let res = if matches!(f.pin.source, pin::Source::OciTag { .. }) {
-                Err(anyhow::anyhow!("oci-tag pins can't follow"))
-            } else {
-                resolve::rehash(&self.ctx, &mut f, &to)
+            let res = match (f.pin.source.clone(), charts) {
+                (pin::Source::OciTag { repository, .. }, Some((old, new))) => {
+                    defaults::tag(old, new, &repository, &f.pin.version).and_then(|tag| {
+                        let digest = oci::Registry::new(&repository).digest(&tag)?;
+                        let to = Update {
+                            version: tag,
+                            digest: Some(digest),
+                        };
+                        resolve::rehash(&self.ctx, &mut f, &to)
+                    })
+                }
+                (pin::Source::OciTag { .. }, None) => Err(anyhow::anyhow!(
+                    "{} has no charts to read tags from",
+                    lead.id
+                )),
+                _ => resolve::rehash(
+                    &self.ctx,
+                    &mut f,
+                    &Update {
+                        version: version.to_string(),
+                        digest: None,
+                    },
+                ),
             };
             if let Err(err) = res {
                 let _ = resolve::restore(&f.path, &original);
@@ -318,9 +335,24 @@ impl Run {
                 return Err(format!("follower `{}`: {err:#}", f.id));
             }
             let new = fs::read_to_string(&f.path).map_err(|e| e.to_string())?;
-            done.push(Bumped { e: f, original, new });
+            done.push(Bumped {
+                e: f,
+                original,
+                new,
+            });
         }
         Ok(done)
+    }
+
+    /// Charts under `e`'s output, for image followers to read tags from.
+    fn charts(&self, e: &Entry) -> Result<Option<Vec<defaults::Chart>>> {
+        let images =
+            followers(&self.all, &e.id).any(|f| matches!(f.pin.source, pin::Source::OciTag { .. }));
+        if !images {
+            return Ok(None);
+        }
+        let out = nix::build(&self.root, &resolve::attr(&self.ctx, e))?;
+        defaults::charts(&out).map(Some)
     }
 
     /// Bump a group of pins (and their followers): gate them together; on
@@ -346,14 +378,31 @@ impl Run {
                 continue;
             }
             let original = fs::read_to_string(&e.path)?;
-            if let Err(err) = resolve::rehash(&self.ctx, &mut e, &to) {
-                self.failed += 1;
-                resolve::restore(&e.path, &original)?;
-                self.note(format!("- `{}`: failed to bump to {to}: {err:#}", e.id));
-                continue;
-            }
+            let before = match self.charts(&e) {
+                Ok(c) => c,
+                Err(err) => {
+                    self.failed += 1;
+                    self.note(format!("- `{}`: error reading charts: {err:#}", e.id));
+                    continue;
+                }
+            };
+            let res = resolve::rehash(&self.ctx, &mut e, &to).and_then(|()| {
+                Ok(match before {
+                    Some(b) => Some((b, self.charts(&e)?.unwrap_or_default())),
+                    None => None,
+                })
+            });
+            let charts = match res {
+                Ok(c) => c,
+                Err(err) => {
+                    self.failed += 1;
+                    resolve::restore(&e.path, &original)?;
+                    self.note(format!("- `{}`: failed to bump to {to}: {err:#}", e.id));
+                    continue;
+                }
+            };
             let new = fs::read_to_string(&e.path)?;
-            match self.bump_followers(&e, &to.version) {
+            match self.bump_followers(&e, &to.version, charts.as_ref()) {
                 Ok(followers) => bumped.push(Group {
                     lead: Bumped { e, original, new },
                     followers,
