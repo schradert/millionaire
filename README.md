@@ -21,6 +21,7 @@
 18. TODO daily email digest of alerts (Alertmanager now notifies via ntfy only; per-alert email was removed)
 19. TODO obico postponed until the Voron is back in service
 20. TODO enroll Keycloak strong auth: log in at https://keycloak.trdos.me/realms/default/account as `tristan` with Bitwarden `keycloak/tristan/initial-password`, set a new password, register a passkey (phone/laptop/YubiKey with a FIDO2 PIN), set up TOTP, optionally add a backup YubiKey
+21. TODO the one-time manual steps (credentials, enrollment, hardware, browser checks) in order: [docs/manual-steps.md](docs/manual-steps.md)
 
 ## Conventions
 
