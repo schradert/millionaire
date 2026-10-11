@@ -153,6 +153,15 @@
               labels.severity = "warning";
               annotations.summary = "Container {{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }} restarted more than 5 times in 1h";
             }
+            {
+              # A missing allow rule shows up as retried SYNs dropped with reason "Policy denied"
+              # (baseline is ~0; other drop reasons are routine IPv6/stale-IP noise).
+              alert = "NetworkPolicyDrops";
+              expr = ''sum(increase(cilium_drop_count_total{reason="Policy denied"}[10m])) by (instance) > 20'';
+              "for" = "15m";
+              labels.severity = "warning";
+              annotations.summary = "Cilium on {{ $labels.instance }} keeps dropping traffic as policy-denied; find it with: hubble observe --verdict DROPPED (cilium agent pod)";
+            }
           ];
         };
       };

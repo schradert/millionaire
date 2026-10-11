@@ -31,6 +31,7 @@
     ./network/external-dns-internal.nix
     ./network/cloudflared.nix
     ./network/multus.nix
+    ./network/netpol.nix
     ./observability/alertmanager.nix
     ./observability/gatus.nix
     ./observability/grafana.nix
