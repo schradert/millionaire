@@ -50,7 +50,10 @@
           boohu
           brogue-ce
           brutalmaze
-          cataclysm-dda-git
+          # GCC 16 makes -Wsfinae-incomplete an error (stable 0.I too)
+          (cataclysm-dda-git.overrideAttrs (o: {
+            env = (o.env or {}) // {NIX_CFLAGS_COMPILE = toString (o.env.NIX_CFLAGS_COMPILE or "") + " -Wno-error=sfinae-incomplete";};
+          }))
           chess-tui
           crawl
           crawlTiles

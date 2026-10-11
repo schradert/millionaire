@@ -1,0 +1,12 @@
+{
+  "version": "8.15.9",
+  "hash": "sha256-2qJ6C1QbxjUyP/lsLe2ZVGf/n+bWn/ZwIVWKqa2dzDY=",
+  "source": {
+    "type": "url-template",
+    "url": "https://registry.npmjs.org/pnpm/-/pnpm-{version}.tgz",
+    "owner": "pnpm",
+    "repo": "pnpm",
+    "tagPrefix": "v"
+  },
+  "constraint": "<9"
+}

@@ -20,7 +20,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 02ad1f359c9020ae4c09ae11d1cbb2255f04787a470651430ccaa4bff0eb270b
+        checksum/configMaps: 59c5ccecec82d89263873f744264bf64e9b97fd13ec5f3963819a3d0d09412d9
       labels:
         app.kubernetes.io/controller: mongodb
         app.kubernetes.io/instance: librechat

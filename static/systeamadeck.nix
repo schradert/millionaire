@@ -3,6 +3,7 @@
 {
   flake,
   lib,
+  pinned,
   pkgs,
   ...
 }: {
@@ -26,7 +27,15 @@
   environment.systemPackages = with pkgs; [maliit-keyboard maliit-framework];
 
   # Decky plugins and their options (mynur)
-  nixpkgs.overlays = with flake.inputs.mynur.overlays; [decky decky-plugins];
+  nixpkgs.overlays = with flake.inputs.mynur.overlays; [
+    decky
+    decky-plugins
+    # mynur's plugins need pnpm 8/9, both dropped from nixpkgs 26.11
+    (_: _: {
+      pnpm_8 = pinned.pnpm-8;
+      pnpm_9 = pinned.pnpm-9;
+    })
+  ];
 
   jovian.devices.steamdeck = {
     enable = true;

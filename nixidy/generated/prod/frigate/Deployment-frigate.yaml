@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: e45043f05cc1c9bc614b6ea1f1e4d3e27cddb1a6c0a80871d0cb2fee56b718c9
+        checksum/configMaps: ae56a8885f73f7cc6c8be43b55f50128d7d04147a9d48e1c68ce9269a98437d1
       labels:
         app.kubernetes.io/controller: frigate
         app.kubernetes.io/instance: frigate
