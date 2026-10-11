@@ -9,7 +9,7 @@ metadata:
   name: obico-redis
   namespace: printing
 spec:
-  replicas: 1
+  replicas: 0
   revisionHistoryLimit: 3
   selector:
     matchLabels:

@@ -9,7 +9,7 @@ metadata:
   name: jitsi-jitsi-meet-jibri
   namespace: media
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app.kubernetes.io/component: jibri
