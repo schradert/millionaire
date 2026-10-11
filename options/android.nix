@@ -177,6 +177,13 @@ in {
   };
   config.perSystem = {pkgs, ...}: {
     packages.android-site = pkgs.linkFarm "android-site" (lib.mapAttrs (n: pkgs.writeText n) cfg.site);
-    legacyPackages.android = {inherit (cfg) hashes;};
+    # read by pulumi/__main__.py (android_notify_<device>)
+    legacyPackages.android.notify =
+      lib.mapAttrs (n: dev: {
+        inherit (dev) topic;
+        hash = cfg.hashes.${n};
+        url = "https://${cfg.hostname}/${n}.html";
+      })
+      cfg.devices;
   };
 }

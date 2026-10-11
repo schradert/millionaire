@@ -1,3 +1,5 @@
+import json
+
 import pulumi
 import pulumi_b2 as b2
 import pulumi_bitwarden as bw
@@ -270,6 +272,71 @@ class Millionaire:
             environment={"TS_AUTHKEY": headscale_personal_key.stdout.apply(strip)},
             opts=pulumi.ResourceOptions(depends_on=[headscale_personal_key]),
         )
+        # Family members' phones (options/android.nix owner = "family") join as
+        # headscale user `family`, never as tristan. Same pattern as the
+        # personal key; tristan reads it from personal.yaml when setting up
+        # their Tailscale app (docs/android.md).
+        headscale_user_family = command.local.Command(
+            "headscale_user_family",
+            create=ssh_to_hyena.apply(
+                lambda s: f"{s} 'headscale users create family 2>/dev/null || true'"
+            ),
+            triggers=[hyena_server.id],
+            opts=pulumi.ResourceOptions(depends_on=[hyena.refresh]),
+        )
+        headscale_family_key = command.local.Command(
+            "headscale_preauthkey_family",
+            create=ssh_to_hyena.apply(
+                lambda s: (
+                    f"{s} 'headscale preauthkeys create --user \"$(headscale users list -o json"
+                    " | jq -r '\\''.[] | select(.name == \"family\").id'\\'')\""
+                    " --reusable --expiration 8760h -o json' | jq -r .key"
+                )
+            ),
+            triggers=[hyena_server.id],
+            opts=pulumi.ResourceOptions(
+                depends_on=[headscale_user_family],
+                additional_secret_outputs=["stdout"],
+            ),
+        )
+        command.local.Command(
+            "headscale_family_key_sops",
+            create=(
+                f'cd "{millionaire.Nix.root}" && '
+                "printf '%s' \"$TS_AUTHKEY\" | jq -Rs . | "
+                'sops set secrets/sops/personal.yaml \'["headscale"]["preauth-key"]["family"]\' --value-stdin'
+            ),
+            environment={"TS_AUTHKEY": headscale_family_key.stdout.apply(strip)},
+            opts=pulumi.ResourceOptions(depends_on=[headscale_family_key]),
+        )
+
+        # --- Android fleet nudge (options/android.nix, docs/android.md) ---
+        # ArgoCD serves android.trdos.me from the nixidy-rendered ConfigMap, so
+        # an ArgoCD sync of main is what updates the page. This only pings each
+        # phone's ntfy topic (hyena's local ntfy) when its catalog hash changes;
+        # the notification opens the page. Never touches phones or nodes, and an
+        # unreachable ntfy does not fail the stack.
+        android = json.loads(
+            millionaire.Nix.attr(
+                f"legacyPackages.{millionaire.Nix.system().strip()}.android.notify"
+            )
+            .json()
+            .value()
+        )
+        for device, n in android.items():
+            command.local.Command(
+                f"android_notify_{device}",
+                create=ssh_to_hyena.apply(
+                    lambda s, d=device, n=n: (
+                        f"{s} \"curl -fsS -H 'Title: {d}: app list changed'"
+                        f" -H 'Click: {n['url']}' -d 'Tap, then Import app list'"
+                        f" http://127.0.0.1:2586/{n['topic']}\" || echo ntfy-unreachable"
+                    )
+                ),
+                triggers=[n["hash"]],
+                opts=pulumi.ResourceOptions(depends_on=[hyena.refresh]),
+            )
+
         headscale_worker_key = command.local.Command(
             "headscale_preauthkey_cloud_worker",
             create=ssh_to_hyena.apply(
