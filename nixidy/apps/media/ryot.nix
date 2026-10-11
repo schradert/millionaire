@@ -1,4 +1,6 @@
-{config, ...}: {
+{config, ...}: let
+  inherit (config.canivete.meta) people;
+in {
   nixidy = {
     charts,
     lib,
@@ -7,13 +9,13 @@
   }: let
     inherit (config.canivete.meta) domain;
     hostname = "ryot.${domain}";
-    # Ryot has no config-file/bootstrap path for OIDC users: the account is created
-    # (and linked by the OIDC `sub`) on first OIDC login, and the very first user on
-    # an empty instance becomes admin. Registration must therefore be open for that
-    # one login, so until it has happened the instance stays behind oauth2-proxy.
-    # Once tristan has logged in via Keycloak (he is then the admin), flip this to
-    # true: registration closes and oauth2-proxy is dropped in the same sync.
-    claimed = false;
+    # Ryot has no config-file path for OIDC users: an account is created (and linked by the
+    # OIDC `sub`) on first OIDC login, and the first user on an empty instance becomes admin.
+    # The bootstrap job (apps/app-bootstrap ryot, >= 0.14.0) pre-registers tristan as admin,
+    # linked to his Keycloak `sub`, with the admin access token (which works with registration
+    # closed). Until its image is pinned the instance stays open for that first login, behind
+    # oauth2-proxy.
+    bootstrapped = pinned.images ? app-bootstrap-ryot;
   in {
     gatus.endpoints.ryot = {
       url = "https://${hostname}";
@@ -22,7 +24,7 @@
     };
     # Native OIDC: callback is FRONTEND_URL + /api/auth. Ryot only requests the
     # `email` scope and uses the email claim as the username; roles are NOT mapped
-    # from claims (first user = admin, others are normal users).
+    # from claims (the bootstrap registers the admin up front).
     applications.keycloak.resources.keycloakClients.ryot.spec = {
       realmRef.name = "default";
       clientSecretRef = {
@@ -67,7 +69,7 @@
             SERVER_OIDC_ISSUER_URL = "https://keycloak.${domain}/realms/default";
             # Password login stays as break-glass. Admin-token calls to registerUser
             # still work with registration closed.
-            USERS_ALLOW_REGISTRATION = lib.boolToString (!claimed);
+            USERS_ALLOW_REGISTRATION = lib.boolToString (!bootstrapped);
             VIDEO_GAMES_TWITCH_CLIENT_ID = "";
             VIDEO_GAMES_TWITCH_CLIENT_SECRET = "";
           };
@@ -80,7 +82,7 @@
             };
             rules = lib.toList {
               backendRefs = lib.toList (
-                if claimed
+                if bootstrapped
                 then {
                   name = "ryot";
                   port = 8000;
@@ -93,6 +95,30 @@
               );
             };
           };
+        };
+      };
+      bootstrap = lib.mkIf bootstrapped {
+        image = with pinned.images.app-bootstrap-ryot; "${repository}:${tag}@${digest}";
+        args = ["ryot"];
+        env = {
+          RYOT_URL = "http://ryot.media.svc.cluster.local:8000";
+          OIDC_USERNAME = people.me;
+          ADMIN_ACCESS_TOKEN_FILE = "/secrets/token/password";
+          KEYCLOAK_PASSWORD_FILE = "/secrets/keycloak/password";
+        };
+        secrets = {
+          token = "ryot-admin-token";
+          keycloak = "ryot-keycloak-admin";
+        };
+      };
+      # Keycloak master-realm admin, to resolve tristan's `sub` (same Bitwarden entry
+      # as the keycloak app itself).
+      resources.externalSecrets.ryot-keycloak-admin = lib.mkIf bootstrapped {
+        spec.data = lib.toList {
+          secretKey = "password";
+          remoteRef.key = "keycloak/admin/password";
+          sourceRef.storeRef.name = "bitwarden";
+          sourceRef.storeRef.kind = "ClusterSecretStore";
         };
       };
       # Random once, never refreshed: ryot refuses to start without an admin token.
@@ -142,7 +168,7 @@
         SERVER_OIDC_CLIENT_SECRET = "{{ .OIDC_CLIENT_SECRET }}";
       };
     };
-    oauth2Proxy.upstreams = lib.mkIf (!claimed) {
+    oauth2Proxy.upstreams = lib.mkIf (!bootstrapped) {
       ${hostname} = {
         url = "http://ryot.media.svc.cluster.local:8000";
         namespace = "media";
