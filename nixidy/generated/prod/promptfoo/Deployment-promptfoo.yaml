@@ -79,6 +79,9 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
+      securityContext:
+        fsGroup: 101
+        fsGroupChangePolicy: OnRootMismatch
       serviceAccountName: promptfoo
       volumes:
         - name: data
