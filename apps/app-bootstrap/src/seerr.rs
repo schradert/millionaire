@@ -160,7 +160,7 @@ async fn wire_arr(http: &Client, base: &str, cookie: &str) -> Result<()> {
             continue;
         };
         let host = var(&format!("{up}_HOST"), &format!("{kind}.media.svc.cluster.local"));
-        let port: i64 = var(&format!("{up}_PORT"), "80").parse()?;
+        let port: i64 = var(&format!("{up}_PORT_NUMBER"), "80").parse()?;
         let root = var(&format!("{up}_ROOT"), if kind == "radarr" { "/media/movies" } else { "/media/tv" });
         let want = var(&format!("{up}_PROFILE"), "");
 
