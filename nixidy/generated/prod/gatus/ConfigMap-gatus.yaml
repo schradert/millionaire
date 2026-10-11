@@ -23,6 +23,12 @@ data:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
+      name: android
+      url: https://android.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
       name: argo
       url: https://argocd.trdos.me
     - conditions:

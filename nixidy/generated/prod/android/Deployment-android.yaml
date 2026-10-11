@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: android
+    app.kubernetes.io/instance: android
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: android
+  name: android
+  namespace: home
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: android
+      app.kubernetes.io/instance: android
+      app.kubernetes.io/name: android
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 9a820d86d347106dd144234009d68fbc4c813d450e29de5c6fc7530a18bfb124
+      labels:
+        app.kubernetes.io/controller: android
+        app.kubernetes.io/instance: android
+        app.kubernetes.io/name: android
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - image: nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 80
+            timeoutSeconds: 1
+          name: nginx
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 80
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 80
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /usr/share/nginx/html
+              name: site
+              readOnly: true
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: android
+      volumes:
+        - configMap:
+            name: android
+          name: site
