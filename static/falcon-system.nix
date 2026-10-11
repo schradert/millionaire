@@ -10,6 +10,7 @@
   imports = [./tailnet-personal.nix ./zfs-legacy.nix] ++ (with flake.inputs.srvos.nixosModules; [desktop roles-nix-remote-builder]);
   profiles = {
     client.enable = true;
+    desktop.hyprland.enable = true;
     gaming.enable = true;
     nvidia.enable = true;
     workstation.enable = true;
