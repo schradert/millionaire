@@ -79,6 +79,8 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
         runAsGroup: 65534
         runAsUser: 65534
+        supplementalGroups:
+          - 101
       serviceAccountName: lidarr
       volumes:
         - name: config

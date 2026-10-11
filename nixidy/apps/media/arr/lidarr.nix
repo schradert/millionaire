@@ -32,6 +32,9 @@
               runAsGroup = 65534;
               fsGroup = 65534;
               fsGroupChangePolicy = "OnRootMismatch";
+              # fsGroup isn't applied on the CephFS media-music volume, whose root is
+              # setgid root:101 (drwxrwsr-x); membership in 101 is what makes it writable.
+              supplementalGroups = [101];
             };
             containers.lidarr = {
               image = pinned.images.lidarr;
