@@ -16,6 +16,7 @@
       };
       desktop.hyprland.enable = can.enable "Hyprland as an alternate SDDM session (Plasma stays the default)" {};
       gaming.enable = can.enable "gaming" {};
+      mail.enable = can.enable "Proton mail: proton-bridge, mbsync, mu, Doom mu4e" {default = config.profile == "personal";};
       audio-production.enable = can.enable "music production: DAW, DSP and live-coding tools" {};
       nvidia.enable = can.enable "NVIDIA GPU drivers" {};
       yubikey = {
