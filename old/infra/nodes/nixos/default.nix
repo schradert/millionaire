@@ -109,8 +109,6 @@ in {
     bonobo.hostname = mkForce "192.168.50.142";
     # chinchilla.hostname = mkForce "192.168.50.85";
     # dingo.hostname = mkForce "192.168.50.105";
-    gargoyle.hostname = mkForce "192.168.50.192";
-    gargoyle.canivete.system = "aarch64-linux";
   };
   dotfiles.devenv.git-hooks.excludes = ["infra/nodes/nixos/.+\\.json"];
   dotfiles.nodes = {
@@ -230,16 +228,6 @@ in {
         #     ];
         #   }
         # ];
-      };
-    };
-    gargoyle = {
-      platform.mobile.device = "oneplus-enchilada";
-      system = {
-        # TODO dotfiles.profiles.client.gaming.enable = true;
-        # TODO Accidentally initialized wrong...
-        system.stateVersion = "24.11";
-        home-manager.sharedModules = [{home.stateVersion = "24.11";}];
-        users.users.tristan.uid = 1000;
       };
     };
   };
