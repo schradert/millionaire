@@ -9,7 +9,6 @@ metadata:
   name: jitsi-jitsi-meet-jvb
   namespace: media
 spec:
-  externalTrafficPolicy: Cluster
   ports:
     - name: rtp-udp
       port: 10000
