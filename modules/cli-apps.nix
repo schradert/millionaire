@@ -1,4 +1,4 @@
-# Terminal apps: numbat calculator, tldr pages, stock ticker, Hacker News.
+# Terminal apps: numbat calculator, tldr pages, stock tickers, Hacker News.
 {
   home = {
     config,
@@ -7,7 +7,7 @@
     ...
   }: {
     config = lib.mkIf config.profiles.workstation.enable {
-      home.packages = with pkgs; [circumflex ticker];
+      home.packages = with pkgs; [circumflex ticker tickrs];
       programs.numbat.enable = true;
       programs.tealdeer.enable = true;
     };
