@@ -1,0 +1,11 @@
+{
+  "version": "c109256f5a79a8694acd6176971c4a273d32264c",
+  "hash": "sha256-q+5ETwj+oiZBT9j6/huwB8nwV4nbZdZmCrchL2E7tDQ=",
+  "source": {
+    "type": "git-commit",
+    "owner": "KZDKM",
+    "repo": "hyprspace",
+    "branch": "main"
+  },
+  "hold": "last commit before the V2 plugin API migration; builds against nixpkgs' Hyprland 0.55 (nixpkgs' own 2025-09 hyprspace does not). Bump with nixpkgs' Hyprland, or drop once nixpkgs' hyprspace builds"
+}
