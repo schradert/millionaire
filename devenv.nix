@@ -212,6 +212,11 @@ in {
       scripts.update.exec = ''
         exec nix run "${config.devenv.root}#update" --no-pure-eval -- "$@"
       '';
+      # `msf [msfconsole args]` — metasploit on demand from the flake's locked
+      # nixpkgs (heavy closure, never installed): fetched on first use.
+      scripts.msf.exec = ''
+        exec nix shell --inputs-from "${config.devenv.root}" nixpkgs#metasploit --command msfconsole "$@"
+      '';
       # `build-all [--system <sys>]...` — build legacyPackages.<sys>.build-all
       # (modules/build-all.nix; linux evaluated on falcon, which also fans builds
       # out to the cluster nodes, results left there; darwin locally) plus the
