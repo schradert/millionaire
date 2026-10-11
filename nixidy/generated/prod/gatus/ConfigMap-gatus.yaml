@@ -167,6 +167,12 @@ data:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
+      name: homarr
+      url: https://homarr.trdos.me/api/health/live
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
       name: homepage
       url: https://home.trdos.me/api/healthcheck
     - conditions:

@@ -9,6 +9,7 @@ mod atuin;
 mod audiobookshelf;
 mod common;
 mod contextforge;
+mod homarr;
 mod immich;
 mod kavita;
 mod keycloak;
@@ -40,7 +41,8 @@ async fn main() -> ExitCode {
         "seerr" => seerr::run().await,
         "shoko" => shoko::run().await,
         "contextforge" => contextforge::run().await,
-        other => Err(format!("usage: app-bootstrap <actual|arr|atuin|audiobookshelf|immich|kavita|komga|mealie|navidrome|openviking|ryot|seerr|shoko|contextforge> (got {other:?})").into()),
+        "homarr" => homarr::run().await,
+        other => Err(format!("usage: app-bootstrap <actual|arr|atuin|audiobookshelf|immich|kavita|komga|mealie|navidrome|openviking|ryot|seerr|shoko|contextforge|homarr> (got {other:?})").into()),
     };
     match res {
         Ok(()) => {

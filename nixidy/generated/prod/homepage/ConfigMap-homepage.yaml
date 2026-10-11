@@ -245,6 +245,10 @@ data:
           description: Portal
           href: https://dashy.trdos.me
           icon: dashy
+      - Homarr:
+          description: Portal
+          href: https://homarr.trdos.me
+          icon: homarr
       - Homepage:
           description: Portal
           href: https://home.trdos.me
@@ -380,10 +384,6 @@ data:
           description: ''
           href: https://prowlarr.trdos.me
           icon: prowlarr
-      - qbittorrent:
-          description: ''
-          href: https://qbittorrent.trdos.me
-          icon: qbittorrent
       - radarr:
           description: ''
           href: https://radarr.trdos.me

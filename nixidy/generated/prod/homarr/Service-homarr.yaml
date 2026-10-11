@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: homarr
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: homarr
+  name: homarr
+  namespace: home
+spec:
+  ipFamilyPolicy: SingleStack
+  ports:
+    - name: app
+      port: 7575
+      protocol: TCP
+      targetPort: http
+  selector:
+    app.kubernetes.io/instance: homarr
+    app.kubernetes.io/name: homarr
+  type: ClusterIP
