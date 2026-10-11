@@ -1,0 +1,41 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    release: prometheus
+  name: backup-verify
+  namespace: backup-verify
+spec:
+  groups:
+    - name: backup-verification
+      rules:
+        - alert: BackupVerificationFailed
+          annotations:
+            description: |
+              A check failed (the failures were also POSTed to ntfy): restic check on a VolSync repository, the scratch volume or
+              database restore, or the etcd snapshot in B2 being over 12h old. Details: kubectl -n backup-verify logs job/<newest backup-verify-* job>.
+              Scratch resources are deleted on exit; leftovers: kubectl -n backup-verify get all,pvc -l app.kubernetes.io/part-of=backup-verify.
+              Procedures: docs/pvc-and-postgres-restore.md, docs/etcd-restore.md.
+            summary: The monthly backup verification failed
+          expr: |
+            (
+              kube_cronjob_status_last_schedule_time{namespace="backup-verify",cronjob="backup-verify"} > on (namespace, cronjob) kube_cronjob_status_last_successful_time{namespace="backup-verify",cronjob="backup-verify"}
+              or
+              kube_cronjob_status_last_schedule_time{namespace="backup-verify",cronjob="backup-verify"} unless on (namespace, cronjob) kube_cronjob_status_last_successful_time{namespace="backup-verify",cronjob="backup-verify"}
+            ) unless on (namespace, cronjob) (kube_cronjob_status_active{namespace="backup-verify",cronjob="backup-verify"} > 0)
+          for: 5m
+          labels:
+            severity: warning
+        - alert: BackupVerificationStale
+          annotations:
+            description: |
+              The backup-verify CronJob runs monthly. It either failed every time, did not run (suspended, image missing, scheduling), or never succeeded.
+              Check: kubectl -n backup-verify get cronjob,job,pod.
+            summary: No successful backup verification in 35 days
+          expr: |
+            (time() - kube_cronjob_status_last_successful_time{namespace="backup-verify",cronjob="backup-verify"} > 3024000)
+            or
+            ((time() - kube_cronjob_created{namespace="backup-verify",cronjob="backup-verify"} > 3024000) unless on (namespace, cronjob) kube_cronjob_status_last_successful_time{namespace="backup-verify",cronjob="backup-verify"})
+          for: 10m
+          labels:
+            severity: critical
