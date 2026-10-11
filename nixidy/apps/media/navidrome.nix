@@ -43,6 +43,9 @@ in {
         key = "password";
         bitwarden = "navidrome/admin-password";
       };
+      # Maloja API key Navidrome scrobbles with (its "ListenBrainz token"); Maloja
+      # registers it from this Secret (maloja.nix) and the bootstrap links it.
+      generatedSecrets.navidrome-maloja.key = "token";
       # Idempotent post-sync bootstrap (apps/app-bootstrap navidrome, >= 0.6.0): first admin
       # named after tristan, so the oauth2-proxy-forwarded username IS the admin. The generated
       # password is for Subsonic clients and break-glass native login.
