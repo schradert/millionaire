@@ -24,13 +24,25 @@ These are third-party credentials that can't be generated in-cluster.
 |---|---|---|
 | `ai/anthropic/api-key`, `ai/openai/api-key`, `ai/google/api-key` | `providerKeys` in `nixidy/system/ai/bifrost.nix` and `nixidy/system/ai/promptfoo.nix` | LLM routing through bifrost (librechat, openviking, openclaw) and promptfoo evals |
 | `ai/openclaw/discord-token` (Discord bot token) | `credentials` in `nixidy/system/ai/openclaw.nix` | the OpenClaw Discord gateway |
-| `vpn/wireguard/private-key`, `vpn/wireguard/addresses`, `vpn/wireguard/public-key`, `vpn/wireguard/endpoint-ip`, `vpn/wireguard/endpoint-port` (all from the provider's WireGuard config file) | `credentials` in `nixidy/apps/media/qbittorrent.nix` | qBittorrent behind the gluetun VPN. After qBittorrent is up, sync `prowlarr` in full (not a selective sync) so its bootstrap adds qBittorrent as the download client in Sonarr, Radarr and Lidarr. |
+| One provider's WireGuard items (see "qBittorrent VPN" below) | set `vpn.provider`, then flip `credentials` in `nixidy/apps/media/qbittorrent.nix` | qBittorrent behind the gluetun VPN. After qBittorrent is up, sync `prowlarr` in full (not a selective sync) so its bootstrap adds qBittorrent as the download client in Sonarr, Radarr and Lidarr. |
 | `frigate/cameras`, with fields `username`, `password`, `front_ip`, `back_ip` | `credentials` in `nixidy/apps/home/frigate.nix` | Frigate NVR (RTSP cameras) |
 | `govee/email`, `govee/password`, `govee/api-key` | `credentials` in `nixidy/apps/home/govee2mqtt.nix` | Govee devices in Home Assistant through MQTT |
 | `printing/mooncord/discord-token` | `credentials` in `nixidy/apps/printing/mooncord.nix` (only once the Voron exists) | the Moonraker Discord bot |
 | ListenBrainz user token (listenbrainz.org → settings) | add `MALOJA_SCROBBLE_LISTENBRAINZ_TOKEN` to the `maloja` ExternalSecret (see the TODO in `nixidy/apps/media/maloja.nix`) | Maloja relaying scrobbles to ListenBrainz |
 | Indexer/tracker accounts | none: add them in Prowlarr (https://prowlarr.trdos.me → Indexers); Prowlarr already syncs to Sonarr/Radarr/Lidarr | searching and grabbing in the arr apps |
 | `ai/huggingface/token` | none yet: vllm and heretic stay disabled until a GPU node exists | the GPU workloads, later |
+
+### qBittorrent VPN
+
+Pick a provider, add its items, set `vpn.provider` to match and flip `credentials`. Nothing else changes.
+
+| `vpn.provider` | Bitwarden items | Port forwarding |
+|---|---|---|
+| `protonvpn` (default) | `vpn/protonvpn/wireguard-private-key` (`PrivateKey` from a WireGuard config generated with "NAT-PMP (Port Forwarding)" on) | automatic: gluetun asks for a port on a P2P server and sets qBittorrent's listening port to it |
+| `airvpn` | `vpn/airvpn/wireguard-private-key`, `vpn/airvpn/wireguard-preshared-key`, `vpn/airvpn/wireguard-addresses` (IPv4 only, from the Config Generator) | reserve a port in the client area and set `vpn.airvpnPort` to it |
+| `custom` | `vpn/wireguard/private-key`, `vpn/wireguard/addresses`, `vpn/wireguard/public-key`, `vpn/wireguard/endpoint-ip`, `vpn/wireguard/endpoint-port` | none |
+
+Already enforced, whichever provider: gluetun's firewall kill switch, DNS over TLS through the tunnel (the pod resolves only through gluetun), qBittorrent bound to `tun0`, anonymous mode, UPnP/NAT-PMP off, no IPv6 (Cilium is IPv4-only and gluetun drops IPv6), and the WebUI reachable only through oauth2-proxy and from the arr apps (CiliumNetworkPolicy), with the password required. `peerDiscovery` (DHT/PeX/LSD) is off, which private trackers require; turn it on only for public torrents.
 
 ## 3. GitHub token for dependency updates
 
