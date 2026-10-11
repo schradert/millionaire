@@ -1,4 +1,8 @@
-{
+{config, ...}: let
+  inherit (config.canivete.meta) domain;
+  # contextforge's virtual server (serverId in nixidy/system/ai/contextforge.nix)
+  contextforge = "https://mcp.${domain}/servers/05238f180ea94c7c8c5621976aec4604/mcp";
+in {
   canivete.pkgs.allowUnfree = ["claude-code"];
   home = {
     config,
@@ -26,6 +30,12 @@
             command = lib.getExe pkgs.mcp-k8s-go;
             args = ["--readonly" "--allowed-contexts=trdos"];
             env.KUBECONFIG = "${config.home.homeDirectory}/.kube/trdos";
+          };
+          # Every MCP server registered in contextforge, as Keycloak user tristan
+          # (`sso-token mcp`, modules/sso.nix; one-time `sso-token login`).
+          contextforge = {
+            command = "sso-token";
+            args = ["mcp" contextforge];
           };
         };
         zed-editor.userSettings.agent_servers.OpenCode = {

@@ -32,7 +32,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | forgejo (git) | oauth2-proxy (UI); git over https, `/api` and `/login/oauth/access_token` direct | done: tea via Forgejo's built-in `tea` OAuth app (`tea-login`, SSO), `nixidy/apps/development/forgejo.nix`; git over ssh/https | done: same | n-a | todo (GitNex) | tea's OAuth token (refreshed by tea) |
 | windmill, sveltekit-demo | OIDC / none | web | web | n-a | web | — |
 | bifrost | oauth2-proxy (bearer) | done: opencode provider `bifrost` (plugin adds `sso-token`), `modules/sso.nix` | done: same | n-a | n-a | `sso-token` |
-| contextforge (mcp) | oauth2-proxy (bearer) | todo: `sso-token mcp https://mcp.trdos.me/…` is ready, contextforge rejects Keycloak tokens on `/mcp` (see Open questions) | todo (same) | n-a | n-a | `sso-token` |
+| contextforge (mcp) | oauth2-proxy (bearer) + OAuth virtual server; UI: Keycloak SSO | done: opencode MCP `contextforge` (`sso-token mcp https://mcp.trdos.me/servers/<id>/mcp`), `modules/opencode.nix`; live once `app-bootstrap-contextforge` is pinned | done: same | n-a | n-a | `sso-token` |
 | librechat (chat) | oauth2-proxy + OIDC | web | web | n-a | web | — |
 | promptfoo | oauth2-proxy | web | web | n-a | n-a | — |
 | Kubernetes MCP | kubeconfig | done: mcp-k8s-go (read-only, context `trdos`), `modules/opencode.nix` | done: same | n-a | n-a | kubeconfig |
@@ -52,7 +52,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | bulwark (webmail) | OIDC | web (mail clients: mail workstream) | web | n-a | web | — |
 | jellyfin | OIDC | done: Jellyfin Media Player cask, `modules/media-clients.nix` | done: delfin, `modules/media-clients.nix` | done: delfin | done: Jellyfin | SSO |
 | navidrome | own login | done: feishin, `modules/media-clients.nix` | done: feishin | done: feishin | done: Tempus | bws `navidrome/admin-password` (navidrome.nix) |
-| immich | OIDC | done: immich-cli (`modules/media-clients.nix`); todo: API key for `immich login` (immich takes only its own session tokens and API keys, not Keycloak tokens) | done: same | n-a | done: Immich | todo: app-bootstrap immich creates tristan's key, Bitwarden `immich/tristan/api-key` |
+| immich | OIDC | done: immich-cli, `immich-login` (`modules/media-clients.nix`) | done: same | n-a | done: Immich | bws `immich/tristan/api-key` (app-bootstrap immich >= 0.18.0: the admin's key; the admin is tristan, linked by email) |
 | audiobookshelf | oauth2-proxy | web | web | n-a | done: Audiobookshelf | — |
 | kavita, komga | OIDC | web (OPDS: docs/ereader-opds.md) | web | n-a | done: Mihon, Komelia | — |
 | sonarr, radarr, lidarr, prowlarr, bazarr, autobrr, maintainerr, seerr, shoko, ryot, multi-scrobbler, maloja | oauth2-proxy / own | web | web | n-a | web | — |
@@ -66,13 +66,24 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | mainsail, obico, spoolman | oauth2-proxy | web; todo: orca-slicer (commented cask in `modules/default.nix`) | web | n-a | done: Mobileraker | — |
 | rook-ceph, rados | own | web | web | n-a | n-a | — |
 | Bitwarden (hosted, not in the cluster) | account | done: cask (`modules/desktop-clients.nix`) + Brave extension (`modules/browser.nix`) | done: bitwarden-desktop + Brave extension | done: bitwarden-desktop | done: Bitwarden | account login |
-| Bookmarks (`dashy.trdos.me/bookmarks.html`) | oauth2-proxy | todo: Floccus (blocked, see Open questions) | todo | n-a | n-a | — |
+| Bookmarks (`dashy.trdos.me/bookmarks.html`) | oauth2-proxy | done: Floccus in Brave (`modules/browser.nix`), git backend `tristan/bookmarks` on forgejo (see Floccus below) | done: same | n-a | n-a | bws `forgejo/tristan/floccus-token` (app-bootstrap forgejo) |
 
 ## Open questions
 
 - millionaire: headscale runs as a second, userspace tailscaled next to Mill's, so only proxy-aware clients reach `*.trdos.me`, through `trdos <cmd>`. ssh needs `ProxyCommand nc -X 5 -x localhost:1055 %h %p`; Node CLIs (immich), GUI apps and browsers need a SOCKS proxy set per app.
 - oauth2-proxy accepts `Authorization: Bearer $(sso-token)` (`--skip-jwt-bearer-tokens`, audience `oauth2-proxy`), so API and MCP clients pass it as Keycloak user `tristan` with the same `groups` checks. Apps that only take their own API keys or JWTs in `Authorization` still cannot get through (Waterfly, WebDAV clients).
-- contextforge 1.0.11 accepts Keycloak tokens on `/mcp` only for a virtual server with `oauth_enabled` (`oauth_config.authorization_servers` = the realm, `resource` = `oauth2-proxy`), and resolves the user from its own database. Options: (a) app-bootstrap creates that server and enables Keycloak SSO (`SSO_KEYCLOAK_*`, `SSO_API_TOKEN_AUTH_ENABLED`) so tristan exists; needs a new app-bootstrap image; (b) `MCP_CLIENT_AUTH_ENABLED=false` + `TRUST_PROXY_AUTH(_DANGEROUSLY)=true` with the oauth2-proxy email header, plus a CiliumNetworkPolicy so only oauth2-proxy can send it (any pod that reaches contextforge could otherwise claim to be tristan).
-- Direct routes that skip oauth2-proxy stay where the clients speak a protocol with its own auth: baikal `/dav.php` (Digest), navidrome `/rest` (Subsonic), komga `/opds`, chirpstack gRPC, harbor `/v2` (robot accounts), forgejo git and `/api` (tokens).
+- contextforge 1.0.11 accepts Keycloak tokens on `/mcp` only for a virtual server with `oauth_enabled` (`oauth_config.authorization_servers` = the realm, `resource` = `oauth2-proxy`), and resolves the user from its own database. app-bootstrap contextforge creates that server (`homelab`, every registered tool, resource and prompt), trusts the `keycloak` SSO provider for API tokens and creates tristan as an admin; Keycloak SSO for the UI comes from `SSO_KEYCLOAK_*` (`nixidy/system/ai/contextforge.nix`).
+- Direct routes that skip oauth2-proxy stay where the clients speak a protocol with its own auth: baikal `/dav.php` (Digest), navidrome `/rest` (Subsonic), komga `/opds`, chirpstack gRPC, harbor `/v2` (robot accounts), forgejo git, `/api` and `/tristan/bookmarks.git` (tokens; Floccus).
 - syncthing: the hub's identity is now a cert-manager Secret (stable while the cluster lives, copy in Bitwarden). Its device ID is recorded as `hubDeviceID`; the hub stays reachable only through global discovery and relays, as no LoadBalancer exposes port 22000.
-- Floccus: `dav.trdos.me` is behind oauth2-proxy, and the org-stack design drops WebDAV. Its Git backend pushes over HTTPS with a username + Forgejo personal access token (no OAuth) and a browser User-Agent, so it needs both a long-lived token and a route that skips oauth2-proxy for its requests; that runs against the SSO-only principle, so it is left undecided.
+
+## Floccus
+
+Floccus syncs Brave's bookmarks through its Git backend, which can only send a username and a token over HTTPS, with a browser User-Agent. So: app-bootstrap forgejo creates the private repo `tristan/bookmarks` and a Forgejo token named `floccus` (scope `write:repository`, which Forgejo cannot narrow to one repo) and pushes it to Bitwarden `forgejo/tristan/floccus-token`; the `forgejo-floccus` route sends only `/tristan/bookmarks.git/…` straight to Forgejo, past oauth2-proxy (Forgejo still checks the token). Both exist once `app-bootstrap-forgejo` is pinned.
+
+Brave installs the extension (`modules/browser.nix`); its settings are not managed. One-time per browser profile:
+
+1. Floccus → add account → Git (bookmarks file in a Git repo).
+2. Repository URL `https://git.trdos.me/tristan/bookmarks.git`, branch `main`, username `tristan`, password: `bws-get forgejo/tristan/floccus-token`.
+3. Bookmarks file `bookmarks.xbel` (format XBEL), sync folder: the bookmarks bar or a dedicated folder; auto-sync on.
+
+On millionaire (Mac on Mill's tailnet) Brave reaches `git.trdos.me` only through the trdos proxy (Open questions, first item).
