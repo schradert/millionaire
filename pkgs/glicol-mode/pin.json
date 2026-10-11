@@ -1,0 +1,10 @@
+{
+  "version": "62a86aa2a641e633d845687ae0c4589179a66cb3",
+  "hash": "sha256-6tfgKzTH1iMonEUPsH1dLARjbOxLp1JQ6ZRDNDw86CI=",
+  "source": {
+    "type": "git-commit",
+    "owner": "khtdr",
+    "repo": "glicol-mode",
+    "branch": "main"
+  }
+}
