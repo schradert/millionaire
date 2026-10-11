@@ -1,6 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
   labels:
     app.kubernetes.io/component: metrics
     app.kubernetes.io/instance: kube-state-metrics
@@ -32,6 +34,7 @@ spec:
         - args:
             - --port=8080
             - --resources=certificatesigningrequests,configmaps,cronjobs,daemonsets,deployments,endpointslices,horizontalpodautoscalers,ingresses,jobs,leases,limitranges,mutatingwebhookconfigurations,namespaces,networkpolicies,nodes,persistentvolumeclaims,persistentvolumes,poddisruptionbudgets,pods,replicasets,replicationcontrollers,resourcequotas,secrets,services,statefulsets,storageclasses,validatingwebhookconfigurations,volumeattachments
+            - --custom-resource-state-config-file=/etc/customresourcestate/config.yaml
           image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0@sha256:1545919b72e3ae035454fc054131e8d0f14b42ef6fc5b2ad5c751cafa6b2130e
           imagePullPolicy: IfNotPresent
           livenessProbe:
@@ -67,6 +70,10 @@ spec:
               drop:
                 - ALL
             readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /etc/customresourcestate
+              name: customresourcestate-config
+              readOnly: true
       dnsPolicy: ClusterFirst
       hostNetwork: false
       securityContext:
@@ -77,3 +84,7 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: kube-state-metrics
+      volumes:
+        - configMap:
+            name: kube-state-metrics-customresourcestate-config
+          name: customresourcestate-config
