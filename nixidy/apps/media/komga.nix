@@ -120,6 +120,18 @@ in {
               }
             ];
           };
+          # Not a library: media-e2e's test library lives under /media/downloads/e2e-<run>
+          # (Komga refuses a library nested inside Comics).
+          persistence.media-downloads = {
+            type = "persistentVolumeClaim";
+            existingClaim = "media-downloads";
+            advancedMounts.komga.komga = [
+              {
+                path = "/media/downloads";
+                readOnly = true;
+              }
+            ];
+          };
           route.komga = {
             hostnames = [hostname];
             parentRefs = lib.toList {

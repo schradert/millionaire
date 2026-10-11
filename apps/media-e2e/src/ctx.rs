@@ -46,10 +46,25 @@ pub trait At<T> {
     fn at(self, app: &str, step: &str) -> R<T>;
 }
 
-impl<T, E: fmt::Display> At<T> for Result<T, E> {
+impl<T, E: std::error::Error> At<T> for Result<T, E> {
     fn at(self, app: &str, step: &str) -> R<T> {
-        self.map_err(|e| Fail::new(app, step, e))
+        self.map_err(|e| Fail::new(app, step, chain(&e)))
     }
+}
+
+/// An error and its sources, e.g. "error sending request: connection refused".
+pub fn chain(e: &dyn std::error::Error) -> String {
+    let mut s = e.to_string();
+    let mut cur = e.source();
+    while let Some(c) = cur {
+        let t = c.to_string();
+        if !s.contains(&t) {
+            s.push_str(": ");
+            s.push_str(&t);
+        }
+        cur = c.source();
+    }
+    s
 }
 
 impl<T> At<T> for Option<T> {
@@ -110,6 +125,13 @@ impl Ctx {
     /// `/media/<lib>/.e2e-<run>`: hidden, so the real libraries' scanners skip it.
     pub fn dir(&self, lib: &str) -> PathBuf {
         PathBuf::from(format!("{}/{lib}/.{}", media_root(), self.marker))
+    }
+
+    /// `/media/downloads/e2e-<run>/<lib>`: a test library root outside every real library and
+    /// not hidden (Jellyfin skips anything under a dot-folder; Komga refuses nested libraries).
+    /// Jellyfin and Komga mount the downloads volume read-only for this.
+    pub fn lib_root(&self, lib: &str) -> PathBuf {
+        PathBuf::from(format!("{}/downloads/{}/{lib}", media_root(), self.marker))
     }
 }
 

@@ -227,7 +227,7 @@ pub async fn kavita(ctx: &Ctx, f: &mut Flow) -> R<()> {
 /// Komga imports the EPUB into a test library; its OPDS feed lists it with a run API key.
 pub async fn komga(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let k = Komga::new()?;
-    let root = ctx.dir("comics");
+    let root = ctx.lib_root("comics");
     let epub = content::epub();
     let n = download(ctx, &epub.url, &root.join("Alices Adventures in Wonderland").join(epub.file)).await?;
     f.ok("fs", "place EPUB", format!("{n} bytes, {}", epub.license));

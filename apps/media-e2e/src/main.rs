@@ -96,6 +96,7 @@ async fn main() -> ExitCode {
             if !dry {
                 flows.push(cleanup::residue(&ctx, &scope).await);
             }
+            flows.push(cleanup::sessions(&ctx, &scope, dry).await);
             report::print(&ctx.run, "cleanup", &flows);
             if flows.iter().any(|f| f.status() == "fail") {
                 ExitCode::FAILURE
@@ -122,6 +123,7 @@ async fn main() -> ExitCode {
             } else {
                 flows.push(cleanup::cleanup(&ctx, &scope, false).await);
                 flows.push(cleanup::residue(&ctx, &scope).await);
+                flows.push(cleanup::sessions(&ctx, &scope, false).await);
             }
             report::print(&ctx.run, if full { "full" } else { "offline" }, &flows);
             if flows.iter().any(|f| f.status() == "fail") {

@@ -279,7 +279,7 @@ in {
         set -euo pipefail
         k=''${KUBECTL:-kubectl}
         [ $# -gt 0 ] || set -- run
-        run_id=''${E2E_RUN_ID:-$(date -u +%Y%m%d-%H%M%S)-$(LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c4)}
+        run_id=''${E2E_RUN_ID:-$(date -u +%Y%m%d-%H%M%S)-$(od -An -N2 -tx2 /dev/urandom | tr -d ' ')}
         job="media-e2e-$run_id"
         out="''${E2E_OUT:-''${TMPDIR:-/tmp}/media-e2e}/$run_id"
         mkdir -p "$out"
