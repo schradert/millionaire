@@ -1,6 +1,6 @@
 //! Idempotent first-run bootstraps, run as ArgoCD PostSync Jobs.
 //!
-//! `app-bootstrap <app>` where app is `actual`, `arr`, `atuin`, `audiobookshelf`, `immich`, `kavita`, `komga`, `mealie`, `miniflux`, `navidrome`, `openviking`, `ryot`, `seerr`, `shoko` or `contextforge`. Every step checks
+//! `app-bootstrap <app>` where app is `actual`, `arr`, `atuin`, `audiobookshelf`, `forgejo`, `homarr`, `immich`, `kavita`, `komga`, `mealie`, `miniflux`, `navidrome`, `openviking`, `ryot`, `seerr`, `shoko` or `contextforge`. Every step checks
 //! the current state first, so a rerun against a configured app changes nothing.
 
 mod actual;
@@ -9,6 +9,7 @@ mod atuin;
 mod audiobookshelf;
 mod common;
 mod contextforge;
+mod forgejo;
 mod homarr;
 mod immich;
 mod kavita;
@@ -32,6 +33,7 @@ async fn main() -> ExitCode {
         "arr" => arr::run().await,
         "atuin" => atuin::run().await,
         "audiobookshelf" => audiobookshelf::run().await,
+        "forgejo" => forgejo::run().await,
         "immich" => immich::run().await,
         "kavita" => kavita::run().await,
         "komga" => komga::run().await,
@@ -44,7 +46,7 @@ async fn main() -> ExitCode {
         "shoko" => shoko::run().await,
         "contextforge" => contextforge::run().await,
         "homarr" => homarr::run().await,
-        other => Err(format!("usage: app-bootstrap <actual|arr|atuin|audiobookshelf|immich|kavita|komga|mealie|miniflux|navidrome|openviking|ryot|seerr|shoko|contextforge|homarr> (got {other:?})").into()),
+        other => Err(format!("usage: app-bootstrap <actual|arr|atuin|audiobookshelf|forgejo|immich|kavita|komga|mealie|miniflux|navidrome|openviking|ryot|seerr|shoko|contextforge|homarr> (got {other:?})").into()),
     };
     match res {
         Ok(()) => {
