@@ -22,6 +22,12 @@
 19. TODO obico postponed until the Voron is back in service
 20. TODO enroll Keycloak strong auth: log in at https://keycloak.trdos.me/realms/default/account as `tristan` with Bitwarden `keycloak/tristan/initial-password`, set a new password, register a passkey (phone/laptop/YubiKey with a FIDO2 PIN), set up TOTP, optionally add a backup YubiKey
 21. TODO the one-time manual steps (credentials, enrollment, hardware, browser checks) in order: [docs/manual-steps.md](docs/manual-steps.md)
+22. TODO network policies for the critical namespaces (identity, security, observability, cicd, storage, kube-system) plus an egress design; ingress default-deny is already enforced in 9 app namespaces
+23. TODO fix the Gatus checks failing before the network-policy rollout: games-webdav and windmill
+24. TODO rolling node upgrade to nixpkgs 26.11 after the bump (one node at a time, rke2 restarts likely). dingo's capped nix-daemon can't build its own system, so build on sirver and copy
+25. TODO octopus etcd: move leadership off octopus as an interim fix, and alert on commit latency until an SSD for etcd is installed
+26. TODO outside-in Gatus probes on hyena for every app login page, not just the gateway and apiservers
+27. TODO Jellyfin hardware transcoding via falcon's NVIDIA GPU once falcon joins the cluster
 
 ## Conventions
 
