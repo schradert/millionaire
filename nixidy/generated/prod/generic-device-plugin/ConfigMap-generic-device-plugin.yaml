@@ -1,6 +1,6 @@
 apiVersion: v1
 data:
-  config.yaml: '{"devices":[{"groups":[{"count":1000,"paths":[{"path":"/dev/net/tun"}]}],"name":"tun"}]}'
+  config.yaml: '{"devices":[{"groups":[{"count":1000,"paths":[{"path":"/dev/net/tun"}]}],"name":"tun"},{"groups":[{"count":1,"paths":[{"path":"/dev/serial/by-id/usb-Nabu_Casa_ZWA-2_1CDBD4AEBC68-if00"}]}],"name":"zwave"}]}'
 kind: ConfigMap
 metadata:
   labels:
