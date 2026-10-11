@@ -16,6 +16,27 @@
     };
     applications.prowlarr = {
       namespace = "media";
+      # Idempotent post-sync bootstrap (apps/app-bootstrap arr, >= 0.15.0): root folders and
+      # the qBittorrent download client in Sonarr/Radarr/Lidarr, and Prowlarr's application
+      # sync to them. API keys are the generated <app>-apikey Secrets.
+      bootstrap = lib.mkIf (pinned.images ? app-bootstrap-arr) {
+        image = with pinned.images.app-bootstrap-arr; "${repository}:${tag}@${digest}";
+        args = ["arr"];
+        env = {
+          SONARR_API_KEY_FILE = "/secrets/sonarr/apikey";
+          RADARR_API_KEY_FILE = "/secrets/radarr/apikey";
+          LIDARR_API_KEY_FILE = "/secrets/lidarr/apikey";
+          PROWLARR_API_KEY_FILE = "/secrets/prowlarr/apikey";
+          QBITTORRENT_PASSWORD_FILE = "/secrets/qbittorrent/password";
+        };
+        secrets = {
+          sonarr = "sonarr-apikey";
+          radarr = "radarr-apikey";
+          lidarr = "lidarr-apikey";
+          prowlarr = "prowlarr-apikey";
+          qbittorrent = "qbittorrent-admin";
+        };
+      };
       postgres = {
         enable = true;
         extraDatabases = ["prowlarr-log"];

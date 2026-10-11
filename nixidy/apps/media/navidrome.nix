@@ -46,7 +46,7 @@ in {
       # Maloja API key Navidrome scrobbles with (its "ListenBrainz token"); Maloja
       # registers it from this Secret (maloja.nix) and the bootstrap links it.
       generatedSecrets.navidrome-maloja.key = "token";
-      # Idempotent post-sync bootstrap (apps/app-bootstrap navidrome, >= 0.6.0): first admin
+      # Idempotent post-sync bootstrap (apps/app-bootstrap navidrome, >= 0.15.0 for the ListenBrainz link): first admin
       # named after tristan, so the oauth2-proxy-forwarded username IS the admin. The generated
       # password is for Subsonic clients and break-glass native login.
       bootstrap = lib.mkIf bootstrapped {
@@ -56,8 +56,13 @@ in {
           NAVIDROME_URL = "http://navidrome.media.svc.cluster.local:${toString port}";
           ADMIN_USER = people.me;
           ADMIN_PASSWORD_FILE = "/secrets/admin/password";
+          # Maloja API key, validated against ND_LISTENBRAINZ_BASEURL (Maloja).
+          LISTENBRAINZ_TOKEN_FILE = "/secrets/maloja/token";
         };
-        secrets.admin = "navidrome-admin";
+        secrets = {
+          admin = "navidrome-admin";
+          maloja = "navidrome-maloja";
+        };
       };
       volsync.pvcs.navidrome.title = "navidrome";
       # Navidrome trusts the user header from any whitelisted pod IP, so only oauth2-proxy,

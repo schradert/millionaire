@@ -26,9 +26,17 @@ spec:
               value: jellyfin.media.svc.cluster.local
             - name: JELLYFIN_PORT
               value: "8096"
+            - name: RADARR_API_KEY_FILE
+              value: /secrets/radarr/apikey
+            - name: RADARR_PROFILE
+              value: '[SQP] SQP-1 WEB (2160p)'
             - name: SEERR_URL
               value: http://seerr.media.svc.cluster.local:5055
-          image: harbor.trdos.me/library/app-bootstrap:0.10.0@sha256:86e6b7640c92e52254803a96defa575ca91774c296f61df26104d04dfb47116b
+            - name: SONARR_API_KEY_FILE
+              value: /secrets/sonarr/apikey
+            - name: SONARR_PROFILE
+              value: WEB-1080p
+          image: harbor.trdos.me/library/app-bootstrap:0.15.0@sha256:f728c5c08647b74a8293532f4ddf61498be1874b59b5979a1b6a820878a42ef8
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
@@ -39,6 +47,12 @@ spec:
           volumeMounts:
             - mountPath: /secrets/jellyfin
               name: jellyfin
+              readOnly: true
+            - mountPath: /secrets/radarr
+              name: radarr
+              readOnly: true
+            - mountPath: /secrets/sonarr
+              name: sonarr
               readOnly: true
       restartPolicy: OnFailure
       securityContext:
@@ -51,3 +65,9 @@ spec:
         - name: jellyfin
           secret:
             secretName: jellyfin-admin
+        - name: radarr
+          secret:
+            secretName: radarr-apikey
+        - name: sonarr
+          secret:
+            secretName: sonarr-apikey

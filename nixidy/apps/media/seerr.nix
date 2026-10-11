@@ -24,7 +24,7 @@ in {
       # Jellyfin `admin` account and tristan's email, enables all libraries and
       # finishes the wizard. Break-glass is that Jellyfin admin login
       # (Secret jellyfin-admin, Bitwarden jellyfin/admin-password); Seerr has no
-      # separate admin password. Radarr/Sonarr are not wired (follow-up).
+      # separate admin password. Radarr and Sonarr are added as default servers.
       # Idempotent post-sync bootstrap (apps/app-bootstrap seerr, >= 0.7.0).
       bootstrap = lib.mkIf (pinned.images ? app-bootstrap-seerr) {
         image = with pinned.images.app-bootstrap-seerr; "${repository}:${tag}@${digest}";
@@ -36,8 +36,17 @@ in {
           JELLYFIN_ADMIN_USER = "admin";
           JELLYFIN_ADMIN_PASSWORD_FILE = "/secrets/jellyfin/password";
           ADMIN_EMAIL = people.my.profiles.personal.email;
+          # Radarr/Sonarr as default servers (>= 0.15.0); the profiles are Recyclarr's.
+          RADARR_API_KEY_FILE = "/secrets/radarr/apikey";
+          SONARR_API_KEY_FILE = "/secrets/sonarr/apikey";
+          RADARR_PROFILE = "[SQP] SQP-1 WEB (2160p)";
+          SONARR_PROFILE = "WEB-1080p";
         };
-        secrets.jellyfin = "jellyfin-admin";
+        secrets = {
+          jellyfin = "jellyfin-admin";
+          radarr = "radarr-apikey";
+          sonarr = "sonarr-apikey";
+        };
       };
       volsync.pvcs.seerr.title = "seerr";
       helm.releases.seerr = {
