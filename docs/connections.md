@@ -29,7 +29,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | argo-workflows | OIDC | web | web | n-a | web | — |
 | harbor | oauth2-proxy (UI); `/v2/`, `/service/`, `/api/` direct | done: `harbor-login [docker\|podman]`, `modules/kubernetes.nix` | done: same | n-a | n-a | bws `harbor/robot/secret` (pulumi `__main__.py`) |
 | atuin | atuin account | done: `modules/atuin.nix` | done: `modules/atuin.nix` | done: `modules/atuin.nix` | n-a | atuin login (key on device) |
-| forgejo (git) | oauth2-proxy (UI); git over https and `/api` direct | web; git over ssh/https; todo: tea/fj CLI token | web; todo | n-a | todo (GitNex) | needs a token generator |
+| forgejo (git) | oauth2-proxy (UI); git over https, `/api` and `/login/oauth/access_token` direct | done: tea via Forgejo's built-in `tea` OAuth app (`tea-login`, SSO), `nixidy/apps/development/forgejo.nix`; git over ssh/https | done: same | n-a | todo (GitNex) | tea's OAuth token (refreshed by tea) |
 | windmill, sveltekit-demo | OIDC / none | web | web | n-a | web | — |
 | bifrost | oauth2-proxy (bearer) | done: opencode provider `bifrost` (plugin adds `sso-token`), `modules/sso.nix` | done: same | n-a | n-a | `sso-token` |
 | contextforge (mcp) | oauth2-proxy (bearer) | todo: `sso-token mcp https://mcp.trdos.me/…` is ready, contextforge rejects Keycloak tokens on `/mcp` (see Open questions) | todo (same) | n-a | n-a | `sso-token` |
@@ -66,7 +66,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | mainsail, obico, spoolman | oauth2-proxy | web; todo: orca-slicer (commented cask in `modules/default.nix`) | web | n-a | done: Mobileraker | — |
 | rook-ceph, rados | own | web | web | n-a | n-a | — |
 | Bitwarden (hosted, not in the cluster) | account | done: cask (`modules/desktop-clients.nix`) + Brave extension (`modules/browser.nix`) | done: bitwarden-desktop + Brave extension | done: bitwarden-desktop | done: Bitwarden | account login |
-| Bookmarks (`dashy.trdos.me/bookmarks.html`) | oauth2-proxy | todo: Floccus (blocked) | todo | n-a | n-a | — |
+| Bookmarks (`dashy.trdos.me/bookmarks.html`) | oauth2-proxy | todo: Floccus (blocked, see Open questions) | todo | n-a | n-a | — |
 
 ## Open questions
 
@@ -75,4 +75,4 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 - contextforge 1.0.11 accepts Keycloak tokens on `/mcp` only for a virtual server with `oauth_enabled` (`oauth_config.authorization_servers` = the realm, `resource` = `oauth2-proxy`), and resolves the user from its own database. Options: (a) app-bootstrap creates that server and enables Keycloak SSO (`SSO_KEYCLOAK_*`, `SSO_API_TOKEN_AUTH_ENABLED`) so tristan exists; needs a new app-bootstrap image; (b) `MCP_CLIENT_AUTH_ENABLED=false` + `TRUST_PROXY_AUTH(_DANGEROUSLY)=true` with the oauth2-proxy email header, plus a CiliumNetworkPolicy so only oauth2-proxy can send it (any pod that reaches contextforge could otherwise claim to be tristan).
 - Direct routes that skip oauth2-proxy stay where the clients speak a protocol with its own auth: baikal `/dav.php` (Digest), navidrome `/rest` (Subsonic), komga `/opds`, chirpstack gRPC, harbor `/v2` (robot accounts), forgejo git and `/api` (tokens).
 - syncthing: the hub's device ID is generated at runtime and its volume is not restored, so desktops cannot declare it as an introducer. The hub needs a pinned identity (cert/key as a generated secret) first.
-- Floccus: `dav.trdos.me` is behind oauth2-proxy, and the org-stack design drops WebDAV. The alternative backend is Floccus's Git sync against forgejo, which needs a token.
+- Floccus: `dav.trdos.me` is behind oauth2-proxy, and the org-stack design drops WebDAV. Its Git backend pushes over HTTPS with a username + Forgejo personal access token (no OAuth) and a browser User-Agent, so it needs both a long-lived token and a route that skips oauth2-proxy for its requests; that runs against the SSO-only principle, so it is left undecided.
