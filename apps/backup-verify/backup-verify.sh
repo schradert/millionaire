@@ -112,12 +112,15 @@ wait_for() { # seconds description command...
 
 # ---- 1. restic check on every VolSync repository --------------------------------------------------
 check_restic() {
-  local ns repo pvc size mib out rc ok=0 bad=0 never
+  local ns repo pvc size mib out rc nsnap ok=0 bad=0 never
   while IFS=$'\t' read -r ns repo pvc; do
     restic_env "$repo"
     out=$(restic stats --mode raw-data --json 2>&1 </dev/null)
     size=$(echo "$out" | tail -n 1 | jq -r '.total_size // empty' 2>/dev/null)
     if [ -z "$size" ]; then fail "restic $ns/$repo: cannot read the repository: $(echo "$out" | tail -n 2 | tr '\n' ' ' | cut -c1-300)"; bad=$((bad + 1)); continue; fi
+    # A repository without snapshots is an empty source volume (nothing was ever backed up): nothing to check.
+    nsnap=$(restic snapshots --json 2>/dev/null </dev/null | jq 'length' 2>/dev/null)
+    if [ "${nsnap:-1}" = 0 ]; then warn "restic $ns/$repo: repository has no snapshots (source volume empty)"; continue; fi
     mib=$((size / 100 / 1048576))
     [ "$mib" -lt 16 ] && mib=16
     [ "$mib" -gt "$CHECK_MAX_SUBSET_MIB" ] && mib=$CHECK_MAX_SUBSET_MIB
