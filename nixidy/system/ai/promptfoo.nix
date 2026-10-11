@@ -44,8 +44,9 @@ in {
             annotations."reloader.stakater.com/auto" = "true";
             containers.promptfoo = {
               image = pinned.images.promptfoo;
-              args = ["share" "--yes"];
+              # The image's default command serves the web UI on :3000.
               env = {
+                PROMPTFOO_CONFIG_DIR = "/root/.promptfoo";
                 PROMPTFOO_SHARE_STORE_TYPE = "sqlite";
                 PROMPTFOO_SHARE_TTL = "0";
                 OLLAMA_BASE_URL = "http://ollama.ai.svc.cluster.local:11434";
@@ -74,6 +75,12 @@ in {
             globalMounts = lib.toList {path = "/root/.promptfoo";};
           };
         };
+      };
+
+      # RWO data PVC: a rolling update's new pod can't attach it on another node.
+      resources.deployments.promptfoo = {
+        metadata.annotations."argocd.argoproj.io/sync-options" = "Replace=true";
+        spec.strategy.type = lib.mkForce "Recreate";
       };
 
       resources.httpRoutes.promptfoo.spec = {
