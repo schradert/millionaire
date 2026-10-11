@@ -1,6 +1,6 @@
 {
-  "version": "0.1.0",
-  "digest": "sha256:e2041d0734e376838ddd34dfc90c5f7e664539ec1e9f320b85f218ee150ea83a",
+  "version": "0.1.1",
+  "digest": "sha256:119f7b665239d2ed512b32147747fbfd590829bad3993f28838ad3785fd0dd15",
   "source": {
     "type": "oci-tag",
     "repository": "harbor.trdos.me/library/backup-verify",
