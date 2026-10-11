@@ -1,6 +1,7 @@
 {config, ...}: let
   inherit (config.canivete.meta) domain;
   hostname = "bifrost.${domain}";
+  providerKeys = false;
 in {
   nixidy = {
     lib,
@@ -90,28 +91,32 @@ in {
         };
       };
 
-      resources.externalSecrets.bifrost.spec = {
-        secretStoreRef.name = "bitwarden";
-        secretStoreRef.kind = "ClusterSecretStore";
-        target.template.data = {
-          ANTHROPIC_API_KEY = "{{ .anthropic_key }}";
-          OPENAI_API_KEY = "{{ .openai_key }}";
-          GOOGLE_API_KEY = "{{ .google_key }}";
+      # AI provider keys are user-supplied (Bitwarden `ai/{anthropic,openai,google}/api-key`,
+      # see docs/manual-steps.md). Until then there is no ExternalSecret; the Secret is optional.
+      resources.externalSecrets.bifrost = lib.mkIf providerKeys {
+        spec = {
+          secretStoreRef.name = "bitwarden";
+          secretStoreRef.kind = "ClusterSecretStore";
+          target.template.data = {
+            ANTHROPIC_API_KEY = "{{ .anthropic_key }}";
+            OPENAI_API_KEY = "{{ .openai_key }}";
+            GOOGLE_API_KEY = "{{ .google_key }}";
+          };
+          data = [
+            {
+              secretKey = "anthropic_key";
+              remoteRef.key = "ai/anthropic/api-key";
+            }
+            {
+              secretKey = "openai_key";
+              remoteRef.key = "ai/openai/api-key";
+            }
+            {
+              secretKey = "google_key";
+              remoteRef.key = "ai/google/api-key";
+            }
+          ];
         };
-        data = [
-          {
-            secretKey = "anthropic_key";
-            remoteRef.key = "ai/anthropic/api-key";
-          }
-          {
-            secretKey = "openai_key";
-            remoteRef.key = "ai/openai/api-key";
-          }
-          {
-            secretKey = "google_key";
-            remoteRef.key = "ai/google/api-key";
-          }
-        ];
       };
     };
 

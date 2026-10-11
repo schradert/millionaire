@@ -6,13 +6,21 @@
     lib,
     pinned,
     ...
-  }: {
+  }: let
+    # The Discord bot token is user-supplied (Bitwarden `ai/openclaw/discord-token`, see
+    # docs/manual-steps.md). Until then openclaw is scaled to 0 with no ExternalSecret.
+    credentials = false;
+  in {
     applications.openclaw = {
       namespace = "ai-sandbox";
       helm.releases.openclaw = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.openclaw = {
+            replicas =
+              if credentials
+              then 1
+              else 0;
             annotations."reloader.stakater.com/auto" = "true";
             containers.openclaw = {
               # TODO: update image once published, or build from github:openclaw/openclaw
@@ -100,11 +108,26 @@
         pods = "5";
       };
 
-      resources.externalSecrets.openclaw.spec.data = lib.toList {
-        secretKey = "DISCORD_BOT_TOKEN";
-        remoteRef.key = "ai/openclaw/discord-token";
-        sourceRef.storeRef.name = "bitwarden";
-        sourceRef.storeRef.kind = "ClusterSecretStore";
+      # The quota needs requests/limits on every container, including injected ones (k8tz).
+      resources.limitRanges.openclaw-defaults.spec.limits = lib.toList {
+        type = "Container";
+        defaultRequest = {
+          cpu = "50m";
+          memory = "64Mi";
+        };
+        default = {
+          cpu = "1";
+          memory = "1Gi";
+        };
+      };
+
+      resources.externalSecrets.openclaw = lib.mkIf credentials {
+        spec.data = lib.toList {
+          secretKey = "DISCORD_BOT_TOKEN";
+          remoteRef.key = "ai/openclaw/discord-token";
+          sourceRef.storeRef.name = "bitwarden";
+          sourceRef.storeRef.kind = "ClusterSecretStore";
+        };
       };
     };
   };
