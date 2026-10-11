@@ -44,3 +44,10 @@ spec:
           for: 5m
           labels:
             severity: warning
+        - alert: NetworkPolicyDrops
+          annotations:
+            summary: 'Cilium on {{ $labels.instance }} keeps dropping traffic as policy-denied; find it with: hubble observe --verdict DROPPED (cilium agent pod)'
+          expr: sum(increase(cilium_drop_count_total{reason="Policy denied"}[10m])) by (instance) > 20
+          for: 15m
+          labels:
+            severity: warning
