@@ -16,6 +16,8 @@
   ];
   profiles.client.enable = true;
   profiles.gaming.enable = true;
+  # Installed by the old dotfiles repo (home stateVersion with the games below)
+  system.stateVersion = "25.11";
   # node hostname is the LAN IP (ssh target)
   networking.hostName = lib.mkForce "systeamadeck";
   networking.hostId = "58ea3dec";
@@ -66,6 +68,7 @@
   systemd.services.decky-loader.environment.PULSE_SERVER = "tcp:127.0.0.1:4713";
 
   home-manager.sharedModules = [
+    {home.stateVersion = "25.11";}
     ({
       config,
       lib,
