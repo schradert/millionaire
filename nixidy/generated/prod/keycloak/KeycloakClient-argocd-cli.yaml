@@ -1,0 +1,25 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: argocd-cli
+  namespace: identity
+spec:
+  definition:
+    attributes:
+      pkce.code.challenge.method: S256
+    clientId: argocd-cli
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+      - groups
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: ArgoCD CLI
+    protocol: openid-connect
+    publicClient: true
+    redirectUris:
+      - http://localhost:8085/auth/callback
+    standardFlowEnabled: true
+  realmRef:
+    name: default

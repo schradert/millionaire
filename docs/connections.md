@@ -23,13 +23,13 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | Service | Auth | macOS | NixOS workstations | Steam Deck | Android | Credential |
 |---|---|---|---|---|---|---|
 | headscale (tailnet) | preauth key | done: `modules/tailnet.nix` (personal Macs) | done: `static/tailnet-personal.nix` | todo (sops recipient) | done: Tailscale | sops `headscale/preauth-key/personal` (pulumi) |
-| Kubernetes API (sirver:6443) | admin kubeconfig | todo: `modules/kubernetes.nix` (kubectl, k9s, helm, cilium, `kubeconfig`) | todo: `modules/kubernetes.nix` | n-a | n-a | `/etc/rancher/rke2/rke2.yaml` over ssh |
-| argocd | OIDC | todo: argocd CLI SSO | todo: argocd CLI SSO | n-a | n-a | Keycloak `argocd-cli` (todo) |
-| argo-rollouts | OIDC proxy | todo: kubectl-argo-rollouts | todo: kubectl-argo-rollouts | n-a | n-a | kubeconfig |
+| Kubernetes API (sirver:6443) | admin kubeconfig | done: `modules/kubernetes.nix` (kubectl, k9s, helm, cilium-cli; `kubeconfig` writes `~/.kube/trdos`) | done: `modules/kubernetes.nix` | n-a | n-a | `/etc/rancher/rke2/rke2.yaml` over ssh |
+| argocd | OIDC | done: argocd CLI, `argocd-login` (SSO), `modules/kubernetes.nix` | done: same | n-a | n-a | Keycloak public client `argocd-cli` (argocd.nix) |
+| argo-rollouts | oauth2-proxy | done: kubectl-argo-rollouts, `modules/kubernetes.nix` | done: same | n-a | n-a | kubeconfig |
 | argo-workflows | OIDC | web | web | n-a | web | — |
-| harbor | OIDC / robot | todo: `harbor-login` | todo: `harbor-login` | n-a | n-a | bws `harbor/robot/secret` (pulumi `__main__.py`) |
+| harbor | oauth2-proxy (UI); `/v2/`, `/service/`, `/api/` direct | done: `harbor-login [docker\|podman]`, `modules/kubernetes.nix` | done: same | n-a | n-a | bws `harbor/robot/secret` (pulumi `__main__.py`) |
 | atuin | atuin account | done: `modules/atuin.nix` | done: `modules/atuin.nix` | done: `modules/atuin.nix` | n-a | atuin login (key on device) |
-| forgejo (git) | OIDC | web; todo: tea/fj CLI token | web; todo | n-a | todo (GitNex) | needs a token generator |
+| forgejo (git) | oauth2-proxy (UI); git over https and `/api` direct | web; git over ssh/https; todo: tea/fj CLI token | web; todo | n-a | todo (GitNex) | needs a token generator |
 | windmill, sveltekit-demo | OIDC / none | web | web | n-a | web | — |
 | bifrost | oauth2-proxy | todo: opencode provider (blocked, see Open questions) | todo (blocked) | n-a | n-a | — |
 | contextforge (mcp) | oauth2-proxy | todo: MCP entry (blocked) | todo (blocked) | n-a | n-a | — |
@@ -59,8 +59,8 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | owncast, jitsi | own | web | web | n-a | todo (no Jitsi app in catalog) | — |
 | music-assistant | oauth2-proxy | web | web | n-a | via Home Assistant | — |
 | dvd-webdav, games-webdav | own | n-a | n-a | games: `modules/gaming/consoles.nix` (library off) | n-a | — |
-| prometheus | none | todo: promtool | todo: promtool | n-a | n-a | — |
-| alertmanager | none | todo: amtool | todo: amtool | n-a | n-a | — |
+| prometheus | oauth2-proxy | done: promtool (offline checks; queries via `kubectl port-forward`), `modules/kubernetes.nix` | done: same | n-a | n-a | — |
+| alertmanager | oauth2-proxy | web (amtool skipped: API behind oauth2-proxy) | web | n-a | n-a | — |
 | grafana, gatus, status (hyena) | OIDC / none | web | web | n-a | web | — |
 | ntfy (hyena) | none (tailnet) | todo: `modules/ntfy.nix` subscriber | todo: `modules/ntfy.nix` | n-a | done: ntfy | — |
 | mainsail, obico, spoolman | oauth2-proxy | web; todo: orca-slicer (commented cask in `modules/default.nix`) | web | n-a | done: Mobileraker | — |
