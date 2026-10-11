@@ -1,7 +1,6 @@
 {config, ...}: {
   # TODO https://docs.firefly-iii.org/how-to/data-importer/how-to-configure/
   # TODO https://github.com/dvankley/firefly-plaid-connector-2
-  # TODO create access token at firefly/token
   nixidy = {
     charts,
     lib,
@@ -36,6 +35,16 @@
               ports = lib.toList {
                 name = "http";
                 containerPort = 8080;
+              };
+              # Signing keys that survive restarts (the container's storage is not
+              # persistent): PASSPORT_PRIVATE_KEY / PASSPORT_PUBLIC_KEY from the Secret
+              # the firefly-bootstrap job writes. Optional: absent until its first run,
+              # when Firefly falls back to its own keys.
+              envFrom = lib.toList {
+                secretRef = {
+                  name = "firefly-passport";
+                  optional = true;
+                };
               };
               env = {
                 AUTHENTICATION_GUARD = "remote_user_guard";
@@ -88,6 +97,8 @@
             annotations."reloader.stakater.com/auto" = "true";
             containers.firefly-importer = {
               image = pinned.images.firefly-data-importer;
+              # Personal access token minted by the firefly-bootstrap job.
+              env.FIREFLY_III_ACCESS_TOKEN_FILE = "/secrets/app_token.txt";
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
               probes.startup.enabled = true;
@@ -100,9 +111,15 @@
             "VANITY_URL=https://${hostname}"
           ];
           persistence = {
+            # Only the token, not the signing keys that share the Secret.
             secrets = {
               type = "secret";
-              name = "firefly-importer";
+              name = "firefly-passport";
+              globalMounts = lib.toList {
+                path = "/secrets/app_token.txt";
+                subPath = "FIREFLY_III_ACCESS_TOKEN";
+                readOnly = true;
+              };
             };
             config = {
               type = "configMap";
@@ -148,6 +165,124 @@
           };
         };
       };
+      # Idempotent post-sync bootstrap (README "Conventions"): ensures the owner user, the
+      # Passport keys and a personal access token for the data importer, and keeps them
+      # in Secret firefly-passport (see firefly-bootstrap.php). Runs in the firefly image
+      # as www-data with the app's DB credentials; the Role only reaches that one Secret
+      # (create can't be limited by name, but can't read or change other Secrets).
+      resources.configMaps.firefly-bootstrap.data."bootstrap.php" = builtins.readFile ./firefly-bootstrap.php;
+      resources.serviceAccounts.firefly-bootstrap = {};
+      resources.roles.firefly-bootstrap.rules = [
+        {
+          apiGroups = [""];
+          resources = ["secrets"];
+          verbs = ["create"];
+        }
+        {
+          apiGroups = [""];
+          resources = ["secrets"];
+          resourceNames = ["firefly-passport"];
+          verbs = ["get" "patch"];
+        }
+      ];
+      resources.roleBindings.firefly-bootstrap = {
+        roleRef = {
+          apiGroup = "rbac.authorization.k8s.io";
+          kind = "Role";
+          name = "firefly-bootstrap";
+        };
+        subjects = lib.toList {
+          kind = "ServiceAccount";
+          name = "firefly-bootstrap";
+          namespace = "finance";
+        };
+      };
+      resources.jobs.firefly-bootstrap = {
+        metadata.annotations = {
+          "argocd.argoproj.io/hook" = "PostSync";
+          "argocd.argoproj.io/hook-delete-policy" = "BeforeHookCreation";
+        };
+        spec = {
+          backoffLimit = 6;
+          activeDeadlineSeconds = 1200;
+          template.spec = {
+            restartPolicy = "OnFailure";
+            serviceAccountName = "firefly-bootstrap";
+            securityContext = {
+              runAsNonRoot = true;
+              runAsUser = 33;
+              runAsGroup = 33;
+              fsGroup = 33;
+              seccompProfile.type = "RuntimeDefault";
+            };
+            containers = lib.toList {
+              name = "bootstrap";
+              image = with pinned.images.firefly-core; "${repository}:${tag}@${digest}";
+              command = ["php" "/bootstrap/bootstrap.php"];
+              env = [
+                {
+                  name = "ADMIN_USER";
+                  value = config.canivete.meta.people.me;
+                }
+                {
+                  name = "APP_ENV";
+                  value = "production";
+                }
+                {
+                  name = "LOG_CHANNEL";
+                  value = "stderr";
+                }
+                {
+                  name = "DB_CONNECTION";
+                  value = "pgsql";
+                }
+                {
+                  name = "DB_HOST";
+                  value = "firefly-rw";
+                }
+                {
+                  name = "DB_PORT";
+                  value = "5432";
+                }
+                {
+                  name = "DB_DATABASE";
+                  value = "firefly";
+                }
+                {
+                  name = "DB_USERNAME";
+                  value = "firefly";
+                }
+              ];
+              volumeMounts = [
+                {
+                  name = "script";
+                  mountPath = "/bootstrap";
+                  readOnly = true;
+                }
+                {
+                  name = "secrets";
+                  mountPath = "/secrets";
+                  readOnly = true;
+                }
+              ];
+              securityContext = {
+                allowPrivilegeEscalation = false;
+                capabilities.drop = ["ALL"];
+              };
+            };
+            volumes = [
+              {
+                name = "script";
+                configMap.name = "firefly-bootstrap";
+              }
+              {
+                name = "secrets";
+                secret.secretName = "firefly";
+              }
+            ];
+          };
+        };
+      };
       resources.externalSecrets = {
         firefly.spec.data = [
           {
@@ -164,12 +299,6 @@
             sourceRef.storeRef.kind = "ClusterSecretStore";
           }
         ];
-        firefly-importer.spec.data = lib.toList {
-          secretKey = "app_token.txt";
-          remoteRef.key = "firefly/token";
-          sourceRef.storeRef.name = "bitwarden";
-          sourceRef.storeRef.kind = "ClusterSecretStore";
-        };
       };
     };
     oauth2Proxy.upstreams."firefly-importer-${config.canivete.meta.people.me}.${domain}" = {

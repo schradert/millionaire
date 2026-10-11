@@ -1,0 +1,64 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: firefly-bootstrap
+  namespace: finance
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      containers:
+        - command:
+            - php
+            - /bootstrap/bootstrap.php
+          env:
+            - name: ADMIN_USER
+              value: tristan
+            - name: APP_ENV
+              value: production
+            - name: LOG_CHANNEL
+              value: stderr
+            - name: DB_CONNECTION
+              value: pgsql
+            - name: DB_HOST
+              value: firefly-rw
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_DATABASE
+              value: firefly
+            - name: DB_USERNAME
+              value: firefly
+          image: fireflyiii/core:version-6.5.4@sha256:6ae1b92eb73b4ae8a8e7e038440b93fba46267e05b5b903c62316b8cb03779af
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - mountPath: /bootstrap
+              name: script
+              readOnly: true
+            - mountPath: /secrets
+              name: secrets
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        fsGroup: 33
+        runAsGroup: 33
+        runAsNonRoot: true
+        runAsUser: 33
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: firefly-bootstrap
+      volumes:
+        - configMap:
+            name: firefly-bootstrap
+          name: script
+        - name: secrets
+          secret:
+            secretName: firefly
