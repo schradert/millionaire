@@ -144,7 +144,15 @@ async fn jellyfin_devices_inner(c: &mut Clean<'_>) -> R<()> {
     let jf = Jellyfin::login(ctx).await?;
     let devices = jf.get(ctx, "/Devices").await?;
     for d in devices["Items"].as_array().cloned().unwrap_or_default() {
-        if c.scope.hit_v(&d["Id"]) {
+        // This process's own session (DeviceId = its marker, `e2e-all` for `cleanup --all`) always goes.
+        let own = d["Id"].as_str() == Some(ctx.marker.as_str());
+        if own && c.dry {
+            let path = format!("/Devices?id={}", enc(&ctx.marker));
+            send(jf.req(ctx, Method::DELETE, &path), "jellyfin", "revoke own session").await?;
+            c.actions.push(format!("revoked own session {}", ctx.marker));
+            continue;
+        }
+        if own || c.scope.hit_v(&d["Id"]) {
             let path = format!("/Devices?id={}", enc(d["Id"].as_str().unwrap_or("")));
             c.act(format!("jellyfin device/session {}", d["Id"]), async { send(jf.req(ctx, Method::DELETE, &path), "jellyfin", "delete device").await.map(|_| ()) }).await;
         }

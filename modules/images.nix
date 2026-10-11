@@ -167,7 +167,7 @@
         src = ../apps/media-e2e;
         pkg = amd64Pkgs.rustPlatform.buildRustPackage {
           pname = "media-e2e";
-          version = "0.1.3";
+          version = "0.1.4";
           inherit src;
           cargoLock.lockFile = "${src}/Cargo.lock";
         };
