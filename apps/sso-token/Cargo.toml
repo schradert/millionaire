@@ -1,6 +1,6 @@
 [package]
 name = "sso-token"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Keycloak access tokens for CLIs via the OAuth 2.0 device authorization grant"
 publish = false
