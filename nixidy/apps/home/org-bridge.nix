@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     # State DB lives in an emptyDir — org files are the source of truth, so a restart
@@ -24,11 +25,7 @@
           controllers.org-bridge = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.org-bridge = {
-              image = {
-                # TODO wire up ./modules/images.nix rust build once nix2container input is added
-                repository = "ghcr.io/schradert/org-bridge";
-                tag = "latest";
-              };
+              image = pinned.images.org-bridge;
               env = {
                 ORG_DIR = "/org";
                 STATE_DB_PATH = "/var/lib/org-bridge/state.db";
