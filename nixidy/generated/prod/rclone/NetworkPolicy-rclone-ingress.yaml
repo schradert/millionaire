@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: rclone-ingress
+  namespace: home
+spec:
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: identity
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: oauth2-proxy
+      ports:
+        - port: 5572
+          protocol: TCP
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: rclone
+  policyTypes:
+    - Ingress

@@ -1,0 +1,20 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: volsync--rclone--rclone-src
+  namespace: home
+spec:
+  restic:
+    copyMethod: Direct
+    moverSecurityContext:
+      fsGroup: 101
+    pruneIntervalDays: 8
+    repository: volsync--rclone--rclone
+    retain:
+      daily: 1
+      monthly: 1
+      weekly: 1
+      yearly: 1
+  sourcePVC: rclone
+  trigger:
+    schedule: 0 4 * * *

@@ -1,5 +1,5 @@
-# Network CLIs: port scanning, speed tests, cloud storage.
-# Unported: rclone rcd web-GUI cluster app + croc/termscp (old/old/storage/rclone.nix).
+# Network CLIs: port scanning, speed tests, file transfer, cloud storage.
+# rclone web GUI runs on the cluster: nixidy/apps/home/rclone.nix.
 {
   home = {
     config,
@@ -8,7 +8,7 @@
     ...
   }: {
     config = lib.mkIf config.profiles.workstation.enable {
-      home.packages = with pkgs; [librespeed-cli nmap rustscan];
+      home.packages = with pkgs; [croc librespeed-cli nmap rustscan termscp];
       programs.rclone.enable = true;
     };
   };

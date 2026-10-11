@@ -285,6 +285,10 @@ data:
           description: ''
           href: https://logseq.trdos.me
           icon: logseq
+      - rclone:
+          description: Cloud storage remotes
+          href: https://rclone.trdos.me
+          icon: rclone
       - siyuan:
           description: ''
           href: https://siyuan.trdos.me

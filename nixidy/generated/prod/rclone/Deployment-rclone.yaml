@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/controller: rclone
+    app.kubernetes.io/instance: rclone
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: rclone
+  name: rclone
+  namespace: home
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: rclone
+      app.kubernetes.io/instance: rclone
+      app.kubernetes.io/name: rclone
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: rclone
+        app.kubernetes.io/instance: rclone
+        app.kubernetes.io/name: rclone
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - rcd
+            - --rc-addr=0.0.0.0:5572
+            - --rc-no-auth
+            - --rc-web-gui
+            - --rc-web-gui-no-open-browser
+            - --config=/config/rclone.conf
+            - --cache-dir=/cache
+          image: rclone/rclone:1.75.2@sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 5572
+            timeoutSeconds: 1
+          name: rclone
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 5572
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 5572
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /cache
+              name: cache
+            - mountPath: /config
+              name: config
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      securityContext:
+        fsGroup: 101
+        runAsGroup: 101
+        runAsUser: 101
+      serviceAccountName: rclone
+      volumes:
+        - emptyDir: {}
+          name: cache
+        - name: config
+          persistentVolumeClaim:
+            claimName: rclone
