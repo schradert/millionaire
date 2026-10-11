@@ -9,11 +9,16 @@
     hostname = "qbittorrent.${domain}";
     port = 8080;
     torrentPort = 6881;
+    # Flip to true once the VPN items below exist in Bitwarden (docs/manual-steps.md).
+    # Until then: no ExternalSecret, no pod (replicas 0), no gatus check.
+    credentials = false;
   in {
-    gatus.endpoints.qbittorrent = {
-      url = "https://${hostname}";
-      group = "internal";
-      conditions = ["[STATUS] == any(200, 302, 401)"];
+    gatus.endpoints = lib.optionalAttrs credentials {
+      qbittorrent = {
+        url = "https://${hostname}";
+        group = "internal";
+        conditions = ["[STATUS] == any(200, 302, 401)"];
+      };
     };
     applications.qbittorrent = {
       namespace = "media";
@@ -26,6 +31,10 @@
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.qbittorrent = {
+            replicas =
+              if credentials
+              then 1
+              else 0;
             annotations."reloader.stakater.com/auto" = "true";
             # Declarative WebUI admin: (re)write username + PBKDF2-SHA512 hash into
             # qBittorrent.conf before start, only when the stored hash does not verify.
@@ -34,43 +43,47 @@
             # only matters from outside those ranges.
             initContainers.admin = {
               image = pinned.images.qbittorrent;
-              command = ["python3" "-c" ''
-            import base64, hashlib, hmac, os, re, shutil
-            conf = "/config/qBittorrent/qBittorrent.conf"
-            if not os.path.exists(conf):
-                os.makedirs(os.path.dirname(conf), exist_ok=True)
-                shutil.copy("/defaults/qBittorrent.conf", conf)
-            pw = open("/secrets/admin/password", "rb").read().strip()
-            text = open(conf).read()
-            key = "WebUI\\Password_PBKDF2"
-            m = re.search(r"^" + re.escape(key) + r'="?@ByteArray\(([^:]+):([^)]+)\)"?\s*$', text, re.M)
-            def verifies():
-                if not m:
-                    return False
-                salt = base64.b64decode(m.group(1))
-                want = base64.b64decode(m.group(2))
-                got = hashlib.pbkdf2_hmac("sha512", pw, salt, 100000, len(want))
-                return hmac.compare_digest(got, want)
-            want = {"WebUI\\Username": "admin"}
-            if not verifies():
-                salt = os.urandom(16)
-                dk = hashlib.pbkdf2_hmac("sha512", pw, salt, 100000, 64)
-                b64 = lambda b: base64.b64encode(b).decode()
-                want[key] = '"@ByteArray(%s:%s)"' % (b64(salt), b64(dk))
-            lines = text.split("\n")
-            if "[Preferences]" not in lines:
-                lines += ["", "[Preferences]"]
-            i = lines.index("[Preferences]") + 1
-            for k, v in want.items():
-                new = k + "=" + v
-                for j, l in enumerate(lines):
-                    if l.startswith(k + "="):
-                        lines[j] = new
-                        break
-                else:
-                    lines.insert(i, new)
-            open(conf, "w").write("\n".join(lines))
-          ''];
+              command = [
+                "python3"
+                "-c"
+                ''
+                  import base64, hashlib, hmac, os, re, shutil
+                  conf = "/config/qBittorrent/qBittorrent.conf"
+                  if not os.path.exists(conf):
+                      os.makedirs(os.path.dirname(conf), exist_ok=True)
+                      shutil.copy("/defaults/qBittorrent.conf", conf)
+                  pw = open("/secrets/admin/password", "rb").read().strip()
+                  text = open(conf).read()
+                  key = "WebUI\\Password_PBKDF2"
+                  m = re.search(r"^" + re.escape(key) + r'="?@ByteArray\(([^:]+):([^)]+)\)"?\s*$', text, re.M)
+                  def verifies():
+                      if not m:
+                          return False
+                      salt = base64.b64decode(m.group(1))
+                      want = base64.b64decode(m.group(2))
+                      got = hashlib.pbkdf2_hmac("sha512", pw, salt, 100000, len(want))
+                      return hmac.compare_digest(got, want)
+                  want = {"WebUI\\Username": "admin"}
+                  if not verifies():
+                      salt = os.urandom(16)
+                      dk = hashlib.pbkdf2_hmac("sha512", pw, salt, 100000, 64)
+                      b64 = lambda b: base64.b64encode(b).decode()
+                      want[key] = '"@ByteArray(%s:%s)"' % (b64(salt), b64(dk))
+                  lines = text.split("\n")
+                  if "[Preferences]" not in lines:
+                      lines += ["", "[Preferences]"]
+                  i = lines.index("[Preferences]") + 1
+                  for k, v in want.items():
+                      new = k + "=" + v
+                      for j, l in enumerate(lines):
+                          if l.startswith(k + "="):
+                              lines[j] = new
+                              break
+                      else:
+                          lines.insert(i, new)
+                  open(conf, "w").write("\n".join(lines))
+                ''
+              ];
             };
             containers.qbittorrent = {
               image = pinned.images.qbittorrent;
@@ -86,8 +99,8 @@
               };
               envFrom = [{secretRef.name = "qbittorrent-vpn";}];
               securityContext.capabilities.add = ["NET_ADMIN"];
-              # /dev/net/tun from generic-device-plugin.
-              resources.limits."squat.ai/tun" = 1;
+              # /dev/net/tun from generic-device-plugin (nixidy/system/cluster).
+              resources.limits."devic.es/tun" = 1;
             };
           };
           service.qbittorrent = {
@@ -133,19 +146,24 @@
           };
         };
       };
-      resources.externalSecrets.qbittorrent-vpn.spec = {
-        secretStoreRef.name = "bitwarden";
-        secretStoreRef.kind = "ClusterSecretStore";
-        data = [
-          {
-            secretKey = "WIREGUARD_PRIVATE_KEY";
-            remoteRef.key = "vpn/wireguard/private-key";
-          }
-          {
-            secretKey = "WIREGUARD_ADDRESSES";
-            remoteRef.key = "vpn/wireguard/addresses";
-          }
-        ];
+      # WireGuard config for gluetun's `custom` provider, all from the VPN provider's
+      # wireguard config file (Bitwarden items, one value each, see docs/manual-steps.md).
+      resources.externalSecrets = lib.optionalAttrs credentials {
+        qbittorrent-vpn.spec = {
+          secretStoreRef.name = "bitwarden";
+          secretStoreRef.kind = "ClusterSecretStore";
+          data =
+            lib.mapAttrsToList (secretKey: key: {
+              inherit secretKey;
+              remoteRef.key = key;
+            }) {
+              WIREGUARD_PRIVATE_KEY = "vpn/wireguard/private-key";
+              WIREGUARD_ADDRESSES = "vpn/wireguard/addresses";
+              WIREGUARD_PUBLIC_KEY = "vpn/wireguard/public-key";
+              VPN_ENDPOINT_IP = "vpn/wireguard/endpoint-ip";
+              VPN_ENDPOINT_PORT = "vpn/wireguard/endpoint-port";
+            };
+        };
       };
     };
     oauth2Proxy.upstreams."${hostname}" = {

@@ -4,7 +4,7 @@
     pinned,
     ...
   }: {
-    # Advertises host devices as schedulable resources (squat.ai/<name>), so pods
+    # Advertises host devices as schedulable resources (devic.es/<name>, the plugin's default domain), so pods
     # request them in resources.limits instead of running privileged.
     applications.generic-device-plugin = {
       namespace = "kube-system";
