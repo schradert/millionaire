@@ -439,13 +439,14 @@ pub async fn lidarr(ctx: &Ctx, f: &mut Flow) -> R<()> {
         if nd.sub(ctx, "getScanStatus", &[]).await?["scanStatus"]["scanning"] == json!(true) {
             return Ok(None);
         }
-        // search3 matches song titles, not album names: find the album, then list its songs.
+        // search3 matches song titles, not album names, and the Subsonic `path` is virtual: find
+        // the album, then list its songs through the native API, which has the file path.
         let r = nd.sub(ctx, "search3", &[("query", "The Slip"), ("songCount", "0"), ("artistCount", "0"), ("albumCount", "20")]).await?;
         let mut mine: Vec<Value> = Vec::new();
         for al in r["searchResult3"]["album"].as_array().into_iter().flatten().filter(|a| a["name"] == json!("The Slip")) {
             let Some(id) = al["id"].as_str() else { continue };
-            let full = nd.sub(ctx, "getAlbum", &[("id", id)]).await?;
-            mine.extend(full["album"]["song"].as_array().into_iter().flatten().filter(|s| s["path"].as_str().is_some_and(|p| p.contains(&marker))).cloned());
+            let songs = json(nd.native(ctx, Method::GET, &format!("/api/song?_start=0&_end=100&_sort=trackNumber&_order=ASC&album_id={id}")), "navidrome", "list album songs").await?;
+            mine.extend(songs.as_array().into_iter().flatten().filter(|s| s["path"].as_str().is_some_and(|p| p.contains(&marker))).cloned());
         }
         Ok((mine.len() >= want).then_some(mine))
     })
