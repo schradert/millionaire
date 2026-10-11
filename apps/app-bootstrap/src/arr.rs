@@ -6,10 +6,13 @@
 //! tuned by hand is left alone.
 //!
 //! - Root folder `<APP>_ROOT` (default `/media/tv`, `/media/movies`, `/media/music`).
-//! - Download client "qBittorrent" (`QBITTORRENT_HOST`/`_PORT`/`_USER`/`_PASSWORD[_FILE]`), built from
+//! - Download client "qBittorrent" (`QBITTORRENT_HOST`/`_PORT_NUMBER`/`_USER`/`_PASSWORD[_FILE]`), built from
 //!   the app's own `/downloadclient/schema` and saved with `forceSave=true`, because qBittorrent may
 //!   be scaled down (no VPN credentials yet) and the connection test would otherwise fail.
 //! - Prowlarr applications "Sonarr", "Radarr" and "Lidarr" (full sync), from `/applications/schema`.
+//!
+//! Port variables are `<APP>_PORT_NUMBER`, never `<APP>_PORT`: Kubernetes injects `<SERVICE>_PORT=tcp://ip:port`
+//! for every Service in the namespace.
 
 use std::{env, time::Duration};
 
@@ -167,7 +170,7 @@ const APPS: [App; 3] = [
 pub async fn run() -> Result<()> {
     let http = Client::builder().timeout(Duration::from_secs(60)).build()?;
     let qb_host = var("QBITTORRENT_HOST", "qbittorrent.media.svc.cluster.local");
-    let qb_port: i64 = var("QBITTORRENT_PORT", "8080").parse()?;
+    let qb_port: i64 = var("QBITTORRENT_PORT_NUMBER", "8080").parse()?;
     let qb_user = var("QBITTORRENT_USER", "admin");
     let qb_pass = optional_secret("QBITTORRENT_PASSWORD")?.unwrap_or_default();
 
