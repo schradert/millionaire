@@ -1,0 +1,25 @@
+apiVersion: v1
+data:
+  ADMIN_PASSWORD_FILE: /secrets/admin/password
+  ADMIN_USERNAME: admin
+  BASE_URL: https://rss.trdos.me
+  CREATE_ADMIN: "1"
+  LISTEN_ADDR: 0.0.0.0:8080
+  METRICS_ALLOWED_NETWORKS: 10.0.0.0/8
+  METRICS_COLLECTOR: "1"
+  OAUTH2_CLIENT_ID: miniflux
+  OAUTH2_CLIENT_SECRET_FILE: /secrets/oidc/client-secret
+  OAUTH2_OIDC_DISCOVERY_ENDPOINT: https://keycloak.trdos.me/realms/default
+  OAUTH2_OIDC_PROVIDER_NAME: Keycloak
+  OAUTH2_PROVIDER: oidc
+  OAUTH2_REDIRECT_URL: https://rss.trdos.me/oauth2/oidc/callback
+  OAUTH2_USER_CREATION: "1"
+  RUN_MIGRATIONS: "1"
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: miniflux
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: miniflux
+  name: miniflux
+  namespace: home

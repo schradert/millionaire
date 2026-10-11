@@ -1,0 +1,27 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: miniflux
+  namespace: identity
+spec:
+  clientSecretRef:
+    create: true
+    name: miniflux
+  definition:
+    clientId: miniflux
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Miniflux
+    protocol: openid-connect
+    publicClient: false
+    redirectUris:
+      - https://rss.trdos.me/oauth2/oidc/callback
+    standardFlowEnabled: true
+    webOrigins:
+      - https://rss.trdos.me
+  realmRef:
+    name: default

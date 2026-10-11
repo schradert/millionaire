@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: miniflux
+    app.kubernetes.io/instance: miniflux
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: miniflux
+  name: miniflux
+  namespace: home
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: miniflux
+      app.kubernetes.io/instance: miniflux
+      app.kubernetes.io/name: miniflux
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: c14ee24c33c918e98b457b03a58f0174d879d3b9ba1e7c3f7410531a275cea0e
+      labels:
+        app.kubernetes.io/controller: miniflux
+        app.kubernetes.io/instance: miniflux
+        app.kubernetes.io/name: miniflux
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  key: uri
+                  name: miniflux-app
+          envFrom:
+            - configMapRef:
+                name: miniflux
+          image: ghcr.io/miniflux/miniflux:2.3.3@sha256:49d7b60987616387c306a8023087b31f2c9b7b21288b523026cb04058e8b6dbb
+          livenessProbe:
+            httpGet:
+              path: /liveness
+              port: http
+          name: miniflux
+          ports:
+            - containerPort: 8080
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: http
+          startupProbe:
+            failureThreshold: 30
+            httpGet:
+              path: /liveness
+              port: http
+            periodSeconds: 10
+          volumeMounts:
+            - mountPath: /secrets/admin
+              name: admin
+              readOnly: true
+            - mountPath: /secrets/oidc
+              name: oidc
+              readOnly: true
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: miniflux
+      volumes:
+        - name: admin
+          secret:
+            secretName: miniflux-admin
+        - name: oidc
+          secret:
+            secretName: miniflux

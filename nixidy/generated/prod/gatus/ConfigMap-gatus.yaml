@@ -260,6 +260,12 @@ data:
       name: mealie
       url: https://mealie.trdos.me
     - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: miniflux
+      url: https://rss.trdos.me/healthcheck
+    - conditions:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m

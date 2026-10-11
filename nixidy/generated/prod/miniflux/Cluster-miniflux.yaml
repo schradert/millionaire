@@ -1,0 +1,36 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: miniflux
+  namespace: home
+spec:
+  backup:
+    barmanObjectStore:
+      destinationPath: s3://trdos-me--volsync/cnpg/miniflux/
+      endpointURL: https://s3.us-west-004.backblazeb2.com
+      s3Credentials:
+        accessKeyId:
+          key: ACCESS_KEY_ID
+          name: miniflux-b2-postgres
+        secretAccessKey:
+          key: ACCESS_SECRET_KEY
+          name: miniflux-b2-postgres
+    retentionPolicy: 30d
+  bootstrap:
+    initdb:
+      database: miniflux
+      owner: miniflux
+      postInitApplicationSQL: []
+      postInitSQL: []
+  imageName: ghcr.io/cloudnative-pg/postgresql:17@sha256:148c715c10007a5c0c31f7fdb54bc9991ffbb73c74efa2b35d1fedd3f8103251
+  instances: 1
+  monitoring:
+    enablePodMonitor: true
+  postgresql:
+    shared_preload_libraries: []
+  serviceAccountTemplate:
+    metadata:
+      name: miniflux-pg
+  storage:
+    size: 5Gi
+    storageClass: ceph-block
