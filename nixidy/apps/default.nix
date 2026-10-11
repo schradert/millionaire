@@ -49,6 +49,7 @@
     ./media/flaresolverr.nix
     ./media/maintainerr.nix
     ./media/qbittorrent.nix
+    ./media/media-e2e.nix
     ./media/seerr.nix
     ./media/storage.nix
     ./media/audiobookshelf.nix

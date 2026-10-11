@@ -17,6 +17,8 @@ spec:
             k8s:io.kubernetes.pod.namespace: identity
         - matchLabels:
             batch.kubernetes.io/job-name: navidrome-bootstrap
+        - matchLabels:
+            app.kubernetes.io/name: media-e2e
       toPorts:
         - ports:
             - port: "4533"

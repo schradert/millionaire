@@ -269,6 +269,37 @@ in {
           *)      echo "Usage: sync <secret|app> <namespace/name>"; exit 1 ;;
         esac
       '';
+      # Media-stack e2e tests (apps/media-e2e) as a Job from the suspended media-e2e CronJob.
+      #   media-e2e                 offline suite (no qBittorrent/VPN needed)
+      #   media-e2e run --full      adds VPN leak tests and downloads over the VPN
+      #   media-e2e cleanup --run <id> [--dry-run] | cleanup --all [--dry-run]
+      # KUBECTL overrides kubectl, e.g. off-LAN:
+      #   KUBECTL="ssh 192.184.168.248 sudo -n /var/lib/rancher/rke2/bin/kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml"
+      scripts.media-e2e.exec = ''
+        set -euo pipefail
+        k=''${KUBECTL:-kubectl}
+        [ $# -gt 0 ] || set -- run
+        run_id=''${E2E_RUN_ID:-$(date -u +%Y%m%d-%H%M%S)-$(LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c4)}
+        job="media-e2e-$run_id"
+        out="''${E2E_OUT:-''${TMPDIR:-/tmp}/media-e2e}/$run_id"
+        mkdir -p "$out"
+        args=$(printf '%s\n' "$@" | jq -R . | jq -cs .)
+        $k -n media get cronjob media-e2e -o json \
+          | jq --arg job "$job" --arg run "$run_id" --argjson args "$args" '{
+              apiVersion: "batch/v1", kind: "Job",
+              metadata: {name: $job, namespace: "media", labels: {"app.kubernetes.io/name": "media-e2e"}},
+              spec: (.spec.jobTemplate.spec
+                | .template.spec.containers[0].args = $args
+                | .template.spec.containers[0].env += [{name: "E2E_RUN_ID", value: $run}])
+            }' \
+          | $k create -f -
+        echo "job $job (run $run_id); log and report in $out" >&2
+        $k -n media wait --for=condition=Ready pod -l "job-name=$job" --timeout=300s >/dev/null 2>&1 || true
+        $k -n media logs -f "job/$job" | tee "$out/log"
+        sed -n '/=== E2E REPORT JSON BEGIN ===/,/=== E2E REPORT JSON END ===/p' "$out/log" | sed '1d;$d' > "$out/report.json"
+        jq -r '.flows[] | [.flow, .status, (.ms/1000|tostring), (.error.app // ""), (.error.step // "")] | @tsv' "$out/report.json" | column -t -s "$(printf '\t')" || true
+        [ "$($k -n media get job "$job" -o jsonpath='{.status.succeeded}')" = 1 ]
+      '';
       scripts.keycloak-reset-password.exec = ''
         email="''${1:?Usage: keycloak-reset-password <email>}"
         realm="''${2:-default}"
