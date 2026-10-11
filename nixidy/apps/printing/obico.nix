@@ -7,6 +7,13 @@
   }: let
     inherit (config.canivete.meta) domain;
     hostname = "obico.${domain}";
+    # Postponed until the Voron is in service (README todo 19): every controller is
+    # parked at 0 replicas, config kept. Set to true to bring it back.
+    enabled = false;
+    replicas =
+      if enabled
+      then 1
+      else 0;
   in {
     gatus.endpoints.obico = {
       url = "https://${hostname}";
@@ -25,6 +32,7 @@
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.web = {
+            inherit replicas;
             annotations."reloader.stakater.com/auto" = "true";
             containers.web = {
               image = pinned.images.obico-web;
@@ -49,6 +57,7 @@
             };
           };
           controllers.ml = {
+            inherit replicas;
             containers.ml = {
               image = pinned.images.obico-ml-api;
               env.ML_API_TOKEN = "$(ML_API_TOKEN)";
@@ -59,6 +68,7 @@
             };
           };
           controllers.redis = {
+            inherit replicas;
             containers.redis = {
               image = pinned.images.dragonfly;
               args = ["--maxmemory" "256mb" "--proactor_threads" "1"];

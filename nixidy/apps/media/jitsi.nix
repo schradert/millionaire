@@ -105,6 +105,9 @@
         };
       };
       resources = {
+        # jigasi (SIP) and jibri (recording) are deferred: parked at 0 replicas, config kept.
+        deployments.jitsi-jitsi-meet-jigasi.spec.replicas = lib.mkForce 0;
+        deployments.jitsi-jitsi-meet-jibri.spec.replicas = lib.mkForce 0;
         httpRoutes.jitsi-web.spec = {
           hostnames = [hostname];
           # Public rooms — exposed via external gateway, no oauth2-proxy.
