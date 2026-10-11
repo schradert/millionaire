@@ -297,8 +297,8 @@ in {
           };
           rules = lib.toList {
             backendRefs = lib.toList {
-              # TODO get actual service name
-              name = "rook-ceph-radosgw";
+              # Rook names the RGW Service rook-ceph-rgw-<cephObjectStores name>.
+              name = "rook-ceph-rgw-ceph-objectstore";
               port = 80;
             };
           };

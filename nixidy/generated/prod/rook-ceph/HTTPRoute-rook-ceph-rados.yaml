@@ -12,5 +12,5 @@ spec:
       sectionName: https
   rules:
     - backendRefs:
-        - name: rook-ceph-radosgw
+        - name: rook-ceph-rgw-ceph-objectstore
           port: 80
