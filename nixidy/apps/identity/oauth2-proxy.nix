@@ -17,6 +17,14 @@ in {
     ...
   }: let
     upstreams = config.oauth2Proxy.upstreams;
+    # Tiles and upstreams are one declaration: a portal.apps entry with groups
+    # restricts the upstream serving its host.
+    portalGroups = host: let
+      app = lib.findFirst (a: a.url == "https://${host}" && a.groups != []) null (lib.attrValues config.portal.apps);
+    in
+      if app == null
+      then null
+      else app.groups;
     namespaces = lib.unique (lib.mapAttrsToList (_: cfg: cfg.namespace) upstreams);
     nginxConf = lib.concatStringsSep "\n" (
       [
@@ -39,7 +47,10 @@ in {
             # hasn't deployed yet) fails the whole config with "host not found in
             # upstream" and takes the entire SSO proxy offline for every service.
             resolver 10.43.0.10 valid=30s ipv6=off;
-            set $upstream ${cfg.url};
+            set $upstream ${cfg.url};${lib.optionalString (cfg.groups != null) ''
+
+          # oauth2-proxy sends one X-Forwarded-Groups line per group; nginx joins them with ", ".
+          if ($http_x_forwarded_groups !~ "(^|,\s*)(${lib.concatStringsSep "|" cfg.groups})(\s*,|$)") { return 403; }''}
             proxy_pass $upstream$request_uri;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -59,10 +70,12 @@ in {
       upstreams
     );
   in {
-    options.oauth2Proxy.upstreams = can.attrs.submodule "Host-based upstream routes for oauth2-proxy" ({...}: {
+    options.oauth2Proxy.upstreams = can.attrs.submodule "Host-based upstream routes for oauth2-proxy" ({name, ...}: {
       options.url = can.str "Upstream service URL" {};
       options.namespace = can.str "Namespace where the HTTPRoute lives" {};
       options.websocket = can.bool "Enable WebSocket proxying" {default = false;};
+      options.groups = can.opt.list.str "Keycloak groups allowed (any of); null = every signed-in user" {};
+      config.groups = lib.mkDefault (portalGroups name);
     });
     config = {
       # Keycloak OIDC client
@@ -77,7 +90,8 @@ in {
           directAccessGrantsEnabled = false;
           redirectUris = ["https://${hostname}/oauth2/callback"];
           webOrigins = ["https://*.${domain}"];
-          defaultClientScopes = ["openid" "profile" "email"];
+          # groups -> X-Forwarded-Groups for the per-upstream checks
+          defaultClientScopes = ["openid" "profile" "email" "groups"];
           protocolMappers = [
             {
               name = "audience";
