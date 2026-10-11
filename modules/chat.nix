@@ -17,7 +17,17 @@
   }: {
     config = lib.mkIf config.profiles.workstation.enable {
       home.packages = with pkgs;
-        [nchat profanity scli signal-cli toot tuisky twitch-tui zulip-term]
+        [
+          nchat
+          profanity
+          scli
+          signal-cli
+          toot
+          tuisky
+          twitch-tui
+          # test_run's CLI tests index past argv under python 3.14
+          (zulip-term.overridePythonAttrs {doCheck = false;})
+        ]
         ++ lib.optionals (stdenv.hostPlatform.isLinux && config.profiles.client.enable) [discordo element-desktop session-desktop signal-desktop simplex-chat-desktop];
       programs.doom-emacs = {
         extraBinPackages = [pkgs.gnutls];
