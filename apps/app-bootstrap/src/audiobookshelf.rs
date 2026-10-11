@@ -118,6 +118,8 @@ fn desired(want: &Oidc, ep: &Endpoints) -> Vec<(&'static str, Value)> {
         ("authOpenIDMatchExistingBy", json!("username")),
         ("authOpenIDMobileRedirectURIs", json!(mobile)),
         ("authOpenIDGroupClaim", json!(want.group_claim)),
+        // Unset, ABS builds the callback as `undefined/auth/openid/callback`, which Keycloak rejects.
+        ("authOpenIDSubfolderForRedirectURLs", json!("")),
     ]
 }
 
