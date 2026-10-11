@@ -389,11 +389,15 @@ pub async fn maintainerr(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let base = maintainerr_url();
     let body = json!({
         "libraryId": lib, "name": ctx.marker, "description": format!("media-e2e run {} (inactive, test only)", ctx.run),
-        "isActive": false, "useRules": true, "arrAction": 0, "dataType": "movie",
+        "isActive": false, "useRules": true, "arrAction": 0, "dataType": "movie", "keepInMaintainerrOnly": true,
         "listExclusions": false, "forceSeerr": false, "cleanupLeftoverFolders": false,
         // Jellyfin "Times viewed" == 0.
         "rules": [{ "operator": null, "action": 2, "firstVal": [6, 5], "customVal": { "ruleTypeId": 0, "value": "0" }, "section": 0 }],
-        "collection": { "deleteAfterDays": null, "manualCollection": false, "visibleOnHome": false, "visibleOnRecommended": false },
+        // Kept in Maintainerr only: no collection on the media server.
+        "collection": {
+            "deleteAfterDays": null, "manualCollection": false, "manualCollectionName": "", "visibleOnHome": false,
+            "visibleOnRecommended": false, "keepLogsForMonths": 6, "sortTitle": "", "overlayEnabled": false,
+        },
     });
     send(ctx.http.post(format!("{base}/api/rules")).json(&body), "maintainerr", "create test rule group").await?;
     let groups = json(ctx.http.get(format!("{base}/api/rules")), "maintainerr", "list rule groups").await?;

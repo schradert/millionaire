@@ -86,6 +86,9 @@ spec:
                 - mountPath: /secrets/multi-scrobbler
                   name: multi-scrobbler
                   readOnly: true
+                - mountPath: /secrets/maloja-admin
+                  name: maloja-admin
+                  readOnly: true
                 - mountPath: /secrets/dvd-webdav
                   name: dvd-webdav
                   readOnly: true
@@ -172,6 +175,10 @@ spec:
               secret:
                 optional: true
                 secretName: multi-scrobbler
+            - name: maloja-admin
+              secret:
+                optional: true
+                secretName: maloja-admin
             - name: dvd-webdav
               secret:
                 optional: true
