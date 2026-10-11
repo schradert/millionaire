@@ -128,41 +128,303 @@ pub async fn killswitch(ctx: &Ctx, f: &mut Flow) -> R<()> {
     Ok(())
 }
 
-/// ipMagnet: a tracker that records the IP each announce comes from must see only the VPN IP.
+// ---------- tracker IP check ----------
+
+/// A public "check my torrent IP" service: a tracker that records the IP each announce comes
+/// from, plus a results page. Tried as a chain; any one that works is enough.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Kind {
+    IpLeak,
+    WhatIsMyIp,
+    IpMagnet,
+}
+
+struct Tracker {
+    name: &'static str,
+    kind: Kind,
+    base: String,
+}
+
+fn trackers() -> Vec<Tracker> {
+    let all = vec![
+        Tracker { name: "ipleak.net", kind: Kind::IpLeak, base: var("E2E_IPLEAK_URL", "https://ipleak.net") },
+        Tracker { name: "whatismyip.net", kind: Kind::WhatIsMyIp, base: var("E2E_WHATISMYIP_URL", "https://whatismyip.net/tools/torrent-ip-checker") },
+        Tracker { name: "ipmagnet", kind: Kind::IpMagnet, base: var("E2E_IPMAGNET", "http://ipmagnet.services.cbcdn.com") },
+    ];
+    match std::env::var("E2E_TRACKERS").ok().filter(|s| !s.is_empty()) {
+        Some(list) => all.into_iter().filter(|t| list.split(',').any(|n| n.trim() == t.name)).collect(),
+        None => all,
+    }
+}
+
+impl Tracker {
+    fn magnet(&self, hash: &str, dn: &str) -> String {
+        let tr = match self.kind {
+            Kind::IpLeak => format!("{}/announce.php?h={hash}", self.base),
+            Kind::WhatIsMyIp => format!("{}/", self.base),
+            Kind::IpMagnet => format!("{}:80/announce", self.base),
+        };
+        format!("magnet:?xt=urn:btih:{hash}&dn={}&tr={}", enc(dn), enc(&tr))
+    }
+
+    fn results_url(&self, hash: &str) -> String {
+        match self.kind {
+            Kind::IpLeak => format!("{}/?thash={hash}&details=0", self.base),
+            Kind::WhatIsMyIp => format!("{}/index.php?hash={hash}", self.base),
+            Kind::IpMagnet => format!("{}/?hash={hash}", self.base),
+        }
+    }
+
+    /// Where a service offers it, a URL that deletes the recorded announces.
+    fn clear_url(&self, hash: &str) -> Option<String> {
+        (self.kind == Kind::WhatIsMyIp).then(|| format!("{}/index.php?clear&hash={hash}", self.base))
+    }
+
+    /// The IPs the tracker recorded for the torrent, from the results page. Only the results
+    /// table counts: these pages also print the requester's own IP (here: the Job's, i.e. home).
+    fn parse(&self, body: &str) -> Vec<String> {
+        let region = match self.kind {
+            Kind::IpLeak | Kind::IpMagnet => section(body, "<table", "</table>"),
+            Kind::WhatIsMyIp => section(body, "Detected IPs from Torrent Client", "</table>"),
+        };
+        let mut ips = ipv4s(&strip_tags(region));
+        ips.dedup();
+        ips
+    }
+}
+
+/// The text from the first `start` to the next `end` after it (empty if `start` is absent).
+fn section<'a>(body: &'a str, start: &str, end: &str) -> &'a str {
+    let Some(a) = body.find(start) else { return "" };
+    let rest = &body[a..];
+    rest.find(end).map_or(rest, |b| &rest[..b])
+}
+
+fn strip_tags(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut in_tag = false;
+    for c in s.chars() {
+        match c {
+            '<' => in_tag = true,
+            '>' => {
+                in_tag = false;
+                out.push(' ');
+            }
+            _ if !in_tag => out.push(c),
+            _ => {}
+        }
+    }
+    out
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum State {
+    Unreachable(String),
+    NoData,
+    Seen(Vec<String>),
+}
+
+#[derive(Debug, PartialEq)]
+enum Outcome {
+    Pass(String),
+    Leak(String),
+    Fail(String),
+    Skip(String),
+}
+
+/// Combine the chain: any tracker that recorded the home IP is a leak; otherwise any that
+/// recorded the VPN IP passes; with none of those, fail unless nothing could be reached at all.
+fn judge(states: &[(&str, State)], home: &str, vpn: &str) -> Outcome {
+    let leaked: Vec<&str> = states.iter().filter(|(_, s)| matches!(s, State::Seen(ips) if ips.iter().any(|i| i == home))).map(|(n, _)| *n).collect();
+    if !leaked.is_empty() {
+        return Outcome::Leak(format!("LEAK: {} saw the home IP", leaked.join(", ")));
+    }
+    if states.iter().all(|(_, s)| matches!(s, State::Unreachable(_))) {
+        let why: Vec<String> = states.iter().map(|(n, s)| format!("{n}: {}", if let State::Unreachable(e) = s { e.as_str() } else { "" })).collect();
+        return Outcome::Skip(format!("no tracker-IP service reachable ({})", why.join("; ")));
+    }
+    let ok: Vec<&str> = states.iter().filter(|(_, s)| matches!(s, State::Seen(ips) if ips.iter().any(|i| i == vpn))).map(|(n, _)| *n).collect();
+    if !ok.is_empty() {
+        return Outcome::Pass(format!("{} saw only the VPN exit {vpn}", ok.join(", ")));
+    }
+    let why: Vec<String> = states
+        .iter()
+        .map(|(n, s)| match s {
+            State::Unreachable(e) => format!("{n}: unreachable ({e})"),
+            State::NoData => format!("{n}: no announce recorded"),
+            State::Seen(ips) => format!("{n}: saw {ips:?}, not the VPN exit {vpn}"),
+        })
+        .collect();
+    Outcome::Fail(why.join("; "))
+}
+
+/// A tracker that records the IP each announce comes from must see the VPN IP and never the
+/// home IP. Tries ipleak.net, whatismyip.net and ipMagnet with one torrent each.
 pub async fn tracker(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let p = pod().await?;
     let home = home_ip(ctx).await?;
     let vpn = vpn_ip(&p).await?;
-    let base = var("E2E_IPMAGNET", "http://ipmagnet.services.cbcdn.com");
-    ctx.http.get(&base).send().await.map_err(|e| Fail::skip("ipmagnet", "reach tracker", format!("unreachable: {e}")))?;
+    let mut live = Vec::new();
+    let mut states: Vec<(&'static str, State)> = Vec::new();
     let mut seed = xorshift(std::process::id() as u64 ^ std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos() as u64);
-    let mut h = Vec::new();
-    for _ in 0..3 {
-        seed = xorshift(seed);
-        h.extend_from_slice(&seed.to_le_bytes());
+    for t in trackers() {
+        let probe = ctx.http.get(t.results_url(&"0".repeat(40))).timeout(Duration::from_secs(20)).send().await;
+        match probe {
+            Ok(r) if r.status().is_success() => {
+                seed = xorshift(seed);
+                let mut h = Vec::new();
+                for _ in 0..3 {
+                    seed = xorshift(seed);
+                    h.extend_from_slice(&seed.to_le_bytes());
+                }
+                live.push((t, hex(&h[..20])));
+            }
+            Ok(r) => {
+                f.ok(t.name, "reachable", format!("no: HTTP {}", r.status()));
+                states.push((t.name, State::Unreachable(format!("HTTP {}", r.status()))));
+            }
+            Err(e) => {
+                f.ok(t.name, "reachable", format!("no: {e}"));
+                states.push((t.name, State::Unreachable(e.to_string())));
+            }
+        }
     }
-    let hash = hex(&h[..20]);
-    let magnet = format!("magnet:?xt=urn:btih:{hash}&dn={}&tr={}", enc(&ctx.marker), enc(&format!("{base}:80/announce")));
+    if live.is_empty() {
+        return match judge(&states, &home, &vpn) {
+            Outcome::Skip(m) => Err(Fail::skip("tracker-ip", "reach a service", m)),
+            _ => Err(Fail::new("tracker-ip", "services", "no trackers configured (E2E_TRACKERS)")),
+        };
+    }
     let q = Qbt::login(ctx).await?;
     let save = ctx.dir("downloads").to_string_lossy().to_string();
     let _ = q.post_form(ctx, "/torrents/createCategory", &[("category", &ctx.marker), ("savePath", &save)]).await;
     q.post_form(ctx, "/torrents/createTags", &[("tags", &ctx.marker)]).await?;
-    q.post_form(ctx, "/torrents/add", &[("urls", &magnet), ("category", &ctx.marker), ("tags", &ctx.marker), ("savepath", &save)]).await?;
-    f.ok("qbittorrent", "ipMagnet torrent added", hash.clone());
-    let ips = poll("ipmagnet", "announce recorded", Duration::from_secs(240), Duration::from_secs(15), || async {
-        let t = ctx.http.get(format!("{base}/?hash={hash}")).send().await.at("ipmagnet", "results")?.text().await.at("ipmagnet", "results")?;
-        let ips = ipv4s(&t);
-        Ok((!ips.is_empty()).then_some(ips))
-    })
-    .await?;
-    let _ = q.post_form(ctx, "/torrents/delete", &[("hashes", &hash), ("deleteFiles", "true")]).await;
-    if ips.contains(&home) {
-        ctx.st().qbt_ready = Some(false);
-        return Err(Fail::new("qbittorrent", "tracker sees", "LEAK: the tracker saw the home IP"));
+    for (t, hash) in &live {
+        let magnet = t.magnet(hash, &ctx.marker);
+        q.post_form(ctx, "/torrents/add", &[("urls", &magnet), ("category", &ctx.marker), ("tags", &ctx.marker), ("savepath", &save)]).await?;
+        f.ok("qbittorrent", &format!("{} torrent added", t.name), hash.clone());
     }
-    if !ips.contains(&vpn) {
-        return Err(Fail::new("qbittorrent", "tracker sees", format!("{ips:?}, not the VPN exit {vpn}")));
+    let deadline = std::time::Instant::now() + Duration::from_secs(var("E2E_TRACKER_TIMEOUT", "240").parse().unwrap_or(240));
+    let mut seen: Vec<Option<State>> = vec![None; live.len()];
+    loop {
+        for (i, (t, hash)) in live.iter().enumerate() {
+            if matches!(seen[i], Some(State::Seen(_))) {
+                continue;
+            }
+            let body = match ctx.http.get(t.results_url(hash)).timeout(Duration::from_secs(20)).send().await {
+                Ok(r) => r.text().await.unwrap_or_default(),
+                Err(_) => continue,
+            };
+            let ips = t.parse(&body);
+            seen[i] = Some(if ips.is_empty() { State::NoData } else { State::Seen(ips) });
+        }
+        let leak = seen.iter().any(|s| matches!(s, Some(State::Seen(ips)) if ips.contains(&home)));
+        if leak || seen.iter().all(|s| matches!(s, Some(State::Seen(_)))) || std::time::Instant::now() > deadline {
+            break;
+        }
+        tokio::time::sleep(Duration::from_secs(15)).await;
     }
-    f.ok("qbittorrent", "tracker sees only the VPN IP", ips.join(","));
-    Ok(())
+    for (t, hash) in &live {
+        let _ = q.post_form(ctx, "/torrents/delete", &[("hashes", hash), ("deleteFiles", "true")]).await;
+        if let Some(u) = t.clear_url(hash) {
+            let _ = ctx.http.get(u).timeout(Duration::from_secs(20)).send().await;
+        }
+    }
+    for ((t, _), s) in live.iter().zip(seen) {
+        states.push((t.name, s.unwrap_or(State::NoData)));
+    }
+    for (n, s) in &states {
+        match s {
+            State::Seen(ips) => f.ok(n, "recorded announce from", if ips.contains(&home) { "the home IP".to_string() } else { ips.join(",") }),
+            State::NoData => f.ok(n, "recorded announce from", "nothing within the timeout"),
+            State::Unreachable(_) => {}
+        }
+    }
+    match judge(&states, &home, &vpn) {
+        Outcome::Pass(m) => {
+            f.ok("qbittorrent", "tracker sees only the VPN IP", m);
+            Ok(())
+        }
+        Outcome::Leak(m) => {
+            ctx.st().qbt_ready = Some(false);
+            Err(Fail::new("qbittorrent", "tracker sees", m))
+        }
+        Outcome::Fail(m) => Err(Fail::new("qbittorrent", "tracker sees", m)),
+        Outcome::Skip(m) => Err(Fail::skip("tracker-ip", "reach a service", m)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const HOME: &str = "198.51.100.9";
+    const VPN: &str = "203.0.113.7";
+
+    fn t(kind: Kind) -> Tracker {
+        trackers().into_iter().find(|x| x.kind == kind).unwrap()
+    }
+
+    // Shapes captured from the live services, with documentation-range IPs.
+    const IPLEAK_NONE: &str = "<div class='docs_center'>Add <a href='magnet:?xt=urn:btih:abc&tr=https://ipleak.net/announce.php%3Fh%3Dabc'>this Magnet Link</a></div><div class='docs_center'>No data just now from the above magnet url.</div><div class='docs_verbose'>Last update: Sun, 11 Oct 2026 06:56:34 +0000.</div>";
+    const IPLEAK_SEEN: &str = "<div>Add magnet</div><table class='properties details width70p'><tbody><tr><td>Sun,  11 Oct 2026 06:57:56 +0000</td><td class='nowrap'>IP: <a class='digital' href='?cip=AES-256-CTR-GZE:04ce854b4f0be26a:afa34c74bf'>203.0.113.7</a>, Port: <b>51413</b></td></tr></tbody></table><div>Updated every 10 seconds.</div>";
+    const WIMI_NONE: &str = "<p>Your current IP: <strong>198.51.100.9</strong> - Database is routinely cleared.</p><h2>Detected IPs from Torrent Client</h2><a style='padding:.35rem .9rem;font-size:.875rem' href='?hash=aa'>Refresh</a><table><thead><tr><th>Timestamp</th><th>IP Address</th><th>User Agent</th></tr></thead><tbody></tbody></table><footer>10.0.0.1 test</footer>";
+    const WIMI_SEEN: &str = "<p>Your current IP: <strong>198.51.100.9</strong></p><h2>Detected IPs from Torrent Client</h2><table><thead><tr><th>Timestamp</th><th>IP Address</th><th>User Agent</th></tr></thead><tbody><tr><td>10.10.2026 23:57:48</td><td>203.0.113.7</td><td>qBittorrent/4.6.0</td></tr></tbody></table>";
+
+    #[test]
+    fn parses_ipleak() {
+        assert!(t(Kind::IpLeak).parse(IPLEAK_NONE).is_empty());
+        assert_eq!(t(Kind::IpLeak).parse(IPLEAK_SEEN), [VPN]);
+    }
+
+    #[test]
+    fn whatismyip_ignores_the_requesters_own_ip() {
+        assert!(t(Kind::WhatIsMyIp).parse(WIMI_NONE).is_empty(), "the page's 'your IP' (home) must not count");
+        assert_eq!(t(Kind::WhatIsMyIp).parse(WIMI_SEEN), [VPN]);
+    }
+
+    #[test]
+    fn magnets_and_urls() {
+        let h = "0123456789abcdef0123456789abcdef01234567";
+        let m = t(Kind::IpLeak).magnet(h, "e2e-x");
+        assert!(m.starts_with(&format!("magnet:?xt=urn:btih:{h}")) && m.contains("tr=https%3A%2F%2Fipleak.net%2Fannounce.php%3Fh%3D0123"));
+        assert!(t(Kind::WhatIsMyIp).magnet(h, "e2e-x").contains("tr=https%3A%2F%2Fwhatismyip.net%2Ftools%2Ftorrent-ip-checker%2F"));
+        assert!(t(Kind::IpMagnet).magnet(h, "e2e-x").contains("%3A80%2Fannounce"));
+        assert_eq!(t(Kind::IpLeak).results_url(h), format!("https://ipleak.net/?thash={h}&details=0"));
+        assert_eq!(t(Kind::WhatIsMyIp).results_url(h), format!("https://whatismyip.net/tools/torrent-ip-checker/index.php?hash={h}"));
+        assert!(t(Kind::IpLeak).clear_url(h).is_none() && t(Kind::WhatIsMyIp).clear_url(h).is_some());
+    }
+
+    fn seen(ip: &str) -> State {
+        State::Seen(vec![ip.into()])
+    }
+    fn down() -> State {
+        State::Unreachable("timeout".into())
+    }
+
+    #[test]
+    fn chain_passes_if_any_shows_the_vpn_ip() {
+        let s = [("a", down()), ("b", seen(VPN)), ("c", State::NoData)];
+        assert!(matches!(judge(&s, HOME, VPN), Outcome::Pass(m) if m.contains('b')));
+    }
+
+    #[test]
+    fn chain_fails_on_any_home_ip_even_if_another_passes() {
+        let s = [("a", seen(VPN)), ("b", seen(HOME))];
+        assert!(matches!(judge(&s, HOME, VPN), Outcome::Leak(m) if m.contains('b') && !m.contains(HOME)));
+        let both = [("a", State::Seen(vec![VPN.into(), HOME.into()]))];
+        assert!(matches!(judge(&both, HOME, VPN), Outcome::Leak(_)));
+    }
+
+    #[test]
+    fn chain_skips_only_when_everything_is_unreachable() {
+        assert!(matches!(judge(&[("a", down()), ("b", down())], HOME, VPN), Outcome::Skip(_)));
+        assert!(matches!(judge(&[("a", down()), ("b", State::NoData)], HOME, VPN), Outcome::Fail(_)));
+    }
+
+    #[test]
+    fn chain_fails_on_an_unknown_ip_or_no_data() {
+        assert!(matches!(judge(&[("a", seen("192.0.2.1"))], HOME, VPN), Outcome::Fail(m) if m.contains("192.0.2.1")));
+        assert!(matches!(judge(&[("a", State::NoData)], HOME, VPN), Outcome::Fail(_)));
+    }
 }
