@@ -1,0 +1,9 @@
+{
+  "version": "0.1.0",
+  "digest": "sha256:e2041d0734e376838ddd34dfc90c5f7e664539ec1e9f320b85f218ee150ea83a",
+  "source": {
+    "type": "oci-tag",
+    "repository": "harbor.trdos.me/library/backup-verify",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}

@@ -1,0 +1,65 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-verify
+  namespace: backup-verify
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 21600
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: backup-verify
+        spec:
+          containers:
+            - env:
+                - name: NTFY_URL
+                  value: https://ntfy.trdos.me/alerts
+                - name: SELF_IMAGE
+                  value: harbor.trdos.me/library/backup-verify:0.1.0@sha256:e2041d0734e376838ddd34dfc90c5f7e664539ec1e9f320b85f218ee150ea83a
+              envFrom:
+                - secretRef:
+                    name: backup-verify
+              image: harbor.trdos.me/library/backup-verify:0.1.0@sha256:e2041d0734e376838ddd34dfc90c5f7e664539ec1e9f320b85f218ee150ea83a
+              name: backup-verify
+              resources:
+                limits:
+                  memory: 4Gi
+                requests:
+                  cpu: 100m
+                  memory: 512Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - mountPath: /tmp
+                  name: tmp
+                - mountPath: /cache
+                  name: cache
+          hostAliases:
+            - hostnames:
+                - ntfy.trdos.me
+              ip: 100.64.0.1
+          restartPolicy: Never
+          securityContext:
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          serviceAccountName: backup-verify
+          volumes:
+            - emptyDir: {}
+              name: tmp
+            - emptyDir:
+                sizeLimit: 20Gi
+              name: cache
+  schedule: 0 12 1 * *
+  successfulJobsHistoryLimit: 3
