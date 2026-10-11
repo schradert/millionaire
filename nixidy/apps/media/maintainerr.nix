@@ -17,6 +17,32 @@
     applications.maintainerr = {
       namespace = "media";
       volsync.pvcs.maintainerr.title = "maintainerr";
+      # Maintainerr has no login and returns its settings (API key, Jellyfin key) to any caller, so
+      # only oauth2-proxy (UI), the Jellyfin bootstrap (configures it) and the e2e Job may reach it.
+      resources.ciliumNetworkPolicies.maintainerr.spec = {
+        endpointSelector.matchLabels."app.kubernetes.io/name" = "maintainerr";
+        ingress = [
+          {fromEntities = ["host"];}
+          {
+            fromEndpoints = [
+              {
+                matchLabels = {
+                  "k8s:io.kubernetes.pod.namespace" = "identity";
+                  "app.kubernetes.io/name" = "oauth2-proxy";
+                };
+              }
+              {matchLabels."batch.kubernetes.io/job-name" = "jellyfin-bootstrap";}
+              {matchLabels."app.kubernetes.io/name" = "media-e2e";}
+            ];
+            toPorts = lib.toList {
+              ports = lib.toList {
+                port = "6246";
+                protocol = "TCP";
+              };
+            };
+          }
+        ];
+      };
       helm.releases.maintainerr = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {

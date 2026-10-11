@@ -1,0 +1,24 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: maintainerr
+  namespace: media
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: maintainerr
+  ingress:
+    - fromEntities:
+        - host
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: oauth2-proxy
+            k8s:io.kubernetes.pod.namespace: identity
+        - matchLabels:
+            batch.kubernetes.io/job-name: jellyfin-bootstrap
+        - matchLabels:
+            app.kubernetes.io/name: media-e2e
+      toPorts:
+        - ports:
+            - port: "6246"
+              protocol: TCP
