@@ -15,9 +15,6 @@
           ytfzf
           # TODO nodePackages.webtorrent-cli
         ]
-        (lib.mkIf stdenv.hostPlatform.isLinux [
-          koreader
-        ])
       ];
     programs.feh = {
       enable = true;
