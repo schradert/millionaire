@@ -102,6 +102,13 @@
       flake-utils.follows = "flake-utils";
       rust-overlay.follows = "rust-overlay";
     };
+    zjstatus.url = "github:dj95/zjstatus";
+    zjstatus.inputs = {
+      nixpkgs.follows = "nixpkgs";
+      # crane.follows = "crane";
+      flake-utils.follows = "flake-utils";
+      rust-overlay.follows = "rust-overlay";
+    };
     zsh-helix-mode.url = "github:multirious/zsh-helix-mode";
     zsh-helix-mode.inputs.nixpkgs.follows = "nixpkgs";
     nix-doom-emacs-unstraightened.url = "github:marienz/nix-doom-emacs-unstraightened";

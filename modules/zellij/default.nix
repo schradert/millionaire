@@ -11,9 +11,15 @@
     ({
       lib,
       config,
+      perSystem,
       pkgs,
       ...
-    }: {
+    }: let
+      # home-manager symlinks each plugin as a single file, but these build to
+      # `$out/bin/<name>.wasm`.
+      wasm = p:
+        pkgs.runCommand p.pname {inherit (p) pname;} "cp ${p}/bin/${p.filename or p.pname}.wasm $out";
+    in {
       # system.kdl (#266) stays a file until it is ported to `layouts`.
       xdg.configFile."zellij/layouts/system.kdl" = lib.mkIf config.profiles.workstation.enable {source = ./layouts/system.kdl;};
       programs.zellij = {
@@ -21,13 +27,17 @@
         # Auto-starts a zellij session in every interactive zsh shell
         # outside an existing session; start zellij explicitly instead.
         enableZshIntegration = false;
-        plugins = with pkgs.zellijPlugins; [
-          room
-          monocle
-          zellij-forgot
-          zj-quit
-          zellij-choose-tree
-        ];
+        # Alias names are `pname` minus any `zellij-` prefix (home-manager).
+        plugins = map wasm (
+          (with pkgs.zellijPlugins; [
+            room
+            monocle
+            zellij-forgot
+            zj-quit
+            zellij-choose-tree
+          ])
+          ++ [perSystem.inputs'.zjstatus.packages.default]
+        );
         layouts = lib.mkIf config.profiles.workstation.enable {
           project.layout._children = [
             {
@@ -138,7 +148,7 @@
                 bind._children = [
                   {
                     LaunchOrFocusPlugin = {
-                      _args = ["zellij_forgot"];
+                      _args = ["forgot"];
                       _children = [
                         {floating = true;}
                       ];
@@ -168,7 +178,7 @@
                 bind._children = [
                   {
                     LaunchOrFocusPlugin = {
-                      _args = ["zellij-choose-tree"];
+                      _args = ["choose-tree"];
                       _children = [
                         {floating = true;}
                         {move_to_focused_tab = true;}
