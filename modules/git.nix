@@ -1,4 +1,5 @@
 {
+  canivete.pkgs.allowUnfree = ["bws"];
   home = {
     config,
     flake,
@@ -8,6 +9,25 @@
   }: let
     user = flake.config.canivete.meta.people.users.${config.home.username};
     inherit (user.profiles.${config.profile}) email sshPubKey;
+    # `forge-token <bws key>`: BWS_ACCESS_TOKEN decrypted from the repo's sops
+    # file on demand (as devenv.nix does), nothing written to disk. Exits 1
+    # quietly without the sops age key or the checkout.
+    forgeToken = pkgs.writeShellApplication {
+      name = "forge-token";
+      runtimeInputs = with pkgs; [bws jq sops];
+      text = ''
+        sops_file=${lib.escapeShellArg "${config.home.homeDirectory}/Projects/millionaire/secrets/sops/default.yaml"}
+        export SOPS_AGE_KEY_FILE="''${SOPS_AGE_KEY_FILE:-${
+          if pkgs.stdenv.hostPlatform.isDarwin
+          then "${config.home.homeDirectory}/Library/Application Support"
+          else config.xdg.configHome
+        }/sops/age/keys.txt}"
+        [ -r "$SOPS_AGE_KEY_FILE" ] && [ -r "$sops_file" ] || exit 1
+        BWS_ACCESS_TOKEN="$(sops --decrypt --extract '["bitwarden"]' "$sops_file")"
+        export BWS_ACCESS_TOKEN
+        bws secret list | jq -er --arg k "$1" '.[] | select(.key == $k) | .value'
+      '';
+    };
   in {
     imports = [
       {
@@ -112,6 +132,7 @@
         # Doom: magit + forge
         programs.doom-emacs = {
           extraPackages = e: [e.magit-todos];
+          extraBinPackages = [forgeToken];
           tangle.init = {
             tools.magit = ["+forge"];
             ui.vc-gutter = ["+pretty"];
@@ -123,6 +144,27 @@
               (magit-todos-mode 1)
               (setq! magit-revision-show-gravatars '("^Author:     " . "^Commit:     ")
                      magit-diff-refine-hunk 'all))
+
+            ;; Forge tokens from Bitwarden Secrets Manager (pulumi #257) via the
+            ;; forge-token script; fetched on demand, kept in memory only.
+            (defvar +forge-token-keys
+              '(("api.github.com" . "github/code-review/token")
+                ("gitlab.com/api/v4" . "gitlab/code-review/token")))
+            (cl-defun +forge-token-search (&rest spec &key host &allow-other-keys)
+              (let ((hosts (if (listp host) host (list host))) found)
+                (dolist (h hosts found)
+                  (when-let* (((not found))
+                              (key (cdr (assoc h +forge-token-keys)))
+                              (token (car (ignore-errors (process-lines "forge-token" key)))))
+                    (setq found (list (list :host h :user (plist-get spec :user)
+                                            :secret token)))))))
+            (with-eval-after-load 'auth-source
+              (add-hook 'auth-source-backend-parser-functions
+                        (lambda (entry)
+                          (when (eq entry 'forge-token)
+                            (auth-source-backend :source "forge-token" :type 'forge-token
+                                                 :search-function #'+forge-token-search))))
+              (add-to-list 'auth-sources 'forge-token))
           '';
         };
       }
