@@ -154,10 +154,6 @@
     datadog-api-claude-plugin.flake = false;
     gastown.url = "github:steveyegge/gastown";
     gastown.flake = false;
-
-    # Special
-    kdl.url = "https://raw.githubusercontent.com/jrobsonchase/nixos-config/8ea380ad196e630044846f06945131602ec7056f/lib/kdl.nix";
-    kdl.flake = false;
   };
   outputs = inputs:
     inputs.canivete.lib.mkFlake {

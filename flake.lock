@@ -1522,18 +1522,6 @@
         "type": "github"
       }
     },
-    "kdl": {
-      "flake": false,
-      "locked": {
-        "narHash": "sha256-sck4ySQBnpvo2Uf96gWTUiOwfFoJKBP9GCdvF2XXcAg=",
-        "type": "file",
-        "url": "https://raw.githubusercontent.com/jrobsonchase/nixos-config/8ea380ad196e630044846f06945131602ec7056f/lib/kdl.nix"
-      },
-      "original": {
-        "type": "file",
-        "url": "https://raw.githubusercontent.com/jrobsonchase/nixos-config/8ea380ad196e630044846f06945131602ec7056f/lib/kdl.nix"
-      }
-    },
     "libpng": {
       "flake": false,
       "locked": {
@@ -2532,7 +2520,6 @@
         "helix": "helix",
         "home-manager": "home-manager",
         "jovian": "jovian",
-        "kdl": "kdl",
         "mac-app-util": "mac-app-util",
         "mobile-nixos": "mobile-nixos",
         "mynur": "mynur",
