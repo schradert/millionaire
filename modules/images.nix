@@ -9,7 +9,11 @@
 #   image build <name>      — build an image locally
 #   image publish <name>    — build and push to Harbor
 #   image publish --all     — push all images
-{inputs, ...}: {
+{
+  inputs,
+  lib,
+  ...
+}: {
   perSystem = {system, ...}: let
     linuxSystem = builtins.replaceStrings ["darwin"] ["linux"] system;
     n2c = inputs.nix2container.packages.${system}.nix2container;
@@ -243,6 +247,49 @@
             Env = ["SSL_CERT_FILE=${amd64Pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"];
           };
           layers = [(n2c.buildLayer {deps = [pkg amd64Pkgs.cacert];})];
+        };
+
+      # mooncord: Moonraker Discord bot, no upstream image (pkgs/mooncord). Takes its
+      # config dir as argv[0] (<dir>/mooncord.cfg), not env vars. amd64 as above.
+      mooncord = let
+        amd64Pkgs = import inputs.nixpkgs {system = "x86_64-linux";};
+        pins = import ../lib/pins.nix {inherit lib;};
+        mkPinned = import ../pkgs {
+          inherit lib pins;
+          kubelib = inputs.nixidy.inputs.nix-kube-generators.lib;
+        };
+        pkg = (mkPinned amd64Pkgs).mooncord;
+        root = amd64Pkgs.runCommand "mooncord-root" {} "mkdir -p $out/tmp $out/config";
+      in
+        n2c.buildImage {
+          name = "${registry}/library/mooncord";
+          tag = pkg.version;
+          arch = "amd64";
+          config = {
+            User = "1000";
+            WorkingDir = "/config";
+            Entrypoint = ["${amd64Pkgs.nodejs_22}/bin/node" "${pkg}/lib/mooncord/dist/index.js"];
+            Cmd = ["/config"];
+            Env = [
+              "PATH=${amd64Pkgs.ffmpeg-headless}/bin"
+              "SSL_CERT_FILE=${amd64Pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+            ];
+            Volumes."/config" = {};
+          };
+          copyToRoot = [root];
+          perms = [
+            {
+              path = root;
+              regex = "/tmp";
+              mode = "1777";
+            }
+            {
+              path = root;
+              regex = "/config";
+              mode = "0777";
+            }
+          ];
+          layers = [(n2c.buildLayer {deps = [pkg amd64Pkgs.nodejs_22 amd64Pkgs.ffmpeg-headless amd64Pkgs.cacert];})];
         };
 
       govee2mqtt = n2c.buildImage {
