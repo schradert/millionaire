@@ -43,6 +43,8 @@
             extraLabels.release = "prometheus";
             attachMetadata.node = true;
             relabelings = lib.toList {
+              # Explicit: the API defaults it, which left the app OutOfSync.
+              action = "replace";
               sourceLabels = ["__meta_kubernetes_pod_node_name"];
               targetLabel = "node";
             };
