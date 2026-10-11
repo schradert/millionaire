@@ -7,6 +7,29 @@
 }: let
   system = builtins.currentSystem;
   domain = "trdos.me";
+  # Runs `cargo <args>` in each crate named on the command line (directory basename), else in
+  # all of them. One shared target dir, so common dependencies compile once.
+  cargoEach = pkgs.writeShellScript "cargo-each" ''
+    set -euo pipefail
+    root="${config.devenv.root}"
+    sub="$1"; shift
+    crates=()
+    pass=()
+    for a in "$@"; do
+      if [ -f "$root/apps/$a/Cargo.toml" ] || [ -f "$root/tools/$a/Cargo.toml" ]; then crates+=("$a"); else pass+=("$a"); fi
+    done
+    if [ ''${#crates[@]} -eq 0 ]; then
+      for d in "$root"/apps/*/ "$root"/tools/*/; do [ -f "$d/Cargo.toml" ] && crates+=("$(basename "$d")"); done
+    fi
+    export CARGO_TARGET_DIR="''${CARGO_TARGET_DIR:-${config.devenv.state}/cargo-target}"
+    rc=0
+    for c in "''${crates[@]}"; do
+      dir="$root/apps/$c"; [ -f "$dir/Cargo.toml" ] || dir="$root/tools/$c"
+      echo "==> cargo $sub ($c)" >&2
+      (cd "$dir" && cargo "$sub" ''${CARGO_ARGS:-} "''${pass[@]}") || rc=1
+    done
+    exit $rc
+  '';
 in {
   imports = inputs.canivete.canivete.${system}.devenv.modules;
 
@@ -304,6 +327,22 @@ in {
         sed -n '/=== E2E REPORT JSON BEGIN ===/,/=== E2E REPORT JSON END ===/p' "$out/log" | sed '1d;$d' > "$out/report.json"
         jq -r '.flows[] | [.flow, .status, (.ms/1000|tostring), (.error.app // ""), (.error.step // "")] | @tsv' "$out/report.json" | column -t -s "$(printf '\t')" || true
         [ "$($k -n media get job "$job" -o jsonpath='{.status.succeeded}')" = 1 ]
+      '';
+      # Rust toolchain from the locked nixpkgs (no extra flake input; nothing is built on entry)
+      # for the standalone crates: apps/{media-e2e,app-bootstrap,jellyfin-bootstrap}, tools/*.
+      # Hooks stay off the shell (see the tasks above); run checks explicitly:
+      #   cargo-check [crate...]   cargo check --all-targets      (default: every crate)
+      #   cargo-test  [crate...]   cargo test
+      # `crate` is the directory name, e.g. media-e2e. Extra cargo args: CARGO_ARGS="--release".
+      languages.rust = {
+        enable = true;
+        components = ["rustc" "cargo" "clippy" "rustfmt"];
+      };
+      scripts.cargo-check.exec = ''
+        exec ${cargoEach} check --all-targets "$@"
+      '';
+      scripts.cargo-test.exec = ''
+        exec ${cargoEach} test "$@"
       '';
       scripts.keycloak-reset-password.exec = ''
         email="''${1:?Usage: keycloak-reset-password <email>}"
