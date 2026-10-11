@@ -36,7 +36,7 @@ spec:
               value: production
             - name: PORT
               value: "3000"
-          image: harbor.trdos.me/library/sveltekit-demo:latest@sha256:0000000000000000000000000000000000000000000000000000000000000000
+          image: harbor.trdos.me/library/sveltekit-demo:latest@sha256:942257c766e6080fcb524bc51b8fed71a61eb15710423193cfc03c48b9720527
           livenessProbe:
             httpGet:
               path: /health
