@@ -35,6 +35,18 @@
 32. TODO make VolSync `restore = false` the module default: committed `-dst` ReplicationDestinations restore into LIVE PVCs, so bumping `trigger.manual` overwrites live data. A restore then becomes a deliberate change to a scratch PVC
 33. TODO hardware: an SSD for etcd on octopus (its ZFS boot disk amplifies etcd writes about 15x), larger or SSD drives for sirver (it caps usable Ceph capacity at about 5.7TB with size 2), a replacement for osd.7, more Mac disk for parallel nix work (or move heavy builds fully off the Mac)
 34. TODO falcon voron aarch64 builds miss the binary cache (overlays) and take 6h+ under emulation; give it a cache or a native aarch64 builder
+35. TODO canivete: make its default `sops.defaultSopsFile` content-only upstream, then drop the `mkForce` copy in `modules/sops.nix`
+36. TODO hy3/hyprspace: revisit the `pkgs/hyprspace` pin and hold (and nixpkgs' hy3) when Hyprland 0.56 lands
+37. TODO lift the Jovian hold (systeamadeck)
+38. TODO Waterfly (Firefly III Android app) is blocked by oauth2-proxy: it sends a Firefly personal access token, which oauth2-proxy cannot verify
+39. TODO Syncthing: the hub's sync port 22000 has no LoadBalancer, so devices reach it only through discovery and relays
+40. TODO contextforge: verify Keycloak SSO and `/servers/<id>/mcp` with `sso-token` live once `app-bootstrap-contextforge` is pinned (its `OIDC_*` env was ignored upstream; now `SSO_KEYCLOAK_*`)
+41. TODO verify the work Mac's userspace tailscaled (headscale via `trdos <cmd>`) end to end
+42. TODO verify chirpstack gRPC through the internal gateway
+43. TODO pulumi state is April-era for the nodes; it clears after a per-node deploy
+44. TODO gargoyle: reflash, then record its tailnet host key; aarch64-linux builds are native only from morgenmuffel (`nix.linux-builder`): the fleet (falcon) still emulates. For fleet use either expose the builder VM to the LAN (ssh on morgenmuffel forwarding to the VM's :31022, a `builders.nix` entry) or cross-compile gargoyle from x86_64 (`nixpkgs.buildPlatform`)
+45. TODO echidna: record its tailnet host key once the host exists
+46. TODO `old/` leftovers: `old/old/apps/gaming/games/roms.nix` hash table (until docs/games.md is done), Saradomin, gauntlet, platform.nix tofu branches, and the partial ports named at the top of each module
 
 ## Conventions
 
