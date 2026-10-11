@@ -144,6 +144,27 @@
     enforce = true;
     intraNamespace = true;
   };
+  nixidy.netpol.namespaces.mail = {
+    enforce = true;
+    intraNamespace = true;
+    # SMTP senders: forgejo, firefly, mealie, keycloak, grafana (stalwart.mail.svc:25)
+    extraIngress = [
+      {
+        fromEndpoints = [
+          {
+            matchExpressions = [
+              {
+                key = "k8s:io.kubernetes.pod.namespace";
+                operator = "In";
+                values = ["development" "finance" "health" "identity" "observability"];
+              }
+            ];
+          }
+        ];
+        toPorts = [{ports = [{port = "25"; protocol = "TCP";}];}];
+      }
+    ];
+  };
   nixidy.applications.namespaces.resources.namespaces = {
     development = {};
     finance = {};
