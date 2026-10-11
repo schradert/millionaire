@@ -1,8 +1,10 @@
 # axolotl (Dell Precision 7510 laptop) driving DisplayLink docks.
 # The DisplayLink driver needs a one-time manual download: docs/displaylink.md.
 {
+  config,
   flake,
   lib,
+  pkgs,
   ...
 }: {
   imports = [./facter ./tailnet-personal.nix ./zfs-legacy.nix flake.inputs.srvos.nixosModules.desktop];
@@ -17,6 +19,34 @@
   disko.devices.disk.root.device = "/dev/disk/by-id/nvme-SPCC_M.2_PCIE_SSD_30012119169";
   # i915 is no longer an X11 driver; modesetting drives the Intel iGPU
   services.xserver.videoDrivers = ["radeon" "displaylink" "modesetting" "fbdev"];
+  # Desk layout: portrait LG HDR 4K, LG UltraFine 4K, then the panel (eDP-1)
+  profiles.desktop.hyprland = {
+    scale = 1.5;
+    zoomScale = 3.0;
+    monitors = {
+      "LG Electronics LG HDR 4K 205NTDVH0506" = {
+        mode = "3840x2160@60.00";
+        transform = 1;
+        workspaces = [1 2 3 4];
+      };
+      "LG Electronics LG ULTRAFINE 111NTUWFF862" = {
+        mode = "3840x2160@60.00";
+        position = [2160 400];
+        workspaces = [5 6 7 8];
+      };
+      "LG Display 0x04B9" = {
+        mode = "1920x1080@60.02";
+        position = [6000 800];
+        workspaces = [9 10 11 12];
+      };
+    };
+  };
+  # DDC/CI brightness for external monitors (unreliable through DisplayLink)
+  boot.extraModulePackages = [config.boot.kernelPackages.ddcci-driver];
+  boot.kernelModules = ["ddcci_backlight"];
+  hardware.i2c.enable = true;
+  environment.systemPackages = with pkgs; [brightnessctl ddcutil];
+  users.users.${flake.config.canivete.meta.people.me}.extraGroups = ["i2c"];
   # Lid closed on a dock: stay awake
   services.logind.settings.Login.HandleLidSwitch = "ignore";
   systemd.targets = {
