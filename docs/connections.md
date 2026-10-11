@@ -62,7 +62,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | prometheus | oauth2-proxy | done: promtool (offline checks; queries via `kubectl port-forward`), `modules/kubernetes.nix` | done: same | n-a | n-a | — |
 | alertmanager | oauth2-proxy | web (amtool skipped: API behind oauth2-proxy) | web | n-a | n-a | — |
 | grafana, gatus, status (hyena) | OIDC / none | web | web | n-a | web | — |
-| ntfy (hyena) | none (tailnet) | todo: `modules/ntfy.nix` subscriber | todo: `modules/ntfy.nix` | n-a | done: ntfy | — |
+| ntfy (hyena) | none (tailnet) | done: ntfy CLI; `alerts` subscriber on personal Macs, `modules/ntfy.nix` | done: CLI + `alerts` subscriber (user service) | n-a | done: ntfy | — |
 | mainsail, obico, spoolman | oauth2-proxy | web; todo: orca-slicer (commented cask in `modules/default.nix`) | web | n-a | done: Mobileraker | — |
 | rook-ceph, rados | own | web | web | n-a | n-a | — |
 | Bitwarden (hosted, not in the cluster) | account | done: cask (`modules/desktop-clients.nix`); todo: Brave extension | done: bitwarden-desktop; todo: Brave extension | done: bitwarden-desktop | done: Bitwarden | account login |
