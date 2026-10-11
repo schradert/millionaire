@@ -148,6 +148,35 @@ in {
           };
         };
       };
+      # Dashy serves user-data without auth; the catalog exports go through
+      # oauth2-proxy (the UI never fetches them, it keeps its own OIDC).
+      resources.httpRoutes.dashy-exports.spec = {
+        hostnames = [hostname];
+        parentRefs = lib.toList {
+          name = "internal";
+          namespace = "kube-system";
+          sectionName = "https";
+        };
+        rules = lib.toList {
+          matches =
+            map (f: {
+              path = {
+                type = "Exact";
+                value = "/${f}";
+              };
+            })
+            (lib.attrNames config.portal.files);
+          backendRefs = lib.toList {
+            name = "oauth2-proxy";
+            namespace = "identity";
+            port = 4180;
+          };
+        };
+      };
+    };
+    oauth2Proxy.upstreams.${hostname} = {
+      url = "http://dashy.home.svc.cluster.local:8080";
+      namespace = "home";
     };
   };
 }
