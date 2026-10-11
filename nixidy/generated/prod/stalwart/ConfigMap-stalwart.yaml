@@ -6,18 +6,7 @@ data:
     user = "admin"
 
     [config]
-    local-keys = [
-        "store.*",
-        "storage.*",
-        "server.*",
-        "directory.*",
-        "authentication.fallback-admin.*",
-        "tracer.*",
-        "metrics.prometheus.*",
-        "session.*",
-        "queue.*",
-        "config.local-keys.*",
-    ]
+    local-keys = ["store.*", "storage.*", "server.*", "directory.*", "authentication.fallback-admin.*", "tracer.*", "metrics.prometheus.*", "session.*", "queue.*", "config.local-keys.*"]
 
     [directory.internal]
     store = "rocksdb"

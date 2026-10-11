@@ -1,6 +1,8 @@
 apiVersion: v1
 data:
   bookmarks.yaml: |
+    %YAML 1.1
+    ---
     - Developer:
       - GitHub:
         - href: https://github.com/schradert
@@ -164,9 +166,13 @@ data:
   custom.js: ""
   docker.yaml: ""
   kubernetes.yaml: |
+    %YAML 1.1
+    ---
     gateway: true
     mode: cluster
   services.yaml: |
+    %YAML 1.1
+    ---
     - AI:
       - bifrost:
           description: ''
@@ -448,6 +454,8 @@ data:
           href: https://rook.trdos.me
           icon: rook-ceph
   settings.yaml: |
+    %YAML 1.1
+    ---
     background:
       blur: sm
       image: https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=1920
@@ -462,6 +470,8 @@ data:
     title: Millionaire Homelab
     useEqualHeights: true
   widgets.yaml: |
+    %YAML 1.1
+    ---
     - kubernetes:
         cluster:
           cpu: true

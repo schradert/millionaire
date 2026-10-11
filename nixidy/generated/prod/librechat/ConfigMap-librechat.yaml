@@ -1,6 +1,8 @@
 apiVersion: v1
 data:
   librechat.yaml: |-
+    %YAML 1.1
+    ---
     cache: true
     endpoints:
       custom:
