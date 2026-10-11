@@ -68,6 +68,11 @@
     # Phones (gargoyle); a plain NixOS module tree, imported by device name
     mobile-nixos.url = "github:mobile-nixos/mobile-nixos";
     mobile-nixos.flake = false;
+    nixos-wsl.url = "github:nix-community/NixOS-WSL";
+    nixos-wsl.inputs = {
+      nixpkgs.follows = "nixpkgs";
+      flake-compat.follows = "flake-compat";
+    };
     # Steam Deck. Held at a commit that evaluates against the nixpkgs lock (May 2026):
     # later Jovian needs newer pnpm fetchers. Move it with nixpkgs.
     jovian.url = "github:Jovian-Experiments/Jovian-NixOS/4b81cbddc037e480c2f3c20dee1a6457c6bb99b8";
@@ -325,6 +330,8 @@
           canivete.system = "aarch64-linux";
           profiles.system.canivete.configuration.imports = [./static/gargoyle.nix];
         };
+        # NixOS-WSL (./static/echidna.nix).
+        echidna.profiles.system.canivete.configuration.imports = [./static/echidna.nix];
         # Cloud-burst worker image config — never deployed via pulumi or
         # deploy-rs; defined as a node only so it gets the canivete.kubernetes
         # module machinery. CAPI boots Hetzner VMs from its uploaded snapshot
