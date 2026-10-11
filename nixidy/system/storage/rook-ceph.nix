@@ -90,8 +90,16 @@ in {
         # rendered pools instead of restating the lists.
         transformer = let
           withReplicas = pool: pool // {replicated = (pool.replicated or {}) // replicas;};
+          # predict_linear over 2d keeps one series per mgr pod, so after an mgr restart the
+          # upstream join finds duplicates and the rule fails; aggregate the pod label away.
+          fixRule = rule:
+            if (rule.alert or "") == "CephPoolGrowthWarning"
+            then rule // {expr = "(max by (cluster, pool_id, instance) (predict_linear(ceph_pool_percent_used[2d], 3600 * 24 * 5)) * on(cluster, pool_id, instance) group_right() ceph_pool_metadata) >= 95";}
+            else rule;
           patch = resource:
-            if (resource.kind or "") == "CephBlockPool"
+            if (resource.kind or "") == "PrometheusRule"
+            then resource // {spec = resource.spec // {groups = map (g: g // {rules = map fixRule g.rules;}) resource.spec.groups;};}
+            else if (resource.kind or "") == "CephBlockPool"
             then resource // {spec = withReplicas resource.spec;}
             else if (resource.kind or "") == "CephFilesystem"
             then
