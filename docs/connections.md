@@ -41,10 +41,10 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | sure | OIDC | web | web | n-a | web | — |
 | mealie | OIDC | web | web | n-a | web (`mealie` tile) | — |
 | miniflux (rss) | password | done: newsboat + elfeed, `modules/feeds.nix` | done: `modules/feeds.nix` | n-a | todo (no reader in catalog) | bws `miniflux/tristan-password` (miniflux.nix) |
-| baikal (cal) | Digest on `/dav.php` | todo: khal + vdirsyncer have no credentials (`modules/calendar.nix`) | todo: same | n-a | done: DAVx5 + Fossify | bws `baikal/admin-password` (baikal.nix generatedSecrets) |
+| baikal (cal) | Digest on `/dav.php` | done: khal + vdirsyncer, `modules/calendar.nix` | done: same | n-a | done: DAVx5 + Fossify | bws `baikal/admin-password` (baikal.nix generatedSecrets) |
 | syncthing (sync) | oauth2-proxy (GUI) | todo: no hub pairing | todo: no hub pairing | n-a | done: Syncthing-Fork (pairing by hand) | hub device ID not declared |
 | webdav (dav) | oauth2-proxy | n-a (clients cannot pass oauth2-proxy) | n-a | n-a | n-a | — |
-| home-assistant (hass) | OIDC | todo: companion cask | web | n-a | done: Home Assistant | — |
+| home-assistant (hass) | OIDC | done: companion cask, `modules/desktop-clients.nix` | web | n-a | done: Home Assistant | — |
 | homepage, homarr, dashy, android | OIDC / oauth2-proxy | web | web | n-a | web | — |
 | chirpstack, excalidraw, frigate, logseq, rclone, siyuan, zigbee2mqtt, zwave-js-ui | OIDC / oauth2-proxy | web | web | n-a | web (frigate tile) | — |
 | kosync | KOReader account | n-a | n-a | n-a | done: KOReader (`eink` set) | — |
@@ -65,7 +65,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | ntfy (hyena) | none (tailnet) | todo: `modules/ntfy.nix` subscriber | todo: `modules/ntfy.nix` | n-a | done: ntfy | — |
 | mainsail, obico, spoolman | oauth2-proxy | web; todo: orca-slicer (commented cask in `modules/default.nix`) | web | n-a | done: Mobileraker | — |
 | rook-ceph, rados | own | web | web | n-a | n-a | — |
-| Bitwarden (hosted, not in the cluster) | account | todo: cask + Brave extension | todo: bitwarden-desktop + Brave extension | todo | done: Bitwarden | account login |
+| Bitwarden (hosted, not in the cluster) | account | done: cask (`modules/desktop-clients.nix`); todo: Brave extension | done: bitwarden-desktop; todo: Brave extension | done: bitwarden-desktop | done: Bitwarden | account login |
 | Bookmarks (`dashy.trdos.me/bookmarks.html`) | oauth2-proxy | todo: Floccus (blocked) | todo | n-a | n-a | — |
 
 ## Open questions

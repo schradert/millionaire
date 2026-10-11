@@ -16,6 +16,9 @@ in {
         remote = {
           type = "caldav";
           url = "https://cal.${domain}/dav.php/calendars/admin/org/";
+          # Baïkal's DAV user (nixidy/apps/home/baikal.nix generatedSecrets)
+          userName = "admin";
+          passwordCommand = ["bws-get" "baikal/admin-password"];
         };
         khal = {
           enable = true;
@@ -26,6 +29,7 @@ in {
         vdirsyncer = {
           enable = true;
           collections = ["from a" "from b"];
+          auth = "digest";
         };
       };
     };
