@@ -23,7 +23,11 @@
   sops.secrets = lib.mkForce {
     tailscale-authkey = {
       key = "headscale/preauth-key/personal";
-      sopsFile = ../secrets/sops/personal.yaml;
+      # by contents, not via the flake source (see modules/sops.nix)
+      sopsFile = builtins.path {
+        path = ../secrets/sops/personal.yaml;
+        name = "sops-personal.yaml";
+      };
     };
   };
 }
