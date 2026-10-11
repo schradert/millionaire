@@ -4,14 +4,15 @@
 # PushSecret keeps a break-glass copy in Bitwarden. The device ID is the
 # cert's hash, so it only changes if the Secret is lost.
 #
-# One-time after the first sync: record the hub's ID below
+# The hub's ID, recorded after the pinned cert's first sync (redo only if the
+# Secret is ever lost):
 #   kubectl -n home exec deploy/syncthing -c syncthing -- syncthing --device-id --home /var/syncthing/config
 # Workstations then add the hub as an introducer; accept each workstation once
 # in the hub GUI (sync.trdos.me), and re-pair Android with the new hub ID.
 {config, ...}: let
   inherit (config.canivete.meta) domain;
   hostname = "sync.${domain}";
-  hubDeviceID = null;
+  hubDeviceID = "WHD56GJ-S5XJMEV-PJNFHRL-7XZKKIE-IONK2R2-ZIQEN3P-JSQKR77-GLFEDQE";
 in {
   # Personal workstations sync with the hub, which introduces its folders.
   home = {
