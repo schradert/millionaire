@@ -14,6 +14,7 @@ spec:
     - fromEntities:
         - host
         - remote-node
+        - kube-apiserver
         - ingress
     - fromEndpoints:
         - matchLabels:

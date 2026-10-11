@@ -3,7 +3,7 @@
 # `netpol.namespaces.<ns>.enforce = true` renders one CiliumClusterwideNetworkPolicy that
 # selects every pod in the namespace (Cilium denies whatever no rule allows once a policy
 # selects an endpoint) and allows only:
-#   - kubelet/node probes (host, remote-node)
+#   - kubelet/node probes and admission webhook calls (host, remote-node, kube-apiserver)
 #   - the Gateway's envoy (`ingress` entity), for Services exposed through an HTTPRoute
 #   - Prometheus and Gatus from `observability`
 #   - oauth2-proxy, on exactly the ports its upstreams in this namespace use
@@ -12,8 +12,8 @@
 # `cnpg` / `dragonfly` add a second policy for the operator-managed database pods: the operators
 # (in `storage`) keep long-lived connections that a flow capture never sees, so they are derived
 # from how the operators work (CNPG instance manager :8000 and PostgreSQL :5432; Dragonfly :6379).
-# Apps with their own `ciliumNetworkPolicies` (navidrome, qbittorrent, ...) are excluded from
-# the selector: Cilium policies are additive, so a namespace-wide allow would otherwise widen
+# Apps with their own ingress policy (`ciliumNetworkPolicies` or `networkPolicies`: navidrome,
+# qbittorrent, rclone, ...) are excluded from the selector: Cilium policies are additive, so a namespace-wide allow would otherwise widen
 # their stricter rules. They must allow `host` themselves.
 # Egress is deliberately not restricted here: apps reach arbitrary external APIs and the
 # Gateway VIP, so an egress allowlist would be wide enough to add no isolation.
@@ -29,17 +29,19 @@
     nsKey = "k8s:io.kubernetes.pod.namespace";
     enforced = lib.filterAttrs (_: ns: ns.enforce) cfg.namespaces;
 
-    # `app.kubernetes.io/name` of every app in `ns` that carries its own CiliumNetworkPolicy.
+    # `app.kubernetes.io/name` of every app in `ns` that carries its own ingress policy
+    # (a CiliumNetworkPolicy, or a Kubernetes NetworkPolicy that covers Ingress).
     strictApps = ns: let
       apps = lib.filterAttrs (name: app: name != "netpol" && app.namespace == ns) config.applications;
-      nameOf = policy: let
-        labels = policy.spec.endpointSelector.matchLabels;
-      in
+      nameIn = labels:
         if labels == null
         then null
         else labels."app.kubernetes.io/name" or null;
+      ciliumNames = app: map (p: nameIn p.spec.endpointSelector.matchLabels) (lib.attrValues app.resources.ciliumNetworkPolicies);
+      k8sNames = app:
+        map (p: nameIn p.spec.podSelector.matchLabels) (lib.filter (p: p.spec.policyTypes == null || lib.elem "Ingress" p.spec.policyTypes) (lib.attrValues app.resources.networkPolicies));
     in
-      lib.unique (lib.concatMap (app: lib.filter (n: n != null) (map nameOf (lib.attrValues app.resources.ciliumNetworkPolicies))) (lib.attrValues apps));
+      lib.unique (lib.filter (n: n != null) (lib.concatMap (app: ciliumNames app ++ k8sNames app) (lib.attrValues apps)));
 
     # oauth2-proxy talks to its upstreams from identity/oauth2-proxy; derive the ports per namespace.
     upstreamPorts = ns: let
@@ -105,7 +107,7 @@
         };
       ingress =
         [
-          {fromEntities = ["host" "remote-node"] ++ lib.optional c.gateway "ingress";}
+          {fromEntities = ["host" "remote-node" "kube-apiserver"] ++ lib.optional c.gateway "ingress";}
         ]
         ++ lib.optional c.scrape {
           fromEndpoints = map (app: {
