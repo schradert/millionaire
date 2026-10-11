@@ -1,5 +1,6 @@
 {
   nixidy = {
+    lib,
     pinned,
     pkgs,
     ...
@@ -30,6 +31,17 @@
           # grafanaDashboard.grafanaOperator.enabled = true;
         };
       };
+      # The chart's monitor scrapes :8080, but the manager binds metrics to 127.0.0.1;
+      # they are only served by kube-rbac-proxy on https :8443 (Prometheus' token is
+      # authorized via its /metrics nonResourceURL rule).
+      resources.serviceMonitors.dragonflydb-dragonfly-operator-controller-manager-metrics.spec.endpoints = lib.mkForce (lib.toList {
+        port = "https";
+        scheme = "https";
+        path = "/metrics";
+        interval = "30s";
+        bearerTokenFile = "/var/run/secrets/kubernetes.io/serviceaccount/token";
+        tlsConfig.insecureSkipVerify = true;
+      });
     };
   };
 }
