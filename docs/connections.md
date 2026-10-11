@@ -50,9 +50,9 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | kosync | KOReader account | n-a | n-a | n-a | done: KOReader (`eink` set) | — |
 | keycloak | — | web (SSO for everything) | web | web | web | — |
 | bulwark (webmail) | OIDC | web (mail clients: mail workstream) | web | n-a | web | — |
-| jellyfin | OIDC | todo: jellyfin-media-player cask | todo: delfin | todo: delfin | done: Jellyfin | SSO |
-| navidrome | own login | todo: feishin | todo: feishin | todo: feishin | done: Tempus | bws `navidrome/admin-password` (navidrome.nix) |
-| immich | OIDC | todo: immich-cli | todo: immich-cli | n-a | done: Immich | needs an API key generator |
+| jellyfin | OIDC | done: Jellyfin Media Player cask, `modules/media-clients.nix` | done: delfin, `modules/media-clients.nix` | done: delfin | done: Jellyfin | SSO |
+| navidrome | own login | done: feishin, `modules/media-clients.nix` | done: feishin | done: feishin | done: Tempus | bws `navidrome/admin-password` (navidrome.nix) |
+| immich | OIDC | done: immich-cli (`modules/media-clients.nix`); todo: API key for `immich login` | done: same | n-a | done: Immich | needs an API key generator |
 | audiobookshelf | oauth2-proxy | web | web | n-a | done: Audiobookshelf | — |
 | kavita, komga | OIDC | web (OPDS: docs/ereader-opds.md) | web | n-a | done: Mihon, Komelia | — |
 | sonarr, radarr, lidarr, prowlarr, bazarr, autobrr, maintainerr, seerr, shoko, ryot, multi-scrobbler, maloja | oauth2-proxy / own | web | web | n-a | web | — |
