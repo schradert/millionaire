@@ -20,6 +20,15 @@ pub fn secret(name: &str) -> Result<String> {
     env::var(name).map_err(|_| format!("set {name}_FILE or {name}").into())
 }
 
+/// A random password: hex from /dev/urandom plus one upper-case letter and a symbol, so it
+/// passes the usual complexity rules. For accounts nobody types a password into (SSO users).
+pub fn random_password() -> Result<String> {
+    use std::io::Read;
+    let mut buf = [0u8; 24];
+    fs::File::open("/dev/urandom")?.read_exact(&mut buf)?;
+    Ok(format!("A!{}", buf.iter().map(|b| format!("{b:02x}")).collect::<String>()))
+}
+
 /// Error for any non-2xx response, with a short body excerpt.
 pub async fn ok(resp: Response, what: &str) -> Result<Response> {
     let status = resp.status();
@@ -81,6 +90,20 @@ impl Kube {
         })
     }
 
+    /// The value of `key` in the Secret `name`, or None when the Secret or the key is missing.
+    pub async fn secret_value(&self, name: &str, key: &str) -> Result<Option<String>> {
+        let url = format!("{}/api/v1/namespaces/{}/secrets/{name}", self.api, self.namespace);
+        let r = self.http.get(url).bearer_auth(&self.token).send().await?;
+        if r.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(None);
+        }
+        let cur: serde_json::Value = ok(r, "get secret").await?.json().await?;
+        match cur["data"][key].as_str() {
+            Some(v) => Ok(Some(String::from_utf8(unb64(v)?)?)),
+            None => Ok(None),
+        }
+    }
+
     /// Make the Secret `name` hold exactly `data` (string values). Returns whether it changed.
     /// Values are never logged.
     pub async fn ensure_secret(&self, name: &str, data: &[(&str, &str)]) -> Result<bool> {
@@ -115,8 +138,25 @@ impl Kube {
     }
 }
 
+const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+fn unb64(input: &str) -> Result<Vec<u8>> {
+    let mut out = Vec::new();
+    let (mut acc, mut bits) = (0u32, 0);
+    for c in input.bytes().filter(|&c| c != b'=') {
+        let v = T.iter().position(|&t| t == c).ok_or("invalid base64")? as u32;
+        acc = acc << 6 | v;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((acc >> bits) as u8);
+            acc &= (1 << bits) - 1;
+        }
+    }
+    Ok(out)
+}
+
 fn b64(input: &[u8]) -> String {
-    const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::new();
     for c in input.chunks(3) {
         let n = (c[0] as u32) << 16 | (*c.get(1).unwrap_or(&0) as u32) << 8 | *c.get(2).unwrap_or(&0) as u32;
@@ -129,4 +169,14 @@ fn b64(input: &[u8]) -> String {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn base64_roundtrip() {
+        for s in ["", "f", "fo", "foo", "foob", "fooba", "foobar"] {
+            assert_eq!(super::unb64(&super::b64(s.as_bytes())).unwrap(), s.as_bytes());
+        }
+    }
 }
