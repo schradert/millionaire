@@ -10,7 +10,12 @@ in {
     pkgs,
     ...
   }: let
-    ntfy = lib.getExe pkgs.ntfy-sh;
+    # The server half only builds on Linux; the client-only build tag works everywhere.
+    package =
+      if pkgs.stdenv.hostPlatform.isDarwin
+      then pkgs.ntfy-sh.overrideAttrs (old: {tags = old.tags or [] ++ ["noserver"];})
+      else pkgs.ntfy-sh;
+    ntfy = lib.getExe package;
     notify = pkgs.writeShellScript "ntfy-notify" (
       if pkgs.stdenv.hostPlatform.isDarwin
       then ''/usr/bin/osascript -e 'on run argv' -e 'display notification (item 2 of argv) with title (item 1 of argv)' -e 'end run' "''${NTFY_TITLE:-ntfy}" "$NTFY_MESSAGE"''
@@ -28,7 +33,7 @@ in {
     args = [ntfy "subscribe" "--config" "${clientConfig}" "--from-config"];
   in {
     config = lib.mkIf config.profiles.workstation.enable (lib.mkMerge [
-      {home.packages = [pkgs.ntfy-sh];}
+      {home.packages = [package];}
       (lib.mkIf (config.profile == "personal") {
         systemd.user.services.ntfy-alerts = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
           Unit.Description = "ntfy alerts subscriber";
