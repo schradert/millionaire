@@ -152,17 +152,34 @@ in {
     };
   };
 
-  # Headscale default-allows only when NO policy is loaded; the acls entry
-  # preserves that behavior while adding tag/route automation for the
-  # cloud-burst cluster tailnet (see static/tailnet.nix).
+  # Headscale default-allows only when NO policy is loaded. `default` (hyena,
+  # cluster nodes, falcon), `tristan` and tag:cluster keep that full reach,
+  # plus tag/route automation for the cloud-burst tailnet (static/tailnet.nix).
+  # `family` phones (options/android.nix) get only what their apps need:
+  # AdGuard DNS + ntfy on hyena, and the internal-gateway relays that
+  # *.trdos.me resolves to (nixidy/system/network/gateway.nix). ACLs are
+  # stateful, so nothing has to allow the replies. Until pulumi creates the
+  # `family` user, headscale skips its rules (unresolved users only log).
   services.headscale.settings.policy = {
     mode = "file";
     path = pkgs.writeText "headscale-policy.json" (builtins.toJSON {
       acls = [
         {
           action = "accept";
-          src = ["*"];
+          src = ["default@" "tristan@" "tag:cluster"];
           dst = ["*:*"];
+        }
+        {
+          action = "accept";
+          proto = "tcp";
+          src = ["family@"];
+          dst = ["${tailnetIP}:53,443" "100.64.0.4:80,443" "100.64.0.5:80,443"];
+        }
+        {
+          action = "accept";
+          proto = "udp";
+          src = ["family@"];
+          dst = ["${tailnetIP}:53"];
         }
       ];
       tagOwners."tag:cluster" = ["default@"];
