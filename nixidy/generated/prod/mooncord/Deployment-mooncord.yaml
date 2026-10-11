@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: mooncord
+    app.kubernetes.io/instance: mooncord
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mooncord
+  name: mooncord
+  namespace: printing
+spec:
+  replicas: 0
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: mooncord
+      app.kubernetes.io/instance: mooncord
+      app.kubernetes.io/name: mooncord
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: mooncord
+        app.kubernetes.io/instance: mooncord
+        app.kubernetes.io/name: mooncord
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - image: harbor.trdos.me/library/mooncord:1.3.1@sha256:773da57db696755fb9caa1460be635908bd685ac186e77d07f45f8f395f16b9f
+          name: mooncord
+          volumeMounts:
+            - mountPath: /config
+              name: config
+              readOnly: true
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: mooncord
+      volumes:
+        - name: config
+          secret:
+            secretName: mooncord
