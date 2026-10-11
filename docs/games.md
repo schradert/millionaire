@@ -20,17 +20,27 @@ hash is the NAR hash of the unpacked tree, as `fetchzip { stripRoot = false; }`
 computes it. The old myrient hashes (old/old/apps/gaming/games/roms.nix) carry
 over unchanged when the zips are rebuilt from the same files.
 
-## One-time upload
+## One-time upload (from the Steam Deck)
 
-myrient.erista.me is gone; the files have to come from a device that still
-has them (the Steam Deck and/or falcon).
+myrient.erista.me is gone; the library is on the Deck. Every step below runs
+on the Deck, which reaches the cluster over the tailnet/LAN. The WebDAV is
+read-only, so the files go into the PVC through a throwaway pod.
 
-1. Find the library. A Deck that ran the old dotfiles config has it under
-   `~/Games/ROMs/<console>/` and `~/Games/BIOS/<console>/` (symlinks into
-   `/nix/store/*-<title>` directories); otherwise look in EmuDeck's
-   `~/Emulation/roms/` or on falcon's `/data`.
+1. Tools and cluster access:
 
-2. Build the tree on that device, one zip per title:
+   ```sh
+   nix shell nixpkgs#kubectl nixpkgs#rsync nixpkgs#zip nixpkgs#jq
+   export KUBECONFIG=$(mktemp)
+   ssh -i ~/.ssh/personal sirver sudo cat /etc/rancher/rke2/rke2.yaml \
+     | sed 's/127\.0\.0\.1/sirver/' > "$KUBECONFIG"
+   ```
+
+   (From off-LAN: `ssh -J tristan@192.184.168.248 ...`.)
+
+2. Build the tree, one zip per title. The old config linked
+   `~/Games/ROMs/<console>/` and `~/Games/BIOS/<console>/` through
+   `buildEnv`, so each entry is a symlink into the title's
+   `/nix/store/*-<title>` directory; zip that directory's contents:
 
    ```sh
    out=~/games-upload
@@ -38,18 +48,23 @@ has them (the Steam Deck and/or falcon).
      src=~/Games/${kind%%:*}; dst=$out/${kind##*:}
      for dir in "$src"/*/; do
        console=$(basename "$dir"); mkdir -p "$dst/$console"
-       for title in "$dir"*; do
-         # the store dir behind each title holds that title's files
-         (cd "$(readlink -f "$title")" && zip -qrX "$dst/$console/$(basename "$title").zip" .)
+       for f in "$dir"*; do
+         store=$(readlink -f "$f" | cut -d/ -f1-4)   # /nix/store/<hash>-<title>
+         [ -d "$store" ] || continue
+         title=$(basename "$store" | cut -d- -f2-)
+         zip="$dst/$console/$title.zip"
+         [ -e "$zip" ] || (cd "$store" && zip -qrX "$zip" .)
        done
      done
    done
    ```
 
-   With the old config the entries under `~/Games/ROMs/<console>/` are the
-   files themselves (buildEnv links), not per-title directories; group them by
-   title (`<title>.<ext>` plus `.cue`/`.bin` siblings) into
-   `$out/roms/<console>/<title>.zip` instead.
+   Each zip must be named after its pin key: `jq -r '.hashes | keys[]'
+   pkgs/roms/pin.json` lists `<console>/<title>`, e.g.
+   `NES/Legend of Zelda, The (USA)`; rename any that differ. If the Deck's
+   `~/Games/ROMs/<console>/` holds plain files instead of store links, zip
+   each title's files (`<title>.<ext>` plus `.cue`/`.bin` siblings) at the
+   zip root under the same name.
 
 3. Installers (installers/):
 
@@ -62,7 +77,7 @@ has them (the Steam Deck and/or falcon).
    chmod +x *.exe
    ```
 
-4. Copy into the PVC through a throwaway pod (kubeconfig as in the README):
+4. Copy into the PVC:
 
    ```sh
    kubectl -n media run games-upload --image=alpine:3.22 --restart=Never \
@@ -77,7 +92,8 @@ has them (the Steam Deck and/or falcon).
    kubectl -n media delete pod games-upload
    ```
 
-5. Check every pin against the served files (any machine on the tailnet):
+5. Check every pin against what games.trdos.me now serves (in a checkout of
+   this repo, still on the Deck):
 
    ```sh
    url() { jq -rn --arg n "$1" '$n|@uri' | sed 's/%2F/\//g'; }
@@ -92,10 +108,9 @@ has them (the Steam Deck and/or falcon).
    cemu-keys.txt with neither: `pkgs/cemu-keys/pin.json`.) Fix mismatches
    in the pins (Battle.net's installer changes upstream, so expect one there).
 
-6. Set `programs.steam.external.library = true` for the Deck
-   (static/systeamadeck.nix): until then its titles, BIOS and installer
-   shortcuts are left out so it builds. Then delete
-   `old/old/apps/gaming/games/roms.nix`.
+6. Set `programs.steam.external.library = true` in static/systeamadeck.nix:
+   until then the Deck's titles, BIOS and installer shortcuts are left out so
+   it builds. Then delete `old/old/apps/gaming/games/roms.nix`.
 
 ## Adding a title
 
