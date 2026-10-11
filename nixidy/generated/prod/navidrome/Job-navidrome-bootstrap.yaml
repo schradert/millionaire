@@ -20,9 +20,11 @@ spec:
               value: /secrets/admin/password
             - name: ADMIN_USER
               value: tristan
+            - name: LISTENBRAINZ_TOKEN_FILE
+              value: /secrets/maloja/token
             - name: NAVIDROME_URL
               value: http://navidrome.media.svc.cluster.local:4533
-          image: harbor.trdos.me/library/app-bootstrap:0.6.0@sha256:b7e7c1947b4e12b83d8449148239ef7dd0cd41fa37b991b8f4782f3089f689f3
+          image: harbor.trdos.me/library/app-bootstrap:0.15.0@sha256:f728c5c08647b74a8293532f4ddf61498be1874b59b5979a1b6a820878a42ef8
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
@@ -33,6 +35,9 @@ spec:
           volumeMounts:
             - mountPath: /secrets/admin
               name: admin
+              readOnly: true
+            - mountPath: /secrets/maloja
+              name: maloja
               readOnly: true
       restartPolicy: OnFailure
       securityContext:
@@ -45,3 +50,6 @@ spec:
         - name: admin
           secret:
             secretName: navidrome-admin
+        - name: maloja
+          secret:
+            secretName: navidrome-maloja
