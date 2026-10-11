@@ -9,11 +9,12 @@
   }: let
     user = flake.config.canivete.meta.people.users.${config.home.username};
     inherit (user.profiles.${config.profile}) email sshPubKey;
-    # `forge-token <bws key>`: BWS_ACCESS_TOKEN decrypted from the repo's sops
+    # `bws-get <bws key>`: BWS_ACCESS_TOKEN decrypted from the repo's sops
     # file on demand (as devenv.nix does), nothing written to disk. Exits 1
-    # quietly without the sops age key or the checkout.
-    forgeToken = pkgs.writeShellApplication {
-      name = "forge-token";
+    # quietly without the sops age key or the checkout. Also used by feed
+    # readers (modules/feeds.nix).
+    bwsGet = pkgs.writeShellApplication {
+      name = "bws-get";
       runtimeInputs = with pkgs; [bws jq sops];
       text = ''
         sops_file=${lib.escapeShellArg "${config.home.homeDirectory}/Projects/millionaire/secrets/sops/default.yaml"}
@@ -121,7 +122,7 @@
           settings.aliases.co = "pr checkout";
         };
         programs.gh-dash.enable = true;
-        home.packages = [pkgs.glab];
+        home.packages = [bwsGet pkgs.glab];
       }
       {
         # Other git UIs
@@ -132,7 +133,7 @@
         # Doom: magit + forge
         programs.doom-emacs = {
           extraPackages = e: [e.magit-todos];
-          extraBinPackages = [forgeToken];
+          extraBinPackages = [bwsGet];
           tangle.init = {
             tools.magit = ["+forge"];
             ui.vc-gutter = ["+pretty"];
@@ -146,7 +147,7 @@
                      magit-diff-refine-hunk 'all))
 
             ;; Forge tokens from Bitwarden Secrets Manager (pulumi #257) via the
-            ;; forge-token script; fetched on demand, kept in memory only.
+            ;; bws-get script; fetched on demand, kept in memory only.
             (defvar +forge-token-keys
               '(("api.github.com" . "github/code-review/token")
                 ("gitlab.com/api/v4" . "gitlab/code-review/token")))
@@ -155,7 +156,7 @@
                 (dolist (h hosts found)
                   (when-let* (((not found))
                               (key (cdr (assoc h +forge-token-keys)))
-                              (token (car (ignore-errors (process-lines "forge-token" key)))))
+                              (token (car (ignore-errors (process-lines "bws-get" key)))))
                     (setq found (list (list :host h :user (plist-get spec :user)
                                             :secret token)))))))
             (with-eval-after-load 'auth-source
