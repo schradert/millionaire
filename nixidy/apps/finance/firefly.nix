@@ -116,13 +116,17 @@
             "VANITY_URL=https://${hostname}"
           ];
           persistence = {
-            # Only the token, not the signing keys that share the Secret.
+            # Only the token, not the signing keys that share the Secret. Projected into
+            # /secrets (not a subPath): a stale live /secrets mount made the subPath fail.
             secrets = {
               type = "secret";
               name = "firefly-passport";
+              items = lib.toList {
+                key = "FIREFLY_III_ACCESS_TOKEN";
+                path = "app_token.txt";
+              };
               globalMounts = lib.toList {
-                path = "/secrets/app_token.txt";
-                subPath = "FIREFLY_III_ACCESS_TOKEN";
+                path = "/secrets";
                 readOnly = true;
               };
             };
