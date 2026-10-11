@@ -54,6 +54,8 @@
             shm.useHost = true;
           };
           jvb.publicIPs = ["192.168.50.254"];
+          # The chart sets externalTrafficPolicy on a ClusterIP Service, which the API rejects.
+          jvb.service.externalTrafficPolicy = null;
           prosody.enabled = true;
           prosody.persistence.enabled = true;
           # prosody's 10-config init takes >30s here; the chart's default probes
