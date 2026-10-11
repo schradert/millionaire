@@ -1,0 +1,182 @@
+# Declarative Android fleet: an app catalog, named app sets, and devices.
+# Renders one Obtainium import (schemaVersion 2) per device plus static pages,
+# served on the cluster by nixidy/apps/home/android.nix. Phones pull: nothing
+# pushes to them. See docs/android.md.
+{
+  can,
+  config,
+  lib,
+  ...
+}: let
+  cfg = config.android;
+  inherit (config.canivete.meta) domain;
+  pins = import ../lib/pins.nix {inherit lib;};
+  apk = name: let
+    pin = pins.read ../pkgs/${name}/pin.json;
+  in {
+    inherit (pin) version hash;
+    url = pins.url pin;
+  };
+
+  # Obtainium fills unknown keys from its form defaults, but older builds read
+  # some of these unguarded; set the common ones explicitly.
+  baseSettings = {
+    trackOnly = false;
+    versionDetection = true;
+    autoApkFilterByArch = true;
+    fallbackToOlderReleases = true;
+    invertAPKFilter = false;
+    apkFilterRegEx = "";
+    exemptFromBackgroundUpdates = false;
+    skipUpdateNotifications = false;
+    refreshBeforeDownload = false;
+    about = "";
+  };
+
+  resolve = dev: let
+    names = lib.unique (lib.concatMap (s: cfg.sets.${s} or (throw "android.devices.${dev.name}: unknown set ${s}")) dev.sets
+      ++ dev.extraApps
+      ++ lib.optional dev.deviceOwner "dhizuku");
+  in
+    map (n: cfg.apps.${n} or (throw "android.devices.${dev.name}: unknown app ${n}")) names;
+
+  obtainium = dev: app: {
+    inherit (app) id url author name;
+    additionalSettings = builtins.toJSON (baseSettings
+      // {
+        appName = app.name;
+        includePrereleases = app.prerelease && !dev.stable;
+      }
+      // app.settings);
+    categories = [dev.owner];
+    pinned = false;
+    allowIdChange = false;
+  };
+
+  appsOf = dev: lib.filter (a: !a.web) (resolve dev);
+  webOf = dev: lib.filter (a: a.web) (resolve dev);
+
+  importJSON = dev: {
+    schemaVersion = 2;
+    apps = map (obtainium dev) (appsOf dev);
+    settings = null;
+  };
+  bootstrapJSON = dev:
+    importJSON dev
+    // {
+      settings = {
+        # "shizuku" covers Dhizuku's device-owner binder (granted_owner).
+        installMethod =
+          if dev.deviceOwner
+          then "shizuku"
+          else "system";
+        enableBackgroundUpdates = true;
+        updateInterval = 360;
+        bgUpdatesOnWiFiOnly = true;
+        checkOnStart = true;
+        includePrereleasesByDefault = false;
+      };
+    };
+
+  esc = lib.escapeXML;
+  page = title: body: ''
+    <!doctype html>
+    <html lang="en"><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>${esc title}</title>
+    <style>
+    body{font:16px/1.5 system-ui,sans-serif;max-width:40rem;margin:0 auto;padding:1rem;color:#111;background:#fff}
+    a.btn{display:block;margin:.5rem 0;padding:.8rem;border:2px solid #111;border-radius:.4rem;text-align:center;text-decoration:none;color:#111;font-weight:600}
+    li{margin:.2rem 0} code{font-size:.85em;word-break:break-all}
+    </style></head><body>
+    ${body}
+    </body></html>
+  '';
+  devicePage = dev: let
+    link = "obtainium://apps/" + lib.escapeURL (builtins.toJSON (importJSON dev).apps);
+    item = a: "<li><a href=\"${esc a.url}\">${esc a.name}</a> <code>${esc a.id}</code>${lib.optionalString (a.prerelease && !dev.stable) " (pre-release)"}</li>";
+    bootApk = name: let p = cfg.bootstrap.${name}; in "<li><a href=\"${esc p.url}\">${name} ${p.version}</a> <code>${p.hash}</code></li>";
+  in
+    page "${dev.name} apps" ''
+      <h1>${esc dev.name}</h1>
+      <p>Owner: ${dev.owner}. Install mode: ${
+        if dev.deviceOwner
+        then "silent (Dhizuku device owner)"
+        else "tap to install"
+      }.</p>
+      <a class="btn" href="${esc link}">Import app list into Obtainium</a>
+      <p>Import only adds or updates apps; uninstall anything not listed here by hand.</p>
+      <h2>Apps</h2><ul>
+      ${lib.concatMapStringsSep "\n" item (appsOf dev)}
+      </ul>
+      ${lib.optionalString (webOf dev != []) ''
+        <h2>Web apps</h2><p>Open in the browser, then "Add to Home screen".</p><ul>
+        ${lib.concatMapStringsSep "\n" (a: "<li><a href=\"${esc a.url}\">${esc a.name}</a></li>") (webOf dev)}
+        </ul>''}
+      <h2>First-time setup</h2><ol>
+      ${lib.concatMapStringsSep "\n" bootApk (["obtainium"] ++ lib.optional dev.deviceOwner "dhizuku")}
+      <li><a href="ntfy://${cfg.ntfyHost}/${dev.topic}">Subscribe ntfy to ${dev.topic}</a> (server https://${cfg.ntfyHost})</li>
+      <li><a href="${dev.name}-bootstrap.json" download>${dev.name}-bootstrap.json</a>: Obtainium, Settings, Import/export, Import (sets install mode and update schedule)</li>
+      </ol>
+    '';
+  indexPage = page "Android fleet" ''
+    <h1>Android fleet</h1><ul>
+    ${lib.concatMapStringsSep "\n" (d: "<li><a href=\"${d.name}.html\">${d.name}</a> (${d.owner})</li>") (lib.attrValues cfg.devices)}
+    </ul>
+  '';
+in {
+  options.android = {
+    hostname = can.str "page host on the internal gateway" {default = "android.${domain}";};
+    ntfyHost = can.str "ntfy server the phones subscribe to" {default = "ntfy.${domain}";};
+    apps = can.attrs.submodule "app catalog; an Obtainium source per app" ({name, ...}: {
+      options = {
+        id = can.str "Android package id (must match the APK)" {};
+        name = can.str "display name" {default = name;};
+        url = can.str "Obtainium source URL (GitHub/F-Droid/IzzyOnDroid/direct APK), or the page of a web app" {};
+        author = can.str "author shown by Obtainium" {default = "";};
+        prerelease = can.bool "track pre-releases/nightlies (ignored on stable devices)" {default = false;};
+        web = can.bool "web app (PWA): linked from the page, not installed by Obtainium" {default = false;};
+        settings = can.attrs.anything "extra Obtainium additionalSettings" {};
+      };
+    });
+    sets = can.attrs.list.str "named app sets (lists of android.apps names)" {};
+    devices = can.attrs.submodule "devices" ({
+      name,
+      config,
+      ...
+    }: {
+      options = {
+        name = can.str "device name" {default = name;};
+        owner = can.enum ["tristan" "family"] "person using the device; also its headscale user" {};
+        sets = can.list.str "android.sets to install" {};
+        extraApps = can.list.str "android.apps beyond the sets" {};
+        deviceOwner = can.bool "Dhizuku is device owner (needs a factory reset or zero accounts): silent installs" {default = false;};
+        stable = can.bool "never track pre-releases" {default = config.owner == "family";};
+        topic = can.str "ntfy topic nudged when the app list changes" {default = "android-${name}";};
+      };
+    });
+    bootstrap = can.attrs.anything "pinned bootstrap APKs (pkgs/<name>/pin.json)" {
+      readOnly = true;
+      default = lib.genAttrs ["obtainium" "dhizuku"] apk;
+    };
+    site = can.attrs.str "rendered files served at android.hostname" {
+      readOnly = true;
+      default =
+        {"index.html" = indexPage;}
+        // lib.concatMapAttrs (n: dev: {
+          "${n}.json" = builtins.toJSON (importJSON dev);
+          "${n}-bootstrap.json" = builtins.toJSON (bootstrapJSON dev);
+          "${n}.html" = devicePage dev;
+        })
+        cfg.devices;
+    };
+    hashes = can.attrs.str "per-device hash of everything that device imports" {
+      readOnly = true;
+      default = lib.mapAttrs (_: dev: builtins.hashString "sha256" (builtins.toJSON (bootstrapJSON dev))) cfg.devices;
+    };
+  };
+  config.perSystem = {pkgs, ...}: {
+    packages.android-site = pkgs.linkFarm "android-site" (lib.mapAttrs (n: pkgs.writeText n) cfg.site);
+    legacyPackages.android = {inherit (cfg) hashes;};
+  };
+}

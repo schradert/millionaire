@@ -1,0 +1,11 @@
+{
+  "version": "1.6.17",
+  "hash": "sha256-RtMXlwFuTQwgheIevmH6MN4jbjGzD/liK1FZMDS3aXE=",
+  "source": {
+    "type": "url-template",
+    "url": "https://github.com/ImranR98/Obtainium/releases/download/v{version}/app-release.apk",
+    "owner": "ImranR98",
+    "repo": "Obtainium",
+    "tagPrefix": "v"
+  }
+}
