@@ -6,9 +6,7 @@
   }: {
     home.packages = with pkgs; [
       inxi
-      onefetch
       cpufetch
-      fastfetch
     ];
     programs.macchina.enable = true;
     programs.macchina.settings = {
