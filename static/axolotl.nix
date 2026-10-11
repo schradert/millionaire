@@ -21,6 +21,7 @@
   services.xserver.videoDrivers = ["radeon" "displaylink" "modesetting" "fbdev"];
   # Desk layout: portrait LG HDR 4K, LG UltraFine 4K, then the panel (eDP-1)
   profiles.desktop.hyprland = {
+    enable = true;
     scale = 1.5;
     zoomScale = 3.0;
     monitors = {
