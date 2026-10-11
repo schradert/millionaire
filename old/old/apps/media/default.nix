@@ -1,8 +1,4 @@
 {
-  flake.overlays.media = _: prev: {
-    # replace youtube-dl everywhere
-    yt-dlp = prev.yt-dlp.override {withAlias = true;};
-  };
   dotfiles.home-manager = {
     lib,
     pkgs,
@@ -54,6 +50,5 @@
       d = "pan 100 0";
       o = "overlay";
     };
-    programs.yt-dlp.enable = true;
   };
 }

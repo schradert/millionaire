@@ -19,7 +19,6 @@
           (canivete.mkUnless config.programs.spicetify.enable [spotify spotify-player])
           (lib.mkIf stdenv.hostPlatform.isLinux [scope-tui])
         ];
-      programs.cava.enable = true;
       programs.doom-emacs.tangle.init.app.emms = true;
     };
   };
