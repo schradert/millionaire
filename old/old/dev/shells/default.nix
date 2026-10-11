@@ -10,7 +10,6 @@
         carapace
         zx
       ];
-      programs.fish.enable = true;
     };
   };
 }

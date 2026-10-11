@@ -17,7 +17,6 @@
         ]
         (lib.mkIf stdenv.hostPlatform.isLinux [
           koreader
-          venera
         ])
       ];
     programs.feh = {
