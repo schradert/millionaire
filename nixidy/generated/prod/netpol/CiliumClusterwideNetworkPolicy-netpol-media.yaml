@@ -1,0 +1,65 @@
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: netpol-media
+spec:
+  description: Default-deny ingress for media; baseline plus extraIngress only (nixidy/system/network/netpol.nix)
+  endpointSelector:
+    matchExpressions:
+      - key: k8s:io.kubernetes.pod.namespace
+        operator: In
+        values:
+          - media
+      - key: app.kubernetes.io/name
+        operator: NotIn
+        values:
+          - maintainerr
+          - navidrome
+          - qbittorrent
+  ingress:
+    - fromEntities:
+        - host
+        - remote-node
+        - ingress
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: prometheus
+            k8s:io.kubernetes.pod.namespace: observability
+        - matchLabels:
+            app.kubernetes.io/name: gatus
+            k8s:io.kubernetes.pod.namespace: observability
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: oauth2-proxy
+            k8s:io.kubernetes.pod.namespace: identity
+      toPorts:
+        - ports:
+            - port: "7474"
+              protocol: TCP
+            - port: "6767"
+              protocol: TCP
+            - port: "80"
+              protocol: TCP
+            - port: "6246"
+              protocol: TCP
+            - port: "9078"
+              protocol: TCP
+            - port: "8095"
+              protocol: TCP
+            - port: "4533"
+              protocol: TCP
+            - port: "8080"
+              protocol: TCP
+            - port: "5055"
+              protocol: TCP
+            - port: "8111"
+              protocol: TCP
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "1935"
+              protocol: TCP
