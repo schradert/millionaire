@@ -1,0 +1,185 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: media-e2e
+  namespace: media
+spec:
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 10800
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: media-e2e
+        spec:
+          containers:
+            - args:
+                - run
+              env:
+                - name: ADMIN_EMAIL
+                  value: t0rdos@pm.me
+                - name: DOMAIN
+                  value: trdos.me
+              image: harbor.trdos.me/library/media-e2e:0.1.0@sha256:8ca50b60fd4db923f47912cf1ae073828b66c7e4eea439ed621e02d7674eed3d
+              name: media-e2e
+              resources:
+                limits:
+                  memory: 512Mi
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - mountPath: /tmp
+                  name: tmp
+                - mountPath: /media/movies
+                  name: media-movies
+                - mountPath: /media/tv
+                  name: media-tv
+                - mountPath: /media/music
+                  name: media-music
+                - mountPath: /media/books
+                  name: media-books
+                - mountPath: /media/audiobooks
+                  name: media-audiobooks
+                - mountPath: /media/comics
+                  name: media-comics
+                - mountPath: /media/dvd
+                  name: media-dvd
+                - mountPath: /media/downloads
+                  name: media-downloads
+                - mountPath: /media/podcasts
+                  name: media-podcasts
+                - mountPath: /secrets/radarr-apikey
+                  name: radarr-apikey
+                  readOnly: true
+                - mountPath: /secrets/sonarr-apikey
+                  name: sonarr-apikey
+                  readOnly: true
+                - mountPath: /secrets/lidarr-apikey
+                  name: lidarr-apikey
+                  readOnly: true
+                - mountPath: /secrets/prowlarr-apikey
+                  name: prowlarr-apikey
+                  readOnly: true
+                - mountPath: /secrets/jellyfin-admin
+                  name: jellyfin-admin
+                  readOnly: true
+                - mountPath: /secrets/kavita-admin
+                  name: kavita-admin
+                  readOnly: true
+                - mountPath: /secrets/komga-admin
+                  name: komga-admin
+                  readOnly: true
+                - mountPath: /secrets/audiobookshelf-admin
+                  name: audiobookshelf-admin
+                  readOnly: true
+                - mountPath: /secrets/navidrome-admin
+                  name: navidrome-admin
+                  readOnly: true
+                - mountPath: /secrets/multi-scrobbler
+                  name: multi-scrobbler
+                  readOnly: true
+                - mountPath: /secrets/dvd-webdav
+                  name: dvd-webdav
+                  readOnly: true
+                - mountPath: /secrets/qbittorrent-admin
+                  name: qbittorrent-admin
+                  readOnly: true
+          restartPolicy: Never
+          securityContext:
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
+            supplementalGroups:
+              - 101
+          serviceAccountName: media-e2e
+          volumes:
+            - emptyDir: {}
+              name: tmp
+            - name: media-movies
+              persistentVolumeClaim:
+                claimName: media-movies
+            - name: media-tv
+              persistentVolumeClaim:
+                claimName: media-tv
+            - name: media-music
+              persistentVolumeClaim:
+                claimName: media-music
+            - name: media-books
+              persistentVolumeClaim:
+                claimName: media-books
+            - name: media-audiobooks
+              persistentVolumeClaim:
+                claimName: media-audiobooks
+            - name: media-comics
+              persistentVolumeClaim:
+                claimName: media-comics
+            - name: media-dvd
+              persistentVolumeClaim:
+                claimName: media-dvd
+            - name: media-downloads
+              persistentVolumeClaim:
+                claimName: media-downloads
+            - name: media-podcasts
+              persistentVolumeClaim:
+                claimName: media-podcasts
+            - name: radarr-apikey
+              secret:
+                optional: true
+                secretName: radarr-apikey
+            - name: sonarr-apikey
+              secret:
+                optional: true
+                secretName: sonarr-apikey
+            - name: lidarr-apikey
+              secret:
+                optional: true
+                secretName: lidarr-apikey
+            - name: prowlarr-apikey
+              secret:
+                optional: true
+                secretName: prowlarr-apikey
+            - name: jellyfin-admin
+              secret:
+                optional: true
+                secretName: jellyfin-admin
+            - name: kavita-admin
+              secret:
+                optional: true
+                secretName: kavita-admin
+            - name: komga-admin
+              secret:
+                optional: true
+                secretName: komga-admin
+            - name: audiobookshelf-admin
+              secret:
+                optional: true
+                secretName: audiobookshelf-admin
+            - name: navidrome-admin
+              secret:
+                optional: true
+                secretName: navidrome-admin
+            - name: multi-scrobbler
+              secret:
+                optional: true
+                secretName: multi-scrobbler
+            - name: dvd-webdav
+              secret:
+                optional: true
+                secretName: dvd-webdav
+            - name: qbittorrent-admin
+              secret:
+                optional: true
+                secretName: qbittorrent-admin
+      ttlSecondsAfterFinished: 86400
+  schedule: 0 0 1 1 *
+  suspend: true

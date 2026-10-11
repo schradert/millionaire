@@ -1,0 +1,9 @@
+{
+  "version": "0.1.0",
+  "digest": "sha256:8ca50b60fd4db923f47912cf1ae073828b66c7e4eea439ed621e02d7674eed3d",
+  "source": {
+    "type": "oci-tag",
+    "repository": "harbor.trdos.me/library/media-e2e",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}
