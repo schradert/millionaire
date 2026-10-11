@@ -404,7 +404,12 @@ pub async fn maintainerr(ctx: &Ctx, f: &mut Flow) -> R<()> {
     // library instead; the rule is still evaluated against the test movie only.
     let mut body = body;
     let r = ctx.http.post(format!("{base}/api/rules")).json(&body).send().await.at("maintainerr", "create test rule group")?;
-    if r.status() == reqwest::StatusCode::BAD_REQUEST && r.text().await.unwrap_or_default().contains("does not exist") {
+    let status = r.status();
+    let text = r.text().await.unwrap_or_default();
+    if !status.is_success() && !(status == reqwest::StatusCode::BAD_REQUEST && text.contains("does not exist")) {
+        return Err(Fail::new("maintainerr", "create test rule group", format!("HTTP {status}: {}", excerpt(&text))));
+    }
+    if !status.is_success() {
         let jf = crate::apps::Jellyfin::login(ctx).await?;
         let real = jf
             .virtual_folders(ctx)
