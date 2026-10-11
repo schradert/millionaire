@@ -24,7 +24,12 @@
     nameserver 1.1.1.1
     nameserver 1.0.0.1
   '';
-  canivete.kubernetes.yaml.kubelet-arg = ["resolv-conf=/etc/rke2-resolv.conf"];
+  canivete.kubernetes.yaml.kubelet-arg = [
+    "resolv-conf=/etc/rke2-resolv.conf"
+    # Serving cert from a kubernetes.io/kubelet-serving CSR (approved by
+    # kubelet-csr-approver) instead of the static one RKE2 writes at start.
+    "rotate-server-certificates=true"
+  ];
   # Nodes don't use tailnet DNS (accept-dns=false), so internal-only names
   # containerd pulls from must resolve locally: the internal gateway fronts Harbor.
   networking.hosts."192.168.50.241" = ["harbor.trdos.me"];
