@@ -9,10 +9,8 @@
       programs.doom-emacs.tangle.init.app.rss = true;
       programs.doom-emacs.extraPackages = e: [e.elfeed-protocol];
       home.packages = with pkgs; [
-        circumflex
         russ
         so
-        tuir
         tut
       ];
     };
