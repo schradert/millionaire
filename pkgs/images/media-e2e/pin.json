@@ -1,6 +1,6 @@
 {
-  "version": "0.1.2",
-  "digest": "sha256:a7478613cdbbbebb722f901bd574d34d5eb82fbef9461f40c6a7e25d2c2da3d5",
+  "version": "0.1.4",
+  "digest": "sha256:20da684e11370d1ee23977813ee1206544643b575c7c04fabd0f5ef257fc2045",
   "source": {
     "type": "oci-tag",
     "repository": "harbor.trdos.me/library/media-e2e",
