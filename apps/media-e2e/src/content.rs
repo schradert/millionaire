@@ -70,6 +70,45 @@ pub fn cc0_track() -> Item {
     item("E2E_MUSIC_URL", "https://archive.org/download/MeatForce-DoTheHussle/DoTheHussle.mp3", "track.mp3", "CC0 1.0")
 }
 
+/// Artist written into the test track's tags. A fixed name (not the run marker): Maloja keeps an
+/// artist row after its scrobbles are deleted and removes it only on a later hourly clean, so a
+/// per-run artist left one stale row per run; a fixed one is reused and at most one row lingers.
+pub const TEST_ARTIST: &str = "e2e-test-artist";
+
+/// MusicBrainz release group of Nine Inch Nails, "The Slip" (2008, 10 tracks).
+pub const SLIP_RELEASE_GROUP: &str = "5990b23f-6412-3eaf-989c-a4831f4f95f7";
+pub const SLIP_ARTIST_MBID: &str = "b7ffd2af-418f-4be2-bdd1-22f8b48613da";
+
+/// "The Slip" tracks as named in the Internet Archive item `The_Slip-2640` (mp3 and ogg of each).
+pub const SLIP_TRACKS: [&str; 10] = [
+    "01_-_999999",
+    "02_-_1000000",
+    "03_-_Letting_You",
+    "04_-_Discipline",
+    "05_-_Echoplex",
+    "06_-_Head_Down",
+    "07_-_Lights_in_the_Sky",
+    "08_-_Corona_Radiata",
+    "09_-_The_Four_of_Us_are_Dying",
+    "10_-_Demon_Seed",
+];
+
+/// Nine Inch Nails, "The Slip" (2008): released by the band under CC BY-NC-SA 3.0 US (each file's
+/// TCOP tag says so), kept on the Internet Archive by the Archive itself (`The_Slip-2640`,
+/// uploader jake@archive.org). The full-suite download is that item's web-seeded torrent through
+/// the VPN (only the 10 mp3s are selected); the offline suite fetches the same 10 files directly.
+pub fn slip_torrent() -> String {
+    var("E2E_SLIP_TORRENT", "https://archive.org/download/The_Slip-2640/The_Slip-2640_archive.torrent")
+}
+
+/// Direct URLs and file names of the 10 mp3s.
+pub fn slip_files() -> Vec<(String, String)> {
+    let base = var("E2E_SLIP_BASE", "https://archive.org/download/The_Slip-2640");
+    SLIP_TRACKS.iter().map(|t| (format!("{base}/Nine_Inch_Nails_-_{t}.mp3"), format!("Nine_Inch_Nails_-_{t}.mp3"))).collect()
+}
+
+pub const SLIP_LICENSE: &str = "CC BY-NC-SA 3.0 US (Nine Inch Nails)";
+
 /// Replace any ID3v2 header with our own (artist, album, title), so the track is unmistakably a test.
 pub fn retag_mp3(mp3: &[u8], artist: &str, album: &str, title: &str) -> Vec<u8> {
     let body = if mp3.len() > 10 && &mp3[..3] == b"ID3" {
@@ -125,6 +164,14 @@ mod tests {
         assert!(out.ends_with(b"\xff\xfbAUDIO"));
         assert_eq!(&out[..3], b"ID3");
         assert!(out.windows(4).any(|w| w == b"TPE1"));
+    }
+
+    #[test]
+    fn slip_files_are_the_ten_mp3s() {
+        let f = slip_files();
+        assert_eq!(f.len(), 10);
+        assert!(f[2].0.ends_with("/Nine_Inch_Nails_-_03_-_Letting_You.mp3"));
+        assert!(f.iter().all(|(u, n)| u.ends_with(n.as_str()) && n.ends_with(".mp3")));
     }
 
     #[test]

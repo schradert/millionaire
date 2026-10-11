@@ -11,9 +11,9 @@ use reqwest::{header, multipart, Method};
 use serde_json::{json, Value};
 
 use crate::{
-    apps::{Arr, Jellyfin, Qbt, Seerr},
+    apps::{Arr, Jellyfin, Navidrome, Qbt, Seerr},
     content,
-    ctx::{download, enc, excerpt, json, poll, send, var, At, Ctx, Fail, R},
+    ctx::{download, enc, excerpt, json, media_root, poll, send, var, write_file, At, Ctx, Fail, R},
     report::Flow,
 };
 
@@ -43,9 +43,16 @@ fn refuse_existing(app: &str, existing: &Value, ctx: &Ctx, what: &str) -> R<()> 
     Ok(())
 }
 
-/// Download `want_file` from the torrent at `url` through qBittorrent (VPN-only), tagged with
-/// the run marker, into `/media/downloads/.e2e-<run>`. Returns the finished file's path.
+/// Download the one file ending in `want_file` from the torrent at `url` through qBittorrent
+/// (VPN-only). Returns the finished file's path.
 pub async fn torrent(ctx: &Ctx, f: &mut Flow, url: &str, want_file: &str) -> R<PathBuf> {
+    let mut files = torrent_files(ctx, f, url, &|n| n.ends_with(want_file)).await?;
+    files.pop().at("qbittorrent", &format!("{want_file} not in the torrent"))
+}
+
+/// Download only the files of the torrent at `url` whose name satisfies `keep`, tagged with the
+/// run marker, into `/media/downloads/.e2e-<run>`. Returns the finished files' paths.
+pub async fn torrent_files(ctx: &Ctx, f: &mut Flow, url: &str, keep: &dyn Fn(&str) -> bool) -> R<Vec<PathBuf>> {
     if ctx.st().qbt_ready == Some(false) {
         return Err(Fail::new("qbittorrent", "precondition", "VPN leak checks failed; refusing to download"));
     }
@@ -77,8 +84,10 @@ pub async fn torrent(ctx: &Ctx, f: &mut Flow, url: &str, want_file: &str) -> R<P
         Ok(fl.as_array().filter(|a| !a.is_empty()).cloned())
     })
     .await?;
-    let (keep, skip): (Vec<&Value>, Vec<&Value>) = files.iter().partition(|x| x["name"].as_str().is_some_and(|n| n.ends_with(want_file)));
-    let keep = keep.first().copied().at("qbittorrent", &format!("{want_file} not in the torrent"))?;
+    let (keep, skip): (Vec<&Value>, Vec<&Value>) = files.iter().partition(|x| x["name"].as_str().is_some_and(&keep));
+    if keep.is_empty() {
+        return Err(Fail::new("qbittorrent", "select files", "none of the wanted files is in the torrent"));
+    }
     let idx = |v: &Value| v["index"].as_i64().map(|i| i.to_string());
     let skip_ids: Vec<String> = skip.iter().filter_map(|v| idx(v)).collect();
     if !skip_ids.is_empty() {
@@ -87,7 +96,8 @@ pub async fn torrent(ctx: &Ctx, f: &mut Flow, url: &str, want_file: &str) -> R<P
     if q.post_form(ctx, "/torrents/start", &[("hashes", &hash)]).await.is_err() {
         q.post_form(ctx, "/torrents/resume", &[("hashes", &hash)]).await?;
     }
-    f.ok("qbittorrent", "torrent added", format!("{hash}, downloading {want_file} only"));
+    let names: Vec<&str> = keep.iter().filter_map(|v| v["name"].as_str()).collect();
+    f.ok("qbittorrent", "torrent added", format!("{hash}, downloading {} of {} files", names.len(), files.len()));
     let start = std::time::Instant::now();
     poll("qbittorrent", "download completes", Duration::from_secs(var("E2E_TORRENT_TIMEOUT", "2700").parse().unwrap_or(2700)), Duration::from_secs(10), || async {
         let t = q.get(ctx, &format!("/torrents/info?hashes={hash}")).await?;
@@ -98,9 +108,9 @@ pub async fn torrent(ctx: &Ctx, f: &mut Flow, url: &str, want_file: &str) -> R<P
         Ok((t["progress"].as_f64().unwrap_or(0.0) >= 1.0).then_some(()))
     })
     .await?;
-    let path = save.join(keep["name"].as_str().unwrap_or(want_file));
-    f.ok("qbittorrent", "download complete over the VPN", format!("{} in {}s", path.display(), start.elapsed().as_secs()));
-    Ok(path)
+    let paths: Vec<PathBuf> = names.iter().map(|n| save.join(n)).collect();
+    f.ok("qbittorrent", "download complete over the VPN", format!("{} file(s) in {}s", paths.len(), start.elapsed().as_secs()));
+    Ok(paths)
 }
 
 /// Put `src` at `<downloads>/.e2e-<run>/import/<release>/<release>.<ext>` (hardlink, else copy),
@@ -337,8 +347,38 @@ pub async fn sonarr_chain(ctx: &Ctx, f: &mut Flow) -> R<()> {
     Ok(())
 }
 
-/// Lidarr add (test root + run tag). Import isn't covered: there is no CC0 album with a
-/// MusicBrainz release and a torrent wired in yet.
+/// Stage `files` as one release folder `<downloads>/.e2e-<run>/import/<release>/` (hardlink, else copy).
+fn stage_all(ctx: &Ctx, files: &[PathBuf], release: &str) -> R<PathBuf> {
+    let dir = ctx.dir("downloads").join("import").join(release);
+    fs::create_dir_all(&dir).at("fs", "mkdir import")?;
+    for src in files {
+        let dest = dir.join(src.file_name().at("fs", "file name")?);
+        if fs::hard_link(src, &dest).is_err() {
+            fs::copy(src, &dest).at("fs", "stage file")?;
+        }
+    }
+    Ok(dir)
+}
+
+/// The 10 mp3s of "The Slip": a torrent through the VPN (full suite) or direct downloads.
+async fn slip_files(ctx: &Ctx, f: &mut Flow) -> R<Vec<PathBuf>> {
+    if ctx.full {
+        return torrent_files(ctx, f, &content::slip_torrent(), &|n| n.ends_with(".mp3")).await;
+    }
+    let dir = ctx.dir("downloads").join("placed").join("slip");
+    let mut out = Vec::new();
+    let mut bytes = 0;
+    for (url, name) in content::slip_files() {
+        let p = dir.join(&name);
+        bytes += download(ctx, &url, &p).await?;
+        out.push(p);
+    }
+    f.ok("fs", "place files (no qBittorrent in this suite)", format!("{} files, {bytes} bytes, {}", out.len(), content::SLIP_LICENSE));
+    Ok(out)
+}
+
+/// Lidarr: add an album (and its artist, unmonitored, run tag, test root), import its files,
+/// then Navidrome serves them from the test root.
 pub async fn lidarr(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let lidarr = Arr::new("lidarr")?;
     let tag = lidarr.ensure_tag(ctx).await?;
@@ -346,30 +386,65 @@ pub async fn lidarr(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let quality = lidarr.get(ctx, "/qualityprofile").await?[0]["id"].as_i64().at("lidarr", "quality profile")?;
     let metadata = lidarr.get(ctx, "/metadataprofile").await?;
     let meta = metadata.as_array().into_iter().flatten().find(|m| m["name"] == json!("None")).or(metadata.as_array().and_then(|a| a.first())).and_then(|m| m["id"].as_i64()).at("lidarr", "metadata profile")?;
-    let root = ctx.dir("music").to_string_lossy().to_string();
+    // Visible (Navidrome skips dot-folders), outside Jellyfin's music library via `.ignore`.
+    let root = format!("{}/music/{}-lidarr", media_root(), ctx.marker);
     lidarr
         .ensure_root(ctx, &root, json!({ "name": ctx.marker, "defaultQualityProfileId": quality, "defaultMetadataProfileId": meta, "defaultMonitorOption": "none", "defaultNewItemMonitorOption": "none", "defaultTags": [tag] }))
         .await?;
-    let term = var("E2E_LIDARR_ARTIST", "Josh Woodward");
-    let found = lidarr.get(ctx, &format!("/artist/lookup?term={}", enc(&term))).await?;
-    let mut a = found.as_array().and_then(|a| a.first()).cloned().at("lidarr", "artist lookup")?;
-    let mbid = a["foreignArtistId"].clone();
+    write_file(&Path::new(&root).join(".ignore"), b"")?;
+    f.ok("lidarr", "test root folder + run tag", format!("{root}, tag {tag}"));
+
     let existing = lidarr.get(ctx, "/artist").await?;
-    if let Some(e) = existing.as_array().into_iter().flatten().find(|x| x["foreignArtistId"] == mbid) {
+    if let Some(e) = existing.as_array().into_iter().flatten().find(|x| x["foreignArtistId"] == json!(content::SLIP_ARTIST_MBID)) {
         if !has_marker(e, ctx) {
-            return Err(Fail::new("lidarr", "precondition", format!("{term} is already in Lidarr (real data); not touching it")));
+            return Err(Fail::new("lidarr", "precondition", format!("Nine Inch Nails is already in Lidarr at {} (real data); not touching it", e["path"])));
         }
     }
-    a["qualityProfileId"] = json!(quality);
-    a["metadataProfileId"] = json!(meta);
-    a["rootFolderPath"] = json!(root);
-    a["monitored"] = json!(false);
-    a["monitorNewItems"] = json!("none");
-    a["tags"] = json!([tag]);
-    a["addOptions"] = json!({ "monitor": "none", "searchForMissingAlbums": false });
-    let added = lidarr.post(ctx, "/artist", &a).await?;
-    f.ok("lidarr", "add artist (unmonitored, tagged)", format!("{} -> {}", added["artistName"], added["path"]));
-    f.ok("lidarr", "import", "not covered: no CC0 album with a MusicBrainz release + torrent wired in");
+    let found = lidarr.get(ctx, &format!("/album/lookup?term=lidarr:{}", content::SLIP_RELEASE_GROUP)).await?;
+    let mut album = found.as_array().and_then(|a| a.first()).cloned().at("lidarr", "album lookup (The Slip)")?;
+    album["monitored"] = json!(false);
+    album["anyReleaseOk"] = json!(true);
+    album["addOptions"] = json!({ "addType": "automatic", "searchForNewAlbum": false });
+    album["artist"]["qualityProfileId"] = json!(quality);
+    album["artist"]["metadataProfileId"] = json!(meta);
+    album["artist"]["rootFolderPath"] = json!(root);
+    album["artist"]["monitored"] = json!(false);
+    album["artist"]["monitorNewItems"] = json!("none");
+    album["artist"]["tags"] = json!([tag]);
+    album["artist"]["addOptions"] = json!({ "monitor": "none", "searchForMissingAlbums": false });
+    let added = lidarr.post(ctx, "/album", &album).await?;
+    let album_id = added["id"].as_i64().at("lidarr", "add album")?;
+    f.ok("lidarr", "add album (unmonitored, tagged)", format!("{} / {} -> {}", added["artist"]["artistName"], added["title"], added["artist"]["path"]));
+
+    let files = slip_files(ctx, f).await?;
+    let dir = stage_all(ctx, &files, "Nine Inch Nails - The Slip (2008) [MP3]-E2E")?;
+    lidarr.command(ctx, json!({ "name": "DownloadedAlbumsScan", "path": dir.to_string_lossy(), "importMode": if ctx.full { "Copy" } else { "Move" } })).await?;
+    let want = content::SLIP_TRACKS.len();
+    let imported = poll("lidarr", "import", Duration::from_secs(300), Duration::from_secs(5), || async {
+        let tf = lidarr.get(ctx, &format!("/trackfile?albumId={album_id}")).await?;
+        let tf = tf.as_array().cloned().unwrap_or_default();
+        Ok((tf.len() >= want).then(|| tf.iter().filter_map(|t| t["path"].as_str().map(String::from)).collect::<Vec<_>>()))
+    })
+    .await
+    .map_err(|e| Fail::new("lidarr", "import", format!("{} (see Lidarr Activity > Queue / logs for the rejection)", e.msg)))?;
+    if !imported.iter().all(|p| p.contains(&ctx.marker)) {
+        return Err(Fail::new("lidarr", "import", "a track file landed outside the test root"));
+    }
+    f.ok("lidarr", "album imported", format!("{} track files under {root}", imported.len()));
+
+    let nd = Navidrome::login(ctx).await?;
+    nd.sub(ctx, "startScan", &[]).await?;
+    let marker = ctx.marker.clone();
+    let songs = poll("navidrome", "imported album scanned", Duration::from_secs(300), Duration::from_secs(5), || async {
+        if nd.sub(ctx, "getScanStatus", &[]).await?["scanStatus"]["scanning"] == json!(true) {
+            return Ok(None);
+        }
+        let r = nd.sub(ctx, "search3", &[("query", "Slip"), ("songCount", "100"), ("artistCount", "0"), ("albumCount", "0")]).await?;
+        let mine: Vec<Value> = r["searchResult3"]["song"].as_array().into_iter().flatten().filter(|s| s["path"].as_str().is_some_and(|p| p.contains(&marker))).cloned().collect();
+        Ok((mine.len() >= want).then_some(mine))
+    })
+    .await?;
+    f.ok("navidrome", "Lidarr-imported album served", format!("{} songs, album {:?}", songs.len(), songs[0]["album"].as_str().unwrap_or("?")));
     Ok(())
 }
 

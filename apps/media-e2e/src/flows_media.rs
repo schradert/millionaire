@@ -304,7 +304,7 @@ pub async fn music(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let raw = fs::read(&tmp).at("fs", "read track")?;
     let _ = fs::remove_file(&tmp);
     let title = format!("{} track", ctx.marker);
-    write_file(&dir.join(format!("{}.mp3", ctx.marker)), &content::retag_mp3(&raw, &ctx.marker, &ctx.marker, &title))?;
+    write_file(&dir.join(format!("{}.mp3", ctx.marker)), &content::retag_mp3(&raw, content::TEST_ARTIST, &ctx.marker, &title))?;
     write_file(&dir.join(".ignore"), b"")?;
     f.ok("fs", "place CC0 track", format!("{} bytes, {}, tagged {title}", raw.len(), t.license));
 
