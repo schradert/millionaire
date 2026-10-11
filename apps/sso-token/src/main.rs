@@ -3,12 +3,14 @@
 //!   sso-token login    device authorization grant: prints a URL + code, polls
 //!   sso-token [token]  prints a fresh access token, refreshing silently
 //!   sso-token logout   revokes the offline session and forgets it
+//!   sso-token mcp URL  stdio MCP server forwarding to URL with the token (mcp.rs)
 //!
 //! SSO_ISSUER (realm URL) and SSO_CLIENT_ID (a public client with the device
 //! grant enabled) select the realm. The refresh token is an offline token, so
 //! one login per host lasts until it sits unused for the realm's offline idle
 //! timeout.
 
+mod mcp;
 mod store;
 
 use anyhow::{bail, Context, Result};
@@ -220,6 +222,8 @@ fn open_browser(url: &str) {
         .status();
 }
 
+const USAGE: &str = "usage: sso-token [token|login|logout|mcp <url>]";
+
 fn main() -> Result<()> {
     let client = Client::from_env()?;
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -227,8 +231,12 @@ fn main() -> Result<()> {
         None | Some("token") => println!("{}", client.token()?),
         Some("login") => client.login()?,
         Some("logout") => client.logout()?,
-        Some("-h" | "--help" | "help") => eprintln!("usage: sso-token [token|login|logout]"),
-        Some(other) => bail!("unknown command {other}; usage: sso-token [token|login|logout]"),
+        Some("mcp") => {
+            let url = args.get(1).cloned().context(USAGE)?;
+            mcp::run(url, Box::new(move || client.token()))?
+        }
+        Some("-h" | "--help" | "help") => eprintln!("{USAGE}"),
+        Some(other) => bail!("unknown command {other}; {USAGE}"),
     }
     Ok(())
 }

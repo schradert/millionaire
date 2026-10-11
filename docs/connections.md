@@ -31,13 +31,13 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | atuin | atuin account | done: `modules/atuin.nix` | done: `modules/atuin.nix` | done: `modules/atuin.nix` | n-a | atuin login (key on device) |
 | forgejo (git) | oauth2-proxy (UI); git over https and `/api` direct | web; git over ssh/https; todo: tea/fj CLI token | web; todo | n-a | todo (GitNex) | needs a token generator |
 | windmill, sveltekit-demo | OIDC / none | web | web | n-a | web | — |
-| bifrost | oauth2-proxy | todo: opencode provider (blocked, see Open questions) | todo (blocked) | n-a | n-a | — |
-| contextforge (mcp) | oauth2-proxy | todo: MCP entry (blocked) | todo (blocked) | n-a | n-a | — |
+| bifrost | oauth2-proxy (bearer) | done: opencode provider `bifrost` (plugin adds `sso-token`), `modules/sso.nix` | done: same | n-a | n-a | `sso-token` |
+| contextforge (mcp) | oauth2-proxy (bearer) | todo: `sso-token mcp https://mcp.trdos.me/…` is ready, contextforge rejects Keycloak tokens on `/mcp` (see Open questions) | todo (same) | n-a | n-a | `sso-token` |
 | librechat (chat) | oauth2-proxy + OIDC | web | web | n-a | web | — |
 | promptfoo | oauth2-proxy | web | web | n-a | n-a | — |
 | Kubernetes MCP | kubeconfig | done: mcp-k8s-go (read-only, context `trdos`), `modules/opencode.nix` | done: same | n-a | n-a | kubeconfig |
 | actual | oauth2-proxy | web | web | n-a | web (`actual` tile) | — |
-| firefly | oauth2-proxy | web | web | n-a | Waterfly (blocked by oauth2-proxy) | — |
+| firefly | oauth2-proxy | web | web | n-a | Waterfly (blocked: it sends a Firefly personal access token, which oauth2-proxy cannot verify) | — |
 | sure | OIDC | web | web | n-a | web | — |
 | mealie | OIDC | web | web | n-a | web (`mealie` tile) | — |
 | miniflux (rss) | password | done: newsboat + elfeed, `modules/feeds.nix` | done: `modules/feeds.nix` | n-a | todo (no reader in catalog) | bws `miniflux/tristan-password` (miniflux.nix) |
@@ -52,7 +52,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | bulwark (webmail) | OIDC | web (mail clients: mail workstream) | web | n-a | web | — |
 | jellyfin | OIDC | done: Jellyfin Media Player cask, `modules/media-clients.nix` | done: delfin, `modules/media-clients.nix` | done: delfin | done: Jellyfin | SSO |
 | navidrome | own login | done: feishin, `modules/media-clients.nix` | done: feishin | done: feishin | done: Tempus | bws `navidrome/admin-password` (navidrome.nix) |
-| immich | OIDC | done: immich-cli (`modules/media-clients.nix`); todo: API key for `immich login` | done: same | n-a | done: Immich | needs an API key generator |
+| immich | OIDC | done: immich-cli (`modules/media-clients.nix`); todo: API key for `immich login` (immich takes only its own session tokens and API keys, not Keycloak tokens) | done: same | n-a | done: Immich | todo: app-bootstrap immich creates tristan's key, Bitwarden `immich/tristan/api-key` |
 | audiobookshelf | oauth2-proxy | web | web | n-a | done: Audiobookshelf | — |
 | kavita, komga | OIDC | web (OPDS: docs/ereader-opds.md) | web | n-a | done: Mihon, Komelia | — |
 | sonarr, radarr, lidarr, prowlarr, bazarr, autobrr, maintainerr, seerr, shoko, ryot, multi-scrobbler, maloja | oauth2-proxy / own | web | web | n-a | web | — |
@@ -72,5 +72,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 
 - millionaire is on Mill's tailnet. Tailscale keeps one active profile at a time, so joining headscale there means `tailscale switch` by hand. Until then no `*.trdos.me` client on that Mac can connect.
 - oauth2-proxy accepts `Authorization: Bearer $(sso-token)` (`--skip-jwt-bearer-tokens`, audience `oauth2-proxy`), so API and MCP clients pass it as Keycloak user `tristan` with the same `groups` checks. Apps that only take their own API keys or JWTs in `Authorization` still cannot get through (Waterfly, WebDAV clients).
+- contextforge 1.0.11 accepts Keycloak tokens on `/mcp` only for a virtual server with `oauth_enabled` (`oauth_config.authorization_servers` = the realm, `resource` = `oauth2-proxy`), and resolves the user from its own database. Options: (a) app-bootstrap creates that server and enables Keycloak SSO (`SSO_KEYCLOAK_*`, `SSO_API_TOKEN_AUTH_ENABLED`) so tristan exists; needs a new app-bootstrap image; (b) `MCP_CLIENT_AUTH_ENABLED=false` + `TRUST_PROXY_AUTH(_DANGEROUSLY)=true` with the oauth2-proxy email header, plus a CiliumNetworkPolicy so only oauth2-proxy can send it (any pod that reaches contextforge could otherwise claim to be tristan).
+- Direct routes that skip oauth2-proxy stay where the clients speak a protocol with its own auth: baikal `/dav.php` (Digest), navidrome `/rest` (Subsonic), komga `/opds`, chirpstack gRPC, harbor `/v2` (robot accounts), forgejo git and `/api` (tokens).
 - syncthing: the hub's device ID is generated at runtime and its volume is not restored, so desktops cannot declare it as an introducer. The hub needs a pinned identity (cert/key as a generated secret) first.
 - Floccus: `dav.trdos.me` is behind oauth2-proxy, and the org-stack design drops WebDAV. The alternative backend is Floccus's Git sync against forgejo, which needs a token.
