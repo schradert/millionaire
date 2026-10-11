@@ -162,7 +162,7 @@ data:
       group: internal
       interval: 1m
       name: homepage
-      url: https://home.trdos.me
+      url: https://home.trdos.me/api/healthcheck
     - conditions:
       - '[STATUS] == any(200, 302, 401)'
       group: internal

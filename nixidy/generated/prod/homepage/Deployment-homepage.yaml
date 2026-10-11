@@ -1,6 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
   labels:
     app.kubernetes.io/controller: homepage
     app.kubernetes.io/instance: homepage
@@ -20,8 +22,6 @@ spec:
     type: Recreate
   template:
     metadata:
-      annotations:
-        checksum/configMaps: bc0e5703e1c85d1382d5ba28f555abc31457ab710a7a74ce86db67dcd33a45c3
       labels:
         app.kubernetes.io/controller: homepage
         app.kubernetes.io/instance: homepage
@@ -32,7 +32,29 @@ spec:
         - env:
             - name: HOMEPAGE_ALLOWED_HOSTS
               value: home.trdos.me
-          image: ghcr.io/gethomepage/homepage:v1.2.0@sha256:5e6bcbb595c4e857540577135e0f8b3ffc2e97c23d6e0ddc7df183de5bfdd442
+            - name: HOMEPAGE_AUTH_ENABLED
+              value: "true"
+            - name: HOMEPAGE_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: homepage-auth
+            - name: HOMEPAGE_EXTERNAL_URL
+              value: https://home.trdos.me
+            - name: HOMEPAGE_OIDC_AUTO_LOGIN
+              value: "true"
+            - name: HOMEPAGE_OIDC_CLIENT_ID
+              value: homepage
+            - name: HOMEPAGE_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: client_secret
+                  name: homepage-oidc
+            - name: HOMEPAGE_OIDC_ISSUER
+              value: https://keycloak.trdos.me/realms/default
+            - name: HOMEPAGE_OIDC_NAME
+              value: Keycloak
+          image: ghcr.io/gethomepage/homepage:v2.4.0@sha256:643bd0be730d40f69d58028a55d1a896739333e8815786df42bc97f109ecbe61
           livenessProbe:
             httpGet:
               httpHeaders:

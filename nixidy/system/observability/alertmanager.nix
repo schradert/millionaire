@@ -12,6 +12,10 @@
     ntfy = "https://ntfy.${domain}/alerts?template=alertmanager";
     heartbeat = "https://status.${domain}/api/v1/endpoints/cluster_watchdog/external?success=true";
   in {
+    portal.apps.alertmanager = {
+      title = "Alertmanager";
+      description = "Alert routing";
+    };
     gatus.endpoints.alertmanager = {
       url = "https://${hostname}";
       group = "internal";

@@ -16,6 +16,11 @@
       spec.httpGet.port = "http";
     };
   in {
+    portal.apps.firefly = {
+      title = "Firefly III";
+      icon = "firefly-iii";
+      description = "Personal finance manager";
+    };
     gatus.endpoints.firefly = {
       url = "https://${hostname}";
       group = "internal";

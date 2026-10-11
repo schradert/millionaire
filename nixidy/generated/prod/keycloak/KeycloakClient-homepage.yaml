@@ -1,0 +1,29 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: homepage
+  namespace: identity
+spec:
+  clientSecretRef:
+    create: true
+    name: homepage
+  definition:
+    attributes:
+      pkce.code.challenge.method: S256
+    clientId: homepage
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Homepage
+    protocol: openid-connect
+    publicClient: false
+    redirectUris:
+      - https://home.trdos.me/api/auth/callback/homepage-oidc
+    standardFlowEnabled: true
+    webOrigins:
+      - https://home.trdos.me
+  realmRef:
+    name: default

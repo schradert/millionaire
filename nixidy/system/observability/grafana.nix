@@ -30,6 +30,10 @@
         defaultClientScopes = ["openid" "profile" "email" "groups"];
       };
     };
+    portal.apps.grafana = {
+      title = "Grafana";
+      description = "Monitoring dashboards";
+    };
     gatus.endpoints.grafana = {
       url = "https://${hostname}";
       group = "internal";

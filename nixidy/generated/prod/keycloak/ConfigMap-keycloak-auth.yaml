@@ -74,6 +74,7 @@ data:
     ensure_scopes grafana default openid profile email groups
     ensure_scopes harbor default openid profile email groups
     ensure_scopes home-assistant default openid profile email groups
+    ensure_scopes homepage default openid profile email
     ensure_scopes immich default openid profile email groups
     ensure_scopes jellyfin default openid profile email groups
     ensure_scopes kavita default openid profile email roles groups

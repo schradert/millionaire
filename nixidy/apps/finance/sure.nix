@@ -104,6 +104,11 @@ in {
       };
     };
 
+    portal.apps.sure = {
+      title = "Sure";
+      icon = "mdi-finance";
+      description = "Financial planning";
+    };
     gatus.endpoints.sure = {
       url = "https://${hostname}";
       group = "internal";
