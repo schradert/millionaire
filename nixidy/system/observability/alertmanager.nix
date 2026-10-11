@@ -19,6 +19,12 @@
     gatus.endpoints.alertmanager = {
       url = "https://${hostname}";
       group = "internal";
+      conditions = ["[STATUS] == any(200, 302, 401)"];
+    };
+    # No login of its own: oauth2-proxy, admin only (portal.defaults.observability).
+    oauth2Proxy.upstreams.${hostname} = {
+      url = "http://alertmanager.observability.svc.cluster.local:9093";
+      namespace = "observability";
     };
     applications.alertmanager = {
       namespace = "observability";
@@ -126,8 +132,9 @@
         };
         rules = lib.toList {
           backendRefs = lib.toList {
-            name = "alertmanager";
-            port = 9093;
+            name = "oauth2-proxy";
+            namespace = "identity";
+            port = 4180;
           };
         };
       };

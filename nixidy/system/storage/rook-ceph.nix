@@ -19,6 +19,13 @@ in {
       requireSafeReplicaSize = false;
     };
   in {
+    # radosgw: S3 API (signed requests, no UI), so no tile and no oauth2-proxy.
+    portal.apps.rados.enable = false;
+    gatus.endpoints.rados = {
+      url = "https://rados.${domain}";
+      group = "internal";
+      conditions = ["[STATUS] == any(200, 403)"];
+    };
     gatus.endpoints.rook-ceph = {
       url = "https://${subdomain}";
       group = "internal";

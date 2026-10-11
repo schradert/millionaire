@@ -20,6 +20,12 @@
     gatus.endpoints.prometheus = {
       url = "https://prometheus.${config.canivete.meta.domain}";
       group = "internal";
+      conditions = ["[STATUS] == any(200, 302, 401)"];
+    };
+    # No login of its own: oauth2-proxy, admin only (portal.defaults.observability).
+    oauth2Proxy.upstreams."prometheus.${config.canivete.meta.domain}" = {
+      url = "http://prometheus-kube-prometheus-prometheus.observability.svc.cluster.local:9090";
+      namespace = "observability";
     };
     applications.prometheus = {
       namespace = "observability";
@@ -159,8 +165,9 @@
         };
         rules = lib.toList {
           backendRefs = lib.toList {
-            name = "prometheus-kube-prometheus-prometheus";
-            port = 9090;
+            name = "oauth2-proxy";
+            namespace = "identity";
+            port = 4180;
           };
         };
       };
