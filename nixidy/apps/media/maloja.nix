@@ -30,6 +30,32 @@
         values = {
           controllers.maloja = {
             annotations."reloader.stakater.com/auto" = "true";
+            # Registers multi-scrobbler's generated key (Secret multi-scrobbler) as a Maloja
+            # API key before start. Maloja keeps keys in /mljdata/apikeys.yml
+            # (flat `identifier: key` lines, doreah KeyStore; the image's python has no yaml); other entries are left alone.
+            initContainers.apikeys = {
+              image = pinned.images.maloja;
+              command = [
+                "python3"
+                "-c"
+                ''
+                  import os
+                  f = "/mljdata/apikeys.yml"
+                  try:
+                      lines = [l for l in open(f).read().splitlines() if l.strip() and l.strip() != "{}"]
+                  except FileNotFoundError:
+                      lines = []
+                  want = "multi-scrobbler: " + os.environ["MALOJA_API_KEY"]
+                  if want not in lines:
+                      lines = [l for l in lines if not l.startswith("multi-scrobbler:")] + [want]
+                      open(f, "w").write("\n".join(lines) + "\n")
+                ''
+              ];
+              env.MALOJA_API_KEY.valueFrom.secretKeyRef = {
+                name = "multi-scrobbler";
+                key = "MALOJA_API_KEY";
+              };
+            };
             containers.maloja = {
               image = pinned.images.maloja;
               envFrom = [

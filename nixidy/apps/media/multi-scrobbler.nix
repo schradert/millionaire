@@ -77,8 +77,8 @@
           };
         };
       };
-      # Random once, never refreshed. Maloja must have this value registered as an
-      # API key (Maloja settings -> API keys) for scrobbles to be accepted.
+      # Random once, never refreshed. Maloja registers it as an API key itself (init
+      # container in maloja.nix writes it to apikeys.yml).
       resources.passwords.multi-scrobbler.spec = {
         length = 32;
         digits = 10;

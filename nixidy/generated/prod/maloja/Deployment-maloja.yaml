@@ -70,6 +70,35 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
+      initContainers:
+        - command:
+            - python3
+            - -c
+            - |
+              import os
+              f = "/mljdata/apikeys.yml"
+              try:
+                  lines = [l for l in open(f).read().splitlines() if l.strip() and l.strip() != "{}"]
+              except FileNotFoundError:
+                  lines = []
+              want = "multi-scrobbler: " + os.environ["MALOJA_API_KEY"]
+              if want not in lines:
+                  lines = [l for l in lines if not l.startswith("multi-scrobbler:")] + [want]
+                  open(f, "w").write("\n".join(lines) + "\n")
+          env:
+            - name: MALOJA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: MALOJA_API_KEY
+                  name: multi-scrobbler
+          image: krateng/maloja:3.2.4@sha256:4ecea26058d2ca5168a8d53820279942d28f0606664cea6425f42371d5d88f95
+          name: apikeys
+          volumeMounts:
+            - mountPath: /mljdata
+              name: data
+            - mountPath: /tmp
+              name: tmpfs
+              subPath: tmp
       serviceAccountName: maloja
       volumes:
         - name: data
