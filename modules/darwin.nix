@@ -6,7 +6,19 @@
       flake.inputs.nix-homebrew.darwinModules.nix-homebrew
       flake.inputs.mac-app-util.darwinModules.default
     ];
-    home-manager.sharedModules = [flake.inputs.mac-app-util.homeManagerModules.default];
+    home-manager.sharedModules = [
+      flake.inputs.mac-app-util.homeManagerModules.default
+      {
+        # Reset CoreAudio when output devices wedge
+        programs.zsh.initContent = ''
+          fixaudio() {
+            sudo rm /Library/Preferences/Audio/com.apple.audio.DeviceSettings.plist
+            sudo rm /Library/Preferences/Audio/com.apple.audio.SystemSettings.plist
+            sudo killall coreaudiod
+          }
+        '';
+      }
+    ];
     homebrew.enable = true;
     nix-homebrew = {
       enable = true;
