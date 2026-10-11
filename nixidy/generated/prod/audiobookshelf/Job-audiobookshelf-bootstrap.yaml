@@ -28,6 +28,8 @@ spec:
               value: audiobookshelf
             - name: OIDC_CLIENT_SECRET_FILE
               value: /secrets/oidc/client_secret
+            - name: OIDC_GROUP_CLAIM
+              value: abs_groups
           image: harbor.trdos.me/library/app-bootstrap:0.4.0@sha256:8c8773894446288a8f19d6babb2cc531ef2c233d2f511c703c6f88b1c5cdc1ab
           name: bootstrap
           securityContext:

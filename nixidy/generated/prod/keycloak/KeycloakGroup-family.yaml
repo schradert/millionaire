@@ -5,6 +5,9 @@ metadata:
   namespace: identity
 spec:
   definition:
+    attributes:
+      abs_group:
+        - user
     name: family
   realmRef:
     name: default
