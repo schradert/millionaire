@@ -399,7 +399,24 @@ pub async fn maintainerr(ctx: &Ctx, f: &mut Flow) -> R<()> {
             "visibleOnRecommended": false, "keepLogsForMonths": 6, "sortTitle": "", "overlayEnabled": false,
         },
     });
-    send(ctx.http.post(format!("{base}/api/rules")).json(&body), "maintainerr", "create test rule group").await?;
+    // Maintainerr caches Jellyfin's library list for 30 minutes, so a library created this run is
+    // usually unknown to it. Then anchor the (inactive, Maintainerr-only) group on a real movies
+    // library instead; the rule is still evaluated against the test movie only.
+    let mut body = body;
+    let r = ctx.http.post(format!("{base}/api/rules")).json(&body).send().await.at("maintainerr", "create test rule group")?;
+    if r.status() == reqwest::StatusCode::BAD_REQUEST && r.text().await.unwrap_or_default().contains("does not exist") {
+        let jf = crate::apps::Jellyfin::login(ctx).await?;
+        let real = jf
+            .virtual_folders(ctx)
+            .await?
+            .into_iter()
+            .find(|v| v["CollectionType"] == json!("movies") && !v["Name"].as_str().is_some_and(|n| n.contains("e2e-")))
+            .and_then(|v| v["ItemId"].as_str().map(String::from))
+            .at("maintainerr", "find a movies library")?;
+        body["libraryId"] = json!(real);
+        send(ctx.http.post(format!("{base}/api/rules")).json(&body), "maintainerr", "create test rule group").await?;
+        f.ok("maintainerr", "anchor library", "test library not in Maintainerr's 30-min cache yet; anchored on the real Movies library (group inactive, no collection)");
+    }
     let groups = json(ctx.http.get(format!("{base}/api/rules")), "maintainerr", "list rule groups").await?;
     let id = groups.as_array().into_iter().flatten().find(|g| g["name"] == json!(ctx.marker)).and_then(|g| g["id"].as_i64()).at("maintainerr", "find test rule group")?;
     f.ok("maintainerr", "create inactive rule group", format!("id {id}"));
