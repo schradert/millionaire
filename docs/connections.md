@@ -35,7 +35,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | contextforge (mcp) | oauth2-proxy | todo: MCP entry (blocked) | todo (blocked) | n-a | n-a | — |
 | librechat (chat) | oauth2-proxy + OIDC | web | web | n-a | web | — |
 | promptfoo | oauth2-proxy | web | web | n-a | n-a | — |
-| Kubernetes MCP | kubeconfig | todo: `modules/opencode.nix` | todo: `modules/opencode.nix` | n-a | n-a | kubeconfig |
+| Kubernetes MCP | kubeconfig | done: mcp-k8s-go (read-only, context `trdos`), `modules/opencode.nix` | done: same | n-a | n-a | kubeconfig |
 | actual | oauth2-proxy | web | web | n-a | web (`actual` tile) | — |
 | firefly | oauth2-proxy | web | web | n-a | Waterfly (blocked by oauth2-proxy) | — |
 | sure | OIDC | web | web | n-a | web | — |
