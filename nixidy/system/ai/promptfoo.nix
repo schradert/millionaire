@@ -1,6 +1,9 @@
 {config, ...}: let
   inherit (config.canivete.meta) domain;
   hostname = "promptfoo.${domain}";
+  # AI provider keys are user-supplied (Bitwarden `ai/{anthropic,openai}/api-key`, see
+  # docs/manual-steps.md). Until then there is no ExternalSecret and the Secret is optional.
+  providerKeys = false;
 in {
   nixidy = {
     charts,
@@ -48,7 +51,12 @@ in {
                 OLLAMA_BASE_URL = "http://ollama.ai.svc.cluster.local:11434";
                 OPENAI_BASE_URL = "http://bifrost.ai.svc.cluster.local:8000/v1";
               };
-              envFrom = lib.toList {secretRef.name = "promptfoo";};
+              envFrom = lib.toList {
+                secretRef = {
+                  name = "promptfoo";
+                  optional = true;
+                };
+              };
               ports = lib.toList {
                 name = "http";
                 containerPort = 3000;
@@ -84,23 +92,25 @@ in {
         };
       };
 
-      resources.externalSecrets.promptfoo.spec = {
-        secretStoreRef.name = "bitwarden";
-        secretStoreRef.kind = "ClusterSecretStore";
-        target.template.data = {
-          ANTHROPIC_API_KEY = "{{ .anthropic_key }}";
-          OPENAI_API_KEY = "{{ .openai_key }}";
+      resources.externalSecrets.promptfoo = lib.mkIf providerKeys {
+        spec = {
+          secretStoreRef.name = "bitwarden";
+          secretStoreRef.kind = "ClusterSecretStore";
+          target.template.data = {
+            ANTHROPIC_API_KEY = "{{ .anthropic_key }}";
+            OPENAI_API_KEY = "{{ .openai_key }}";
+          };
+          data = [
+            {
+              secretKey = "anthropic_key";
+              remoteRef.key = "ai/anthropic/api-key";
+            }
+            {
+              secretKey = "openai_key";
+              remoteRef.key = "ai/openai/api-key";
+            }
+          ];
         };
-        data = [
-          {
-            secretKey = "anthropic_key";
-            remoteRef.key = "ai/anthropic/api-key";
-          }
-          {
-            secretKey = "openai_key";
-            remoteRef.key = "ai/openai/api-key";
-          }
-        ];
       };
     };
 
