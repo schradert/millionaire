@@ -1,0 +1,11 @@
+{
+  "version": "2.12.0",
+  "hash": "sha256-JDziai2tIOZgRSBy6IkTA4cLhffpvRjF22X3Hb4SAnw=",
+  "source": {
+    "type": "url-template",
+    "url": "https://github.com/iamr0s/Dhizuku/releases/download/v{version}/Dhizuku_v{version}.apk",
+    "owner": "iamr0s",
+    "repo": "Dhizuku",
+    "tagPrefix": "v"
+  }
+}
