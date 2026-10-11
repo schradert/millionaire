@@ -98,6 +98,11 @@
     intraNamespace = true;
     cnpg = true;
   };
+  nixidy.netpol.namespaces.printing = {
+    enforce = true;
+    intraNamespace = true;
+    cnpg = true;
+  };
   nixidy.applications.namespaces.resources.namespaces = {
     development = {};
     finance = {};
