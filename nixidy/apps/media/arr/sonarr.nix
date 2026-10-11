@@ -9,6 +9,7 @@
     hostname = "sonarr.${domain}";
     port = 80;
   in {
+    portal.apps.sonarr.groups = ["admin"];
     gatus.endpoints.sonarr = {
       url = "https://${hostname}";
       group = "internal";

@@ -9,6 +9,7 @@
     hostname = "lidarr.${domain}";
     port = 80;
   in {
+    portal.apps.lidarr.groups = ["admin"];
     gatus.endpoints.lidarr = {
       url = "https://${hostname}";
       group = "internal";

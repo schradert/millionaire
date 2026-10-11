@@ -53,6 +53,9 @@
     '';
   in {
     options.portal = {
+      defaults = can.attrs.submodule "Tile defaults per app namespace" {
+        options.groups = can.list.str "Default groups for tiles in this namespace" {default = [];};
+      };
       apps = can.attrs.submodule "Launcher tiles each app registers" ({name, ...}: {
         options.enable = can.bool "Show this tile" {default = true;};
         options.title = can.str "Display name" {default = name;};
@@ -68,9 +71,12 @@
     };
     config.portal = {
       apps = lib.mkMerge [
-        (lib.mapAttrs (name: ep: {
+        (lib.mapAttrs (name: ep: let
+          ns = namespaceOf name ep.url;
+        in {
           url = lib.mkDefault (origin ep.url);
-          section = lib.mkDefault (sectionOf (namespaceOf name ep.url));
+          section = lib.mkDefault (sectionOf ns);
+          groups = lib.mkDefault (cfg.defaults.${ns}.groups or []);
         }) (lib.filterAttrs (_: ep: lib.hasPrefix "http" ep.url) config.gatus.endpoints))
         # The sign-in endpoint, not an app.
         {oauth2-proxy.enable = false;}

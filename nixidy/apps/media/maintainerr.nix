@@ -8,6 +8,7 @@
     inherit (config.canivete.meta) domain;
     hostname = "maintainerr.${domain}";
   in {
+    portal.apps.maintainerr.groups = ["admin"];
     gatus.endpoints.maintainerr = {
       url = "https://${hostname}";
       group = "internal";

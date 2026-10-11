@@ -24,6 +24,7 @@ in {
       spec.tcpSocket.port = 8080;
     };
   in {
+    portal.apps.chirpstack.groups = ["admin"];
     gatus.endpoints.chirpstack = {
       url = "https://${hostname}";
       group = "internal";
