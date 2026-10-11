@@ -8,6 +8,10 @@ in {
     ...
   }: let
     nixImage = with pinned.images.nix; "${repository}:${tag}@${digest}";
+    # deps-update's GitHub token is user-supplied (Bitwarden `github/update-bot/token`,
+    # see docs/manual-steps.md). Until then no ExternalSecret and the CronWorkflow stays
+    # suspended; flip to true once the item exists.
+    updateBotToken = false;
   in {
     applications.argo-workflows-crds.namespace = "kube-system";
     canivete.crds.argo-workflows = {
@@ -332,13 +336,15 @@ in {
         };
         # GitHub token for the weekly dependency-update PRs (contents + pull
         # requests write on schradert/millionaire).
-        externalSecrets.argo-workflows-github.spec = {
-          secretStoreRef.name = "bitwarden";
-          secretStoreRef.kind = "ClusterSecretStore";
-          target.name = "argo-workflows-github";
-          data = lib.toList {
-            secretKey = "GITHUB_TOKEN";
-            remoteRef.key = "github/update-bot/token";
+        externalSecrets.argo-workflows-github = lib.mkIf updateBotToken {
+          spec = {
+            secretStoreRef.name = "bitwarden";
+            secretStoreRef.kind = "ClusterSecretStore";
+            target.name = "argo-workflows-github";
+            data = lib.toList {
+              secretKey = "GITHUB_TOKEN";
+              remoteRef.key = "github/update-bot/token";
+            };
           };
         };
         # deps-update's identity towards the build pool. Generated in-cluster
@@ -367,8 +373,7 @@ in {
         # gated and pushed to branch deps/<kind> with one PR per kind, then
         # build-all (x86_64-linux) on a pool node; failures make the PR a draft.
         cronWorkflows.deps-update.spec = {
-          # Unsuspend once github/update-bot/token exists in Bitwarden.
-          suspend = true;
+          suspend = !updateBotToken;
           schedules = ["0 6 * * 1"];
           timezone = "America/Los_Angeles";
           concurrencyPolicy = "Forbid";
