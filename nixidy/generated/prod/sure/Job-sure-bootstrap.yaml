@@ -17,18 +17,61 @@ spec:
             - ./bin/rails
             - runner
             - |
+              require "net/http"
+              require "json"
+              require "cgi"
+
               email = ENV.fetch("ADMIN_EMAIL").strip.downcase
               first, last = ENV.fetch("ADMIN_NAME").split(" ", 2)
+
+              kc = ENV.fetch("KEYCLOAK_URL")
+              sub = nil
+              60.times do
+                begin
+                  res = Net::HTTP.post_form(
+                    URI("#{kc}/realms/master/protocol/openid-connect/token"),
+                    grant_type: "password", client_id: "admin-cli",
+                    username: ENV.fetch("KEYCLOAK_USER"), password: ENV.fetch("KEYCLOAK_PASSWORD")
+                  )
+                  raise "keycloak login: HTTP #{res.code}" unless res.is_a?(Net::HTTPSuccess)
+                  token = JSON.parse(res.body).fetch("access_token")
+                  uri = URI("#{kc}/admin/realms/default/users?username=#{CGI.escape(ENV.fetch("OIDC_USERNAME"))}&exact=true")
+                  res = Net::HTTP.start(uri.host, uri.port) do |http|
+                    http.request(Net::HTTP::Get.new(uri, "Authorization" => "Bearer #{token}"))
+                  end
+                  raise "keycloak user lookup: HTTP #{res.code}" unless res.is_a?(Net::HTTPSuccess)
+                  sub = JSON.parse(res.body).first&.fetch("id")
+                  break if sub
+                  warn "sure-bootstrap: keycloak user not found yet"
+                rescue StandardError => e
+                  warn "sure-bootstrap: #{e.message}"
+                end
+                sleep 5
+              end
+              raise "could not resolve the keycloak user" unless sub
+
               User.transaction do
-                if User.find_by(email: email)
-                  puts "sure-bootstrap: user exists, nothing to do"
+                user = User.find_by(email: email)
+                if user
+                  puts "sure-bootstrap: user exists"
                 else
-                  User.create!(
+                  user = User.create!(
                     email: email, first_name: first, last_name: last,
                     password: ENV.fetch("ADMIN_PASSWORD"),
                     family: Family.create!, role: :super_admin
                   )
                   puts "sure-bootstrap: created super_admin"
+                end
+                identity = OidcIdentity.find_by(provider: "openid_connect", uid: sub)
+                if identity
+                  raise "oidc identity #{sub} is linked to another user" unless identity.user_id == user.id
+                  puts "sure-bootstrap: oidc identity already linked"
+                else
+                  OidcIdentity.create!(
+                    user: user, provider: "openid_connect", uid: sub,
+                    issuer: ENV.fetch("OIDC_ISSUER"), info: { email: email }
+                  )
+                  puts "sure-bootstrap: linked oidc identity"
                 end
               end
           env:
@@ -36,6 +79,17 @@ spec:
               value: t0rdos@pm.me
             - name: ADMIN_NAME
               value: Tristan Schrader
+            - name: KEYCLOAK_URL
+              value: http://keycloak.identity.svc.cluster.local:8080
+            - name: KEYCLOAK_USER
+              value: admin
+            - name: KEYCLOAK_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: sure-keycloak-admin
+            - name: OIDC_USERNAME
+              value: tristan
             - name: ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
