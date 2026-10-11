@@ -1,6 +1,5 @@
 # Exceptions to tools/pin-lint: <path> <rule|*> <reason>. Keep it short.
 tools/update/src/ sri test fixtures, and FAKE_HASH (the placeholder update builds with to learn derived hashes)
-nixidy/apps/printing/mooncord.nix image-tag ghcr.io/eliteschwein/mooncord does not exist (registry 403), so no digest exists
 nixidy/system/ai/heretic.nix image-tag ghcr.io/p-e-w/heretic does not exist (registry 403), so no digest exists
 nixidy/generated/prod/dragonflydb/Pod-dragonflydb-dragonfly-operator-test-connection.yaml * helm test hook; Argo CD never runs it
 nixidy/generated/prod/forgejo/Pod-forgejo-test-connection.yaml * helm test hook; Argo CD never runs it
