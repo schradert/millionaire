@@ -42,7 +42,7 @@ in {
         values = {
           controllers.promptfoo = {
             annotations."reloader.stakater.com/auto" = "true";
-            # The image runs as promptfoo (uid 100, gid 101); the PVC was root-owned.
+            # The image runs as promptfoo (uid 100, gid 101): data under its home, not /root (0700).
             pod.securityContext = {
               fsGroup = 101;
               fsGroupChangePolicy = "OnRootMismatch";
@@ -51,7 +51,7 @@ in {
               image = pinned.images.promptfoo;
               # The image's default command serves the web UI on :3000.
               env = {
-                PROMPTFOO_CONFIG_DIR = "/root/.promptfoo";
+                PROMPTFOO_CONFIG_DIR = "/home/promptfoo/.promptfoo";
                 PROMPTFOO_SHARE_STORE_TYPE = "sqlite";
                 PROMPTFOO_SHARE_TTL = "0";
                 OLLAMA_BASE_URL = "http://ollama.ai.svc.cluster.local:11434";
@@ -77,7 +77,7 @@ in {
             type = "persistentVolumeClaim";
             accessMode = "ReadWriteOnce";
             size = "5Gi";
-            globalMounts = lib.toList {path = "/root/.promptfoo";};
+            globalMounts = lib.toList {path = "/home/promptfoo/.promptfoo";};
           };
         };
       };
