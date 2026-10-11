@@ -1,6 +1,6 @@
 # Atuin shell-history sync server. The client can't do SSO (no cookies), so
-# there is no oauth2-proxy: the tailnet-only route is the access control, and
-# registration stays open for the bootstrap job.
+# there is no oauth2-proxy: the tailnet-only route is the access control.
+# Registration is closed; accounts come from the bootstrap Job (users below).
 {config, ...}: let
   inherit (config.canivete.meta) domain people;
 in {
@@ -11,6 +11,13 @@ in {
     ...
   }: let
     hostname = "atuin.${domain}";
+    # Accounts the bootstrap Job creates: name -> email. Each gets a generated
+    # password, pushed to Bitwarden at atuin/<name>/password.
+    users.tristan = people.my.profiles.personal.email;
+    dbUri.valueFrom.secretKeyRef = {
+      name = "atuin-app";
+      key = "uri";
+    };
   in {
     gatus.endpoints.atuin = {
       url = "https://${hostname}";
@@ -19,7 +26,7 @@ in {
     applications.atuin = {
       namespace = "development";
       postgres.enable = true;
-      generatedSecrets.atuin-tristan.key = "password";
+      generatedSecrets = lib.mapAttrs' (user: _: lib.nameValuePair "atuin-${user}" {key = "password";}) users;
       helm.releases.atuin = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
@@ -29,14 +36,11 @@ in {
             env = {
               ATUIN_HOST = "0.0.0.0";
               ATUIN_PORT = "8888";
-              ATUIN_OPEN_REGISTRATION = "true";
+              ATUIN_OPEN_REGISTRATION = "false";
               ATUIN_METRICS__ENABLE = "true";
               ATUIN_METRICS__HOST = "0.0.0.0";
               ATUIN_METRICS__PORT = "9001";
-              ATUIN_DB_URI.valueFrom.secretKeyRef = {
-                name = "atuin-app";
-                key = "uri";
-              };
+              ATUIN_DB_URI = dbUri;
             };
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
@@ -71,79 +75,117 @@ in {
           };
         };
       };
-      resources.pushSecrets.atuin-tristan.spec = {
-        secretStoreRefs = lib.toList {
-          name = "bitwarden";
-          kind = "ClusterSecretStore";
-        };
-        selector.secret.name = "atuin-tristan";
-        data = lib.toList {
-          match = {
-            secretKey = "password";
-            remoteRef.remoteKey = "atuin/tristan/password";
-          };
-        };
-      };
-      # Idempotent post-sync bootstrap: Tristan's account with the generated
-      # password (apps/app-bootstrap atuin, >= 0.3.0). Rendered once the image
-      # is published (`image publish app-bootstrap`) and pinned as
-      # pkgs/images/app-bootstrap-atuin.
-      resources.jobs = lib.optionalAttrs (pinned.images ? app-bootstrap-atuin) {
-        atuin-bootstrap = {
-          metadata.annotations = {
-            "argocd.argoproj.io/hook" = "PostSync";
-            "argocd.argoproj.io/hook-delete-policy" = "BeforeHookCreation";
-          };
+      resources.pushSecrets = lib.mapAttrs' (user: _:
+        lib.nameValuePair "atuin-${user}" {
           spec = {
-            backoffLimit = 6;
-            activeDeadlineSeconds = 1200;
-            template.spec = {
-              restartPolicy = "OnFailure";
-              automountServiceAccountToken = false;
-              securityContext = {
-                runAsNonRoot = true;
-                runAsUser = 65534;
-                runAsGroup = 65534;
-                seccompProfile.type = "RuntimeDefault";
+            secretStoreRefs = lib.toList {
+              name = "bitwarden";
+              kind = "ClusterSecretStore";
+            };
+            selector.secret.name = "atuin-${user}";
+            data = lib.toList {
+              match = {
+                secretKey = "password";
+                remoteRef.remoteKey = "atuin/${user}/password";
               };
-              containers = lib.toList {
-                name = "bootstrap";
+            };
+          };
+        })
+      users;
+      # Idempotent post-sync bootstrap (apps/app-bootstrap atuin): logs each user
+      # in, registers it if that fails. Registration goes through a private
+      # sidecar server on the same database with registration open, bound to
+      # the pod's loopback, so the public server never accepts sign-ups.
+      resources.jobs.atuin-bootstrap = let
+        hardened = {
+          allowPrivilegeEscalation = false;
+          readOnlyRootFilesystem = true;
+          capabilities.drop = ["ALL"];
+        };
+      in {
+        metadata.annotations = {
+          "argocd.argoproj.io/hook" = "PostSync";
+          "argocd.argoproj.io/hook-delete-policy" = "BeforeHookCreation";
+        };
+        spec = {
+          backoffLimit = 6;
+          activeDeadlineSeconds = 1200;
+          template.spec = {
+            restartPolicy = "OnFailure";
+            automountServiceAccountToken = false;
+            securityContext = {
+              runAsNonRoot = true;
+              runAsUser = 65534;
+              runAsGroup = 65534;
+              seccompProfile.type = "RuntimeDefault";
+            };
+            # Native sidecar: stopped once the bootstrap containers finish.
+            initContainers = lib.toList {
+              name = "registrar";
+              restartPolicy = "Always";
+              image = with pinned.images.atuin; "${repository}:${tag}@${digest}";
+              args = ["start"];
+              env = lib.mapAttrsToList (name: value:
+                {inherit name;}
+                // (
+                  if lib.isString value
+                  then {inherit value;}
+                  else value
+                )) {
+                ATUIN_HOST = "127.0.0.1";
+                ATUIN_PORT = "8888";
+                ATUIN_OPEN_REGISTRATION = "true";
+                ATUIN_DB_URI = dbUri;
+              };
+              volumeMounts = lib.toList {
+                name = "config";
+                mountPath = "/config";
+              };
+              securityContext = hardened;
+            };
+            containers =
+              lib.mapAttrsToList (user: email: {
+                name = "bootstrap-${user}";
                 image = with pinned.images.app-bootstrap-atuin; "${repository}:${tag}@${digest}";
                 args = ["atuin"];
                 env = [
                   {
                     name = "ATUIN_URL";
-                    value = "http://atuin.development.svc.cluster.local:8888";
+                    value = "http://127.0.0.1:8888";
                   }
                   {
                     name = "ATUIN_USER";
-                    value = "tristan";
+                    value = user;
                   }
                   {
                     name = "ATUIN_EMAIL";
-                    value = people.my.profiles.personal.email;
+                    value = email;
                   }
                   {
                     name = "ATUIN_PASSWORD_FILE";
-                    value = "/secrets/password";
+                    value = "/secrets/${user}/password";
                   }
                 ];
                 volumeMounts = lib.toList {
-                  name = "password";
-                  mountPath = "/secrets";
+                  name = "password-${user}";
+                  mountPath = "/secrets/${user}";
                   readOnly = true;
                 };
-                securityContext = {
-                  allowPrivilegeEscalation = false;
-                  readOnlyRootFilesystem = true;
-                  capabilities.drop = ["ALL"];
-                };
-              };
-              volumes = lib.toList {
-                name = "password";
-                secret.secretName = "atuin-tristan";
-              };
-            };
+                securityContext = hardened;
+              })
+              users;
+            volumes =
+              [
+                {
+                  name = "config";
+                  emptyDir = {};
+                }
+              ]
+              ++ lib.mapAttrsToList (user: _: {
+                name = "password-${user}";
+                secret.secretName = "atuin-${user}";
+              })
+              users;
           };
         };
       };
