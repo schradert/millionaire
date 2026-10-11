@@ -303,6 +303,9 @@ in {
       #   media-e2e cleanup --run <id> [--dry-run] | cleanup --all [--dry-run]
       # KUBECTL overrides kubectl, e.g. off-LAN:
       #   KUBECTL="ssh 192.184.168.248 sudo -n /var/lib/rancher/rke2/bin/kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml"
+      # HOME_IP is the home egress IP the VPN leak tests must never see; unset, it is taken from
+      # E2E_HOME_IP_HOST (ssh host on the home network, e.g. 192.184.168.248: `curl ifconfig.me`
+      # there), else the Job's own egress.
       scripts.media-e2e.exec = ''
         set -euo pipefail
         k=''${KUBECTL:-kubectl}
@@ -312,13 +315,19 @@ in {
         out="''${E2E_OUT:-''${TMPDIR:-/tmp}/media-e2e}/$run_id"
         mkdir -p "$out"
         args=$(printf '%s\n' "$@" | jq -R . | jq -cs .)
+        home_ip=''${HOME_IP:-}
+        if [ -z "$home_ip" ] && [ -n "''${E2E_HOME_IP_HOST:-}" ]; then
+          home_ip=$(ssh -o ConnectTimeout=10 "$E2E_HOME_IP_HOST" curl -s -m 10 ifconfig.me || true)
+        fi
+        printf '%s' "$home_ip" | grep -Eq '^[0-9]{1,3}(\.[0-9]{1,3}){3}$' || home_ip=""
         $k -n media get cronjob media-e2e -o json \
-          | jq --arg job "$job" --arg run "$run_id" --argjson args "$args" '{
+          | jq --arg job "$job" --arg run "$run_id" --arg home "$home_ip" --argjson args "$args" '{
               apiVersion: "batch/v1", kind: "Job",
               metadata: {name: $job, namespace: "media", labels: {"app.kubernetes.io/name": "media-e2e"}},
               spec: (.spec.jobTemplate.spec
                 | .template.spec.containers[0].args = $args
-                | .template.spec.containers[0].env += [{name: "E2E_RUN_ID", value: $run}])
+                | .template.spec.containers[0].env += [{name: "E2E_RUN_ID", value: $run}]
+                | .template.spec.containers[0].env += (if $home != "" then [{name: "HOME_IP", value: $home}] else [] end))
             }' \
           | $k create -f -
         echo "job $job (run $run_id); log and report in $out" >&2
