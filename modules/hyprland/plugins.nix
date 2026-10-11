@@ -1,9 +1,9 @@
 # Hyprland plugins (hy3 tiling, hyprspace overview, hyprfocus) plus pyprland
 # scratchpads/menus and hyprshade's scheduled screen shaders.
-# hy3 and hyprspace are pinned (pkgs/{hy3,hyprspace}) to builds that match
-# nixpkgs' Hyprland; hyprfocus is upstream's hyprland-plugins one (it absorbed
-# the schradert/hyprfocus fork's flash/shrink idea; its `animatefocused`
-# dispatcher is gone). Dropped: hyprshade's color-filter (no longer shipped).
+# hyprspace is pinned (pkgs/hyprspace) to a build that matches nixpkgs'
+# Hyprland; hy3 is nixpkgs'. hyprfocus is upstream's hyprland-plugins one (it
+# absorbed the schradert/hyprfocus fork's flash/shrink idea; its
+# `animatefocused` dispatcher is gone). Dropped: hyprshade's color-filter (no longer shipped).
 {
   home = {
     config,
@@ -25,7 +25,7 @@
     config = lib.mkIf config.profiles.desktop.hyprland.enable {
       home.packages = [pkgs.pyprland pkgs.hyprshade];
       wayland.windowManager.hyprland = {
-        plugins = [(pinnedPlugin "hy3") (pinnedPlugin "hyprspace") pkgs.hyprlandPlugins.hyprfocus];
+        plugins = [pkgs.hyprlandPlugins.hy3 (pinnedPlugin "hyprspace") pkgs.hyprlandPlugins.hyprfocus];
         settings = {
           general.layout = "hy3";
           plugin.hy3 = {
