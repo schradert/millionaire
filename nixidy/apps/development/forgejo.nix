@@ -1,12 +1,26 @@
-{config, ...}: {
+{config, ...}: let
+  inherit (config.canivete.meta) domain;
+  hostname = "git.${domain}";
+in {
+  # `tea` logs in through Forgejo's built-in `tea` OAuth2 app (loopback
+  # redirect), so its token comes from a Forgejo SSO login (Keycloak) and is
+  # refreshed by tea; no personal access token. One-time per host: `tea-login`.
+  home = {
+    config,
+    lib,
+    pkgs,
+    ...
+  }: {
+    config = lib.mkIf config.profiles.workstation.enable {
+      home.packages = [pkgs.tea];
+      home.shellAliases.tea-login = "tea login add --name trdos --url https://${hostname} --oauth";
+    };
+  };
   nixidy = {
     lib,
     pinned,
     ...
-  }: let
-    inherit (config.canivete.meta) domain;
-    hostname = "git.${domain}";
-  in {
+  }: {
     portal.apps.forgejo.groups = ["admin"];
     gatus.endpoints.forgejo = {
       url = "https://${hostname}";
@@ -156,9 +170,10 @@
             };
           };
         };
-        # git over HTTPS (git and git-lfs User-Agents) and the token API skip
-        # oauth2-proxy; ssh is its own LoadBalancer. Header matches outrank the
-        # plain "/" route (Gateway API precedence).
+        # git over HTTPS (git and git-lfs User-Agents), the token API and the
+        # OAuth2 token endpoint (tea's code exchange and refresh) skip
+        # oauth2-proxy; ssh is its own LoadBalancer. Header and path matches
+        # outrank the plain "/" route (Gateway API precedence).
         httpRoutes.forgejo-git.spec = {
           hostnames = [hostname];
           parentRefs = lib.toList {
@@ -188,12 +203,20 @@
             sectionName = "https";
           };
           rules = lib.toList {
-            matches = lib.toList {
-              path = {
-                type = "PathPrefix";
-                value = "/api/";
-              };
-            };
+            matches = [
+              {
+                path = {
+                  type = "PathPrefix";
+                  value = "/api/";
+                };
+              }
+              {
+                path = {
+                  type = "Exact";
+                  value = "/login/oauth/access_token";
+                };
+              }
+            ];
             backendRefs = lib.toList {
               name = "forgejo-http";
               port = 3000;
