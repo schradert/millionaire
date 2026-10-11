@@ -8,6 +8,7 @@
     ./finance/firefly.nix
     ./finance/sure.nix
     ./health/mealie.nix
+    ./home/android.nix
     ./home/chirpstack.nix
     ./home/excalidraw.nix
     ./home/frigate.nix

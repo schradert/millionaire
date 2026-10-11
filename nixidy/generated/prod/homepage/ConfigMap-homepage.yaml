@@ -237,6 +237,10 @@ data:
           href: https://mealie.trdos.me
           icon: mealie
     - Home:
+      - Android:
+          description: Per-device app lists
+          href: https://android.trdos.me
+          icon: mdi-android
       - Dashy:
           description: Portal
           href: https://dashy.trdos.me
