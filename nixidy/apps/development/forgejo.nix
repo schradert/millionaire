@@ -1,6 +1,8 @@
 {config, ...}: let
-  inherit (config.canivete.meta) domain;
+  inherit (config.canivete.meta) domain people;
   hostname = "git.${domain}";
+  # Floccus (docs/connections.md) syncs browser bookmarks to this repo over git+https.
+  bookmarks = "${people.me}/bookmarks";
 in {
   # `tea` logs in through Forgejo's built-in `tea` OAuth2 app (loopback
   # redirect), so its token comes from a Forgejo SSO login (Keycloak) and is
@@ -20,7 +22,12 @@ in {
     lib,
     pinned,
     ...
-  }: {
+  }: let
+    # apps/app-bootstrap forgejo (>= 0.18.0): tristan's user, the private bookmarks repo and
+    # a write:repository token for Floccus in forgejo-tristan-floccus, pushed to Bitwarden
+    # forgejo/tristan/floccus-token.
+    bootstrapped = pinned.images ? app-bootstrap-forgejo;
+  in {
     portal.apps.forgejo.groups = ["admin"];
     gatus.endpoints.forgejo = {
       url = "https://${hostname}";
@@ -61,6 +68,34 @@ in {
         bitwarden = "forgejo/admin-password";
       };
       postgres.enable = true;
+      bootstrap = lib.mkIf bootstrapped {
+        image = with pinned.images.app-bootstrap-forgejo; "${repository}:${tag}@${digest}";
+        args = ["forgejo"];
+        env = {
+          FORGEJO_URL = "http://forgejo-http.development.svc.cluster.local:3000";
+          ADMIN_PASSWORD_FILE = "/secrets/admin/password";
+          USER = people.me;
+          USER_EMAIL = people.my.profiles.personal.email;
+          REPO = baseNameOf bookmarks;
+          TOKEN_NAME = "floccus";
+          TOKEN_SCOPES = "write:repository";
+          SECRET_NAME = "forgejo-tristan-floccus";
+        };
+        secrets.admin = "forgejo-admin";
+        rules = [
+          {
+            apiGroups = [""];
+            resources = ["secrets"];
+            verbs = ["create"];
+          }
+          {
+            apiGroups = [""];
+            resources = ["secrets"];
+            resourceNames = ["forgejo-tristan-floccus"];
+            verbs = ["get" "patch"];
+          }
+        ];
+      };
       # Repos and attachments live on the chart's `persistence` PVC (the chart
       # names it gitea-shared-storage); forgejo-1 is the CNPG database volume.
       volsync.pvcs.data-forgejo-0 = {
@@ -220,6 +255,47 @@ in {
             backendRefs = lib.toList {
               name = "forgejo-http";
               port = 3000;
+            };
+          };
+        };
+
+        # Floccus: a browser extension, so neither the git User-Agent route nor
+        # oauth2-proxy fits; only the bookmarks repo's smart-HTTP paths skip oauth2-proxy,
+        # and Forgejo checks the token (private repo).
+        httpRoutes.forgejo-floccus = lib.mkIf bootstrapped {
+          spec = {
+            hostnames = [hostname];
+            parentRefs = lib.toList {
+              name = "internal";
+              namespace = "kube-system";
+              sectionName = "https";
+            };
+            rules = lib.toList {
+              matches = lib.toList {
+                path = {
+                  type = "PathPrefix";
+                  value = "/${bookmarks}.git";
+                };
+              };
+              backendRefs = lib.toList {
+                name = "forgejo-http";
+                port = 3000;
+              };
+            };
+          };
+        };
+        pushSecrets.forgejo-tristan-floccus = lib.mkIf bootstrapped {
+          spec = {
+            secretStoreRefs = lib.toList {
+              name = "bitwarden";
+              kind = "ClusterSecretStore";
+            };
+            selector.secret.name = "forgejo-tristan-floccus";
+            data = lib.toList {
+              match = {
+                secretKey = "token";
+                remoteRef.remoteKey = "forgejo/tristan/floccus-token";
+              };
             };
           };
         };
