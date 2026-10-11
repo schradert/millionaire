@@ -45,6 +45,7 @@
     ./security/external-secrets
     ./security/generated-secrets.nix
     ./security/kubelet-csr-approver.nix
+    ./storage/backup-verify.nix
     ./storage/clickhouse.nix
     ./storage/dragonflydb.nix
     ./storage/postgres.nix
@@ -66,6 +67,7 @@
     resources.namespaces = {
       ai = {};
       ai-sandbox = {};
+      backup-verify = {};
       cicd = {};
       mail = {};
       observability = {};

@@ -83,3 +83,28 @@ For a real restore, use the same Cluster spec under the original name after dele
 - CNPG ScheduledBackups with no recent backup: windmill and chirpstack (93d), immich (107d), hydra/keto/kratos (205d, clusters no longer exist).
 - No VolSync source for any PVC in `ai`, for `frigate-media`, or for the CephFS media libraries except `media-dvd`
   (`media-movies` 500Gi, `media-tv`, `media-music`, ...).
+
+## Monthly automated verification
+
+`nixidy/system/storage/backup-verify.nix` runs `apps/backup-verify/backup-verify.sh` as a CronJob (`backup-verify` namespace, 12:00 UTC on the 1st):
+
+- `restic check --read-data-subset` (1% of each repository, capped at 2 GiB) on every VolSync repository that has synced.
+- One rotating volume restored into a NEW scratch PVC (the procedure above), file count/bytes compared with `restic ls`, three sampled files
+  checksummed against `restic dump`. Repositories over 10 GiB are skipped in the rotation.
+- One rotating CNPG database restored into a NEW scratch cluster (no `backup` section), table and row counts read; table count must not drop
+  versus the previous run (kept in ConfigMap `backup-verify-state`). The live database is never queried.
+- Newest `etcd/` object in B2 younger than 12h.
+
+Scratch resources live only in `backup-verify`, labelled `app.kubernetes.io/part-of=backup-verify`, and are deleted at the end of every step
+and on exit (also on failure or deadline). The Job fails if any check failed and POSTs the failures to ntfy; alerts `BackupVerificationFailed`
+and `BackupVerificationStale` (no success in 35 days) read the CronJob series from kube-state-metrics.
+
+Manual run, optionally pinned to one target (`STEPS` picks checks, `VERIFY_VOLUME` is a repository name, `VERIFY_DATABASE` a CNPG cluster name):
+
+```sh
+kubectl -n backup-verify create job --from=cronjob/backup-verify bv-manual   # rotation picks the targets
+# to pin targets, add env to a copy of the job spec, e.g. VERIFY_VOLUME=volsync--seerr--seerr VERIFY_DATABASE=mealie
+kubectl -n backup-verify logs -f job/bv-manual
+```
+
+A manual Job does not update the CronJob's status, so it does not clear an alert; the next scheduled run does.
