@@ -17,6 +17,7 @@
     hostname = "maloja.${domain}";
     port = 42010;
   in {
+    portal.apps.maloja.groups = ["admin"];
     gatus.endpoints.maloja = {
       url = "https://${hostname}";
       group = "internal";

@@ -9,6 +9,7 @@
     hostname = "prowlarr.${domain}";
     port = 80;
   in {
+    portal.apps.prowlarr.groups = ["admin"];
     gatus.endpoints.prowlarr = {
       url = "https://${hostname}";
       group = "internal";

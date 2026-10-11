@@ -27,6 +27,7 @@ in {
       portal.apps.gatus = {
         title = "Gatus";
         description = "Uptime monitoring";
+        groups = [];
       };
       gatus.endpoints.gatus = {
         url = "https://${hostname}";

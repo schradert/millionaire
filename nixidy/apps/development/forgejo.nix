@@ -7,6 +7,7 @@
     inherit (config.canivete.meta) domain;
     hostname = "git.${domain}";
   in {
+    portal.apps.forgejo.groups = ["admin"];
     gatus.endpoints.forgejo = {
       url = "https://${hostname}";
       group = "internal";

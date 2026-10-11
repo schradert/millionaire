@@ -95,6 +95,7 @@
       };
     };
   in {
+    portal.apps = lib.optionalAttrs credentials {qbittorrent.groups = ["admin"];};
     gatus.endpoints = lib.optionalAttrs credentials {
       qbittorrent = {
         url = "https://${hostname}";

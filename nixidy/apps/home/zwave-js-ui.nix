@@ -9,6 +9,7 @@
     hostname = "zwave.${domain}";
     stick = "/dev/serial/by-id/usb-Nabu_Casa_ZWA-2_1CDBD4AEBC68-if00";
   in {
+    portal.apps.zwave-js-ui.groups = ["admin"];
     gatus.endpoints.zwave-js-ui = {
       url = "https://${hostname}";
       group = "internal";

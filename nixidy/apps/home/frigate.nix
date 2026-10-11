@@ -19,6 +19,7 @@
       spec.httpGet.port = 5000;
     };
   in {
+    portal.apps.frigate.groups = ["admin"];
     gatus.endpoints.frigate = {
       url = "https://${hostname}";
       group = "internal";

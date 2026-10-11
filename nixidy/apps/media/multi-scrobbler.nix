@@ -18,6 +18,7 @@ in {
     hostname = "multi-scrobbler.${domain}";
     port = 9078;
   in {
+    portal.apps.multi-scrobbler.groups = ["admin"];
     gatus.endpoints.multi-scrobbler = {
       url = "https://${hostname}/health";
       group = "internal";

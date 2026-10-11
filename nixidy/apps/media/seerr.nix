@@ -10,6 +10,7 @@ in {
     inherit (config.canivete.meta) domain;
     hostname = "seerr.${domain}";
   in {
+    portal.apps.seerr.groups = ["admin"];
     gatus.endpoints.seerr = {
       url = "https://${hostname}";
       group = "internal";

@@ -50,6 +50,14 @@
     ./storage/rook-ceph.nix
     ./storage/volsync.nix
   ];
+  # Admin-only namespaces: tiles hidden from, and oauth2-proxy upstreams closed
+  # to, everyone outside Keycloak `admin` (apps override per tile).
+  nixidy.portal.defaults = {
+    cicd.groups = ["admin"];
+    identity.groups = ["admin"];
+    observability.groups = ["admin"];
+    storage.groups = ["admin"];
+  };
   nixidy.applications.namespaces = {
     namespace = "kube-system";
     annotations."argocd.argoproj.io/sync-wave" = "1";

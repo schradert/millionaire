@@ -8,6 +8,7 @@
     inherit (config.canivete.meta) domain;
     hostname = "bazarr.${domain}";
   in {
+    portal.apps.bazarr.groups = ["admin"];
     gatus.endpoints.bazarr = {
       url = "https://${hostname}";
       group = "internal";

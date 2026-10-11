@@ -9,6 +9,7 @@
     hostname = "radarr.${domain}";
     port = 80;
   in {
+    portal.apps.radarr.groups = ["admin"];
     gatus.endpoints.radarr = {
       url = "https://${hostname}";
       group = "internal";

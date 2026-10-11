@@ -15,6 +15,7 @@
     # USB stick is plugged in (similar to zwave-js-ui.nix).
     serialPort = "/dev/serial/by-id/TBD-zigbee-stick";
   in {
+    portal.apps.zigbee2mqtt.groups = ["admin"];
     gatus.endpoints.zigbee2mqtt = {
       url = "https://${hostname}";
       group = "internal";

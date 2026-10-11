@@ -8,6 +8,7 @@
     hostname = "windmill.${domain}";
     namespace = "development";
   in {
+    portal.apps.windmill.groups = ["admin"];
     gatus.endpoints.windmill = {
       url = "https://${hostname}/api/version";
       group = "internal";

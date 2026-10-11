@@ -10,6 +10,7 @@ in {
     inherit (config.canivete.meta) domain;
     hostname = "autobrr.${domain}";
   in {
+    portal.apps.autobrr.groups = ["admin"];
     gatus.endpoints.autobrr = {
       url = "https://${hostname}";
       group = "internal";
