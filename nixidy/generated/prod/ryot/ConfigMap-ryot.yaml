@@ -5,7 +5,7 @@ data:
   SERVER_INSECURE_COOKIE: "false"
   SERVER_OIDC_CLIENT_ID: ryot
   SERVER_OIDC_ISSUER_URL: https://keycloak.trdos.me/realms/default
-  USERS_ALLOW_REGISTRATION: "true"
+  USERS_ALLOW_REGISTRATION: "false"
   VIDEO_GAMES_TWITCH_CLIENT_ID: ""
   VIDEO_GAMES_TWITCH_CLIENT_SECRET: ""
 kind: ConfigMap
