@@ -20,7 +20,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: e3992b382205e13881cbac2bda793c7f969949ace0bb0f11f3899224786c8492
+        checksum/configMaps: bd27842b237cfcbf8c4a33fab06fbdc8506d62d5d4fe4d01af018b83bc628b40
       labels:
         app.kubernetes.io/controller: generic-device-plugin
         app.kubernetes.io/instance: generic-device-plugin

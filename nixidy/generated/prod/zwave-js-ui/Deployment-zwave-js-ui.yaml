@@ -47,8 +47,9 @@ spec:
             tcpSocket:
               port: 8091
             timeoutSeconds: 1
-          securityContext:
-            privileged: true
+          resources:
+            limits:
+              devic.es/zwave: 1
           startupProbe:
             failureThreshold: 3
             initialDelaySeconds: 0
@@ -62,15 +63,11 @@ spec:
               subPath: settings.json
             - mountPath: /usr/src/app/store
               name: store
-            - mountPath: /dev/serial/by-id/usb-Nabu_Casa_ZWA-2_1CDBD4AEBC68-if00
-              name: usb
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
       hostIPC: false
       hostNetwork: false
       hostPID: false
-      nodeSelector:
-        kubernetes.io/hostname: sirver
       serviceAccountName: zwave-js-ui
       volumes:
         - configMap:
@@ -79,6 +76,3 @@ spec:
         - name: store
           persistentVolumeClaim:
             claimName: zwave-js-ui
-        - hostPath:
-            path: /dev/serial/by-id/usb-Nabu_Casa_ZWA-2_1CDBD4AEBC68-if00
-          name: usb

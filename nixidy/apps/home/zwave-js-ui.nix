@@ -7,12 +7,14 @@
   }: let
     inherit (config.canivete.meta) domain;
     hostname = "zwave.${domain}";
+    stick = "/dev/serial/by-id/usb-Nabu_Casa_ZWA-2_1CDBD4AEBC68-if00";
   in {
     gatus.endpoints.zwave-js-ui = {
       url = "https://${hostname}";
       group = "internal";
       conditions = ["[STATUS] == any(200, 302, 401)"];
     };
+    genericDevices.zwave.paths = [stick];
     applications.zwave-js-ui = {
       namespace = "home";
       volsync.pvcs.zwave-js-data = {
@@ -24,12 +26,10 @@
         values = {
           controllers.zwave-js-ui = {
             annotations."reloader.stakater.com/auto" = "true";
-            pod = {
-              nodeSelector."kubernetes.io/hostname" = "sirver";
-            };
             containers.zwave-js-ui = {
               image = pinned.images.zwave-js-ui;
-              securityContext.privileged = true;
+              # The stick via generic-device-plugin; schedules onto whichever node has it.
+              resources.limits."devic.es/zwave" = 1;
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
               probes.startup.enabled = true;
@@ -58,19 +58,9 @@
           };
           configMaps.zwave-js-ui-settings.data."settings.json" = builtins.toJSON {
             zwave = {
-              port = "/dev/serial/by-id/usb-Nabu_Casa_ZWA-2_1CDBD4AEBC68-if00";
+              port = stick;
               enabled = true;
             };
-          };
-          persistence.usb = {
-            type = "hostPath";
-            hostPath = "/dev/serial/by-id/usb-Nabu_Casa_ZWA-2_1CDBD4AEBC68-if00";
-            advancedMounts.zwave-js-ui.zwave-js-ui = [
-              {
-                path = "/dev/serial/by-id/usb-Nabu_Casa_ZWA-2_1CDBD4AEBC68-if00";
-                readOnly = false;
-              }
-            ];
           };
           route.zwave-js-ui = {
             hostnames = [hostname];
