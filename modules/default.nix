@@ -116,7 +116,6 @@
             beeper
             spotify
             discord
-            brave
             # FIXME darwin: compiler-rt-libc build failure — move to a shared
             # list once nixpkgs' darwin stdenv bootstrap is fixed
             picard
