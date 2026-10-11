@@ -8,7 +8,8 @@
     ...
   }: {
     config = lib.mkIf config.profiles.workstation.enable {
-      home.packages = with pkgs; [croc librespeed-cli nmap rustscan termscp];
+      # termscp on darwin: nixpkgs samba dylibs keep build-dir install names (dyld abort)
+      home.packages = with pkgs; [croc librespeed-cli nmap rustscan] ++ lib.optional stdenv.hostPlatform.isLinux termscp;
       programs.rclone.enable = true;
     };
   };
