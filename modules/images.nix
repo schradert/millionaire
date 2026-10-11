@@ -186,6 +186,34 @@
           ];
         };
 
+      # Monthly backup verification (apps/backup-verify, nixidy/system/storage/backup-verify.nix):
+      # restic check, scratch VolSync + CNPG restores, etcd snapshot age. Bump the tag with the script.
+      backup-verify = let
+        amd64Pkgs = import inputs.nixpkgs {system = "x86_64-linux";};
+        tools = with amd64Pkgs; [bash coreutils findutils gawk gnugrep gnused jq curl restic kubectl cacert];
+        script = amd64Pkgs.writeShellApplication {
+          name = "backup-verify";
+          runtimeInputs = tools;
+          bashOptions = []; # the script handles every status itself (no errexit)
+          # the script is long-lived shell with deliberate unquoted splitting; syntax-check only
+          checkPhase = "${amd64Pkgs.bash}/bin/bash -n $target";
+          text = builtins.readFile ../apps/backup-verify/backup-verify.sh;
+        };
+      in
+        n2c.buildImage {
+          name = "${registry}/library/backup-verify";
+          tag = "0.1.0";
+          arch = "amd64";
+          config = {
+            Entrypoint = ["${script}/bin/backup-verify"];
+            Env = ["HOME=/tmp" "SSL_CERT_FILE=${amd64Pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"];
+          };
+          layers = [
+            (n2c.buildLayer {deps = tools;})
+            (n2c.buildLayer {deps = [script];})
+          ];
+        };
+
       # Keycloak with its build-time options baked in, so it boots `--optimized`.
       # The stock image re-augments on every start (chmod over every lib jar, an
       # overlay copy-up of ~285MB), which on a disk-saturated node outlived the
