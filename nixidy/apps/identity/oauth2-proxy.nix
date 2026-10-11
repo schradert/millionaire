@@ -143,6 +143,11 @@ in {
                   "--whitelist-domain=.${domain}"
                   "--session-store-type=redis"
                   "--redis-connection-url=redis://oauth2-proxy-dragonfly.identity.svc.cluster.local:6379"
+                  # `Authorization: Bearer <access token>` from `sso-token` (modules/sso.nix)
+                  # is a session too: verified against the issuer above, audience
+                  # oauth2-proxy (the `cli` client's mapper), groups from its claim.
+                  # Other bearer JWTs (apps' own) fail verification and fall back to the cookie.
+                  "--skip-jwt-bearer-tokens=true"
                 ];
                 envFrom = [{secretRef.name = "oauth2-proxy";}];
                 ports = lib.toList {
