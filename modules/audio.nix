@@ -6,6 +6,7 @@
     ...
   }: {
     config = lib.mkIf config.profiles.client.enable {
+      hardware.bluetooth.enable = true;
       security.rtkit.enable = true;
       services.pipewire = {
         enable = true;
@@ -23,8 +24,10 @@
     pkgs,
     ...
   }: {
-    config = lib.mkIf config.profiles.client.enable {
-      home.packages = with pkgs; [crosspipe pavucontrol qpwgraph wiremix];
+    config = lib.mkIf (config.profiles.client.enable && pkgs.stdenv.hostPlatform.isLinux) {
+      home.packages = with pkgs; [asak crosspipe pavucontrol playerctl qpwgraph wiremix];
+      # MPRIS: playerctl follows the most recently active player.
+      services.playerctld.enable = true;
     };
   };
 }
