@@ -17,15 +17,15 @@ spec:
             - atuin
           env:
             - name: ATUIN_URL
-              value: http://atuin.development.svc.cluster.local:8888
+              value: http://127.0.0.1:8888
             - name: ATUIN_USER
               value: tristan
             - name: ATUIN_EMAIL
               value: t0rdos@pm.me
             - name: ATUIN_PASSWORD_FILE
-              value: /secrets/password
+              value: /secrets/tristan/password
           image: harbor.trdos.me/library/app-bootstrap:0.4.0@sha256:8c8773894446288a8f19d6babb2cc531ef2c233d2f511c703c6f88b1c5cdc1ab
-          name: bootstrap
+          name: bootstrap-tristan
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -33,9 +33,36 @@ spec:
                 - ALL
             readOnlyRootFilesystem: true
           volumeMounts:
-            - mountPath: /secrets
-              name: password
+            - mountPath: /secrets/tristan
+              name: password-tristan
               readOnly: true
+      initContainers:
+        - args:
+            - start
+          env:
+            - name: ATUIN_DB_URI
+              valueFrom:
+                secretKeyRef:
+                  key: uri
+                  name: atuin-app
+            - name: ATUIN_HOST
+              value: 127.0.0.1
+            - name: ATUIN_OPEN_REGISTRATION
+              value: "true"
+            - name: ATUIN_PORT
+              value: "8888"
+          image: ghcr.io/atuinsh/atuin:18.23.0@sha256:f232feeead54a0a13132b9cd477e312c3380e9dc90f1db24c4f79ce6c8e034ea
+          name: registrar
+          restartPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /config
+              name: config
       restartPolicy: OnFailure
       securityContext:
         runAsGroup: 65534
@@ -44,6 +71,8 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       volumes:
-        - name: password
+        - emptyDir: {}
+          name: config
+        - name: password-tristan
           secret:
             secretName: atuin-tristan
