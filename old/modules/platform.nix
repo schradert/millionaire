@@ -1,3 +1,4 @@
+# Partially ported: mobile branch -> static/gargoyle.nix. Unported: prem/google/hetzner/wsl.
 {
   config,
   inputs,
@@ -128,63 +129,6 @@ in {
             }
           ];
           opentofu.module."nixos_${name}_system_install".depends_on = ["hcloud_server.${name}"];
-        })
-        (mkIf (platform ? mobile) {
-          system = {
-            imports = [(import "${inputs.mobile-nixos}/lib/configuration.nix" {inherit (platform.mobile) device;})];
-            # TODO why didn't this recent fix work https://github.com/mobile-nixos/mobile-nixos/issues/820
-            disabledModules = [
-              # NOTE avoiding module entirely for now
-              "${inputs.mobile-nixos}/modules/system-target.nix"
-              # TODO consider not defaulting to disko upstream
-              "${inputs.disko}/module.nix"
-            ];
-            # Essential option in mobile-nixos
-            options.mobile = {
-              system.system = mkOption {
-                # Known supported target types.
-                type = enum [
-                  "aarch64-linux"
-                  "armv7l-linux"
-                  "x86_64-linux"
-                ];
-                description = ''
-                  Defines the host platform architecture the device is.
-
-                  This will automagically setup cross-compilation where possible.
-                '';
-              };
-            };
-            config = {
-              dotfiles.nixpkgs.config.allowUnfreePackages =
-                {
-                  oneplus-enchilada = ["oneplus-sdm845-firmware" "oneplus-sdm845-firmware-zstd"];
-                }.${
-                  platform.mobile.device
-                } or [
-                ];
-              users.users.${me}.extraGroups = ["dialout" "feedbackd" "networkmanager"];
-              # Ensures any rndis config from stage-1 is not clobbered by NetworkManager
-              networking.networkmanager.unmanaged = ["rndis0" "usb0"];
-
-              zramSwap.enable = mkDefault true;
-              services.displayManager.autoLogin = {
-                enable = mkDefault true;
-                user = mkDefault me;
-              };
-              mobile = {
-                boot.stage-1.networking.enable = mkDefault true;
-                # Ensures all example systems float up normalization issues by default.
-                boot.stage-1.kernel.useStrictKernelConfig = mkDefault true;
-                beautification.silentBoot = mkDefault true;
-                beautification.splash = mkDefault true;
-              };
-
-              dotfiles.profiles.client.enable = true;
-              # TODO v4l2loopback build breaks with strange self.kernel.commonMakeFlags missing...
-              dotfiles.programs.obs-studio.enable = mkForce false;
-            };
-          };
         })
         (mkIf (platform ? wsl) {
           system = {

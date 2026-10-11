@@ -1574,6 +1574,22 @@
         "type": "github"
       }
     },
+    "mobile-nixos": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783912271,
+        "narHash": "sha256-CzwmiKxuh1u+H8hDnrVeUl/fL59PvsgLbr2l0FhqWK0=",
+        "owner": "mobile-nixos",
+        "repo": "mobile-nixos",
+        "rev": "2c132754323fc1915e8d21dcfc0ef68ab084c6fb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "mobile-nixos",
+        "repo": "mobile-nixos",
+        "type": "github"
+      }
+    },
     "mynur": {
       "inputs": {
         "fenix": "fenix",
@@ -2495,6 +2511,7 @@
         "jovian": "jovian",
         "kdl": "kdl",
         "mac-app-util": "mac-app-util",
+        "mobile-nixos": "mobile-nixos",
         "mynur": "mynur",
         "nix-darwin": "nix-darwin",
         "nix-doom-emacs-unstraightened": "nix-doom-emacs-unstraightened",
