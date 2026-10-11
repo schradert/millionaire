@@ -27,6 +27,11 @@ in {
       };
     };
 
+    portal.apps.argo = {
+      title = "ArgoCD";
+      icon = "argo-cd";
+      description = "GitOps continuous delivery";
+    };
     gatus.endpoints.argo = {
       url = "https://argocd.${domain}";
       group = "internal";

@@ -24,6 +24,10 @@ in {
       };
     });
     config = {
+      portal.apps.gatus = {
+        title = "Gatus";
+        description = "Uptime monitoring";
+      };
       gatus.endpoints.gatus = {
         url = "https://${hostname}";
         group = "internal";

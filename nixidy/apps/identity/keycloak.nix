@@ -8,6 +8,10 @@ in {
     pinned,
     ...
   }: {
+    portal.apps.keycloak = {
+      title = "Keycloak";
+      description = "Identity & access management";
+    };
     gatus.endpoints.keycloak = {
       url = "https://${hostname}";
       group = "internal";

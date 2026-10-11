@@ -167,15 +167,66 @@ data:
     gateway: true
     mode: cluster
   services.yaml: |
+    - AI:
+      - bifrost:
+          description: ''
+          href: https://bifrost.trdos.me
+          icon: bifrost
+      - contextforge:
+          description: ''
+          href: https://mcp.trdos.me
+          icon: contextforge
+      - librechat:
+          description: ''
+          href: https://chat.trdos.me
+          icon: librechat
+      - promptfoo:
+          description: ''
+          href: https://promptfoo.trdos.me
+          icon: promptfoo
+    - CI/CD:
+      - ArgoCD:
+          description: GitOps continuous delivery
+          href: https://argocd.trdos.me
+          icon: argo-cd
+      - argo-rollouts:
+          description: ''
+          href: https://rollouts.trdos.me
+          icon: argo-rollouts
+      - argo-workflows:
+          description: ''
+          href: https://workflows.trdos.me
+          icon: argo-workflows
+      - harbor:
+          description: ''
+          href: https://harbor.trdos.me
+          icon: harbor
+    - Development:
+      - atuin:
+          description: ''
+          href: https://atuin.trdos.me
+          icon: atuin
+      - forgejo:
+          description: ''
+          href: https://git.trdos.me
+          icon: forgejo
+      - sveltekit-demo:
+          description: ''
+          href: https://demo.trdos.me
+          icon: sveltekit-demo
+      - windmill:
+          description: ''
+          href: https://windmill.trdos.me
+          icon: windmill
     - Finance:
-      - Firefly III:
-          description: Personal finance manager
-          href: https://firefly.trdos.me
-          icon: firefly-iii
       - Actual Budget:
           description: Zero-based budgeting
           href: https://actual.trdos.me
           icon: actual
+      - Firefly III:
+          description: Personal finance manager
+          href: https://firefly.trdos.me
+          icon: firefly-iii
       - Sure:
           description: Financial planning
           href: https://sure.trdos.me
@@ -185,24 +236,171 @@ data:
           description: Recipe manager
           href: https://mealie.trdos.me
           icon: mealie
-    - Identity & Auth:
+    - Home:
+      - Dashy:
+          description: Portal
+          href: https://dashy.trdos.me
+          icon: dashy
+      - Homepage:
+          description: Portal
+          href: https://home.trdos.me
+          icon: homepage
+      - baikal:
+          description: ''
+          href: https://cal.trdos.me
+          icon: baikal
+      - chirpstack:
+          description: ''
+          href: https://chirpstack.trdos.me
+          icon: chirpstack
+      - excalidraw:
+          description: ''
+          href: https://excalidraw.trdos.me
+          icon: excalidraw
+      - frigate:
+          description: ''
+          href: https://frigate.trdos.me
+          icon: frigate
+      - ha:
+          description: ''
+          href: https://hass.trdos.me
+          icon: ha
+      - kosync:
+          description: ''
+          href: https://kosync.trdos.me
+          icon: kosync
+      - logseq:
+          description: ''
+          href: https://logseq.trdos.me
+          icon: logseq
+      - siyuan:
+          description: ''
+          href: https://siyuan.trdos.me
+          icon: siyuan
+      - syncthing:
+          description: ''
+          href: https://sync.trdos.me
+          icon: syncthing
+      - webdav:
+          description: ''
+          href: https://dav.trdos.me
+          icon: webdav
+      - zigbee2mqtt:
+          description: ''
+          href: https://zigbee.trdos.me
+          icon: zigbee2mqtt
+      - zwave-js-ui:
+          description: ''
+          href: https://zwave.trdos.me
+          icon: zwave-js-ui
+    - Identity:
       - Keycloak:
           description: Identity & access management
           href: https://keycloak.trdos.me
           icon: keycloak
-    - Infrastructure:
-      - ArgoCD:
-          description: GitOps continuous delivery
-          href: https://argocd.trdos.me
-          icon: argocd
-      - Grafana:
-          description: Monitoring dashboards
-          href: https://grafana.trdos.me
-          icon: grafana
-      - Prometheus:
-          description: Metrics collection
-          href: https://prometheus.trdos.me
-          icon: prometheus
+    - Mail:
+      - bulwark:
+          description: ''
+          href: https://webmail.trdos.me
+          icon: bulwark
+    - Media:
+      - audiobookshelf:
+          description: ''
+          href: https://audiobookshelf.trdos.me
+          icon: audiobookshelf
+      - autobrr:
+          description: ''
+          href: https://autobrr.trdos.me
+          icon: autobrr
+      - bazarr:
+          description: ''
+          href: https://bazarr.trdos.me
+          icon: bazarr
+      - dvd-webdav:
+          description: ''
+          href: https://dvd.trdos.me
+          icon: dvd-webdav
+      - games-webdav:
+          description: ''
+          href: https://games.trdos.me
+          icon: games-webdav
+      - immich:
+          description: ''
+          href: https://immich.trdos.me
+          icon: immich
+      - jellyfin:
+          description: ''
+          href: https://jellyfin.trdos.me
+          icon: jellyfin
+      - jitsi:
+          description: ''
+          href: https://jitsi.trdos.me
+          icon: jitsi
+      - kavita:
+          description: ''
+          href: https://kavita.trdos.me
+          icon: kavita
+      - komga:
+          description: ''
+          href: https://komga.trdos.me
+          icon: komga
+      - lidarr:
+          description: ''
+          href: https://lidarr.trdos.me
+          icon: lidarr
+      - maintainerr:
+          description: ''
+          href: https://maintainerr.trdos.me
+          icon: maintainerr
+      - maloja:
+          description: ''
+          href: https://maloja.trdos.me
+          icon: maloja
+      - multi-scrobbler:
+          description: ''
+          href: https://multi-scrobbler.trdos.me
+          icon: multi-scrobbler
+      - music-assistant:
+          description: ''
+          href: https://music-assistant.trdos.me
+          icon: music-assistant
+      - navidrome:
+          description: ''
+          href: https://navidrome.trdos.me
+          icon: navidrome
+      - owncast:
+          description: ''
+          href: https://owncast.trdos.me
+          icon: owncast
+      - prowlarr:
+          description: ''
+          href: https://prowlarr.trdos.me
+          icon: prowlarr
+      - qbittorrent:
+          description: ''
+          href: https://qbittorrent.trdos.me
+          icon: qbittorrent
+      - radarr:
+          description: ''
+          href: https://radarr.trdos.me
+          icon: radarr
+      - ryot:
+          description: ''
+          href: https://ryot.trdos.me
+          icon: ryot
+      - seerr:
+          description: ''
+          href: https://seerr.trdos.me
+          icon: seerr
+      - shoko:
+          description: ''
+          href: https://shoko.trdos.me
+          icon: shoko
+      - sonarr:
+          description: ''
+          href: https://sonarr.trdos.me
+          icon: sonarr
+    - Observability:
       - Alertmanager:
           description: Alert routing
           href: https://alertmanager.trdos.me
@@ -211,6 +409,32 @@ data:
           description: Uptime monitoring
           href: https://gatus.trdos.me
           icon: gatus
+      - Grafana:
+          description: Monitoring dashboards
+          href: https://grafana.trdos.me
+          icon: grafana
+      - Prometheus:
+          description: Metrics collection
+          href: https://prometheus.trdos.me
+          icon: prometheus
+    - Printing:
+      - mainsail:
+          description: ''
+          href: https://mainsail.trdos.me
+          icon: mainsail
+      - obico:
+          description: ''
+          href: https://obico.trdos.me
+          icon: obico
+      - spoolman:
+          description: ''
+          href: https://spoolman.trdos.me
+          icon: spoolman
+    - Storage:
+      - rook-ceph:
+          description: ''
+          href: https://rook.trdos.me
+          icon: rook-ceph
   settings.yaml: |
     background:
       blur: sm
@@ -225,7 +449,7 @@ data:
     theme: dark
     title: Millionaire Homelab
     useEqualHeights: true
-  widgets.yaml: |-
+  widgets.yaml: |
     - kubernetes:
         cluster:
           cpu: true
@@ -248,9 +472,5 @@ data:
         target: _blank
 kind: ConfigMap
 metadata:
-  labels:
-    app.kubernetes.io/instance: homepage
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/name: homepage
   name: homepage
   namespace: home

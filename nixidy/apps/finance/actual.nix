@@ -13,6 +13,10 @@ in {
     # server lets anyone set the server password and claim it.
     bootstrapped = pinned.images ? app-bootstrap-actual;
   in {
+    portal.apps.actual = {
+      title = "Actual Budget";
+      description = "Zero-based budgeting";
+    };
     gatus.endpoints.actual = {
       url = "https://${hostname}";
       group = "internal";

@@ -1,9 +1,12 @@
+# homepage: native Keycloak OIDC (confidential client), tiles from portal.apps,
+# plus HTTPRoute discovery and its widgets.
 {config, ...}: let
   inherit (config.canivete.meta) domain;
   hostname = "home.${domain}";
 in {
   nixidy = {
     charts,
+    config,
     lib,
     pinned,
     pkgs,
@@ -30,94 +33,19 @@ in {
       };
     };
 
-    services = [
-      {
-        "Finance" = [
-          {
-            "Firefly III" = {
-              icon = "firefly-iii";
-              href = "https://firefly.${domain}";
-              description = "Personal finance manager";
+    # Same tiles as every portal. homepage can't hide tiles per group.
+    services =
+      lib.mapAttrsToList (section: apps: {
+        ${section} =
+          map (a: {
+            ${a.title} = {
+              inherit (a) icon description;
+              href = a.url;
             };
-          }
-          {
-            "Actual Budget" = {
-              icon = "actual";
-              href = "https://actual.${domain}";
-              description = "Zero-based budgeting";
-            };
-          }
-          {
-            "Sure" = {
-              icon = "mdi-finance";
-              href = "https://sure.${domain}";
-              description = "Financial planning";
-            };
-          }
-        ];
-      }
-      {
-        "Health" = [
-          {
-            "Mealie" = {
-              icon = "mealie";
-              href = "https://mealie.${domain}";
-              description = "Recipe manager";
-            };
-          }
-        ];
-      }
-      {
-        "Identity & Auth" = [
-          {
-            "Keycloak" = {
-              icon = "keycloak";
-              href = "https://keycloak.${domain}";
-              description = "Identity & access management";
-            };
-          }
-        ];
-      }
-      {
-        "Infrastructure" = [
-          {
-            "ArgoCD" = {
-              icon = "argocd";
-              href = "https://argocd.${domain}";
-              description = "GitOps continuous delivery";
-            };
-          }
-          {
-            "Grafana" = {
-              icon = "grafana";
-              href = "https://grafana.${domain}";
-              description = "Monitoring dashboards";
-            };
-          }
-          {
-            "Prometheus" = {
-              icon = "prometheus";
-              href = "https://prometheus.${domain}";
-              description = "Metrics collection";
-            };
-          }
-          {
-            "Alertmanager" = {
-              icon = "alertmanager";
-              href = "https://alertmanager.${domain}";
-              description = "Alert routing";
-            };
-          }
-          {
-            "Gatus" = {
-              icon = "gatus";
-              href = "https://gatus.${domain}";
-              description = "Uptime monitoring";
-            };
-          }
-        ];
-      }
-    ];
+          })
+          apps;
+      })
+      config.portal.sections;
 
     widgets = [
       {
@@ -334,18 +262,66 @@ in {
     '';
   in {
     gatus.endpoints.homepage = {
-      url = "https://${hostname}";
+      # public; everything else redirects to sign-in
+      url = "https://${hostname}/api/healthcheck";
       group = "internal";
+    };
+    portal.apps.homepage = {
+      title = "Homepage";
+      description = "Portal";
+    };
+    applications.keycloak.resources.keycloakClients.homepage.spec = {
+      realmRef.name = "default";
+      clientSecretRef = {
+        name = "homepage";
+        create = true;
+      };
+      definition = {
+        clientId = "homepage";
+        name = "Homepage";
+        enabled = true;
+        protocol = "openid-connect";
+        publicClient = false;
+        standardFlowEnabled = true;
+        directAccessGrantsEnabled = false;
+        redirectUris = ["https://${hostname}/api/auth/callback/homepage-oidc"];
+        webOrigins = ["https://${hostname}"];
+        defaultClientScopes = ["openid" "profile" "email"];
+        attributes."pkce.code.challenge.method" = "S256";
+      };
     };
     applications.homepage = {
       namespace = "home";
+      # NextAuth session secret (HOMEPAGE_AUTH_SECRET, >= 32 chars).
+      generatedSecrets.homepage-auth = {
+        key = "password";
+        length = 48;
+      };
       helm.releases.homepage = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.homepage = {
+            # The ConfigMap lives outside the chart, so no checksum annotation.
+            annotations."reloader.stakater.com/auto" = "true";
             containers.homepage = {
               image = pinned.images.homepage;
-              env.HOMEPAGE_ALLOWED_HOSTS = hostname;
+              env = {
+                HOMEPAGE_ALLOWED_HOSTS = hostname;
+                HOMEPAGE_EXTERNAL_URL = "https://${hostname}";
+                HOMEPAGE_AUTH_ENABLED = "true";
+                HOMEPAGE_OIDC_ISSUER = "https://keycloak.${domain}/realms/default";
+                HOMEPAGE_OIDC_CLIENT_ID = "homepage";
+                HOMEPAGE_OIDC_NAME = "Keycloak";
+                HOMEPAGE_OIDC_AUTO_LOGIN = "true";
+                HOMEPAGE_AUTH_SECRET.valueFrom.secretKeyRef = {
+                  name = "homepage-auth";
+                  key = "password";
+                };
+                HOMEPAGE_OIDC_CLIENT_SECRET.valueFrom.secretKeyRef = {
+                  name = "homepage-oidc";
+                  key = "client_secret";
+                };
+              };
               ports = lib.toList {
                 name = "http";
                 containerPort = 3000;
@@ -383,25 +359,27 @@ in {
           };
           service.homepage.ports.http.port = 3000;
           serviceAccount.homepage = {};
-          configMaps.homepage.data = {
-            "settings.yaml" = toYAML "settings.yaml" settings;
-            "services.yaml" = toYAML "services.yaml" services;
-            "widgets.yaml" = toYAML "widgets.yaml" widgets;
-            "bookmarks.yaml" = toYAML "bookmarks.yaml" bookmarks;
-            "kubernetes.yaml" = toYAML "kubernetes.yaml" {
-              mode = "cluster";
-              gateway = true;
-            };
-            "custom.css" = draculaCSS;
-            "custom.js" = "";
-            "docker.yaml" = "";
-          };
           persistence.config = {
             type = "configMap";
             name = "homepage";
             globalMounts = lib.toList {path = "/app/config";};
           };
         };
+      };
+
+      # In resources, not helm values: services.yaml reads portal.apps.
+      resources.configMaps.homepage.data = {
+        "settings.yaml" = toYAML "settings.yaml" settings;
+        "services.yaml" = toYAML "services.yaml" services;
+        "widgets.yaml" = toYAML "widgets.yaml" widgets;
+        "bookmarks.yaml" = toYAML "bookmarks.yaml" bookmarks;
+        "kubernetes.yaml" = toYAML "kubernetes.yaml" {
+          mode = "cluster";
+          gateway = true;
+        };
+        "custom.css" = draculaCSS;
+        "custom.js" = "";
+        "docker.yaml" = "";
       };
 
       resources.clusterRoles.homepage-discovery.rules = [
@@ -439,6 +417,13 @@ in {
         };
       };
 
+      resources.externalSecrets.homepage-oidc.spec.data = lib.toList {
+        secretKey = "client_secret";
+        remoteRef.key = "homepage";
+        remoteRef.property = "client-secret";
+        sourceRef.storeRef.name = "kubernetes-identity";
+        sourceRef.storeRef.kind = "ClusterSecretStore";
+      };
       resources.httpRoutes.homepage.spec = {
         hostnames = [hostname];
         parentRefs = lib.toList {
@@ -448,16 +433,11 @@ in {
         };
         rules = lib.toList {
           backendRefs = lib.toList {
-            name = "oauth2-proxy";
-            namespace = "identity";
-            port = 4180;
+            name = "homepage";
+            port = 3000;
           };
         };
       };
-    };
-    oauth2Proxy.upstreams.${hostname} = {
-      url = "http://homepage.home.svc.cluster.local:3000";
-      namespace = "home";
     };
   };
 }

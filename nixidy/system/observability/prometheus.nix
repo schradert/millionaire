@@ -13,6 +13,10 @@
       install = true;
       src = chart;
     };
+    portal.apps.prometheus = {
+      title = "Prometheus";
+      description = "Metrics collection";
+    };
     gatus.endpoints.prometheus = {
       url = "https://prometheus.${config.canivete.meta.domain}";
       group = "internal";

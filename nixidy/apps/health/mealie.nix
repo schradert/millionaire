@@ -16,6 +16,10 @@ in {
     hostname = "mealie.${domain}";
     bootstrapped = pinned.images ? app-bootstrap-mealie;
   in {
+    portal.apps.mealie = {
+      title = "Mealie";
+      description = "Recipe manager";
+    };
     gatus.endpoints.mealie = {
       url = "https://${hostname}";
       group = "internal";
