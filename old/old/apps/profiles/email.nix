@@ -8,16 +8,15 @@
   }: let
     inherit (flake.config.canivete.meta.people) users;
     inherit (lib) flip getExe mapAttrs mkIf mkMerge;
-    inherit (pkgs) mu isync hydroxide stdenv;
+    inherit (pkgs) mu isync stdenv;
     user = users.${config.home.username};
   in {
     config = mkIf config.dotfiles.workstation.enable (mkMerge [
       {
-        home.packages = [isync hydroxide];
+        home.packages = [isync];
         accounts.email.accounts = flip mapAttrs user.profiles (name: cfg: {
           # TODO alot contact completion
           # TODO can I use a shared mbsync config?
-          # TODO activate msmtp and SMTP hydroxide server
           primary = name == config.dotfiles.profile;
           address = cfg.email;
           realName = user.name;
@@ -64,13 +63,6 @@
       })
       (mkIf stdenv.isDarwin {
         launchd.agents = {
-          hydroxide.enable = true;
-          hydroxide.config = {
-            RunAtLoad = true;
-            KeepAlive.Crashed = true;
-            Program = getExe hydroxide;
-            ProgramArguments = ["imap"];
-          };
           mbsync.enable = true;
           mbsync.config = {
             StartInterval = 900;

@@ -15,8 +15,8 @@
     config = lib.mkIf config.dotfiles.profiles.client.enable {
       home.packages = with pkgs;
         lib.mkMerge [
-          [spotube youtube-tui ytui-music]
-          (canivete.mkUnless config.programs.spicetify.enable [spotify spotify-player])
+          [youtube-tui ytui-music]
+          [spotify spotify-player]
           (lib.mkIf stdenv.hostPlatform.isLinux [scope-tui])
         ];
       programs.doom-emacs.tangle.init.app.emms = true;
