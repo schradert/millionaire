@@ -30,9 +30,10 @@
         values = {
           controllers.maloja = {
             annotations."reloader.stakater.com/auto" = "true";
-            # Registers multi-scrobbler's generated key (Secret multi-scrobbler) as a Maloja
-            # API key before start. Maloja keeps keys in /mljdata/apikeys.yml
-            # (flat `identifier: key` lines, doreah KeyStore; the image's python has no yaml); other entries are left alone.
+            # Registers the generated keys of multi-scrobbler and navidrome (Secrets
+            # multi-scrobbler, navidrome-maloja) as Maloja API keys before start. Maloja
+            # keeps keys in /mljdata/apikeys.yml (flat `identifier: key` lines, doreah
+            # KeyStore; the image's python has no yaml); other entries are left alone.
             initContainers.apikeys = {
               image = pinned.images.maloja;
               command = [
@@ -45,15 +46,22 @@
                       lines = [l for l in open(f).read().splitlines() if l.strip() and l.strip() != "{}"]
                   except FileNotFoundError:
                       lines = []
-                  want = "multi-scrobbler: " + os.environ["MALOJA_API_KEY"]
-                  if want not in lines:
-                      lines = [l for l in lines if not l.startswith("multi-scrobbler:")] + [want]
-                      open(f, "w").write("\n".join(lines) + "\n")
+                  for name, var in (("multi-scrobbler", "MULTI_SCROBBLER_KEY"), ("navidrome", "NAVIDROME_KEY")):
+                      want = name + ": " + os.environ[var]
+                      if want not in lines:
+                          lines = [l for l in lines if not l.startswith(name + ":")] + [want]
+                  open(f, "w").write("\n".join(lines) + "\n")
                 ''
               ];
-              env.MALOJA_API_KEY.valueFrom.secretKeyRef = {
-                name = "multi-scrobbler";
-                key = "MALOJA_API_KEY";
+              env = {
+                MULTI_SCROBBLER_KEY.valueFrom.secretKeyRef = {
+                  name = "multi-scrobbler";
+                  key = "MALOJA_API_KEY";
+                };
+                NAVIDROME_KEY.valueFrom.secretKeyRef = {
+                  name = "navidrome-maloja";
+                  key = "token";
+                };
               };
             };
             containers.maloja = {
