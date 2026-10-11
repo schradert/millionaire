@@ -97,7 +97,9 @@ $list
 LIST
   done
 
-  printf '[%s]\n' "$(sed 's/.*/"&"/' "$work/items" | paste -sd, -)" > /tmp/items.json
+  local json="" item
+  while read -r item; do json="$json${json:+,}\"$item\""; done < "$work/items"
+  echo "[$json]" > /tmp/items.json
   echo "to build: $(cat /tmp/items.json)"
   if [ ! -s "$work/items" ] && [ "$unknown" = 0 ] && [ "$explicit" = 0 ] && [ -z "$ONLY" ]; then
     echo "$rev" > "$STATE/clean-sha"
