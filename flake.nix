@@ -70,9 +70,8 @@
       nixpkgs.follows = "nixpkgs";
       flake-compat.follows = "flake-compat";
     };
-    # Steam Deck. Held at a commit that evaluates against the nixpkgs lock (May 2026):
-    # later Jovian needs newer pnpm fetchers. Move it with nixpkgs.
-    jovian.url = "github:Jovian-Experiments/Jovian-NixOS/4b81cbddc037e480c2f3c20dee1a6457c6bb99b8";
+    # Steam Deck. Tracks nixos-unstable; move it with nixpkgs.
+    jovian.url = "github:Jovian-Experiments/Jovian-NixOS";
     jovian.inputs.nixpkgs.follows = "nixpkgs";
     # mkWindowsApp (wine prefixes for Windows-only games), called with our pkgs
     erosanix.url = "github:emmanuelrosa/erosanix";
