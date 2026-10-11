@@ -20,9 +20,13 @@
         "beeper"
         "brave-browser"
         # "discord"
+        "monitorcontrol"
         # "orca-slicer"
+        "raycast"
         "siyuan"
         "spotify"
+        # linux: not in nixpkgs (old/ used the zen-browser flake input)
+        "zen"
       ];
     };
   };
