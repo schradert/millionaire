@@ -121,6 +121,29 @@
     cnpg = true;
     dragonfly = true;
   };
+  nixidy.netpol.namespaces.ai = {
+    enforce = true;
+    intraNamespace = true;
+    cnpg = true;
+    # openclaw (ai-sandbox) reaches bifrost :8000 and contextforge :8080 (its own egress policy lists exactly these)
+    extraIngress = [
+      {
+        fromEndpoints = [
+          {
+            matchLabels = {
+              "k8s:io.kubernetes.pod.namespace" = "ai-sandbox";
+              "app.kubernetes.io/name" = "openclaw";
+            };
+          }
+        ];
+        toPorts = [{ports = [{port = "8000"; protocol = "TCP";} {port = "8080"; protocol = "TCP";}];}];
+      }
+    ];
+  };
+  nixidy.netpol.namespaces.ai-sandbox = {
+    enforce = true;
+    intraNamespace = true;
+  };
   nixidy.applications.namespaces.resources.namespaces = {
     development = {};
     finance = {};
