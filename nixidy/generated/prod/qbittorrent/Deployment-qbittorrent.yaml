@@ -30,14 +30,49 @@ spec:
       automountServiceAccountToken: false
       containers:
         - env:
+            - name: BLOCK_MALICIOUS
+              value: "on"
+            - name: DNS_KEEP_NAMESERVER
+              value: "off"
+            - name: DNS_SERVER
+              value: "on"
+            - name: DNS_UPSTREAM_IPV6
+              value: "off"
+            - name: DNS_UPSTREAM_RESOLVER_TYPE
+              value: DoT
+            - name: FIREWALL_ENABLED_DISABLING_IT_SHOOTS_YOU_IN_YOUR_FOOT
+              value: "on"
+            - name: FIREWALL_INPUT_PORTS
+              value: "8080"
+            - name: FIREWALL_OUTBOUND_SUBNETS
+              value: 10.0.0.0/8
+            - name: HEALTH_RESTART_VPN
+              value: "on"
+            - name: PORT_FORWARD_ONLY
+              value: "on"
+            - name: VERSION_INFORMATION
+              value: "off"
+            - name: VPN_PORT_FORWARDING
+              value: "on"
+            - name: VPN_PORT_FORWARDING_DOWN_COMMAND
+              value: /bin/sh -c 'wget -q -O /dev/null --retry-connrefused --post-data "json={\"current_network_interface\":\"lo\",\"listen_port\":0}" http://127.0.0.1:8080/api/v2/app/setPreferences'
+            - name: VPN_PORT_FORWARDING_UP_COMMAND
+              value: /bin/sh -c 'wget -q -O /dev/null --retry-connrefused --post-data "json={\"current_network_interface\":\"{{VPN_INTERFACE}}\",\"listen_port\":{{PORT}},\"random_port\":false,\"upnp\":false}" http://127.0.0.1:8080/api/v2/app/setPreferences'
             - name: VPN_SERVICE_PROVIDER
-              value: custom
+              value: protonvpn
             - name: VPN_TYPE
               value: wireguard
           envFrom:
             - secretRef:
                 name: qbittorrent-vpn
           image: qmcgaw/gluetun:v3.41.1@sha256:1a5bf4b4820a879cdf8d93d7ef0d2d963af56670c9ebff8981860b6804ebc8ab
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - (ip rule del table 51820; ip -6 rule del table 51820) || true
           name: gluetun
           resources:
             limits:
@@ -81,7 +116,10 @@ spec:
               name: media-downloads
             - mountPath: /tmp
               name: tmp
-      dnsPolicy: ClusterFirst
+      dnsConfig:
+        nameservers:
+          - 127.0.0.1
+      dnsPolicy: None
       enableServiceLinks: false
       hostIPC: false
       hostNetwork: false
@@ -91,7 +129,7 @@ spec:
             - python3
             - -c
             - |
-              import base64, hashlib, hmac, os, re, shutil
+              import base64, hashlib, hmac, json, os, re, shutil
               conf = "/config/qBittorrent/qBittorrent.conf"
               if not os.path.exists(conf):
                   os.makedirs(os.path.dirname(conf), exist_ok=True)
@@ -107,25 +145,32 @@ spec:
                   want = base64.b64decode(m.group(2))
                   got = hashlib.pbkdf2_hmac("sha512", pw, salt, 100000, len(want))
                   return hmac.compare_digest(got, want)
-              want = {"WebUI\\Username": "admin"}
+              settings = json.loads(os.environ["QBT_SETTINGS"])
               if not verifies():
                   salt = os.urandom(16)
                   dk = hashlib.pbkdf2_hmac("sha512", pw, salt, 100000, 64)
                   b64 = lambda b: base64.b64encode(b).decode()
-                  want[key] = '"@ByteArray(%s:%s)"' % (b64(salt), b64(dk))
+                  settings["Preferences"][key] = '"@ByteArray(%s:%s)"' % (b64(salt), b64(dk))
               lines = text.split("\n")
-              if "[Preferences]" not in lines:
-                  lines += ["", "[Preferences]"]
-              i = lines.index("[Preferences]") + 1
-              for k, v in want.items():
-                  new = k + "=" + v
-                  for j, l in enumerate(lines):
-                      if l.startswith(k + "="):
-                          lines[j] = new
-                          break
-                  else:
-                      lines.insert(i, new)
+              for section, values in settings.items():
+                  header = "[" + section + "]"
+                  if header not in lines:
+                      lines += ["", header]
+                  start = lines.index(header) + 1
+                  end = next((j for j in range(start, len(lines)) if lines[j].startswith("[")), len(lines))
+                  for k, v in values.items():
+                      new = k + "=" + v
+                      for j in range(start, end):
+                          if lines[j].startswith(k + "="):
+                              lines[j] = new
+                              break
+                      else:
+                          lines.insert(start, new)
+                          end += 1
               open(conf, "w").write("\n".join(lines))
+          env:
+            - name: QBT_SETTINGS
+              value: '{"BitTorrent":{"Session\\AnonymousModeEnabled":"true","Session\\DHTEnabled":"false","Session\\Encryption":"1","Session\\Interface":"tun0","Session\\InterfaceName":"tun0","Session\\LSDEnabled":"false","Session\\PeXEnabled":"false"},"Network":{"PortForwardingEnabled":"false"},"Preferences":{"WebUI\\AuthSubnetWhitelistEnabled":"false","WebUI\\LocalHostAuth":"false","WebUI\\UseUPnP":"false","WebUI\\Username":"admin"}}'
           image: ghcr.io/home-operations/qbittorrent:5.1.4@sha256:bb82ad6668f8eda1d0fcce6c1341498bfa879155bb1295cd9d314a2c35c07a01
           name: admin
           volumeMounts:
