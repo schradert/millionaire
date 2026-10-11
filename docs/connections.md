@@ -9,10 +9,10 @@ Credentials: Keycloak SSO where the client speaks OIDC, otherwise a Bitwarden Se
 
 | Host | OS | Profiles | Tailnet |
 |---|---|---|---|
-| millionaire | macOS | work, workstation | Mill's Tailscale tailnet; not on headscale (see Open questions) |
+| millionaire | macOS | work, workstation | Mill's Tailscale tailnet; not on headscale, so none of its clients below can reach the cluster (see Open questions) |
 | morgenmuffel | macOS | personal, workstation | done: `modules/tailnet.nix` (host lands with the hosts workstream) |
 | falcon, axolotl | NixOS | client, workstation | done: `static/tailnet-personal.nix` |
-| systeamadeck | NixOS (Jovian) | client, gaming | todo: not a `personal.yaml` recipient in `.sops.yaml` |
+| systeamadeck | NixOS (Jovian) | client, gaming | todo: not a `personal.yaml` recipient in `.sops.yaml`, so its clients below cannot reach the cluster yet |
 | echidna | NixOS-WSL | pending (hosts workstream) | n/a until the host exists |
 | Android | `modules/android.nix` | `base` / `homelab` / `family` sets | done: Tailscale app (docs/android.md) |
 
@@ -61,7 +61,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | dvd-webdav, games-webdav | own | n-a | n-a | games: `modules/gaming/consoles.nix` (library off) | n-a | — |
 | prometheus | oauth2-proxy | done: promtool (offline checks; queries via `kubectl port-forward`), `modules/kubernetes.nix` | done: same | n-a | n-a | — |
 | alertmanager | oauth2-proxy | web (amtool skipped: API behind oauth2-proxy) | web | n-a | n-a | — |
-| grafana, gatus, status (hyena) | OIDC / none | web | web | n-a | web | — |
+| grafana, gatus, status (hyena) | oauth2-proxy + OIDC / none | web | web | n-a | web | — |
 | ntfy (hyena) | none (tailnet) | done: ntfy CLI; `alerts` subscriber on personal Macs, `modules/ntfy.nix` | done: CLI + `alerts` subscriber (user service) | n-a | done: ntfy | — |
 | mainsail, obico, spoolman | oauth2-proxy | web; todo: orca-slicer (commented cask in `modules/default.nix`) | web | n-a | done: Mobileraker | — |
 | rook-ceph, rados | own | web | web | n-a | n-a | — |
