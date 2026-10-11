@@ -24,7 +24,7 @@ These are third-party credentials that can't be generated in-cluster.
 |---|---|---|
 | `ai/anthropic/api-key`, `ai/openai/api-key`, `ai/google/api-key` | `providerKeys` in `nixidy/system/ai/bifrost.nix` and `nixidy/system/ai/promptfoo.nix` | LLM routing through bifrost (librechat, openviking, openclaw) and promptfoo evals |
 | `ai/openclaw/discord-token` (Discord bot token) | `credentials` in `nixidy/system/ai/openclaw.nix` | the OpenClaw Discord gateway |
-| One provider's WireGuard items (see "qBittorrent VPN" below) | set `vpn.provider`, then flip `credentials` in `nixidy/apps/media/qbittorrent.nix` | qBittorrent behind the gluetun VPN. After qBittorrent is up, sync `prowlarr` in full (not a selective sync) so its bootstrap adds qBittorrent as the download client in Sonarr, Radarr and Lidarr. Then run the full e2e suite (step 9). |
+| `vpn/protonvpn/wireguard-private-key` (see "qBittorrent VPN (ProtonVPN)" below) | `credentials` in `nixidy/apps/media/qbittorrent.nix` | qBittorrent behind the gluetun VPN. After qBittorrent is up, sync `prowlarr` in full (not a selective sync) so its bootstrap adds qBittorrent as the download client in Sonarr, Radarr and Lidarr. Then run the full e2e suite (step 9). |
 | `frigate/cameras`, with fields `username`, `password`, `front_ip`, `back_ip` | `credentials` in `nixidy/apps/home/frigate.nix` | Frigate NVR (RTSP cameras) |
 | `govee/email`, `govee/password`, `govee/api-key` | `credentials` in `nixidy/apps/home/govee2mqtt.nix` | Govee devices in Home Assistant through MQTT |
 | `printing/mooncord/discord-token` | `credentials` in `nixidy/apps/printing/mooncord.nix` (only once the Voron exists) | the Moonraker Discord bot |
@@ -32,17 +32,23 @@ These are third-party credentials that can't be generated in-cluster.
 | Indexer/tracker accounts | none: add them in Prowlarr (https://prowlarr.trdos.me → Indexers); Prowlarr already syncs to Sonarr/Radarr/Lidarr | searching and grabbing in the arr apps |
 | `ai/huggingface/token` | none yet: vllm and heretic stay disabled until a GPU node exists | the GPU workloads, later |
 
-### qBittorrent VPN
+### qBittorrent VPN (ProtonVPN)
 
-Pick a provider, add its items, set `vpn.provider` to match and flip `credentials`. Nothing else changes.
+ProtonVPN is the default (`vpn.provider = "protonvpn"` in `nixidy/apps/media/qbittorrent.nix`): gluetun's native provider over WireGuard, P2P servers only (`PORT_FORWARD_ONLY=on`), with NAT-PMP port forwarding (`VPN_PORT_FORWARDING=on`). gluetun pushes each forwarded port into qBittorrent's listening port. Port forwarding needs a paid plan (VPN Plus or higher); the free plan has no P2P servers.
 
-| `vpn.provider` | Bitwarden items | Port forwarding |
-|---|---|---|
-| `protonvpn` (default) | `vpn/protonvpn/wireguard-private-key` (`PrivateKey` from a WireGuard config generated with "NAT-PMP (Port Forwarding)" on) | automatic: gluetun asks for a port on a P2P server and sets qBittorrent's listening port to it |
-| `airvpn` | `vpn/airvpn/wireguard-private-key`, `vpn/airvpn/wireguard-preshared-key`, `vpn/airvpn/wireguard-addresses` (IPv4 only, from the Config Generator) | reserve a port in the client area and set `vpn.airvpnPort` to it |
-| `custom` | `vpn/wireguard/private-key`, `vpn/wireguard/addresses`, `vpn/wireguard/public-key`, `vpn/wireguard/endpoint-ip`, `vpn/wireguard/endpoint-port` | none |
+1. Log in at https://account.protonvpn.com → **Downloads** → **WireGuard configuration**.
+2. Name it (e.g. `homelab-qbittorrent`) and pick platform **GNU/Linux** (or Router).
+3. Under VPN options, turn **NAT-PMP (Port Forwarding)** on. Leave **Moderate NAT** off. VPN Accelerator can stay on.
+4. Pick any server marked **P2P** (gluetun chooses its own P2P server; the key works for all of them) and click **Create**.
+5. From the generated config, copy the `PrivateKey = ...` value (44 characters, ends in `=`). Proton shows it only once.
+6. Store it in Bitwarden as **`vpn/protonvpn/wireguard-private-key`** (the raw key, nothing else). That is the only secret gluetun's `protonvpn` provider needs: the address (`10.2.0.2/32`), server list and public keys come from gluetun's built-in Proton data.
+7. Optional, not secret: set `vpn.countries` (gluetun `SERVER_COUNTRIES`, e.g. `["Switzerland"]`) in the same file.
+8. Flip `credentials = true`, render, commit, sync. Check `kubectl -n media logs deploy/qbittorrent -c gluetun` for `port forwarded is NNNNN`.
+9. Run the full e2e suite (step 9).
 
-Already enforced, whichever provider: gluetun's firewall kill switch, DNS over TLS through the tunnel (the pod resolves only through gluetun), qBittorrent bound to `tun0`, anonymous mode, UPnP/NAT-PMP off, no IPv6 (Cilium is IPv4-only and gluetun drops IPv6), and the WebUI reachable only through oauth2-proxy and from the arr apps (CiliumNetworkPolicy), with the password required. `peerDiscovery` (DHT/PeX/LSD) is off, which private trackers require; turn it on only for public torrents.
+Fallback: `vpn.provider = "custom"` takes any WireGuard config file (`vpn/wireguard/private-key`, `vpn/wireguard/addresses`, `vpn/wireguard/public-key`, `vpn/wireguard/endpoint-ip`, `vpn/wireguard/endpoint-port`), without port forwarding. `airvpn` is also wired (`vpn/airvpn/wireguard-private-key`, `vpn/airvpn/wireguard-preshared-key`, `vpn/airvpn/wireguard-addresses`, plus `vpn.airvpnPort`).
+
+Already enforced, whichever provider: gluetun's firewall kill switch, DNS over TLS through the tunnel (the pod resolves only through gluetun), qBittorrent bound to `tun0`, anonymous mode, UPnP/NAT-PMP in qBittorrent off, no IPv6 (Cilium is IPv4-only and gluetun drops IPv6), and the WebUI reachable only through oauth2-proxy and from the arr apps (CiliumNetworkPolicy), with the password required. `peerDiscovery` (DHT/PeX/LSD) is off, which private trackers require; turn it on only for public torrents.
 
 ## 3. GitHub token for dependency updates
 

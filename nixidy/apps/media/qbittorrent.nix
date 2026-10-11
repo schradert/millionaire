@@ -16,7 +16,8 @@
       # qBittorrent. airvpn: a static port reserved in the client area (`airvpnPort`).
       # custom: any WireGuard config file, no inbound port.
       provider = "protonvpn";
-      # gluetun SERVER_COUNTRIES; empty lets gluetun pick.
+      # gluetun SERVER_COUNTRIES (e.g. ["Switzerland" "Netherlands"]); empty lets gluetun pick
+      # any P2P server.
       countries = [];
       airvpnPort = null;
     };
@@ -28,8 +29,10 @@
       protonvpn = {
         env = {
           VPN_SERVICE_PROVIDER = "protonvpn";
+          # P2P servers only: the ones that forward a port (NAT-PMP).
           PORT_FORWARD_ONLY = "on";
           VPN_PORT_FORWARDING = "on";
+          VPN_PORT_FORWARDING_PROVIDER = "protonvpn";
         };
         secrets.WIREGUARD_PRIVATE_KEY = "vpn/protonvpn/wireguard-private-key";
       };
