@@ -21,6 +21,12 @@
           context7.url = "https://mcp.context7.com/mcp";
           context7.headers.CONTEXT7_API_KEY = "{env:CONTEXT7_API_KEY}";
           gh_grep.url = "https://mcp.grep.app";
+          # Read-only cluster access through `kubeconfig`'s file (modules/kubernetes.nix)
+          kubernetes = {
+            command = lib.getExe pkgs.mcp-k8s-go;
+            args = ["--readonly" "--allowed-contexts=trdos"];
+            env.KUBECONFIG = "${config.home.homeDirectory}/.kube/trdos";
+          };
         };
         zed-editor.userSettings.agent_servers.OpenCode = {
           command = "opencode";
