@@ -73,6 +73,7 @@ data:
     ensure_scopes forgejo default openid profile email groups
     ensure_scopes grafana default openid profile email groups
     ensure_scopes harbor default openid profile email groups
+    ensure_scopes homarr default openid profile email groups
     ensure_scopes home-assistant default openid profile email groups
     ensure_scopes homepage default openid profile email
     ensure_scopes immich default openid profile email groups
