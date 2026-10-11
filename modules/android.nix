@@ -130,7 +130,7 @@ in {
     homelab = ["jellyfin" "immich" "home-assistant" "syncthing" "orgzly" "davx5" "fossify-calendar" "bitwarden" "waterfly" "mihon" "komelia" "audiobookshelf" "tempus" "mobileraker" "actual" "frigate" "mealie"];
     eink = ["koreader" "librera" "orgzly" "olauncher"];
     handheld = ["chiaki" "retroarch" "dolphin" "ppsspp" "azahar" "moonlight"];
-    family = ["obtainium" "tailscale" "ntfy" "jellyfin" "immich" "home-assistant" "bitwarden" "mealie" "syncthing"];
+    family = ["obtainium" "tailscale" "ntfy" "heliboard" "jellyfin" "immich" "home-assistant" "bitwarden" "mealie" "syncthing"];
   };
 
   # deviceOwner = true only after Tristan factory-resets a device (docs/android.md).
