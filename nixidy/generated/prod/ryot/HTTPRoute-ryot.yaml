@@ -20,7 +20,7 @@ spec:
     - backendRefs:
         - group: ""
           kind: Service
-          name: oauth2-proxy
-          namespace: identity
-          port: 4180
+          name: ryot
+          namespace: media
+          port: 8000
           weight: 1

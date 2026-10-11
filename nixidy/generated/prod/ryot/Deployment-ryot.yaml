@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 8035f21769bbc2f0a92eef12b466e17a390b0c9bb5e50f6053b090742e60cf0b
+        checksum/configMaps: 20be79ed6937ff284007990e9189476618e856fb728f6e567ebc46f992391504
       labels:
         app.kubernetes.io/controller: ryot
         app.kubernetes.io/instance: ryot

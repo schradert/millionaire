@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: ryot-bootstrap
+  namespace: media
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - ryot
+          env:
+            - name: ADMIN_ACCESS_TOKEN_FILE
+              value: /secrets/token/password
+            - name: KEYCLOAK_PASSWORD_FILE
+              value: /secrets/keycloak/password
+            - name: OIDC_USERNAME
+              value: tristan
+            - name: RYOT_URL
+              value: http://ryot.media.svc.cluster.local:8000
+          image: harbor.trdos.me/library/app-bootstrap:0.14.0@sha256:6b5dba1a13b648287fac023dac4e9cdb33787ebede4cc3c79a0e72315acee38c
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /secrets/keycloak
+              name: keycloak
+              readOnly: true
+            - mountPath: /secrets/token
+              name: token
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - name: keycloak
+          secret:
+            secretName: ryot-keycloak-admin
+        - name: token
+          secret:
+            secretName: ryot-admin-token
