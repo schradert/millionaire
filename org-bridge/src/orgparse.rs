@@ -1,4 +1,6 @@
 use orgize::Org;
+use orgize::ast::Headline;
+use orgize::rowan::ast::AstNode;
 use std::path::Path;
 
 /// A parsed org heading with scheduling information.
@@ -122,52 +124,49 @@ pub fn parse_org_content(content: &str, file: &str) -> Vec<OrgEntry> {
     let org = Org::parse(content);
     let mut entries = Vec::new();
 
-    for headline in org.headlines() {
-        let title_raw = headline.title(&org).raw.to_string();
-        let title = title_raw.trim().to_string();
+    // Pre-order over every headline at any depth (document order).
+    for headline in org
+        .document()
+        .syntax()
+        .descendants()
+        .filter_map(Headline::cast)
+    {
+        let title = headline.title_raw().trim().to_string();
 
         if title.is_empty() {
             continue;
         }
 
-        let todo_state = headline.title(&org).keyword.as_ref().map(|k| k.to_string());
-        let priority = headline.title(&org).priority;
-        let tags: Vec<String> = headline
-            .title(&org)
-            .tags
-            .iter()
-            .map(|t| t.to_string())
+        let todo_state = headline.todo_keyword().map(|k| k.to_string());
+        let priority = headline
+            .priority()
+            .and_then(|p| p.to_string().chars().next());
+        let tags: Vec<String> = headline.tags().map(|t| t.to_string()).collect();
+
+        let scheduled: Vec<Timestamp> = headline
+            .scheduled()
+            .and_then(|ts| parse_orgize_timestamp(&ts))
+            .into_iter()
+            .collect();
+        let deadline: Vec<Timestamp> = headline
+            .deadline()
+            .and_then(|ts| parse_orgize_timestamp(&ts))
+            .into_iter()
             .collect();
 
-        let planning = headline.title(&org).planning.clone();
-
-        let mut scheduled = Vec::new();
-        let mut deadline = Vec::new();
-
-        if let Some(ref planning) = planning {
-            if let Some(ref ts) = planning.scheduled {
-                if let Some(parsed) = parse_orgize_timestamp(ts) {
-                    scheduled.push(parsed);
-                }
-            }
-            if let Some(ref ts) = planning.deadline {
-                if let Some(parsed) = parse_orgize_timestamp(ts) {
-                    deadline.push(parsed);
-                }
-            }
-        }
-
         // Parse active timestamps from the section body
-        let active_timestamps = extract_active_timestamps_from_section(&org, &headline);
+        let active_timestamps = extract_active_timestamps_from_section(&headline);
 
-        // Only include entries that have at least one timestamp
-        if scheduled.is_empty() && deadline.is_empty() && active_timestamps.is_empty() {
-            if todo_state.is_none() {
-                continue;
-            }
+        // Only include entries that have at least one timestamp, or a TODO state
+        if scheduled.is_empty()
+            && deadline.is_empty()
+            && active_timestamps.is_empty()
+            && todo_state.is_none()
+        {
+            continue;
         }
 
-        let heading_path = build_heading_path(&org, &headline);
+        let heading_path = build_heading_path(&headline);
 
         entries.push(OrgEntry {
             title,
@@ -186,47 +185,38 @@ pub fn parse_org_content(content: &str, file: &str) -> Vec<OrgEntry> {
 }
 
 fn parse_orgize_timestamp(ts: &orgize::ast::Timestamp) -> Option<Timestamp> {
-    match ts {
-        orgize::ast::Timestamp::Active { start, .. }
-        | orgize::ast::Timestamp::Inactive { start, .. } => Some(Timestamp {
-            year: start.year as u16,
-            month: start.month,
-            day: start.day,
-            hour: start.hour,
-            minute: start.minute,
-            end_hour: None,
-            end_minute: None,
-        }),
-        _ => None,
+    // Active and inactive timestamps are both accepted; diary sexps have no date.
+    fn num<T: std::str::FromStr>(t: Option<orgize::ast::Token>) -> Option<T> {
+        t.and_then(|t| t.to_string().parse().ok())
     }
+    Some(Timestamp {
+        year: num(ts.year_start())?,
+        month: num(ts.month_start())?,
+        day: num(ts.day_start())?,
+        hour: num(ts.hour_start()),
+        minute: num(ts.minute_start()),
+        end_hour: None,
+        end_minute: None,
+    })
 }
 
-fn extract_active_timestamps_from_section(
-    _org: &Org,
-    _headline: &orgize::HeadlineNode,
-) -> Vec<Timestamp> {
-    // orgize doesn't directly expose inline active timestamps from body text
-    // as structured data. We parse them with a regex from the section content.
-    // This will be implemented using the raw text of the section.
+fn extract_active_timestamps_from_section(_headline: &Headline) -> Vec<Timestamp> {
+    // Inline active timestamps in the body are not extracted (unchanged behavior).
     Vec::new()
 }
 
-fn build_heading_path(org: &Org, headline: &orgize::HeadlineNode) -> String {
-    let mut parts = Vec::new();
-    let title = headline.title(org).raw.trim().to_string();
-    parts.push(title);
+fn build_heading_path(headline: &Headline) -> String {
+    let mut parts = vec![headline.title_raw().trim().to_string()];
 
-    // Walk up parent headlines
-    let mut current = headline.parent(org);
-    while let Some(parent) = current {
-        if let Some(hl) = parent.as_headline() {
-            let parent_title = hl.title(org).raw.trim().to_string();
-            parts.push(parent_title);
-            current = hl.parent(org);
-        } else {
-            break;
-        }
-    }
+    // Walk up parent headlines (skip the headline itself).
+    parts.extend(
+        headline
+            .syntax()
+            .ancestors()
+            .skip(1)
+            .filter_map(Headline::cast)
+            .map(|hl| hl.title_raw().trim().to_string()),
+    );
 
     parts.reverse();
     parts.join("/")
