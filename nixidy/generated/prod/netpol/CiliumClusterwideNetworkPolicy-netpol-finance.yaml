@@ -1,0 +1,35 @@
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: netpol-finance
+spec:
+  description: Default-deny ingress for finance; baseline plus extraIngress only (nixidy/system/network/netpol.nix)
+  endpointSelector:
+    matchExpressions:
+      - key: k8s:io.kubernetes.pod.namespace
+        operator: In
+        values:
+          - finance
+  ingress:
+    - fromEntities:
+        - host
+        - remote-node
+        - ingress
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: prometheus
+            k8s:io.kubernetes.pod.namespace: observability
+        - matchLabels:
+            app.kubernetes.io/name: gatus
+            k8s:io.kubernetes.pod.namespace: observability
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: finance
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: oauth2-proxy
+            k8s:io.kubernetes.pod.namespace: identity
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP

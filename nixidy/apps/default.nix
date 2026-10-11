@@ -87,6 +87,12 @@
       }
     ];
   };
+  nixidy.netpol.namespaces.finance = {
+    enforce = true;
+    intraNamespace = true;
+    cnpg = true;
+    dragonfly = true;
+  };
   nixidy.applications.namespaces.resources.namespaces = {
     development = {};
     finance = {};
