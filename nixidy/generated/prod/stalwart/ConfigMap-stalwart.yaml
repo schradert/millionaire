@@ -23,6 +23,19 @@ data:
     store = "rocksdb"
     type = "internal"
 
+    [directory.oidc]
+    timeout = "10s"
+    type = "oidc"
+
+    [directory.oidc.endpoint]
+    method = "userinfo"
+    url = "http://keycloak.identity.svc.cluster.local:8080/realms/default/protocol/openid-connect/userinfo"
+
+    [directory.oidc.fields]
+    email = "email"
+    full-name = "name"
+    username = "preferred_username"
+
     [metrics.prometheus]
     enable = true
 
@@ -57,7 +70,7 @@ data:
     [storage]
     blob = "rocksdb"
     data = "rocksdb"
-    directory = "internal"
+    directory = "oidc"
     fts = "rocksdb"
     lookup = "rocksdb"
 

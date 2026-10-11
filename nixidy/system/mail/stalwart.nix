@@ -116,12 +116,26 @@ in {
                 type = "internal";
                 store = "rocksdb";
               };
+              # Bearer tokens (Bulwark's Keycloak access token over JMAP, or OAUTHBEARER) are
+              # validated against Keycloak's userinfo endpoint; the principal is created on
+              # first login from the email/preferred_username claims. Basic auth still falls
+              # back to the internal store (app passwords) and the fallback admin below.
+              directory.oidc = {
+                type = "oidc";
+                timeout = "10s";
+                # In-cluster: the token's issuer is fixed by KC_HOSTNAME, so the service URL works.
+                endpoint.url = "http://keycloak.identity.svc.cluster.local:8080/realms/default/protocol/openid-connect/userinfo";
+                endpoint.method = "userinfo";
+                fields.email = "email";
+                fields.username = "preferred_username";
+                fields.full-name = "name";
+              };
               storage = {
                 data = "rocksdb";
                 fts = "rocksdb";
                 blob = "rocksdb";
                 lookup = "rocksdb";
-                directory = "internal";
+                directory = "oidc";
               };
 
               tracer.stdout = {
