@@ -231,7 +231,10 @@ in {
         # Publish the flake's nix2container images (modules/images.nix) to
         # Harbor. Idempotent: an image is only built+pushed when its
         # <name>:<tag> is missing from the registry, so the tag in images.nix
-        # is the release switch. Triggered by the image-poll sensor.
+        # is the release switch. Every commit since the last fully published
+        # one is inspected, so a tag bumped mid-series still gets built. One
+        # pod per missing image; a broken image fails only its own step.
+        # Triggered by the image-poll sensor.
         workflowTemplates.image-publish.spec = {
           serviceAccountName = "argo-workflows-ci";
           entrypoint = "publish";
@@ -271,8 +274,7 @@ in {
               secret.secretName = "argo-workflows-harbor";
             }
           ];
-          templates = lib.toList {
-            name = "publish";
+          templates = let
             # Workers only: keep builds off the etcd control-plane nodes.
             affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms = lib.toList {
               matchExpressions = [
@@ -298,17 +300,10 @@ in {
                 mountPath = "/cache";
               };
             };
-            container = {
+            step = args: {
               image = nixImage;
               command = ["bash" "-ec"];
-              args = [
-                (builtins.readFile ./image-publish.sh)
-                "image-publish"
-                "{{workflow.parameters.repo-url}}"
-                "{{workflow.parameters.revision}}"
-                "{{workflow.parameters.images}}"
-                "{{workflow.parameters.force}}"
-              ];
+              args = [(builtins.readFile ./image-publish.sh)] ++ ["image-publish"] ++ args;
               env = lib.toList {
                 name = "REGISTRY_AUTH_FILE";
                 value = "/registry-auth/config.json";
@@ -332,7 +327,60 @@ in {
               };
               resources.limits.memory = "12Gi";
             };
-          };
+          in [
+            # plan, then one pod per missing image. continueOn keeps a broken
+            # image from skipping the rest or failing the run; each image is
+            # its own node, so its pass/fail is visible per image.
+            {
+              name = "publish";
+              parallelism = 1;
+              steps = [
+                [
+                  {
+                    name = "plan";
+                    template = "plan";
+                  }
+                ]
+                [
+                  {
+                    name = "build";
+                    template = "build";
+                    arguments.parameters = lib.toList {
+                      name = "image";
+                      value = "{{item}}";
+                    };
+                    withParam = "{{steps.plan.outputs.parameters.images}}";
+                    continueOn.failed = true;
+                  }
+                ]
+              ];
+            }
+            {
+              name = "plan";
+              inherit affinity initContainers;
+              outputs.parameters = lib.toList {
+                name = "images";
+                valueFrom.path = "/tmp/items.json";
+              };
+              container = step [
+                "plan"
+                "{{workflow.parameters.repo-url}}"
+                "{{workflow.parameters.revision}}"
+                "{{workflow.parameters.images}}"
+                "{{workflow.parameters.force}}"
+              ];
+            }
+            {
+              name = "build";
+              inherit affinity initContainers;
+              inputs.parameters = lib.toList {name = "image";};
+              container = step [
+                "build"
+                "{{workflow.parameters.repo-url}}"
+                "{{inputs.parameters.image}}"
+              ];
+            }
+          ];
         };
         # GitHub token for the weekly dependency-update PRs (contents + pull
         # requests write on schradert/millionaire).
