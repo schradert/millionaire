@@ -8,6 +8,10 @@
 //! 3. On 401, `POST /auth/createAdmin` (the server only allows this while there are no users;
 //!    it answers 200 even when creation failed, so we verify by logging in again). If users
 //!    already exist (403) under another credential, fail clearly rather than guess.
+//! 4. With `LISTENBRAINZ_TOKEN[_FILE]` set, link the admin's ListenBrainz scrobbling
+//!    (`PUT /api/listenbrainz/link`, token validated against `ND_LISTENBRAINZ_BASEURL`, which is
+//!    Maloja's ListenBrainz endpoint, so the token is a Maloja API key) unless
+//!    `GET /api/listenbrainz/link` already says it is linked.
 
 use std::time::Duration;
 
@@ -15,6 +19,39 @@ use reqwest::{Client, StatusCode};
 use serde_json::{json, Value};
 
 use crate::common::{ok, retry, secret, var, Result};
+
+/// Link the user's ListenBrainz token (a Maloja API key), once.
+async fn link_listenbrainz(http: &Client, base: &str, login: &Value, token: &str) -> Result<()> {
+    let jwt = login["token"].as_str().ok_or("login response has no token")?;
+    let auth = format!("Bearer {jwt}");
+    let r = http
+        .get(format!("{base}/api/listenbrainz/link"))
+        .header("X-ND-Authorization", &auth)
+        .send()
+        .await?;
+    let status: Value = ok(r, "GET /api/listenbrainz/link").await?.json().await?;
+    if status["status"] == json!(true) {
+        println!("listenbrainz already linked");
+        return Ok(());
+    }
+    let r = http
+        .put(format!("{base}/api/listenbrainz/link"))
+        .header("X-ND-Authorization", &auth)
+        .json(&json!({ "token": token }))
+        .send()
+        .await?;
+    ok(r, "PUT /api/listenbrainz/link (is the token registered as a Maloja API key?)").await?;
+    println!("linked listenbrainz");
+    Ok(())
+}
+
+/// The admin's login reply, once it exists, then the optional ListenBrainz link.
+async fn finish(http: &Client, base: &str, login: Value) -> Result<()> {
+    if let Some(token) = crate::arr::optional_secret("LISTENBRAINZ_TOKEN")? {
+        link_listenbrainz(http, base, &login, &token).await?;
+    }
+    Ok(())
+}
 
 async fn login(http: &Client, base: &str, user: &str, password: &str) -> Result<Option<Value>> {
     let r = http
@@ -44,7 +81,7 @@ pub async fn run() -> Result<()> {
 
     if let Some(u) = login(&http, base, &user, &password).await? {
         println!("admin {user} already present and login ok (isAdmin={})", u["isAdmin"]);
-        return Ok(());
+        return finish(&http, base, u).await;
     }
 
     println!("login as {user} rejected, trying to create the first admin");
@@ -65,7 +102,7 @@ pub async fn run() -> Result<()> {
     match login(&http, base, &user, &password).await? {
         Some(u) if u["isAdmin"] == json!(true) => {
             println!("created admin {user}");
-            Ok(())
+            finish(&http, base, u).await
         }
         Some(_) => Err(format!("{user} exists but is not an admin").into()),
         None => Err(format!("createAdmin returned 200 but {user} cannot log in").into()),
