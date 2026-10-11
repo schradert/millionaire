@@ -57,6 +57,32 @@ in {
         secrets.admin = "navidrome-admin";
       };
       volsync.pvcs.navidrome.title = "navidrome";
+      # Navidrome trusts the user header from any whitelisted pod IP, so only oauth2-proxy,
+      # the gateway (header-stripped direct routes), the bootstrap job and the kubelet
+      # may reach it.
+      resources.ciliumNetworkPolicies.navidrome.spec = {
+        endpointSelector.matchLabels."app.kubernetes.io/name" = "navidrome";
+        ingress = [
+          {fromEntities = ["ingress" "host"];}
+          {
+            fromEndpoints = [
+              {
+                matchLabels = {
+                  "k8s:io.kubernetes.pod.namespace" = "identity";
+                  "app.kubernetes.io/name" = "oauth2-proxy";
+                };
+              }
+              {matchLabels."batch.kubernetes.io/job-name" = "navidrome-bootstrap";}
+            ];
+            toPorts = lib.toList {
+              ports = lib.toList {
+                port = toString port;
+                protocol = "TCP";
+              };
+            };
+          }
+        ];
+      };
       helm.releases.navidrome = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
