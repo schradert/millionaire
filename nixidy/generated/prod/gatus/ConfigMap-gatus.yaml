@@ -92,6 +92,12 @@ data:
       name: contextforge
       url: https://mcp.trdos.me
     - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: dashy
+      url: https://dashy.trdos.me
+    - conditions:
       - '[STATUS] == 401'
       group: internal
       interval: 1m
