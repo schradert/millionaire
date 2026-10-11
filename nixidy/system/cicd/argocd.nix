@@ -27,6 +27,23 @@ in {
       };
     };
 
+    # `argocd login --sso` (modules/kubernetes.nix): PKCE on a localhost callback.
+    applications.keycloak.resources.keycloakClients.argocd-cli.spec = {
+      realmRef.name = "default";
+      definition = {
+        clientId = "argocd-cli";
+        name = "ArgoCD CLI";
+        enabled = true;
+        protocol = "openid-connect";
+        publicClient = true;
+        standardFlowEnabled = true;
+        directAccessGrantsEnabled = false;
+        redirectUris = ["http://localhost:8085/auth/callback"];
+        defaultClientScopes = ["openid" "profile" "email" "groups"];
+        attributes."pkce.code.challenge.method" = "S256";
+      };
+    };
+
     portal.apps.argo = {
       title = "ArgoCD";
       icon = "argo-cd";
@@ -68,6 +85,7 @@ in {
             issuer = "https://keycloak.${domain}/realms/default";
             clientID = "$oidc.argocd.clientID";
             clientSecret = "$oidc.argocd.clientSecret";
+            cliClientID = "argocd-cli";
             requestedScopes = ["openid" "profile" "email" "groups"];
           };
           configs.rbac."policy.csv" = "g, admin, role:admin";

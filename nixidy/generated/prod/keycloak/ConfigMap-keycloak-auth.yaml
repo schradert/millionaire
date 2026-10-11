@@ -63,6 +63,7 @@ data:
     ensure_scopes actual default openid profile email groups
     ensure_scopes argo-workflows default openid profile email groups
     ensure_scopes argocd default openid profile email groups
+    ensure_scopes argocd-cli default openid profile email groups
     ensure_scopes audiobookshelf default openid profile email groups abs_groups
     ensure_scopes autobrr default openid profile email groups
     ensure_scopes bifrost default openid profile email
