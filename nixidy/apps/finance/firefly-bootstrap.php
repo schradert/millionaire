@@ -1,0 +1,84 @@
+<?php
+// Idempotent: makes sure the owner user exists and that Secret firefly-passport holds
+// the Passport signing keys plus a personal access token for the data importer.
+// Re-mints the token only when it is missing, revoked or within 30 days of expiry.
+// The Secret's keys double as env var names: Firefly takes the PASSPORT_* ones via envFrom.
+
+const SA = '/var/run/secrets/kubernetes.io/serviceaccount';
+$ns = trim(file_get_contents(SA . '/namespace'));
+$name = 'firefly-passport';
+$base = 'https://' . getenv('KUBERNETES_SERVICE_HOST') . ':' . getenv('KUBERNETES_SERVICE_PORT') . '/api/v1/namespaces/' . $ns . '/secrets';
+
+function kube(string $method, string $url, ?array $body = null, string $type = 'application/json'): array
+{
+    $ctx = stream_context_create([
+        'http' => [
+            'method' => $method,
+            'header' => "Authorization: Bearer " . trim(file_get_contents(SA . '/token')) . "\r\nContent-Type: $type\r\nAccept: application/json\r\n",
+            'content' => null === $body ? '' : json_encode($body),
+            'ignore_errors' => true,
+            'timeout' => 30,
+        ],
+        'ssl' => ['cafile' => SA . '/ca.crt'],
+    ]);
+    $out = file_get_contents($url, false, $ctx);
+    preg_match('#HTTP/\S+ (\d+)#', $http_response_header[0] ?? '', $m);
+    $status = (int) ($m[1] ?? 0);
+    if ($status >= 300 && 404 !== $status) {
+        throw new RuntimeException("$method $url: HTTP $status");
+    }
+    return [$status, json_decode((string) $out, true) ?? []];
+}
+
+// The image's entrypoint is bypassed, so resolve the *_FILE secrets here.
+foreach (['APP_KEY' => '/secrets/app_key.txt', 'DB_PASSWORD' => '/secrets/db_password.txt'] as $k => $file) {
+    $v = trim(file_get_contents($file));
+    putenv("$k=$v");
+    $_ENV[$k] = $_SERVER[$k] = $v;
+}
+
+[$status, $secret] = kube('GET', $base . '/' . $name);
+$have = 404 === $status ? [] : array_map('base64_decode', $secret['data'] ?? []);
+
+require '/var/www/html/vendor/autoload.php';
+$app = require '/var/www/html/bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+
+// Same creation path as the first request through the remote-user guard.
+$username = getenv('ADMIN_USER');
+$user = (new FireflyIII\Support\Authentication\RemoteUserProvider())->retrieveById($username);
+echo "user $username is #{$user->id}\n";
+
+$keysOk = !empty($have['PASSPORT_PRIVATE_KEY']) && !empty($have['PASSPORT_PUBLIC_KEY']);
+if (!empty($have['FIREFLY_III_ACCESS_TOKEN']) && $keysOk) {
+    $jti = json_decode(base64_decode(strtr(explode('.', $have['FIREFLY_III_ACCESS_TOKEN'])[1] ?? '', '-_', '+/')), true)['jti'] ?? '';
+    $row = Illuminate\Support\Facades\DB::table('oauth_access_tokens')->where('id', $jti)->where('revoked', false)->first();
+    if ($row && strtotime($row->expires_at) > time() + 30 * 86400) {
+        echo "token $jti still valid, nothing to do\n";
+        exit(0);
+    }
+    echo "token missing, revoked or expiring: minting a new one\n";
+}
+
+if ($keysOk) {
+    [$priv, $pub] = [$have['PASSPORT_PRIVATE_KEY'], $have['PASSPORT_PUBLIC_KEY']];
+} else {
+    $res = openssl_pkey_new(['private_key_bits' => 4096, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+    openssl_pkey_export($res, $priv);
+    $pub = openssl_pkey_get_details($res)['key'];
+}
+config(['passport.private_key' => $priv, 'passport.public_key' => $pub]);
+
+if (0 === Illuminate\Support\Facades\DB::table('oauth_personal_access_clients')->count()) {
+    app(Laravel\Passport\ClientRepository::class)->createPersonalAccessClient(null, 'Firefly III Personal Access Client', 'http://localhost');
+    echo "created the personal access client\n";
+}
+$token = $user->createToken('data-importer')->accessToken;
+
+$data = ['PASSPORT_PRIVATE_KEY' => $priv, 'PASSPORT_PUBLIC_KEY' => $pub, 'FIREFLY_III_ACCESS_TOKEN' => $token];
+if (404 === $status) {
+    kube('POST', $base, ['apiVersion' => 'v1', 'kind' => 'Secret', 'metadata' => ['name' => $name], 'type' => 'Opaque', 'stringData' => $data]);
+} else {
+    kube('PATCH', $base . '/' . $name, ['stringData' => $data], 'application/merge-patch+json');
+}
+echo "stored keys and token in secret $name\n";

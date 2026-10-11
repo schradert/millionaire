@@ -31,7 +31,10 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - image: fireflyiii/data-importer:version-2.2.1@sha256:98cb3aa6dbd6681cbdc590a5d70dd7d964b637bac863d947bcbc20448ac56b8a
+        - env:
+            - name: FIREFLY_III_ACCESS_TOKEN_FILE
+              value: /secrets/app_token.txt
+          image: fireflyiii/data-importer:version-2.2.1@sha256:98cb3aa6dbd6681cbdc590a5d70dd7d964b637bac863d947bcbc20448ac56b8a
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0
@@ -59,8 +62,10 @@ spec:
               name: config
               readOnly: true
               subPath: .env
-            - mountPath: /secrets
+            - mountPath: /secrets/app_token.txt
               name: secrets
+              readOnly: true
+              subPath: FIREFLY_III_ACCESS_TOKEN
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
       hostIPC: false
@@ -73,4 +78,4 @@ spec:
           name: config
         - name: secrets
           secret:
-            secretName: firefly-importer
+            secretName: firefly-passport

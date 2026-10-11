@@ -62,6 +62,10 @@ spec:
               value: "25"
             - name: SITE_OWNER
               value: t0rdos@pm.me
+          envFrom:
+            - secretRef:
+                name: firefly-passport
+                optional: true
           image: fireflyiii/core:version-6.5.4@sha256:6ae1b92eb73b4ae8a8e7e038440b93fba46267e05b5b903c62316b8cb03779af
           livenessProbe:
             httpGet:
