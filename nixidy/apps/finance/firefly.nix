@@ -170,7 +170,7 @@
           };
         };
       };
-      # Idempotent post-sync bootstrap (README "Conventions"): ensures the owner user, the
+      # Idempotent sync-hook bootstrap (README "Conventions"): ensures the owner user, the
       # Passport keys and a personal access token for the data importer, and keeps them
       # in Secret firefly-passport (see firefly-bootstrap.php). Runs in the firefly image
       # as www-data with the app's DB credentials; the Role only reaches that one Secret
@@ -204,7 +204,10 @@
       };
       resources.jobs.firefly-bootstrap = {
         metadata.annotations = {
-          "argocd.argoproj.io/hook" = "PostSync";
+          # Sync, not PostSync: the importer can't become healthy until this job has
+          # written firefly-passport, so a PostSync hook would never run. It only needs
+          # the database, not the firefly pod.
+          "argocd.argoproj.io/hook" = "Sync";
           "argocd.argoproj.io/hook-delete-policy" = "BeforeHookCreation";
         };
         spec = {
