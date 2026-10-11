@@ -1,6 +1,10 @@
 {config, ...}: let
-  inherit (config.canivete.meta) domain;
+  inherit (config.canivete.meta) domain people;
   hostname = "mcp.${domain}";
+  issuer = "https://keycloak.${domain}/realms/default";
+  # Virtual server with every registered MCP server's tools, at /servers/<id>/mcp; the
+  # same id is in modules/opencode.nix.
+  serverId = "05238f180ea94c7c8c5621976aec4604";
 in {
   nixidy = {
     charts,
@@ -8,7 +12,7 @@ in {
     pinned,
     ...
   }: {
-    # Keycloak OIDC client for ContextForge admin UI
+    # Keycloak SSO for the admin UI (SSO_KEYCLOAK_*); members of `admin` become platform admins.
     applications.keycloak.resources.keycloakClients.contextforge.spec = {
       realmRef.name = "default";
       clientSecretRef = {
@@ -25,7 +29,7 @@ in {
         directAccessGrantsEnabled = false;
         redirectUris = ["https://${hostname}/*"];
         webOrigins = ["https://${hostname}"];
-        defaultClientScopes = ["openid" "profile" "email"];
+        defaultClientScopes = ["openid" "profile" "email" "groups"];
       };
     };
 
@@ -54,6 +58,7 @@ in {
         contextforge-admin = {
           key = "PLATFORM_ADMIN_PASSWORD";
           length = 24;
+          bitwarden = "contextforge/admin-password";
         };
         contextforge-default-user = {
           key = "DEFAULT_USER_PASSWORD";
@@ -82,9 +87,21 @@ in {
                 HOST = "0.0.0.0";
                 PORT = "8080";
                 DATABASE_URL = "postgresql+psycopg://contextforge:$(DB_PASSWORD)@contextforge-rw:5432/contextforge";
-                OIDC_ISSUER_URL = "https://keycloak.${domain}/realms/default";
-                OIDC_CLIENT_ID = "contextforge";
-                OIDC_CLIENT_SECRET_ENV = "OIDC_CLIENT_SECRET";
+                # SSO redirects and virtual server URLs.
+                APP_DOMAIN = "https://${hostname}";
+                # Keycloak login for the UI; the provider row is (re)created at startup.
+                # SSO_KEYCLOAK_CLIENT_SECRET comes from the `contextforge` Secret.
+                SSO_ENABLED = "true";
+                SSO_KEYCLOAK_ENABLED = "true";
+                SSO_KEYCLOAK_BASE_URL = "https://keycloak.${domain}";
+                SSO_KEYCLOAK_REALM = "default";
+                SSO_KEYCLOAK_CLIENT_ID = "contextforge";
+                SSO_KEYCLOAK_ROLE_MAPPINGS = builtins.toJSON {admin = "platform_admin";};
+                # Keycloak access tokens (sso-token) as API/MCP bearer credentials; the bootstrap
+                # marks the provider trusted with audience oauth2-proxy.
+                SSO_API_TOKEN_AUTH_ENABLED = "true";
+                # The bootstrap creates tristan as a local user; his first Keycloak login relinks it.
+                SSO_ALLOW_PROVIDER_LINKING = "true";
                 # Gateways are cluster Services; SSRF protection blocks private ranges by default (422).
                 SSRF_ALLOWED_NETWORKS = builtins.toJSON ["10.43.0.0/16"];
                 # ToolHive vMCP as upstream MCP source
@@ -129,75 +146,30 @@ in {
       };
 
       # Idempotent post-sync bootstrap (apps/app-bootstrap): register OpenViking as an MCP
-      # gateway (Bearer = the agent key from the openviking-bootstrap job). Reruns are a no-op.
-      resources.jobs.contextforge-bootstrap = {
-        metadata.annotations = {
-          "argocd.argoproj.io/hook" = "PostSync";
-          "argocd.argoproj.io/hook-delete-policy" = "BeforeHookCreation";
-        };
-        spec = {
-          backoffLimit = 6;
-          activeDeadlineSeconds = 1200;
-          template.spec = {
-            restartPolicy = "OnFailure";
-            automountServiceAccountToken = false;
-            securityContext = {
-              runAsNonRoot = true;
-              runAsUser = 65534;
-              runAsGroup = 65534;
-              seccompProfile.type = "RuntimeDefault";
-            };
-            containers = lib.toList {
-              name = "bootstrap";
-              image = with pinned.images.app-bootstrap; "${repository}:${tag}@${digest}";
-              args = ["contextforge"];
-              env = [
-                {
-                  name = "CONTEXTFORGE_URL";
-                  value = "http://contextforge.ai.svc.cluster.local:8080";
-                }
-                {
-                  name = "ADMIN_PASSWORD_FILE";
-                  value = "/secrets/admin/PLATFORM_ADMIN_PASSWORD";
-                }
-                {
-                  name = "UPSTREAM_TOKEN_FILE";
-                  value = "/secrets/openviking/OPENVIKING_AGENT_API_KEY";
-                }
-                {
-                  name = "GATEWAY_URL";
-                  value = "http://openviking.ai.svc.cluster.local:1933/mcp";
-                }
-              ];
-              volumeMounts = [
-                {
-                  name = "admin";
-                  mountPath = "/secrets/admin";
-                  readOnly = true;
-                }
-                {
-                  name = "openviking";
-                  mountPath = "/secrets/openviking";
-                  readOnly = true;
-                }
-              ];
-              securityContext = {
-                allowPrivilegeEscalation = false;
-                readOnlyRootFilesystem = true;
-                capabilities.drop = ["ALL"];
-              };
-            };
-            volumes = [
-              {
-                name = "admin";
-                secret.secretName = "contextforge-admin";
-              }
-              {
-                name = "openviking";
-                secret.secretName = "openviking-agent-key";
-              }
-            ];
+      # gateway (Bearer = the agent key from the openviking-bootstrap job). With the
+      # app-bootstrap-contextforge image (>= 0.18.0) also: the OAuth virtual server `homelab`
+      # (every tool, resource and prompt; Keycloak tokens with audience oauth2-proxy), the
+      # keycloak provider trusted for API tokens, and tristan as an admin user (OAuth virtual
+      # servers only serve users already in the database). Reruns are a no-op.
+      bootstrap = {
+        image = with (pinned.images.app-bootstrap-contextforge or pinned.images.app-bootstrap); "${repository}:${tag}@${digest}";
+        args = ["contextforge"];
+        env =
+          {
+            CONTEXTFORGE_URL = "http://contextforge.ai.svc.cluster.local:8080";
+            ADMIN_PASSWORD_FILE = "/secrets/admin/PLATFORM_ADMIN_PASSWORD";
+            UPSTREAM_TOKEN_FILE = "/secrets/openviking/OPENVIKING_AGENT_API_KEY";
+            GATEWAY_URL = "http://openviking.ai.svc.cluster.local:1933/mcp";
+          }
+          // lib.optionalAttrs (pinned.images ? app-bootstrap-contextforge) {
+            SERVER_ID = serverId;
+            OIDC_ISSUER = issuer;
+            OIDC_AUDIENCE = "oauth2-proxy";
+            USER_EMAIL = people.my.profiles.personal.email;
           };
+        secrets = {
+          admin = "contextforge-admin";
+          openviking = "openviking-agent-key";
         };
       };
 
@@ -222,7 +194,7 @@ in {
         secretStoreRef.kind = "ClusterSecretStore";
         target.template.data = {
           DB_PASSWORD = "{{ .db_password }}";
-          OIDC_CLIENT_SECRET = "{{ .oidc_secret }}";
+          SSO_KEYCLOAK_CLIENT_SECRET = "{{ .oidc_secret }}";
         };
         data = [
           {

@@ -39,18 +39,30 @@ spec:
       automountServiceAccountToken: false
       containers:
         - env:
+            - name: APP_DOMAIN
+              value: https://mcp.trdos.me
             - name: DATABASE_URL
               value: postgresql+psycopg://contextforge:$(DB_PASSWORD)@contextforge-rw:5432/contextforge
             - name: HOST
               value: 0.0.0.0
-            - name: OIDC_CLIENT_ID
-              value: contextforge
-            - name: OIDC_CLIENT_SECRET_ENV
-              value: OIDC_CLIENT_SECRET
-            - name: OIDC_ISSUER_URL
-              value: https://keycloak.trdos.me/realms/default
             - name: PORT
               value: "8080"
+            - name: SSO_ALLOW_PROVIDER_LINKING
+              value: "true"
+            - name: SSO_API_TOKEN_AUTH_ENABLED
+              value: "true"
+            - name: SSO_ENABLED
+              value: "true"
+            - name: SSO_KEYCLOAK_BASE_URL
+              value: https://keycloak.trdos.me
+            - name: SSO_KEYCLOAK_CLIENT_ID
+              value: contextforge
+            - name: SSO_KEYCLOAK_ENABLED
+              value: "true"
+            - name: SSO_KEYCLOAK_REALM
+              value: default
+            - name: SSO_KEYCLOAK_ROLE_MAPPINGS
+              value: '{"admin":"platform_admin"}'
             - name: SSRF_ALLOWED_NETWORKS
               value: '["10.43.0.0/16"]'
             - name: TOOLHIVE_VMCP_URL

@@ -9,6 +9,8 @@ in {
   }: let
     inherit (config.canivete.meta) domain;
     hostname = "immich.${domain}";
+    # app-bootstrap >= 0.18.0 mints tristan's API key (bootstrap below).
+    apiKey = lib.versionAtLeast pinned.images.app-bootstrap-immich.tag "0.18.0";
     # Probes use numeric ports: app-template doesn't declare a named container port.
     serverProbe = lib.recursiveUpdate {
       enabled = true;
@@ -269,58 +271,45 @@ in {
       # the server is uninitialized, then checks login and that OAuth is live
       # (apps/app-bootstrap). Reruns after every sync, so it must stay a no-op.
       # Image: `image publish app-bootstrap` (modules/images.nix) -> Harbor.
-      resources.jobs.immich-bootstrap = {
-        metadata.annotations = {
-          "argocd.argoproj.io/hook" = "PostSync";
-          "argocd.argoproj.io/hook-delete-policy" = "BeforeHookCreation";
-        };
+      # From 0.18.0 it also mints the admin's (= tristan's, linked by email) API key for
+      # immich-cli into immich-tristan-api-key, pushed to Bitwarden immich/tristan/api-key.
+      bootstrap = {
+        image = with pinned.images.app-bootstrap-immich; "${repository}:${tag}@${digest}";
+        args = ["immich"];
+        env =
+          {
+            IMMICH_URL = "http://immich-server.media.svc.cluster.local:2283";
+            ADMIN_EMAIL = people.my.profiles.personal.email;
+            ADMIN_PASSWORD_FILE = "/secrets/admin/password";
+            REQUIRE_OAUTH = "1";
+          }
+          // lib.optionalAttrs apiKey {API_KEY_SECRET = "immich-tristan-api-key";};
+        secrets.admin = "immich-admin";
+        rules = lib.optionals apiKey [
+          {
+            apiGroups = [""];
+            resources = ["secrets"];
+            verbs = ["create"];
+          }
+          {
+            apiGroups = [""];
+            resources = ["secrets"];
+            resourceNames = ["immich-tristan-api-key"];
+            verbs = ["get" "patch"];
+          }
+        ];
+      };
+      resources.pushSecrets.immich-tristan-api-key = lib.mkIf apiKey {
         spec = {
-          backoffLimit = 6;
-          activeDeadlineSeconds = 1200;
-          template.spec = {
-            restartPolicy = "OnFailure";
-            securityContext = {
-              runAsNonRoot = true;
-              runAsUser = 65534;
-              runAsGroup = 65534;
-              seccompProfile.type = "RuntimeDefault";
-            };
-            containers = lib.toList {
-              name = "bootstrap";
-              image = with pinned.images.app-bootstrap-immich; "${repository}:${tag}@${digest}";
-              args = ["immich"];
-              env = [
-                {
-                  name = "IMMICH_URL";
-                  value = "http://immich-server.media.svc.cluster.local:2283";
-                }
-                {
-                  name = "ADMIN_EMAIL";
-                  value = people.my.profiles.personal.email;
-                }
-                {
-                  name = "ADMIN_PASSWORD_FILE";
-                  value = "/secrets/admin/password";
-                }
-                {
-                  name = "REQUIRE_OAUTH";
-                  value = "1";
-                }
-              ];
-              volumeMounts = lib.toList {
-                name = "admin";
-                mountPath = "/secrets/admin";
-                readOnly = true;
-              };
-              securityContext = {
-                allowPrivilegeEscalation = false;
-                readOnlyRootFilesystem = true;
-                capabilities.drop = ["ALL"];
-              };
-            };
-            volumes = lib.toList {
-              name = "admin";
-              secret.secretName = "immich-admin";
+          secretStoreRefs = lib.toList {
+            name = "bitwarden";
+            kind = "ClusterSecretStore";
+          };
+          selector.secret.name = "immich-tristan-api-key";
+          data = lib.toList {
+            match = {
+              secretKey = "api-key";
+              remoteRef.remoteKey = "immich/tristan/api-key";
             };
           };
         };
