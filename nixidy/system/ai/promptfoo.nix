@@ -42,6 +42,11 @@ in {
         values = {
           controllers.promptfoo = {
             annotations."reloader.stakater.com/auto" = "true";
+            # The image runs as promptfoo (uid 100, gid 101); the PVC was root-owned.
+            pod.securityContext = {
+              fsGroup = 101;
+              fsGroupChangePolicy = "OnRootMismatch";
+            };
             containers.promptfoo = {
               image = pinned.images.promptfoo;
               # The image's default command serves the web UI on :3000.
