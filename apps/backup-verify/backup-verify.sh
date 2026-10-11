@@ -83,9 +83,12 @@ restic_env() { # repo-name
   export RESTIC_REPOSITORY="s3:https://$S3_HOST/$BUCKET/$1"
 }
 
-synced_sources() { # ns<TAB>repository<TAB>sourcePVC for sources that have synced at least once
+# ns<TAB>repository<TAB>sourcePVC for sources that have backed something up. VolSync reports an empty source
+# volume as a successful sync ("Directory is empty skipping backup") and never creates the repository.
+synced_sources() {
   kubectl get replicationsources.volsync.backube -A -o json |
-    jq -r '.items[] | select(.status.lastSyncTime) | [.metadata.namespace, .spec.restic.repository, .spec.sourcePVC] | @tsv' | sort
+    jq -r '.items[] | select(.status.lastSyncTime) | select((.status.latestMoverStatus.logs // "") | test("Directory is empty") | not) |
+      [.metadata.namespace, .spec.restic.repository, .spec.sourcePVC] | @tsv' | sort
 }
 
 rotate() { # picks entries from stdin starting at a monthly-rotating offset, one per line
@@ -112,8 +115,9 @@ check_restic() {
   local ns repo pvc size mib out rc ok=0 bad=0 never
   while IFS=$'\t' read -r ns repo pvc; do
     restic_env "$repo"
-    size=$(restic stats --mode raw-data --json 2>/dev/null </dev/null | jq -r '.total_size // empty')
-    if [ -z "$size" ]; then fail "restic $ns/$repo: cannot open the repository"; bad=$((bad + 1)); continue; fi
+    out=$(restic stats --mode raw-data --json 2>&1 </dev/null)
+    size=$(echo "$out" | tail -n 1 | jq -r '.total_size // empty' 2>/dev/null)
+    if [ -z "$size" ]; then fail "restic $ns/$repo: cannot read the repository: $(echo "$out" | tail -n 2 | tr '\n' ' ' | cut -c1-300)"; bad=$((bad + 1)); continue; fi
     mib=$((size / 100 / 1048576))
     [ "$mib" -lt 16 ] && mib=16
     [ "$mib" -gt "$CHECK_MAX_SUBSET_MIB" ] && mib=$CHECK_MAX_SUBSET_MIB
@@ -132,9 +136,10 @@ check_restic() {
     fi
   done < <(synced_sources)
   [ "$bad" -eq 0 ] && pass "restic check: $ok repositories, 1% (max ${CHECK_MAX_SUBSET_MIB}M) of data read each"
-  while read -r never; do warn "restic $never has never synced (no repository to check)"; done < <(
+  while read -r never reason; do warn "restic $never: $reason"; done < <(
     kubectl get replicationsources.volsync.backube -A -o json |
-      jq -r '.items[] | select(.status.lastSyncTime | not) | "\(.metadata.namespace)/\(.spec.restic.repository)"')
+      jq -r '.items[] | select((.status.lastSyncTime | not) or ((.status.latestMoverStatus.logs // "") | test("Directory is empty"))) |
+        "\(.metadata.namespace)/\(.spec.restic.repository) " + (if .status.lastSyncTime then "source volume is empty, nothing backed up" else "never synced" end)')
 }
 
 # ---- 2. rotating scratch volume restore -----------------------------------------------------------
@@ -303,21 +308,24 @@ YAML
   pod="$name-1"
   dbs=$(psql_scratch "$pod" postgres "select datname from pg_database where not datistemplate and datname <> 'postgres'")
   if [ -z "$dbs" ]; then fail "database $ns/$src: restored cluster has no user database"; return; fi
-  local line="" bad=0
+  # CNPG's recovery also creates an empty default database (`app`); only databases with tables count.
+  local line="" bad=0 nonempty=0
   for db in $dbs; do
     tables=$(psql_scratch "$pod" "$db" "select count(*) from pg_tables where schemaname not in ('pg_catalog','information_schema')")
+    if ! [ "${tables:-0}" -gt 0 ] 2>/dev/null; then line="$line $db: empty (skipped);"; continue; fi
+    nonempty=$((nonempty + 1))
     rows=$(psql_scratch "$pod" "$db" "select coalesce(sum((xpath('/row/c/text()', query_to_xml(format('select count(*) as c from %I.%I', schemaname, tablename), false, true, '')))[1]::text::bigint), 0) from pg_tables where schemaname not in ('pg_catalog','information_schema')")
-    line="$line $db: ${tables:-?} tables ${rows:-?} rows;"
-    if ! [ "${tables:-0}" -gt 0 ] 2>/dev/null; then bad=1; fail "database $ns/$src/$db: restored database has no tables"; fi
+    line="$line $db: $tables tables ${rows:-?} rows;"
     # Compare with the previous run for this database, kept in a ConfigMap; never the live database.
     prev=$(kn get configmap backup-verify-state -o jsonpath="{.data.db-$ns-$src-$db}" 2>/dev/null)
     prev_tables=${prev%% *}
-    if [ -n "$prev_tables" ] && [ "${tables:-0}" -lt "$prev_tables" ]; then
+    if [ -n "$prev_tables" ] && [ "$tables" -lt "$prev_tables" ]; then
       bad=1; fail "database $ns/$src/$db: $tables tables, previous verification had $prev_tables"
     fi
-    kn patch configmap backup-verify-state --type=merge -p "{\"data\":{\"db-$ns-$src-$db\":\"${tables:-0} ${rows:-0}\"}}" >/dev/null 2>&1 ||
-      kn create configmap backup-verify-state --from-literal="db-$ns-$src-$db=${tables:-0} ${rows:-0}" >/dev/null 2>&1
+    kn patch configmap backup-verify-state --type=merge -p "{\"data\":{\"db-$ns-$src-$db\":\"$tables ${rows:-0}\"}}" >/dev/null 2>&1 ||
+      kn create configmap backup-verify-state --from-literal="db-$ns-$src-$db=$tables ${rows:-0}" >/dev/null 2>&1
   done
+  if [ "$nonempty" -eq 0 ]; then fail "database $ns/$src: restored cluster has no database with tables:$line"; bad=1; fi
   [ "$bad" -eq 0 ] && pass "database restore $ns/$src from B2 (base backup + WAL):$line"
 }
 
