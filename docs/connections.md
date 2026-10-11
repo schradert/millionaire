@@ -65,7 +65,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | ntfy (hyena) | none (tailnet) | done: ntfy CLI; `alerts` subscriber on personal Macs, `modules/ntfy.nix` | done: CLI + `alerts` subscriber (user service) | n-a | done: ntfy | — |
 | mainsail, obico, spoolman | oauth2-proxy | web; todo: orca-slicer (commented cask in `modules/default.nix`) | web | n-a | done: Mobileraker | — |
 | rook-ceph, rados | own | web | web | n-a | n-a | — |
-| Bitwarden (hosted, not in the cluster) | account | done: cask (`modules/desktop-clients.nix`); todo: Brave extension | done: bitwarden-desktop; todo: Brave extension | done: bitwarden-desktop | done: Bitwarden | account login |
+| Bitwarden (hosted, not in the cluster) | account | done: cask (`modules/desktop-clients.nix`) + Brave extension (`modules/browser.nix`) | done: bitwarden-desktop + Brave extension | done: bitwarden-desktop | done: Bitwarden | account login |
 | Bookmarks (`dashy.trdos.me/bookmarks.html`) | oauth2-proxy | todo: Floccus (blocked) | todo | n-a | n-a | — |
 
 ## Open questions
