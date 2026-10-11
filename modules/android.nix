@@ -133,7 +133,9 @@ in {
     family = ["obtainium" "tailscale" "ntfy" "heliboard" "jellyfin" "immich" "home-assistant" "bitwarden" "mealie" "syncthing"];
   };
 
-  # deviceOwner = true only after Tristan factory-resets a device (docs/android.md).
+  # All six run Android 12+, so the stock installer silently updates whatever
+  # Obtainium installed; deviceOwner (Dhizuku, needs a factory reset) adds
+  # silent first installs and Obtainium self-updates. Only s21 gets reset.
   android.devices = {
     pixel = {
       owner = "tristan";
@@ -142,6 +144,7 @@ in {
     s21 = {
       owner = "tristan";
       sets = ["base" "homelab"];
+      deviceOwner = true;
     };
     boox = {
       owner = "tristan";

@@ -11,7 +11,11 @@ Phones pull their app list. Nothing listens on a phone and nothing pushes to one
 - Obtainium checks for updates every 6h, on Wi-Fi only. On a `deviceOwner = true` device it installs silently through Dhizuku. Everywhere else it notifies, and you tap to install. Updates to apps that Obtainium installed itself can still install silently on Android 12+.
 - Import only adds or updates apps. To remove an app, delete it from the catalog and uninstall it by hand.
 
-Devices: pixel, s21 (base + homelab), boox (base + eink), odin (base + handheld), all `tristan`. a10e and vivo are `family`: only the family set, stable releases only, headscale user `family`.
+Devices: pixel, s21 (base + homelab), boox (base + eink), odin (base + handheld), all `tristan`. a10e and vivo are `family`: the family set (plus HeliBoard), stable releases only, headscale user `family`.
+
+All six run Android 12+, so Obtainium silently updates every app it installed itself on every device. Only s21 is a device owner (`deviceOwner = true`, factory reset + Dhizuku), which adds silent first installs and Obtainium self-updates; the others tap to install new apps.
+
+The headscale ACL (`static/hyena.nix`) limits `family` devices to AdGuard DNS and ntfy on hyena (100.64.0.1: 53, 443) and the internal-gateway relays that `*.trdos.me` resolves to (100.64.0.4/.5: 80, 443). They cannot reach nodes, ssh, or other devices. `tristan` and `default` keep full reach.
 
 ## Changing the catalog
 
@@ -48,5 +52,5 @@ Fallback when device owner is impossible: on Android 13+, Shizuku 13.6+ can star
 - chiaki-ng publishes no Android APK, so the catalog tracks the original Chiaki from F-Droid.
 - Kavita has no native client. Use Mihon with the Kavita extension. Komga uses Komelia.
 - Actual, Frigate, and Mealie are web apps (Mealient is archived). The page links them so you can use "Add to Home screen".
-- ntfy topics are unauthenticated, and the headscale ACL lets `family` reach every service (README todo 16).
+- ntfy topics are unauthenticated (README todo 16); `family` devices can read and post any topic on hyena's ntfy.
 - The catalog's Obtainium JSON was written from Obtainium's source (`lib/models/app.dart`). Compare it with an export from the first device and fix any key that does not match.
