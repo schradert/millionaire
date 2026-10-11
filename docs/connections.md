@@ -10,7 +10,7 @@ Credentials: Keycloak SSO where the client speaks OIDC, otherwise a Bitwarden Se
 | Host | OS | Profiles | Tailnet |
 |---|---|---|---|
 | millionaire | macOS | work, workstation | Mill's Tailscale tailnet; not on headscale (see Open questions) |
-| morgenmuffel | macOS | personal, workstation | todo: `modules/tailnet.nix` (host lands with the hosts workstream) |
+| morgenmuffel | macOS | personal, workstation | done: `modules/tailnet.nix` (host lands with the hosts workstream) |
 | falcon, axolotl | NixOS | client, workstation | done: `static/tailnet-personal.nix` |
 | systeamadeck | NixOS (Jovian) | client, gaming | todo: not a `personal.yaml` recipient in `.sops.yaml` |
 | echidna | NixOS-WSL | pending (hosts workstream) | n/a until the host exists |
@@ -22,7 +22,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 
 | Service | Auth | macOS | NixOS workstations | Steam Deck | Android | Credential |
 |---|---|---|---|---|---|---|
-| headscale (tailnet) | preauth key | todo: `modules/tailnet.nix` (morgenmuffel) | done: `static/tailnet-personal.nix` | todo (sops recipient) | done: Tailscale | sops `headscale/preauth-key/personal` (pulumi) |
+| headscale (tailnet) | preauth key | done: `modules/tailnet.nix` (personal Macs) | done: `static/tailnet-personal.nix` | todo (sops recipient) | done: Tailscale | sops `headscale/preauth-key/personal` (pulumi) |
 | Kubernetes API (sirver:6443) | admin kubeconfig | todo: `modules/kubernetes.nix` (kubectl, k9s, helm, cilium, `kubeconfig`) | todo: `modules/kubernetes.nix` | n-a | n-a | `/etc/rancher/rke2/rke2.yaml` over ssh |
 | argocd | OIDC | todo: argocd CLI SSO | todo: argocd CLI SSO | n-a | n-a | Keycloak `argocd-cli` (todo) |
 | argo-rollouts | OIDC proxy | todo: kubectl-argo-rollouts | todo: kubectl-argo-rollouts | n-a | n-a | kubeconfig |
