@@ -14,7 +14,7 @@ data:
       name: actual
       url: https://actual.trdos.me
     - conditions:
-      - '[STATUS] == 200'
+      - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
       name: alertmanager
@@ -121,6 +121,12 @@ data:
       interval: 1m
       name: firefly
       url: https://firefly.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: flaresolverr
+      url: http://flaresolverr.media.svc.cluster.local:8191/health
     - conditions:
       - '[STATUS] == 200'
       group: internal
@@ -302,7 +308,7 @@ data:
       name: owncast
       url: https://owncast.trdos.me
     - conditions:
-      - '[STATUS] == 200'
+      - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
       name: prometheus
@@ -325,6 +331,12 @@ data:
       interval: 1m
       name: radarr
       url: https://radarr.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 403)'
+      group: internal
+      interval: 1m
+      name: rados
+      url: https://rados.trdos.me
     - conditions:
       - '[STATUS] == 200'
       group: internal

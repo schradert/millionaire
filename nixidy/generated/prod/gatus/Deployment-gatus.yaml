@@ -21,7 +21,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 2a2b81bcfffeef00bae75918406eb215460dab87325e60cad3d9ca43f07ff248
+        checksum/config: 2758af3a0b372853875bc9d06d51a2fcd4551548f53c74b7eec19f981fb33b2b
       labels:
         app.kubernetes.io/instance: gatus
         app.kubernetes.io/name: gatus
