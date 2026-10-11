@@ -1,4 +1,4 @@
-# System/repo summaries. Unported: inxi, cpufetch, macchina (old/old/hardware/default.nix).
+# System/repo summaries.
 {
   home = {
     config,
@@ -7,7 +7,7 @@
     ...
   }: {
     config = lib.mkIf config.profiles.workstation.enable {
-      home.packages = [pkgs.onefetch];
+      home.packages = with pkgs; [inxi macchina onefetch];
       programs.fastfetch.enable = true;
     };
   };
