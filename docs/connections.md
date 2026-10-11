@@ -9,7 +9,7 @@ Credentials: Keycloak SSO where the client speaks OIDC; CLIs and API clients pre
 
 | Host | OS | Profiles | Tailnet |
 |---|---|---|---|
-| millionaire | macOS | work, workstation | Mill's Tailscale tailnet; not on headscale, so none of its clients below can reach the cluster (see Open questions) |
+| millionaire | macOS | work, workstation | Mill's tailnet on the system tailscaled; headscale on a second, userspace tailscaled (`modules/tailnet.nix`), used through `trdos <cmd>` (SOCKS5 :1055, HTTP :1056) |
 | morgenmuffel | macOS | personal, workstation | done: `modules/tailnet.nix` (host lands with the hosts workstream) |
 | falcon, axolotl | NixOS | client, workstation | done: `static/tailnet-personal.nix` |
 | systeamadeck | NixOS (Jovian) | client, gaming | todo: not a `personal.yaml` recipient in `.sops.yaml`, so its clients below cannot reach the cluster yet |
@@ -70,7 +70,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 
 ## Open questions
 
-- millionaire is on Mill's tailnet. Tailscale keeps one active profile at a time, so joining headscale there means `tailscale switch` by hand. Until then no `*.trdos.me` client on that Mac can connect.
+- millionaire: headscale runs as a second, userspace tailscaled next to Mill's, so only proxy-aware clients reach `*.trdos.me`, through `trdos <cmd>`. ssh needs `ProxyCommand nc -X 5 -x localhost:1055 %h %p`; Node CLIs (immich), GUI apps and browsers need a SOCKS proxy set per app.
 - oauth2-proxy accepts `Authorization: Bearer $(sso-token)` (`--skip-jwt-bearer-tokens`, audience `oauth2-proxy`), so API and MCP clients pass it as Keycloak user `tristan` with the same `groups` checks. Apps that only take their own API keys or JWTs in `Authorization` still cannot get through (Waterfly, WebDAV clients).
 - contextforge 1.0.11 accepts Keycloak tokens on `/mcp` only for a virtual server with `oauth_enabled` (`oauth_config.authorization_servers` = the realm, `resource` = `oauth2-proxy`), and resolves the user from its own database. Options: (a) app-bootstrap creates that server and enables Keycloak SSO (`SSO_KEYCLOAK_*`, `SSO_API_TOKEN_AUTH_ENABLED`) so tristan exists; needs a new app-bootstrap image; (b) `MCP_CLIENT_AUTH_ENABLED=false` + `TRUST_PROXY_AUTH(_DANGEROUSLY)=true` with the oauth2-proxy email header, plus a CiliumNetworkPolicy so only oauth2-proxy can send it (any pod that reaches contextforge could otherwise claim to be tristan).
 - Direct routes that skip oauth2-proxy stay where the clients speak a protocol with its own auth: baikal `/dav.php` (Digest), navidrome `/rest` (Subsonic), komga `/opds`, chirpstack gRPC, harbor `/v2` (robot accounts), forgejo git and `/api` (tokens).

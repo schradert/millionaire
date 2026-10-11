@@ -12,7 +12,7 @@
 }:
 rustPlatform.buildRustPackage {
   pname = "sso-token";
-  version = "0.2.0";
+  version = "0.3.0";
   src = lib.fileset.toSource {
     root = ./.;
     fileset = lib.fileset.unions [./Cargo.toml ./Cargo.lock ./src];
