@@ -109,7 +109,7 @@ impl Bridge {
 pub fn run(url: String, token: Box<dyn Fn() -> Result<String> + Send + Sync>) -> Result<()> {
     // Fail before the client's first request rather than on it.
     token()?;
-    let agent = ureq::AgentBuilder::new()
+    let agent = crate::agent_builder()
         .timeout_connect(Duration::from_secs(15))
         .build();
     let bridge = Arc::new(Bridge {

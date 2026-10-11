@@ -62,6 +62,15 @@ enum Post<T> {
     Err(OAuthError),
 }
 
+/// Honors HTTPS_PROXY / ALL_PROXY (e.g. a second, userspace tailscaled).
+pub fn agent_builder() -> ureq::AgentBuilder {
+    ureq::AgentBuilder::new().try_proxy_from_env(true)
+}
+
+fn agent() -> ureq::Agent {
+    agent_builder().build()
+}
+
 fn now() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -94,7 +103,8 @@ impl Client {
     ) -> Result<Post<T>> {
         let mut form = form.to_vec();
         form.push(("client_id", &self.client_id));
-        match ureq::post(&self.endpoint(path))
+        match agent()
+            .post(&self.endpoint(path))
             .timeout(Duration::from_secs(30))
             .send_form(&form)
         {
@@ -188,7 +198,8 @@ impl Client {
                     ("token_type_hint", "refresh_token"),
                     ("client_id", self.client_id.as_str()),
                 ];
-                if let Err(e) = ureq::post(&self.endpoint("revoke"))
+                if let Err(e) = agent()
+                    .post(&self.endpoint("revoke"))
                     .timeout(Duration::from_secs(30))
                     .send_form(&form)
                 {
