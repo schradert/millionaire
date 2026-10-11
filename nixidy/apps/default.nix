@@ -103,6 +103,18 @@
     intraNamespace = true;
     cnpg = true;
   };
+  nixidy.netpol.namespaces.development = {
+    enforce = true;
+    intraNamespace = true;
+    cnpg = true;
+    # forgejo SSH (LoadBalancer 192.168.50.251:22 -> pod :2222)
+    extraIngress = [
+      {
+        fromEntities = ["world"];
+        toPorts = [{ports = [{port = "2222"; protocol = "TCP";}];}];
+      }
+    ];
+  };
   nixidy.applications.namespaces.resources.namespaces = {
     development = {};
     finance = {};
