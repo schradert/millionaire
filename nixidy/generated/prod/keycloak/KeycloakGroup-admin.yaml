@@ -6,6 +6,8 @@ metadata:
 spec:
   definition:
     attributes:
+      abs_group:
+        - admin
       immich_role:
         - admin
     name: admin

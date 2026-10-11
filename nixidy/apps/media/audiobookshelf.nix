@@ -20,7 +20,8 @@ in {
     };
     # Native OIDC, no oauth2-proxy. The bootstrap job writes the auth settings and
     # creates the root user as tristan; logins match that user by username, and the
-    # `groups` claim (admin/user/guest) maps roles (root is never downgraded).
+    # `abs_groups` claim (admin/user/guest, from the Keycloak groups' abs_group
+    # attribute: admin -> admin, family -> user) maps roles (root is never downgraded).
     # Redirect paths are fixed by ABS; audiobookshelf://oauth is the mobile app's
     # deep link, which ABS itself hops to after /auth/openid/mobile-redirect.
     applications.keycloak.resources.keycloakClients.audiobookshelf.spec = {
@@ -43,7 +44,7 @@ in {
           "audiobookshelf://oauth"
         ];
         webOrigins = ["https://${hostname}"];
-        defaultClientScopes = ["openid" "profile" "email" "groups"];
+        defaultClientScopes = ["openid" "profile" "email" "groups" "abs_groups"];
       };
     };
     applications.audiobookshelf = {
@@ -70,6 +71,8 @@ in {
           ADMIN_PASSWORD_FILE = "/secrets/admin/password";
           OIDC_AUTHORITY = "https://keycloak.${domain}/realms/default";
           OIDC_CLIENT_ID = "audiobookshelf";
+          # Role names (admin/user/guest) from the groups' abs_group attribute.
+          OIDC_GROUP_CLAIM = "abs_groups";
           OIDC_CLIENT_SECRET_FILE = "/secrets/oidc/client_secret";
         };
         secrets = {

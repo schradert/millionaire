@@ -1,0 +1,29 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClientScope
+metadata:
+  name: abs-groups
+  namespace: identity
+spec:
+  definition:
+    attributes:
+      include.in.token.scope: "true"
+    description: Audiobookshelf role names (group attribute abs_group)
+    name: abs_groups
+    protocol: openid-connect
+    protocolMappers:
+      - config:
+          access.token.claim: "true"
+          aggregate.attrs: "true"
+          claim.name: abs_groups
+          id.token.claim: "true"
+          introspection.token.claim: "true"
+          jsonType.label: String
+          multivalued: "true"
+          user.attribute: abs_group
+          userinfo.token.claim: "true"
+        consentRequired: false
+        name: abs_groups
+        protocol: openid-connect
+        protocolMapper: oidc-usermodel-attribute-mapper
+  realmRef:
+    name: default

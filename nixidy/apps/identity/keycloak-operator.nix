@@ -114,6 +114,39 @@ in {
         };
       };
 
+      # Audiobookshelf only accepts the exact names admin/user/guest in its group
+      # claim and asks Keycloak for a scope named like that claim, so it gets its own
+      # scope + claim, filled from the groups' `abs_group` attribute.
+      keycloakClientScopes.abs-groups.spec = {
+        realmRef.name = "default";
+        definition = {
+          name = "abs_groups";
+          description = "Audiobookshelf role names (group attribute abs_group)";
+          protocol = "openid-connect";
+          attributes."include.in.token.scope" = "true";
+          protocolMappers = [
+            {
+              name = "abs_groups";
+              protocol = "openid-connect";
+              protocolMapper = "oidc-usermodel-attribute-mapper";
+              consentRequired = false;
+              config = {
+                "user.attribute" = "abs_group";
+                "claim.name" = "abs_groups";
+                "jsonType.label" = "String";
+                # Collect it from the user's groups.
+                "aggregate.attrs" = "true";
+                "multivalued" = "true";
+                "id.token.claim" = "true";
+                "access.token.claim" = "true";
+                "userinfo.token.claim" = "true";
+                "introspection.token.claim" = "true";
+              };
+            }
+          ];
+        };
+      };
+
       # Apps map admin rights from the groups claim ("admin"). Apps that only
       # read a role claim get it from group attributes plus a client mapper.
       keycloakGroups.admin.spec = {
@@ -121,11 +154,15 @@ in {
         definition = {
           name = "admin";
           attributes.immich_role = ["admin"];
+          attributes.abs_group = ["admin"];
         };
       };
       keycloakGroups.family.spec = {
         realmRef.name = "default";
-        definition.name = "family";
+        definition = {
+          name = "family";
+          attributes.abs_group = ["user"];
+        };
       };
       keycloakUsers.tristan.spec = {
         realmRef.name = "default";
