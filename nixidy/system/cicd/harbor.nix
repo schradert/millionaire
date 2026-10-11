@@ -135,6 +135,17 @@
       resources = {
         # Recursively set ownership to uid 10000
         deployments.harbor-registry.spec.template.spec.securityContext.fsGroupChangePolicy = lib.mkForce "Always";
+        # RWO PVCs: a rolling update's new pod can't attach the volume the old pod holds
+        # on another node, so the rollout deadlocks. Replace: SSA can't drop the
+        # API-defaulted rollingUpdate block when switching to Recreate.
+        deployments.harbor-registry = {
+          metadata.annotations."argocd.argoproj.io/sync-options" = "Replace=true";
+          spec.strategy.type = lib.mkForce "Recreate";
+        };
+        deployments.harbor-jobservice = {
+          metadata.annotations."argocd.argoproj.io/sync-options" = "Replace=true";
+          spec.strategy.type = lib.mkForce "Recreate";
+        };
 
         dragonflies.harbor-dragonfly.spec = {
           replicas = 1;
