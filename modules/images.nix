@@ -160,6 +160,32 @@
           layers = [(n2c.buildLayer {deps = [pkg];})];
         };
 
+      # Media-stack end-to-end tests (apps/media-e2e), run as a Job from the suspended
+      # `media-e2e` CronJob. kubectl is for `exec` into the qbittorrent pod (VPN leak tests).
+      media-e2e = let
+        amd64Pkgs = import inputs.nixpkgs {system = "x86_64-linux";};
+        src = ../apps/media-e2e;
+        pkg = amd64Pkgs.rustPlatform.buildRustPackage {
+          pname = "media-e2e";
+          version = "0.1.0";
+          inherit src;
+          cargoLock.lockFile = "${src}/Cargo.lock";
+        };
+      in
+        n2c.buildImage {
+          name = "${registry}/library/media-e2e";
+          tag = pkg.version;
+          arch = "amd64";
+          config = {
+            Entrypoint = ["${pkg}/bin/media-e2e"];
+            Env = ["PATH=${amd64Pkgs.kubectl}/bin" "HOME=/tmp"];
+          };
+          layers = [
+            (n2c.buildLayer {deps = [amd64Pkgs.kubectl];})
+            (n2c.buildLayer {deps = [pkg];})
+          ];
+        };
+
       # Keycloak with its build-time options baked in, so it boots `--optimized`.
       # The stock image re-augments on every start (chmod over every lib jar, an
       # overlay copy-up of ~285MB), which on a disk-saturated node outlived the

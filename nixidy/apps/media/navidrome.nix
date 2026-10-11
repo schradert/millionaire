@@ -81,6 +81,7 @@ in {
                 };
               }
               {matchLabels."batch.kubernetes.io/job-name" = "navidrome-bootstrap";}
+              {matchLabels."app.kubernetes.io/name" = "media-e2e";}
             ];
             toPorts = lib.toList {
               ports = lib.toList {
