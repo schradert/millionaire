@@ -21,7 +21,7 @@ spec:
                   value: t0rdos@pm.me
                 - name: DOMAIN
                   value: trdos.me
-              image: harbor.trdos.me/library/media-e2e:0.1.7@sha256:40c0afe9a0395d7d22cec0428eb9f04f292ef838678780a50bd6ec6c2c2399ed
+              image: harbor.trdos.me/library/media-e2e:0.1.8@sha256:0da310025a405df19054a10f3d6054b36d1640e00ddc140efd6541f5d489693f
               name: media-e2e
               resources:
                 limits:
