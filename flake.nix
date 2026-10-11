@@ -191,13 +191,8 @@
         millionaire = {
           canivete.os = "macos";
           profiles.system.canivete.configuration = {
-            flake,
-            lib,
-            ...
-          }: {
-            imports = with flake.inputs.srvos.darwinModules; [desktop mixins-terminfo];
+            imports = [./static/darwin-workstation.nix];
             profile = "work";
-            profiles.workstation.enable = true;
             system.stateVersion = 6;
             home-manager.sharedModules = [{home.stateVersion = "25.11";}];
             # FIXME no room for this
@@ -206,22 +201,12 @@
             # It's activated per-project via devenv's nix.settings to avoid
             # caching work builds on the personal cache.
             # Nodes (server.nix) have it system-wide since they're personal-only.
-            # Distributed builders and the ssh routes to them: modules/builders.nix.
-            nix.settings.trusted-users = ["@admin"];
-
-            # TODO follow broken Nix 2.33 with Devenv 1.11.2 support
-            # NOTE https://github.com/cachix/devenv/issues/2364
-            nix.settings.experimental-features = lib.mkForce [
-              "nix-command"
-              "flakes"
-              "fetch-closure"
-              "recursive-nix"
-              "configurable-impure-env"
-              # "ca-derivations"
-              "impure-derivations"
-              "blake3-hashes"
-            ];
           };
+        };
+        # Personal Mac (./static/morgenmuffel.nix).
+        morgenmuffel = {
+          canivete.os = "macos";
+          profiles.system.canivete.configuration.imports = [./static/morgenmuffel.nix];
         };
         # FIXME reactivate
         # piper = {
