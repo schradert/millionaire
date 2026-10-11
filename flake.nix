@@ -102,13 +102,6 @@
       flake-utils.follows = "flake-utils";
       rust-overlay.follows = "rust-overlay";
     };
-    zjstatus.url = "github:dj95/zjstatus";
-    zjstatus.inputs = {
-      nixpkgs.follows = "nixpkgs";
-      # crane.follows = "crane";
-      flake-utils.follows = "flake-utils";
-      rust-overlay.follows = "rust-overlay";
-    };
     zsh-helix-mode.url = "github:multirious/zsh-helix-mode";
     zsh-helix-mode.inputs.nixpkgs.follows = "nixpkgs";
     nix-doom-emacs-unstraightened.url = "github:marienz/nix-doom-emacs-unstraightened";
@@ -154,10 +147,6 @@
     datadog-api-claude-plugin.flake = false;
     gastown.url = "github:steveyegge/gastown";
     gastown.flake = false;
-
-    # Special
-    kdl.url = "https://raw.githubusercontent.com/jrobsonchase/nixos-config/8ea380ad196e630044846f06945131602ec7056f/lib/kdl.nix";
-    kdl.flake = false;
   };
   outputs = inputs:
     inputs.canivete.lib.mkFlake {
