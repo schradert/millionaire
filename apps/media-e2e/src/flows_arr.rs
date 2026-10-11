@@ -24,7 +24,7 @@ pub const SINTEL_TMDB: i64 = 45745;
 async fn radarr_setup(ctx: &Ctx, arr: &Arr) -> R<(i64, String)> {
     let tag = arr.ensure_tag(ctx).await?;
     ctx.st().radarr_tag = Some(tag);
-    let root = ctx.dir("movies").to_string_lossy().to_string();
+    let root = ctx.lib_root("movies").to_string_lossy().to_string();
     arr.ensure_root(ctx, &root, json!({})).await?;
     Ok((tag, root))
 }
@@ -298,7 +298,7 @@ pub async fn sonarr_chain(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let sonarr = Arr::new("sonarr")?;
     let tag = sonarr.ensure_tag(ctx).await?;
     ctx.st().sonarr_tag = Some(tag);
-    let root = ctx.dir("tv").to_string_lossy().to_string();
+    let root = ctx.lib_root("tv").to_string_lossy().to_string();
     sonarr.ensure_root(ctx, &root, json!({})).await?;
     let found = sonarr.get(ctx, "/series/lookup?term=Pioneer%20One").await?;
     let mut s = found.as_array().into_iter().flatten().find(|s| s["title"] == json!("Pioneer One")).cloned().at("sonarr", "lookup Pioneer One")?;

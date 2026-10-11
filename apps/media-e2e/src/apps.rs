@@ -223,11 +223,14 @@ impl Kavita {
             "login",
         )
         .await?;
-        Ok(Kavita {
-            token: r["token"].as_str().at("kavita", "login token")?.into(),
-            api_key: r["apiKey"].as_str().unwrap_or_default().into(),
-            base,
-        })
+        let token: String = r["token"].as_str().at("kavita", "login token")?.into();
+        let mut api_key: String = r["apiKey"].as_str().unwrap_or_default().into();
+        if api_key.is_empty() {
+            // 0.8.9+: per-user auth keys; the OPDS one is in the OPDS URL.
+            let url = send(ctx.http.get(format!("{base}/api/Account/opds-url")).bearer_auth(&token), "kavita", "OPDS URL").await?.text().await.at("kavita", "OPDS URL")?;
+            api_key = url.trim().trim_matches('"').rsplit("api/opds/").next().unwrap_or_default().trim_end_matches('/').to_string();
+        }
+        Ok(Kavita { token, api_key, base })
     }
 
     pub fn req(&self, ctx: &Ctx, m: Method, path: &str) -> RequestBuilder {

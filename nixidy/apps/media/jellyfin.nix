@@ -152,6 +152,18 @@
                 }
               ];
             };
+            # Not a library: media-e2e's test libraries live under /media/downloads/e2e-<run>,
+            # outside every real library and not hidden (Jellyfin skips dot-folders).
+            media-downloads = {
+              type = "persistentVolumeClaim";
+              existingClaim = "media-downloads";
+              advancedMounts.jellyfin.jellyfin = [
+                {
+                  path = "/media/downloads";
+                  readOnly = true;
+                }
+              ];
+            };
           };
           route.jellyfin = {
             hostnames = [hostname];

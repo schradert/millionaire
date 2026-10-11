@@ -139,7 +139,7 @@ async fn jellyfin(c: &mut Clean<'_>) -> R<()> {
     Ok(())
 }
 
-async fn jellyfin_devices(c: &mut Clean<'_>) -> R<()> {
+async fn jellyfin_devices_inner(c: &mut Clean<'_>) -> R<()> {
     let ctx = c.ctx;
     let jf = Jellyfin::login(ctx).await?;
     let devices = jf.get(ctx, "/Devices").await?;
@@ -330,7 +330,6 @@ pub async fn cleanup(ctx: &Ctx, scope: &Scope, dry: bool) -> Flow {
     files(&mut c);
     f.ok("fs", "cleanup", "marked top-level entries");
     step!("navidrome", navidrome(&mut c).await);
-    step!("jellyfin", jellyfin_devices(&mut c).await);
     let res = if c.errors.is_empty() {
         if !skipped.is_empty() {
             f.ok("cleanup", "skipped apps", skipped.join("; "));
@@ -457,6 +456,22 @@ pub async fn residue(ctx: &Ctx, scope: &Scope) -> Flow {
         f.ok("residue", "not checked", unchecked.join("; "));
     }
     let res = if left.is_empty() { Ok(()) } else { Err(Fail::new("residue", "verify", left.join("; "))) };
+    f.finish(res);
+    f
+}
+
+/// Last: revoke the run's Jellyfin session/device (the residue check still needed it).
+pub async fn sessions(ctx: &Ctx, scope: &Scope, dry: bool) -> Flow {
+    let mut f = Flow::new("revoke test sessions");
+    let mut c = Clean { ctx, scope, dry, actions: Vec::new(), errors: Vec::new() };
+    let res = match jellyfin_devices_inner(&mut c).await {
+        Ok(()) if c.errors.is_empty() => {
+            f.ok("jellyfin", "test device/session revoked", format!("{} item(s)", c.actions.len()));
+            Ok(())
+        }
+        Ok(()) => Err(Fail::new("jellyfin", "revoke session", c.errors.join("; "))),
+        Err(e) => Err(e),
+    };
     f.finish(res);
     f
 }

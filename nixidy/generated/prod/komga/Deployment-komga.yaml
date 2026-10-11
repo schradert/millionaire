@@ -86,6 +86,9 @@ spec:
             - mountPath: /media/comics
               name: media-comics
               readOnly: true
+            - mountPath: /media/downloads
+              name: media-downloads
+              readOnly: true
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
       hostIPC: false
@@ -99,3 +102,6 @@ spec:
         - name: media-comics
           persistentVolumeClaim:
             claimName: media-comics
+        - name: media-downloads
+          persistentVolumeClaim:
+            claimName: media-downloads
