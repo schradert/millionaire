@@ -98,13 +98,13 @@ Do these after step 1. Each app should land logged in as tristan, with admin rig
 
 ## 9. Media e2e suite after the VPN is up
 
-Once qBittorrent runs (step 2), run the full suite from the devshell. Off-LAN, prefix `KUBECTL="ssh 192.184.168.248 sudo -n /var/lib/rancher/rke2/bin/kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml"`.
+Once qBittorrent runs (step 2), run the full suite from the devshell. Off-LAN, prefix `KUBECTL="ssh 192.184.168.248 sudo -n /var/lib/rancher/rke2/bin/kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml"`. The leak tests compare against the home egress IP: set `E2E_HOME_IP_HOST=192.184.168.248` (the script then runs `curl ifconfig.me` there) or `HOME_IP=<ip>`.
 
 ```sh
 media-e2e run --full
 ```
 
-It runs the VPN leak tests first (pod IP is the VPN exit, DNS only via gluetun, kill switch, tracker IP check), then every download chain over the VPN. If any leak test fails, it refuses to download. Test data is deleted at the end and checked gone. Log and JSON report: `$TMPDIR/media-e2e/<run>/`. Leftovers from a crashed run: `media-e2e cleanup --all --dry-run`, then without `--dry-run`. Without `--full`, it runs the offline suite, which needs no VPN.
+It runs the VPN leak tests first (pod IP is the VPN exit, DNS only via gluetun, kill switch, tracker IP check against ipleak.net, whatismyip.net and ipMagnet: any home IP fails, any VPN IP passes, skipped only if none is reachable), then every download chain over the VPN. If any leak test fails, it refuses to download. Test data is deleted at the end and checked gone. Log and JSON report: `$TMPDIR/media-e2e/<run>/`. Leftovers from a crashed run: `media-e2e cleanup --all --dry-run`, then without `--dry-run`. Without `--full`, it runs the offline suite, which needs no VPN.
 
 ## 8. Later
 
