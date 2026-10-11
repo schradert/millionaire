@@ -235,15 +235,19 @@ async fn qbittorrent(c: &mut Clean<'_>) -> R<()> {
 async fn maloja(c: &mut Clean<'_>) -> R<()> {
     let ctx = c.ctx;
     let base = maloja_url();
-    let key = secret("multi-scrobbler", "MALOJA_API_KEY").ok_or_else(|| Fail::skip("maloja", "credentials", "no API key mounted"))?;
+    // delete_scrobble needs an admin session (an API key is refused): log in for the cookie.
+    let pw = secret("maloja-admin", "password").ok_or_else(|| Fail::skip("maloja", "credentials", "maloja-admin not mounted"))?;
+    let login = json(ctx.http.post(format!("{base}/auth/authenticate")).json(&json!({ "user": "admin", "password": pw })), "maloja", "admin login").await?;
+    let cookie = format!("{}={}", login["cookie_name"].as_str().unwrap_or("maloja_sessiontoken"), login["token"].as_str().unwrap_or_default());
     let list = json(ctx.http.get(format!("{base}/apis/mlj_1/scrobbles?perpage=1000")), "maloja", "list scrobbles").await?;
     for s in list["list"].as_array().cloned().unwrap_or_default() {
         let artists_hit = s["track"]["artists"].as_array().into_iter().flatten().any(|a| c.scope.hit_v(a));
         if c.scope.hit_v(&s["track"]["title"]) || artists_hit {
             let ts = s["time"].clone();
             let url = format!("{base}/apis/mlj_1/delete_scrobble");
-            let body = json!({ "timestamp": ts, "key": key });
-            c.act(format!("maloja scrobble {:?} at {ts}", s["track"]["title"].as_str().unwrap_or("")), async { send(ctx.http.post(&url).json(&body), "maloja", "delete scrobble").await.map(|_| ()) }).await;
+            let body = json!({ "timestamp": ts });
+            let cookie = cookie.clone();
+            c.act(format!("maloja scrobble {:?} at {ts}", s["track"]["title"].as_str().unwrap_or("")), async move { send(ctx.http.post(&url).header("Cookie", cookie).json(&body), "maloja", "delete scrobble").await.map(|_| ()) }).await;
         }
     }
     Ok(())
@@ -416,9 +420,7 @@ pub async fn residue(ctx: &Ctx, scope: &Scope) -> Flow {
     .await);
     check!("maloja", async {
         let list = json(ctx.http.get(format!("{}/apis/mlj_1/scrobbles?perpage=1000", maloja_url())), "maloja", "scrobbles").await?;
-        let mut v: Vec<String> = list["list"].as_array().into_iter().flatten().filter(|s| scope.hit_v(&s["track"]["title"])).map(|s| format!("scrobble {}", s["track"]["title"])).collect();
-        let artists = json(ctx.http.get(format!("{}/apis/mlj_1/artists", maloja_url())), "maloja", "artists").await.unwrap_or_default();
-        v.extend(artists["list"].as_array().into_iter().flatten().filter(|a| scope.hit_v(a)).map(|a| format!("artist row {a} (no scrobbles; Maloja has no delete-artist API)")));
+        let v: Vec<String> = list["list"].as_array().into_iter().flatten().filter(|s| scope.hit_v(&s["track"]["title"])).map(|s| format!("scrobble {}", s["track"]["title"])).collect();
         Ok(v)
     }
     .await);
@@ -452,6 +454,11 @@ pub async fn residue(ctx: &Ctx, scope: &Scope) -> Flow {
         Ok(v)
     }
     .await);
+    let artists = json(ctx.http.get(format!("{}/apis/mlj_1/artists", maloja_url())), "maloja", "artists").await.unwrap_or_default();
+    let orphans: Vec<String> = artists["list"].as_array().into_iter().flatten().filter(|a| scope.hit_v(a)).map(|a| a.to_string()).collect();
+    if !orphans.is_empty() {
+        f.ok("maloja", "orphan artist rows", format!("{} (no scrobbles left; Maloja's hourly clean_db removes artists without tracks)", orphans.join(", ")));
+    }
     if !unchecked.is_empty() {
         f.ok("residue", "not checked", unchecked.join("; "));
     }
