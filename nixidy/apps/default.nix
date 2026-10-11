@@ -74,6 +74,19 @@
     ./printing/mobileraker-companion.nix
     ./printing/prometheus-klipper-exporter.nix
   ];
+  nixidy.netpol.namespaces.media = {
+    enforce = true;
+    intraNamespace = true;
+    cnpg = true;
+    dragonfly = true;
+    # owncast RTMP ingest (LoadBalancer 192.168.50.252:1935) comes from the LAN
+    extraIngress = [
+      {
+        fromEntities = ["world"];
+        toPorts = [{ports = [{port = "1935"; protocol = "TCP";}];}];
+      }
+    ];
+  };
   nixidy.applications.namespaces.resources.namespaces = {
     development = {};
     finance = {};
