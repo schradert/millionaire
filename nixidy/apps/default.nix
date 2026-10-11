@@ -93,6 +93,11 @@
     cnpg = true;
     dragonfly = true;
   };
+  nixidy.netpol.namespaces.health = {
+    enforce = true;
+    intraNamespace = true;
+    cnpg = true;
+  };
   nixidy.applications.namespaces.resources.namespaces = {
     development = {};
     finance = {};
