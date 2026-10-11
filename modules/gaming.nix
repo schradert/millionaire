@@ -36,11 +36,14 @@
   };
   home = {
     config,
+    flake,
     lib,
     pkgs,
     ...
   }: {
+    imports = [flake.inputs.mynur.homeManagerModules.tetrigo];
     config = lib.mkIf config.profiles.gaming.enable {
+      programs.tetrigo.enable = true;
       home.packages = with pkgs;
         [
           # roguelikes
@@ -60,7 +63,6 @@
           nethack
           rogue
           the-legend-of-edgar
-          tetrigo
           tty-solitaire
           # pixel dungeons
           shattered-pixel-dungeon

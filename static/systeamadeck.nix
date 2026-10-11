@@ -1,9 +1,8 @@
 # systeamadeck (Steam Deck OLED "Galileo") on NixOS via Jovian: Gaming Mode
-# on boot, Plasma as the desktop session, Decky Loader with plugins from pkgs/decky-*.
+# on boot, Plasma as the desktop session, Decky Loader with mynur's plugins.
 {
   flake,
   lib,
-  pinned,
   pkgs,
   ...
 }: {
@@ -26,7 +25,7 @@
   boot.kernelPackages = lib.mkForce pkgs.linuxPackages_jovian;
   environment.systemPackages = with pkgs; [maliit-keyboard maliit-framework];
 
-  # mynur's decky module (plugin options) with plugins built here (pkgs/decky-*)
+  # Decky plugins and their options (mynur)
   nixpkgs.overlays = with flake.inputs.mynur.overlays; [decky decky-plugins];
 
   jovian.devices.steamdeck = {
@@ -47,18 +46,18 @@
     package = pkgs.decky-loader-prerelease;
     # Volume Boost talks to pipewire-pulse over TCP
     extraPackages = [pkgs.pulseaudio];
-    plugins =
-      lib.recursiveUpdate (
-        lib.genAttrs ["animation-changer" "css-loader" "game-theme-music" "hltb" "vibrant-deck" "volume-boost"] (name: {
-          enable = true;
-          package = pinned."decky-${name}";
-        })
-      ) {
-        game-theme-music.settings.settings = {
-          defaultMuted = false;
-          volume = 0.52;
-        };
+    plugins = {
+      animation-changer.enable = true;
+      css-loader.enable = true;
+      game-theme-music.enable = true;
+      game-theme-music.settings.settings = {
+        defaultMuted = false;
+        volume = 0.52;
       };
+      hltb.enable = true;
+      vibrant-deck.enable = true;
+      volume-boost.enable = true;
+    };
   };
   # TODO cookie auth instead of anonymous (loopback only)
   services.pipewire.extraConfig.pipewire-pulse."11-decky-volume-boost"."pulse.cmd" = lib.toList {
