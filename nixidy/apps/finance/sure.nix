@@ -19,19 +19,67 @@ in {
       {configMapRef.name = "sure";}
       {secretRef.name = "sure";}
     ];
+    # Creates the family + super_admin if missing, then links tristan's Keycloak identity
+    # to that user (OidcIdentity: provider `openid_connect` is the name of the env-configured
+    # OIDC provider, uid is the token's `sub` = the Keycloak user id, issuer is OIDC_ISSUER),
+    # so the first SSO login signs straight in instead of asking for a password to link.
+    # The `sub` comes from the Keycloak admin API; Net::HTTP is all it needs.
     bootstrapScript = ''
+      require "net/http"
+      require "json"
+      require "cgi"
+
       email = ENV.fetch("ADMIN_EMAIL").strip.downcase
       first, last = ENV.fetch("ADMIN_NAME").split(" ", 2)
+
+      kc = ENV.fetch("KEYCLOAK_URL")
+      sub = nil
+      60.times do
+        begin
+          res = Net::HTTP.post_form(
+            URI("#{kc}/realms/master/protocol/openid-connect/token"),
+            grant_type: "password", client_id: "admin-cli",
+            username: ENV.fetch("KEYCLOAK_USER"), password: ENV.fetch("KEYCLOAK_PASSWORD")
+          )
+          raise "keycloak login: HTTP #{res.code}" unless res.is_a?(Net::HTTPSuccess)
+          token = JSON.parse(res.body).fetch("access_token")
+          uri = URI("#{kc}/admin/realms/default/users?username=#{CGI.escape(ENV.fetch("OIDC_USERNAME"))}&exact=true")
+          res = Net::HTTP.start(uri.host, uri.port) do |http|
+            http.request(Net::HTTP::Get.new(uri, "Authorization" => "Bearer #{token}"))
+          end
+          raise "keycloak user lookup: HTTP #{res.code}" unless res.is_a?(Net::HTTPSuccess)
+          sub = JSON.parse(res.body).first&.fetch("id")
+          break if sub
+          warn "sure-bootstrap: keycloak user not found yet"
+        rescue StandardError => e
+          warn "sure-bootstrap: #{e.message}"
+        end
+        sleep 5
+      end
+      raise "could not resolve the keycloak user" unless sub
+
       User.transaction do
-        if User.find_by(email: email)
-          puts "sure-bootstrap: user exists, nothing to do"
+        user = User.find_by(email: email)
+        if user
+          puts "sure-bootstrap: user exists"
         else
-          User.create!(
+          user = User.create!(
             email: email, first_name: first, last_name: last,
             password: ENV.fetch("ADMIN_PASSWORD"),
             family: Family.create!, role: :super_admin
           )
           puts "sure-bootstrap: created super_admin"
+        end
+        identity = OidcIdentity.find_by(provider: "openid_connect", uid: sub)
+        if identity
+          raise "oidc identity #{sub} is linked to another user" unless identity.user_id == user.id
+          puts "sure-bootstrap: oidc identity already linked"
+        else
+          OidcIdentity.create!(
+            user: user, provider: "openid_connect", uid: sub,
+            issuer: ENV.fetch("OIDC_ISSUER"), info: { email: email }
+          )
+          puts "sure-bootstrap: linked oidc identity"
         end
       end
     '';
@@ -153,10 +201,10 @@ in {
       };
 
       # Idempotent first-user bootstrap (README "Conventions"): creates the family
-      # and the super_admin only when no account with this email exists. Sure
-      # links an OIDC identity to a user only after a one-time password
-      # confirmation, so tristan's first Keycloak login lands on the link page
-      # where he enters this email and sure/admin-password from Bitwarden.
+      # and the super_admin only when no account with this email exists, and links
+      # tristan's Keycloak identity to it (see bootstrapScript), so SSO works from
+      # the first login without the link_only password confirmation. sure/admin-password
+      # in Bitwarden stays as the break-glass password.
       resources.jobs.sure-bootstrap = {
         metadata.annotations = {
           "argocd.argoproj.io/hook" = "PostSync";
@@ -189,6 +237,25 @@ in {
                   value = people.my.name;
                 }
                 {
+                  name = "KEYCLOAK_URL";
+                  value = "http://keycloak.identity.svc.cluster.local:8080";
+                }
+                {
+                  name = "KEYCLOAK_USER";
+                  value = "admin";
+                }
+                {
+                  name = "KEYCLOAK_PASSWORD";
+                  valueFrom.secretKeyRef = {
+                    name = "sure-keycloak-admin";
+                    key = "password";
+                  };
+                }
+                {
+                  name = "OIDC_USERNAME";
+                  value = people.me;
+                }
+                {
                   name = "ADMIN_PASSWORD";
                   valueFrom.secretKeyRef = {
                     name = "sure-admin";
@@ -211,6 +278,15 @@ in {
         args = ["--proactor_threads" "2"];
         resources.requests.memory = "256Mi";
         resources.limits.memory = "1Gi";
+      };
+
+      # Keycloak master-realm admin, to resolve tristan's `sub` (same Bitwarden entry
+      # as the keycloak app itself).
+      resources.externalSecrets.sure-keycloak-admin.spec.data = lib.toList {
+        secretKey = "password";
+        remoteRef.key = "keycloak/admin/password";
+        sourceRef.storeRef.name = "bitwarden";
+        sourceRef.storeRef.kind = "ClusterSecretStore";
       };
 
       resources.externalSecrets.sure.spec.data = [
