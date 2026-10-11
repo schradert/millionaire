@@ -28,6 +28,8 @@ in {
       // lib.optionalAttrs (consumer system) {
         # devenv's container-* outputs need an mk-shell-bin input nothing uses.
         packages = removeAttrs self.packages.${system} ["container-processes" "container-shell"];
+        # url-set pins are attrsets, so the games library (pkgs/{roms,bios,cemu-keys,
+        # game-installers}, games.trdos.me) is left out until it is populated.
         pinned = lib.filterAttrs (_: lib.isDerivation) lp.pinned;
         charts = lp.pinned.charts;
         devShells = self.devShells.${system};

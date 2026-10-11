@@ -119,7 +119,7 @@
       home.packages =
         [cfg.retroarch.package]
         ++ lib.mapAttrsToList (_: c: c.wrapper) (lib.filterAttrs (_: c: !c.retroarch && c.wrapper != null) cfg.consoles);
-      home.file.".local/share/Cemu/keys.txt" = lib.mkIf (cfg.library && cfg.consoles.WiiU.titles != []) {source = pinned.cemu-keys;};
+      home.file.".local/share/Cemu/keys.txt" = lib.mkIf (cfg.library && cfg.consoles.WiiU.titles != []) {source = pinned.cemu-keys."cemu-keys.txt";};
     };
   };
 }
