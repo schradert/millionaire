@@ -69,8 +69,24 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
+      initContainers:
+        - command:
+            - sh
+            - -ec
+            - install -d -o 1000 -g 101 -m 2770 /var/syncthing/config && install -o 1000 -g 101 -m 0664 /identity/tls.crt /var/syncthing/config/cert.pem && install -o 1000 -g 101 -m 0660 /identity/tls.key /var/syncthing/config/key.pem
+          image: syncthing/syncthing:1.29@sha256:dde2305f0b78260a66e4a12785f0e26d86e89276ffccf50209c34943f270a954
+          name: identity
+          volumeMounts:
+            - mountPath: /identity
+              name: identity
+              readOnly: true
+            - mountPath: /var/syncthing
+              name: state
       serviceAccountName: syncthing
       volumes:
+        - name: identity
+          secret:
+            secretName: syncthing-identity
         - name: org-files
           persistentVolumeClaim:
             claimName: org-files
