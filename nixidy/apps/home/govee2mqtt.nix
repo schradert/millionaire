@@ -6,9 +6,14 @@
 {
   nixidy = {
     charts,
+    lib,
     pinned,
     ...
-  }: {
+  }: let
+    # Govee account credentials are user-supplied (Bitwarden `govee/{email,password,api-key}`,
+    # see docs/manual-steps.md). Until then the bridge is scaled to 0 with no ExternalSecret.
+    credentials = false;
+  in {
     applications.govee2mqtt = {
       namespace = "home";
       volsync.pvcs.govee2mqtt.title = "govee2mqtt";
@@ -16,6 +21,10 @@
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.govee2mqtt = {
+            replicas =
+              if credentials
+              then 1
+              else 0;
             annotations."reloader.stakater.com/auto" = "true";
             pod = {
               hostNetwork = true;
@@ -42,32 +51,34 @@
           };
         };
       };
-      resources.externalSecrets.govee2mqtt.spec = {
-        target.template.data = {
-          GOVEE_EMAIL = "{{ .email }}";
-          GOVEE_PASSWORD = "{{ .password }}";
-          GOVEE_API_KEY = "{{ .api_key }}";
+      resources.externalSecrets.govee2mqtt = lib.mkIf credentials {
+        spec = {
+          target.template.data = {
+            GOVEE_EMAIL = "{{ .email }}";
+            GOVEE_PASSWORD = "{{ .password }}";
+            GOVEE_API_KEY = "{{ .api_key }}";
+          };
+          data = [
+            {
+              secretKey = "email";
+              remoteRef.key = "govee/email";
+              sourceRef.storeRef.name = "bitwarden";
+              sourceRef.storeRef.kind = "ClusterSecretStore";
+            }
+            {
+              secretKey = "password";
+              remoteRef.key = "govee/password";
+              sourceRef.storeRef.name = "bitwarden";
+              sourceRef.storeRef.kind = "ClusterSecretStore";
+            }
+            {
+              secretKey = "api_key";
+              remoteRef.key = "govee/api-key";
+              sourceRef.storeRef.name = "bitwarden";
+              sourceRef.storeRef.kind = "ClusterSecretStore";
+            }
+          ];
         };
-        data = [
-          {
-            secretKey = "email";
-            remoteRef.key = "govee/email";
-            sourceRef.storeRef.name = "bitwarden";
-            sourceRef.storeRef.kind = "ClusterSecretStore";
-          }
-          {
-            secretKey = "password";
-            remoteRef.key = "govee/password";
-            sourceRef.storeRef.name = "bitwarden";
-            sourceRef.storeRef.kind = "ClusterSecretStore";
-          }
-          {
-            secretKey = "api_key";
-            remoteRef.key = "govee/api-key";
-            sourceRef.storeRef.name = "bitwarden";
-            sourceRef.storeRef.kind = "ClusterSecretStore";
-          }
-        ];
       };
     };
   };

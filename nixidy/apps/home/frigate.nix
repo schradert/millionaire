@@ -8,6 +8,9 @@
   }: let
     inherit (config.canivete.meta) domain;
     hostname = "frigate.${domain}";
+    # Camera credentials are user-supplied (Bitwarden `frigate/cameras`, see
+    # docs/manual-steps.md). Until then frigate is scaled to 0 with no ExternalSecret.
+    credentials = false;
     toYAML = name: obj: builtins.readFile ((pkgs.formats.yaml {}).generate name obj);
     probe = lib.recursiveUpdate {
       enabled = true;
@@ -28,6 +31,10 @@
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.frigate = {
+            replicas =
+              if credentials
+              then 1
+              else 0;
             annotations."reloader.stakater.com/auto" = "true";
             pod = {
               affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution = [
@@ -200,41 +207,43 @@
           };
         };
       };
-      resources.externalSecrets.frigate.spec = {
-        secretStoreRef = {
-          name = "bitwarden";
-          kind = "ClusterSecretStore";
+      resources.externalSecrets.frigate = lib.mkIf credentials {
+        spec = {
+          secretStoreRef = {
+            name = "bitwarden";
+            kind = "ClusterSecretStore";
+          };
+          data = [
+            {
+              secretKey = "FRIGATE_RTSP_USER";
+              remoteRef = {
+                key = "frigate/cameras";
+                property = "username";
+              };
+            }
+            {
+              secretKey = "FRIGATE_RTSP_PASS";
+              remoteRef = {
+                key = "frigate/cameras";
+                property = "password";
+              };
+            }
+            {
+              secretKey = "FRIGATE_CAM_FRONT_IP";
+              remoteRef = {
+                key = "frigate/cameras";
+                property = "front_ip";
+              };
+            }
+            {
+              secretKey = "FRIGATE_CAM_BACK_IP";
+              remoteRef = {
+                key = "frigate/cameras";
+                property = "back_ip";
+              };
+            }
+          ];
         };
-        data = [
-          {
-            secretKey = "FRIGATE_RTSP_USER";
-            remoteRef = {
-              key = "frigate/cameras";
-              property = "username";
-            };
-          }
-          {
-            secretKey = "FRIGATE_RTSP_PASS";
-            remoteRef = {
-              key = "frigate/cameras";
-              property = "password";
-            };
-          }
-          {
-            secretKey = "FRIGATE_CAM_FRONT_IP";
-            remoteRef = {
-              key = "frigate/cameras";
-              property = "front_ip";
-            };
-          }
-          {
-            secretKey = "FRIGATE_CAM_BACK_IP";
-            remoteRef = {
-              key = "frigate/cameras";
-              property = "back_ip";
-            };
-          }
-        ];
       };
       resources.serviceMonitors.frigate.spec = {
         endpoints = lib.toList {
