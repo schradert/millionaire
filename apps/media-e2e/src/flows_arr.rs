@@ -439,8 +439,14 @@ pub async fn lidarr(ctx: &Ctx, f: &mut Flow) -> R<()> {
         if nd.sub(ctx, "getScanStatus", &[]).await?["scanStatus"]["scanning"] == json!(true) {
             return Ok(None);
         }
-        let r = nd.sub(ctx, "search3", &[("query", "Slip"), ("songCount", "100"), ("artistCount", "0"), ("albumCount", "0")]).await?;
-        let mine: Vec<Value> = r["searchResult3"]["song"].as_array().into_iter().flatten().filter(|s| s["path"].as_str().is_some_and(|p| p.contains(&marker))).cloned().collect();
+        // search3 matches song titles, not album names: find the album, then list its songs.
+        let r = nd.sub(ctx, "search3", &[("query", "The Slip"), ("songCount", "0"), ("artistCount", "0"), ("albumCount", "20")]).await?;
+        let mut mine: Vec<Value> = Vec::new();
+        for al in r["searchResult3"]["album"].as_array().into_iter().flatten().filter(|a| a["name"] == json!("The Slip")) {
+            let Some(id) = al["id"].as_str() else { continue };
+            let full = nd.sub(ctx, "getAlbum", &[("id", id)]).await?;
+            mine.extend(full["album"]["song"].as_array().into_iter().flatten().filter(|s| s["path"].as_str().is_some_and(|p| p.contains(&marker))).cloned());
+        }
         Ok((mine.len() >= want).then_some(mine))
     })
     .await?;
