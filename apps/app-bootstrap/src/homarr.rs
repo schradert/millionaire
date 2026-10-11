@@ -253,7 +253,7 @@ pub async fn run() -> Result<()> {
                 h.mutate(
                     "onboard.completeSetup",
                     json!({
-                        "server": { "defaultLocale": "en", "defaultColorScheme": "dark" },
+                        "server": { "defaultLocale": "en", "defaultColorScheme": "dark", "analyticsEnabled": false },
                         "board": {
                             "name": board,
                             "primaryColor": "#bd93f9",
