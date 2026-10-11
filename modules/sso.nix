@@ -8,8 +8,7 @@
 # Clients wired here: opencode's `bifrost` provider (a plugin sets the header
 # per request; tokens live minutes, so static headers would go stale). Remote
 # MCP servers behind oauth2-proxy go through `sso-token mcp <url>`, a stdio
-# bridge adding a fresh token to every request; contextforge is not wired yet
-# because it rejects Keycloak tokens on /mcp (docs/connections.md).
+# bridge adding a fresh token to every request (contextforge: modules/opencode.nix).
 {config, ...}: let
   inherit (config.canivete.meta) domain;
   issuer = "https://keycloak.${domain}/realms/default";

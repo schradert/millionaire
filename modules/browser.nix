@@ -1,6 +1,7 @@
-# Brave with the Bitwarden extension (installed from the Chrome Web Store via
-# External Extensions). macOS installs Brave from the cask (modules/default.nix).
-# Unported: Zen (no home-manager module), Floccus (docs/connections.md).
+# Brave with the Bitwarden and Floccus extensions (installed from the Chrome Web
+# Store via External Extensions; Floccus setup: docs/connections.md). macOS
+# installs Brave from the cask (modules/default.nix). Unported: Zen (no
+# home-manager module).
 {
   home = {
     config,
@@ -14,7 +15,10 @@
         if pkgs.stdenv.hostPlatform.isDarwin
         then null
         else pkgs.brave;
-      extensions = [{id = "nngceckbapebfimnlniiiahkandclblb";}];
+      extensions = [
+        {id = "nngceckbapebfimnlniiiahkandclblb";} # Bitwarden
+        {id = "fnaicdffflnofjppbagibeoednhnbjhg";} # Floccus
+      ];
     };
   };
 }
