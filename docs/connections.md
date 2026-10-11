@@ -3,7 +3,7 @@
 Every cluster service, and the client each host uses to reach it. The rows come from the portal catalog (`nixidy/system/portal.nix`; the rendered `catalog.json` is in `nixidy/generated/prod/dashy/ConfigMap-dashy.yaml`), plus the services on hyena (`static/hyena.nix`) and the Kubernetes API. Every hostname is `<name>.trdos.me` on the internal gateway, so it resolves and answers only over the tailnet.
 
 Cells: **done** (the module that provides it) · **todo** (planned module or blocker) · **web** (browser only; Keycloak SSO or oauth2-proxy) · **n-a**.
-Credentials: Keycloak SSO where the client speaks OIDC, otherwise a Bitwarden Secrets Manager key read with `bws-get <key>` (`modules/git.nix`). The last column names whatever creates that key.
+Credentials: Keycloak SSO where the client speaks OIDC; CLIs and API clients present a Keycloak access token from `sso-token` (`modules/sso.nix`, public client `cli`, device flow; one-time `sso-token login` per host); otherwise a Bitwarden Secrets Manager key read with `bws-get <key>` (`modules/git.nix`). The last column names whatever creates that key.
 
 ## Hosts
 
