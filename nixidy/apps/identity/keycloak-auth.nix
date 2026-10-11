@@ -26,6 +26,11 @@ in {
     in
       line "default" (d.defaultClientScopes or []) + line "optional" (d.optionalClientScopes or []))
     config.applications.keycloak.resources.keycloakClients);
+    groupAttrs = lib.concatStrings (lib.mapAttrsToList (_: g: let
+      d = g.spec.definition;
+    in
+      lib.optionalString ((d.attributes or {}) != {}) "ensure_group_attrs ${lib.escapeShellArg d.name} ${lib.escapeShellArg (builtins.toJSON d.attributes)}\n")
+    config.applications.keycloak.resources.keycloakGroups);
     exec = authenticator: requirement: priority: {
       inherit authenticator requirement priority;
       authenticatorFlow = false;
@@ -135,6 +140,17 @@ in {
         done
       }
       ${clientScopes}
+      # Group attributes (e.g. immich_role, abs_group): the operator reports the
+      # group synchronized but never applies them, so set what a keycloakGroups
+      # entry declares.
+      ensure_group_attrs() {
+        local name=$1 want=$2 gid
+        gid=$(kc get groups -r $R -q search="$name" -q exact=true --fields id,name --format csv --noquotes | while IFS=, read -r id n; do if [ "$n" = "$name" ]; then echo "$id"; fi; done)
+        [ -n "$gid" ] || { echo "group $name not created yet"; return 0; }
+        kc update "groups/$gid" -r $R --merge -s "attributes=$want"
+        echo "group $name: attributes $want"
+      }
+      ${groupAttrs}
     '';
     keycloakEnv = [
       {
