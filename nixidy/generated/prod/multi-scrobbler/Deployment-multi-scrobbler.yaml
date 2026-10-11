@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 567e037e1db31b912ebc6fb74c1546a39bd5c572b8ace3e564afe42619e9e565
+        checksum/configMaps: 450bfe9c209084607342f48469003857c03a62585b73183156b3c3d3bc3c7bf4
       labels:
         app.kubernetes.io/controller: multi-scrobbler
         app.kubernetes.io/instance: multi-scrobbler
@@ -36,6 +36,8 @@ spec:
                 name: multi-scrobbler
             - secretRef:
                 name: multi-scrobbler
+            - secretRef:
+                name: multi-scrobbler-jellyfin
           image: ghcr.io/foxxmd/multi-scrobbler:0.13.1@sha256:1d9d3fd20c311016aa2daf10af2a17f56c1c9c9f1c5ee63792babb9b6d431447
           livenessProbe:
             failureThreshold: 3

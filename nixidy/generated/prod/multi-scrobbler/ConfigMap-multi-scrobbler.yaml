@@ -2,6 +2,9 @@ apiVersion: v1
 data:
   BASE_URL: https://multi-scrobbler.trdos.me
   CONFIG_DIR: /config
+  JELLYFIN_URL: http://jellyfin.media.svc.cluster.local:8096
+  JELLYFIN_USER: admin
+  JELLYFIN_USERS_ALLOW: tristan
   LOG_LEVEL: info
   MALOJA_URL: http://maloja.media.svc.cluster.local:42010
   PORT: "9078"
