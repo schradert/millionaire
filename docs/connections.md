@@ -71,6 +71,6 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 ## Open questions
 
 - millionaire is on Mill's tailnet. Tailscale keeps one active profile at a time, so joining headscale there means `tailscale switch` by hand. Until then no `*.trdos.me` client on that Mac can connect.
-- bifrost and contextforge sit wholly behind oauth2-proxy, which accepts no bearer tokens. API and MCP clients need either a direct route for `/v1` and `/servers/*/mcp` (bifrost virtual keys, contextforge JWTs) or `--skip-jwt-bearer-tokens`.
+- oauth2-proxy accepts `Authorization: Bearer $(sso-token)` (`--skip-jwt-bearer-tokens`, audience `oauth2-proxy`), so API and MCP clients pass it as Keycloak user `tristan` with the same `groups` checks. Apps that only take their own API keys or JWTs in `Authorization` still cannot get through (Waterfly, WebDAV clients).
 - syncthing: the hub's device ID is generated at runtime and its volume is not restored, so desktops cannot declare it as an introducer. The hub needs a pinned identity (cert/key as a generated secret) first.
 - Floccus: `dav.trdos.me` is behind oauth2-proxy, and the org-stack design drops WebDAV. The alternative backend is Floccus's Git sync against forgejo, which needs a token.

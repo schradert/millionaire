@@ -50,6 +50,7 @@ spec:
             - --whitelist-domain=.trdos.me
             - --session-store-type=redis
             - --redis-connection-url=redis://oauth2-proxy-dragonfly.identity.svc.cluster.local:6379
+            - --skip-jwt-bearer-tokens=true
           envFrom:
             - secretRef:
                 name: oauth2-proxy
