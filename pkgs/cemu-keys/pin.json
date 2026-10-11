@@ -1,8 +1,10 @@
 {
   "version": "1",
-  "hash": "sha256-HQpqkrmgy/2o1zKcTb6UU37/Vro8BuvsB9bu8lLI874=",
+  "hashes": {
+    "cemu-keys.txt": "sha256-HQpqkrmgy/2o1zKcTb6UU37/Vro8BuvsB9bu8lLI874="
+  },
   "source": {
-    "type": "url-template",
-    "url": "https://games.trdos.me/installers/cemu-keys.txt"
+    "type": "url-set",
+    "url": "https://games.trdos.me/installers/{name}"
   }
 }

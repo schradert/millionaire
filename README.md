@@ -35,7 +35,6 @@
 32. TODO make VolSync `restore = false` the module default: committed `-dst` ReplicationDestinations restore into LIVE PVCs, so bumping `trigger.manual` overwrites live data. A restore then becomes a deliberate change to a scratch PVC
 33. TODO hardware: an SSD for etcd on octopus (its ZFS boot disk amplifies etcd writes about 15x), larger or SSD drives for sirver (it caps usable Ceph capacity at about 5.7TB with size 2), a replacement for osd.7, more Mac disk for parallel nix work (or move heavy builds fully off the Mac)
 34. TODO falcon voron aarch64 builds miss the binary cache (overlays) and take 6h+ under emulation; give it a cache or a native aarch64 builder
-35. TODO pinned.cemu-keys can't build because builders can't resolve games.trdos.me
 
 ## Conventions
 
