@@ -1,14 +1,19 @@
-# Security CLIs + YubiKey on NixOS clients. Unported: metasploit (old/old/security/default.nix).
-# YubiKey enrolment is per key, on the device:
-#   pamu2fcfg -o pam://trdos -i pam://trdos >> ~/.config/Yubico/u2f_keys
-#   ssh-keygen -t ed25519-sk -O resident -O verify-required
+# Security CLIs + YubiKey on NixOS clients (enrolment: docs/yubikey.md).
 {
   nixos = {
     config,
     lib,
     pkgs,
     ...
-  }: {
+  }: let
+    inherit (config.profiles.yubikey) keys;
+    # pam_u2f wants one line per user: user:cred1:cred2 (pamu2fcfg prints user:cred)
+    byUser = lib.zipAttrsWith (_: lib.concatLists) (map (line: let
+      p = lib.splitString ":" line;
+    in {${lib.head p} = lib.tail p;})
+    keys);
+    authfile = lib.concatLines (lib.mapAttrsToList (user: creds: lib.concatStringsSep ":" ([user] ++ creds)) byUser);
+  in {
     config = lib.mkIf config.profiles.yubikey.enable {
       environment.systemPackages = with pkgs; [pam_u2f yubikey-manager yubioath-flutter];
       programs.yubikey-touch-detector.enable = true;
@@ -18,6 +23,7 @@
         settings.cue = true;
         settings.origin = "pam://trdos";
         settings.appid = "pam://trdos";
+        settings.authfile = lib.mkIf (keys != []) (pkgs.writeText "u2f_keys" authfile);
       };
       services.pcscd.enable = true;
       services.udev.packages = with pkgs; [libfido2 yubikey-personalization];

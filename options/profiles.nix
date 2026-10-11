@@ -2,6 +2,7 @@
   shared = {
     can,
     config,
+    lib,
     ...
   }: {
     options.profile = can.enum ["work" "personal"] "use case for node" {default = "personal";};
@@ -13,7 +14,14 @@
       gaming.enable = can.enable "gaming" {};
       audio-production.enable = can.enable "music production: DAW, DSP and live-coding tools" {};
       nvidia.enable = can.enable "NVIDIA GPU drivers" {};
-      yubikey.enable = can.enable "YubiKey FIDO2 login/sudo (pam_u2f) and ed25519-sk ssh keys" {default = config.profiles.client.enable;};
+      yubikey = {
+        enable = can.enable "YubiKey FIDO2 login/sudo (pam_u2f) and ed25519-sk ssh keys" {default = config.profiles.client.enable;};
+        keys = lib.mkOption {
+          type = lib.types.listOf lib.types.str;
+          default = [];
+          description = "pamu2fcfg output lines (user:credential...), rendered into the pam_u2f authfile; empty falls back to ~/.config/Yubico/u2f_keys (docs/yubikey.md)";
+        };
+      };
     };
   };
   system = {
