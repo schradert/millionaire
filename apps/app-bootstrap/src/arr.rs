@@ -7,8 +7,9 @@
 //!
 //! - Root folder `<APP>_ROOT` (default `/media/tv`, `/media/movies`, `/media/music`).
 //! - Download client "qBittorrent" (`QBITTORRENT_HOST`/`_PORT_NUMBER`/`_USER`/`_PASSWORD[_FILE]`), built from
-//!   the app's own `/downloadclient/schema` and saved with `forceSave=true`, because qBittorrent may
-//!   be scaled down (no VPN credentials yet) and the connection test would otherwise fail.
+//!   the app's own `/downloadclient/schema` and saved with `forceSave=true`. qBittorrent may be scaled
+//!   down (no VPN credentials yet) and the app can still refuse the client: that is a warning, not an
+//!   error, and the next run adds it.
 //! - Prowlarr applications "Sonarr", "Radarr" and "Lidarr" (full sync), from `/applications/schema`.
 //!
 //! Port variables are `<APP>_PORT_NUMBER`, never `<APP>_PORT`: Kubernetes injects `<SERVICE>_PORT=tcp://ip:port`
@@ -204,8 +205,12 @@ pub async fn run() -> Result<()> {
             f if f.ends_with("Category") && !f.contains("Post") && !f.contains("Recent") && !f.contains("Older") => Some(json!(category)),
             _ => None,
         };
-        if ensure_provider(&http, &s, "/downloadclient", "qBittorrent", "QBittorrent", json!({}), &set).await? {
-            println!("{l}: added the qBittorrent download client");
+        // qBittorrent can be scaled to zero (no VPN credentials yet) and the app then refuses the
+        // client even with forceSave: warn and move on, a later run adds it once it is up.
+        match ensure_provider(&http, &s, "/downloadclient", "qBittorrent", "QBittorrent", json!({}), &set).await {
+            Ok(true) => println!("{l}: added the qBittorrent download client"),
+            Ok(false) => {}
+            Err(e) => eprintln!("{l}: skipping the qBittorrent download client (is qbittorrent up?): {e}"),
         }
         present.push((app, base, key));
     }
