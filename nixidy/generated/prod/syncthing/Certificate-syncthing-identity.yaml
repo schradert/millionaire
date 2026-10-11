@@ -1,0 +1,19 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: syncthing-identity
+  namespace: home
+spec:
+  commonName: syncthing
+  dnsNames:
+    - syncthing
+  duration: 175200h
+  issuerRef:
+    kind: Issuer
+    name: syncthing-identity
+  privateKey:
+    algorithm: ECDSA
+    rotationPolicy: Never
+    size: 384
+  renewBefore: 24h
+  secretName: syncthing-identity
