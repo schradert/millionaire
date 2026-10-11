@@ -25,6 +25,11 @@ in {
     };
   in {
     portal.apps.chirpstack.groups = ["admin"];
+    # Behind oauth2-proxy (admin); Chirpstack OIDC still logs in.
+    oauth2Proxy.upstreams.${hostname} = {
+      url = "http://chirpstack.home.svc.cluster.local:8080";
+      namespace = "home";
+    };
     gatus.endpoints.chirpstack = {
       url = "https://${hostname}";
       group = "internal";
@@ -153,6 +158,36 @@ in {
               name = "internal";
               namespace = "kube-system";
               sectionName = "https";
+            };
+            rules = lib.toList {
+              backendRefs = lib.toList {
+                name = "oauth2-proxy";
+                namespace = "identity";
+                port = 4180;
+              };
+            };
+          };
+          # Native gRPC API clients (API keys) skip oauth2-proxy; the UI's
+          # grpc-web (application/grpc-web) stays behind it.
+          route.chirpstack-grpc = {
+            hostnames = [hostname];
+            parentRefs = lib.toList {
+              name = "internal";
+              namespace = "kube-system";
+              sectionName = "https";
+            };
+            rules = lib.toList {
+              matches = lib.toList {
+                headers = lib.toList {
+                  name = "Content-Type";
+                  type = "RegularExpression";
+                  value = "^application/grpc(\\+.*)?$";
+                };
+              };
+              backendRefs = lib.toList {
+                name = "chirpstack";
+                port = 8080;
+              };
             };
           };
         };

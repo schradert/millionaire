@@ -13,6 +13,11 @@
       group = "internal";
     };
 
+    # UI behind oauth2-proxy (admin, portal.defaults.cicd); Harbor OIDC still logs in.
+    oauth2Proxy.upstreams.${hostname} = {
+      url = "http://harbor.${namespace}.svc.cluster.local:80";
+      inherit namespace;
+    };
     applications.keycloak.resources.keycloakClients.harbor.spec = {
       realmRef.name = "default";
       clientSecretRef = {
@@ -166,6 +171,29 @@
             sectionName = "https";
           };
           rules = lib.toList {
+            backendRefs = lib.toList {
+              name = "oauth2-proxy";
+              namespace = "identity";
+              port = 4180;
+            };
+          };
+        };
+        # Registry, token service and API skip oauth2-proxy: docker/OCI clients
+        # (nodes, skopeo, workflows) and API tokens authenticate to Harbor itself.
+        httpRoutes.harbor-api.spec = {
+          hostnames = [hostname];
+          parentRefs = lib.toList {
+            name = "internal";
+            namespace = "kube-system";
+            sectionName = "https";
+          };
+          rules = lib.toList {
+            matches = map (p: {
+              path = {
+                type = "PathPrefix";
+                value = p;
+              };
+            }) ["/v2/" "/service/" "/api/"];
             backendRefs = lib.toList {
               name = "harbor";
               port = 80;

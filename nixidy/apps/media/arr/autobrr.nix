@@ -11,6 +11,11 @@ in {
     hostname = "autobrr.${domain}";
   in {
     portal.apps.autobrr.groups = ["admin"];
+    # Its OIDC admits any realm user: oauth2-proxy (admin) is the gate.
+    oauth2Proxy.upstreams.${hostname} = {
+      url = "http://autobrr.media.svc.cluster.local:7474";
+      namespace = "media";
+    };
     gatus.endpoints.autobrr = {
       url = "https://${hostname}";
       group = "internal";
@@ -167,8 +172,9 @@ in {
             };
             rules = lib.toList {
               backendRefs = lib.toList {
-                name = "autobrr";
-                port = 7474;
+                name = "oauth2-proxy";
+                namespace = "identity";
+                port = 4180;
               };
             };
           };

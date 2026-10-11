@@ -37,6 +37,13 @@
     gatus.endpoints.grafana = {
       url = "https://${hostname}";
       group = "internal";
+      conditions = ["[STATUS] == any(200, 302, 401)"];
+    };
+    # Behind oauth2-proxy (admin, portal.defaults.observability); Grafana OIDC still logs in.
+    oauth2Proxy.upstreams.${hostname} = {
+      url = "http://grafana.observability.svc.cluster.local:80";
+      namespace = "observability";
+      websocket = true;
     };
     applications.grafana = {
       namespace = "observability";
@@ -80,8 +87,9 @@
           };
           rules = lib.toList {
             backendRefs = lib.toList {
-              name = "grafana";
-              port = 80;
+              name = "oauth2-proxy";
+              namespace = "identity";
+              port = 4180;
             };
           };
         };
