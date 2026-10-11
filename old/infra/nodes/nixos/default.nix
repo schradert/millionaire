@@ -163,8 +163,6 @@ in {
     #     networking.hostId = "d1960666";
     #   };
     # };
-    # TODO deploy
-    echidna.platform.wsl = {};
     # Unported remainder of falcon (rest lives in static/falcon-system.nix)
     falcon = {
       system = {

@@ -1,4 +1,4 @@
-# Partially ported: mobile branch -> static/gargoyle.nix. Unported: prem/google/hetzner/wsl.
+# Partially ported: mobile -> static/gargoyle.nix, wsl -> static/echidna.nix. Unported: prem/google/hetzner.
 {
   config,
   inputs,
@@ -129,23 +129,6 @@ in {
             }
           ];
           opentofu.module."nixos_${name}_system_install".depends_on = ["hcloud_server.${name}"];
-        })
-        (mkIf (platform ? wsl) {
-          system = {
-            imports = [inputs.nixos-wsl.nixosModules.default];
-            wsl.enable = true;
-            wsl.defaultUser = me;
-            wsl.startMenuLaunchers = true;
-            # TODO figure out hardwired internet setup (switch + ethernet to usb adapters)
-            # TODO should I I use wsl-vpnkit?
-            # TODO value of OpenGL driver from Windows?
-            # TODO any settings I should configure for more resource usage or enable graphical applications?
-            # wsl.usbip.enable = true;
-            # wsl.usbip.autoAttach = [];
-            # wsl.usbip.snippetIpAddress = "127.0.0.1";
-            # wsl.useWindowsDriver = true;
-            # wsl.wslConf = {};
-          };
         })
       ];
     });
