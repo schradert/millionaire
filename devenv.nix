@@ -114,9 +114,14 @@ in {
       # ty/statix/lychee.
       git-hooks.default_stages = lib.mkForce ["pre-push" "manual"];
       # devenv wires `prek run -a` (every hook, whole tree) into enterTest, and
-      # in practice it runs on every shell entry — 10+ minutes per direnv load.
-      # Hooks belong to git, not to the shell.
-      tasks."devenv:git-hooks:run".before = lib.mkForce [];
+      # its `after = [git-hooks:install]` edge makes the runner schedule it on
+      # every shell entry too — 10+ minutes per direnv load (verified: every
+      # `direnv exec` spawned prek → lychee/ty). Hooks belong to git, not to
+      # the shell: detach the task from both edges.
+      tasks."devenv:git-hooks:run" = {
+        after = lib.mkForce [];
+        before = lib.mkForce [];
+      };
       git-hooks.hooks = let
         onCommit = {stages = ["pre-commit" "pre-push" "manual"];};
       in {
