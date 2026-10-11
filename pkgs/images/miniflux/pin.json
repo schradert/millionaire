@@ -1,0 +1,9 @@
+{
+  "version": "2.3.3",
+  "digest": "sha256:49d7b60987616387c306a8023087b31f2c9b7b21288b523026cb04058e8b6dbb",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/miniflux/miniflux",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}

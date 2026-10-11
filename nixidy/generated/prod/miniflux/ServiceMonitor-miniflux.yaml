@@ -1,0 +1,23 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app.kubernetes.io/instance: miniflux
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: miniflux
+  name: miniflux
+  namespace: home
+spec:
+  endpoints:
+    - interval: 1m
+      path: /metrics
+      port: http
+  jobLabel: app.kubernetes.io/name
+  namespaceSelector:
+    matchNames:
+      - home
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: miniflux
+      app.kubernetes.io/name: miniflux
+      app.kubernetes.io/service: miniflux

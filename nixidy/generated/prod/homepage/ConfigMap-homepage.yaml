@@ -253,6 +253,10 @@ data:
           description: Portal
           href: https://home.trdos.me
           icon: homepage
+      - Miniflux:
+          description: RSS reader
+          href: https://rss.trdos.me
+          icon: miniflux
       - baikal:
           description: ''
           href: https://cal.trdos.me

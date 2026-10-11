@@ -19,6 +19,7 @@
     ./home/org-storage.nix
     ./home/siyuan.nix
     ./home/kosync.nix
+    ./home/miniflux.nix
     ./home/mosquitto.nix
     ./home/zigbee2mqtt.nix
     ./home/baikal.nix
