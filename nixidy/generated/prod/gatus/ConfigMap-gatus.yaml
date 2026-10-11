@@ -128,7 +128,7 @@ data:
       name: flaresolverr
       url: http://flaresolverr.media.svc.cluster.local:8191/health
     - conditions:
-      - '[STATUS] == 200'
+      - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
       name: forgejo
@@ -152,7 +152,7 @@ data:
       name: gatus
       url: https://gatus.trdos.me
     - conditions:
-      - '[STATUS] == 200'
+      - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
       name: grafana

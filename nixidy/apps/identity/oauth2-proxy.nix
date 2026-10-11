@@ -51,6 +51,8 @@ in {
 
           # oauth2-proxy sends one X-Forwarded-Groups line per group; nginx joins them with ", ".
           if ($http_x_forwarded_groups !~ "(^|,\s*)(${lib.concatStringsSep "|" cfg.groups})(\s*,|$)") { return 403; }''}
+            client_max_body_size 0;
+            proxy_buffering off;
             proxy_pass $upstream$request_uri;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;

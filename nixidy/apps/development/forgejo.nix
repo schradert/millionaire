@@ -11,6 +11,12 @@
     gatus.endpoints.forgejo = {
       url = "https://${hostname}";
       group = "internal";
+      conditions = ["[STATUS] == any(200, 302, 401)"];
+    };
+    # Web UI behind oauth2-proxy (admin); Forgejo OIDC still logs in.
+    oauth2Proxy.upstreams.${hostname} = {
+      url = "http://forgejo-http.development.svc.cluster.local:3000";
+      namespace = "development";
     };
 
     # Keycloak OIDC client — keycloak-operator syncs secret to K8s
@@ -143,6 +149,51 @@
             sectionName = "https";
           };
           rules = lib.toList {
+            backendRefs = lib.toList {
+              name = "oauth2-proxy";
+              namespace = "identity";
+              port = 4180;
+            };
+          };
+        };
+        # git over HTTPS (git and git-lfs User-Agents) and the token API skip
+        # oauth2-proxy; ssh is its own LoadBalancer. Header matches outrank the
+        # plain "/" route (Gateway API precedence).
+        httpRoutes.forgejo-git.spec = {
+          hostnames = [hostname];
+          parentRefs = lib.toList {
+            name = "internal";
+            namespace = "kube-system";
+            sectionName = "https";
+          };
+          rules = lib.toList {
+            matches = lib.toList {
+              headers = lib.toList {
+                name = "User-Agent";
+                type = "RegularExpression";
+                value = "^git(-lfs)?/.*";
+              };
+            };
+            backendRefs = lib.toList {
+              name = "forgejo-http";
+              port = 3000;
+            };
+          };
+        };
+        httpRoutes.forgejo-api.spec = {
+          hostnames = [hostname];
+          parentRefs = lib.toList {
+            name = "internal";
+            namespace = "kube-system";
+            sectionName = "https";
+          };
+          rules = lib.toList {
+            matches = lib.toList {
+              path = {
+                type = "PathPrefix";
+                value = "/api/";
+              };
+            };
             backendRefs = lib.toList {
               name = "forgejo-http";
               port = 3000;

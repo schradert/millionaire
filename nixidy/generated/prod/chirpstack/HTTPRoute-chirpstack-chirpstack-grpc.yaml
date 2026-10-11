@@ -1,0 +1,31 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  labels:
+    app.kubernetes.io/instance: chirpstack
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: chirpstack
+  name: chirpstack-chirpstack-grpc
+  namespace: home
+spec:
+  hostnames:
+    - chirpstack.trdos.me
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: internal
+      namespace: kube-system
+      sectionName: https
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: chirpstack
+          namespace: home
+          port: 8080
+          weight: 1
+      matches:
+        - headers:
+            - name: Content-Type
+              type: RegularExpression
+              value: ^application/grpc(\+.*)?$
