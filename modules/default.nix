@@ -112,23 +112,15 @@
       }
       (lib.mkIf config.profiles.workstation.enable {
         home.packages = with pkgs;
-          lib.mkMerge [
-            [
-              # FIXME get bitwarden desktop app back up!
-              # NOTE compiler-rt-libc failing to build
-              # bitwarden-desktop
-            ]
-            (lib.mkIf stdenv.hostPlatform.isLinux [
-              beeper
-              spotify
-              discord
-              brave
-              # FIXME darwin: compiler-rt-libc build failure — restore to the
-              # shared list alongside bitwarden-desktop once nixpkgs' darwin
-              # stdenv bootstrap is fixed
-              picard
-              siyuan
-            ])
+          lib.mkIf stdenv.hostPlatform.isLinux [
+            beeper
+            spotify
+            discord
+            brave
+            # FIXME darwin: compiler-rt-libc build failure — move to a shared
+            # list once nixpkgs' darwin stdenv bootstrap is fixed
+            picard
+            siyuan
           ];
         programs = {
           elvish.enable = true;
