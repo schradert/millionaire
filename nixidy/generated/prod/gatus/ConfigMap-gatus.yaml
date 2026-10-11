@@ -338,6 +338,12 @@ data:
       name: rados
       url: https://rados.trdos.me
     - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: rclone
+      url: https://rclone.trdos.me
+    - conditions:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
