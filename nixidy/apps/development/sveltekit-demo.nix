@@ -3,6 +3,7 @@
   nixidy = {
     charts,
     lib,
+    pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -26,11 +27,7 @@
           controllers.sveltekit-demo = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.sveltekit-demo = {
-              image.repository = "harbor.${domain}/library/sveltekit-demo";
-              image.tag = "latest";
-              # NOTE: digest is a placeholder until the image is first pushed to
-              # harbor; update after first publish of legacyPackages.images.sveltekit-demo.
-              image.digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+              image = pinned.images.sveltekit-demo;
               ports = lib.toList {
                 name = "http";
                 containerPort = 3000;
