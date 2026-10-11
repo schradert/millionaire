@@ -1587,11 +1587,11 @@
         "systems": "systems_8"
       },
       "locked": {
-        "lastModified": 1773129940,
-        "narHash": "sha256-bwrQvDyzaGPiWLSVc6OzLe2hV6fBfBrJO2uAANDwpto=",
+        "lastModified": 1791681365,
+        "narHash": "sha256-5Z2S0oeHQHzV19qX4LbuCulKSfS5rc8q+kQUzuviDto=",
         "owner": "schradert",
         "repo": "nur",
-        "rev": "0a382bc7a46fdc7b486acb80613dc383475fc424",
+        "rev": "a1383f2e535c7f75cdf62de5bce0f72645950d2a",
         "type": "github"
       },
       "original": {
