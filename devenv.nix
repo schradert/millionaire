@@ -335,7 +335,8 @@ in {
         $k -n media logs -f "job/$job" | tee "$out/log"
         sed -n '/=== E2E REPORT JSON BEGIN ===/,/=== E2E REPORT JSON END ===/p' "$out/log" | sed '1d;$d' > "$out/report.json"
         jq -r '.flows[] | [.flow, .status, (.ms/1000|tostring), (.error.app // ""), (.error.step // "")] | @tsv' "$out/report.json" | column -t -s "$(printf '\t')" || true
-        [ "$($k -n media get job "$job" -o jsonpath='{.status.succeeded}')" = 1 ]
+        # The pod can exit a moment before the Job's status says so: wait for the condition.
+        $k -n media wait --for=condition=complete "job/$job" --timeout=60s >/dev/null
       '';
       # Rust toolchain from the locked nixpkgs (no extra flake input; nothing is built on entry)
       # for the standalone crates: apps/{media-e2e,app-bootstrap,jellyfin-bootstrap}, tools/*.
