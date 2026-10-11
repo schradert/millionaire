@@ -10,10 +10,7 @@
       python3Packages.howdoi
       ripgrep
       sherlock
-      # TODO compare features I use with outfieldr
-      tealdeer
       thefuck
-      wiki-tui
     ];
     dotfiles.programs = let
       navi' = lib.getExe config.programs.navi.package;

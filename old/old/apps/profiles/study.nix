@@ -43,9 +43,6 @@
           mkMerge [
             (mkIf stdenv.hostPlatform.isLinux [anki])
             [
-              fend
-              kalker
-              numbat
               markmap
               wordnet
               duden
