@@ -236,13 +236,17 @@
       in
         n2c.buildImage {
           name = "${registry}/library/org-bridge";
-          tag = pkg.version;
+          # -1: adds busybox (the Deployment's exec probe runs `sh -c test -f`)
+          tag = "${pkg.version}-1";
           arch = "amd64";
           config = {
             Entrypoint = ["${pkg}/bin/org-bridge"];
-            Env = ["SSL_CERT_FILE=${amd64Pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"];
+            Env = [
+              "PATH=${amd64Pkgs.busybox}/bin"
+              "SSL_CERT_FILE=${amd64Pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+            ];
           };
-          layers = [(n2c.buildLayer {deps = [pkg amd64Pkgs.cacert];})];
+          layers = [(n2c.buildLayer {deps = [pkg amd64Pkgs.cacert amd64Pkgs.busybox];})];
         };
 
       govee2mqtt = n2c.buildImage {
