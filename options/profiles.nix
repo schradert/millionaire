@@ -11,6 +11,7 @@
       languages.enable = can.enable "language toolchains (modules/languages)" {default = config.profiles.workstation.enable;};
       client.enable = can.enable "laptop/desktop client (networkmanager, audio, video, fhs)" {};
       desktop.plasma.enable = can.enable "Plasma 6 desktop with SDDM on wayland" {default = config.profiles.client.enable;};
+      desktop.hyprland.enable = can.enable "Hyprland as an alternate SDDM session (Plasma stays the default)" {};
       gaming.enable = can.enable "gaming" {};
       audio-production.enable = can.enable "music production: DAW, DSP and live-coding tools" {};
       nvidia.enable = can.enable "NVIDIA GPU drivers" {};
