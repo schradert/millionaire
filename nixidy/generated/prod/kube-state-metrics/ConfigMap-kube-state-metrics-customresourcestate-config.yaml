@@ -1,0 +1,56 @@
+apiVersion: v1
+data:
+  config.yaml: |
+    kind: CustomResourceStateMetrics
+    spec:
+      resources:
+      - groupVersionKind:
+          group: argoproj.io
+          kind: Application
+          version: v1alpha1
+        labelsFromPath:
+          name:
+          - metadata
+          - name
+          namespace:
+          - metadata
+          - namespace
+        metricNamePrefix: argocd_application
+        metrics:
+        - each:
+            stateSet:
+              labelName: phase
+              list:
+              - Running
+              - Terminating
+              - Succeeded
+              - Failed
+              - Error
+              path:
+              - status
+              - operationState
+              - phase
+            type: StateSet
+          help: status.operationState.phase of the Application
+          name: operation_phase
+        - each:
+            gauge:
+              path:
+              - status
+              - operationState
+              - startedAt
+            type: Gauge
+          help: status.operationState.startedAt of the Application
+          name: operation_started_timestamp_seconds
+kind: ConfigMap
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/component: metrics
+    app.kubernetes.io/instance: kube-state-metrics
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kube-state-metrics
+    app.kubernetes.io/part-of: kube-state-metrics
+  name: kube-state-metrics-customresourcestate-config
+  namespace: observability

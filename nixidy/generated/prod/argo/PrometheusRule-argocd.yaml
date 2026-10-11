@@ -1,0 +1,43 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    release: prometheus
+  name: argocd
+  namespace: cicd
+spec:
+  groups:
+    - name: argocd
+      rules:
+        - alert: ArgoCDOperationStuck
+          annotations:
+            description: |
+              A stale status.operationState (typically an old one-resource auto-heal sync) blocks every later
+              sync and its PostSync hooks. Check: kubectl -n cicd get application {{ $labels.name }} -o jsonpath='{.status.operationState}'.
+              If it is not a real sync in progress, clear it: kubectl -n cicd patch application {{ $labels.name }}
+              --type=json -p='[{"op":"remove","path":"/status/operationState"}]',
+              then hard-refresh (annotate argocd.argoproj.io/refresh=hard --overwrite).
+            summary: ArgoCD app {{ $labels.name }} has had a sync operation Running for over 15m
+          expr: |
+            (time() - argocd_application_operation_started_timestamp_seconds > 900)
+            and on (namespace, name) argocd_application_operation_phase{phase=~"Running|Terminating"} == 1
+          for: 2m
+          labels:
+            severity: warning
+        - alert: ArgoCDSyncFailingRepeatedly
+          annotations:
+            description: |
+              Look at the last operation: kubectl -n cicd get application {{ $labels.name }} -o jsonpath='{.status.operationState.message}'.
+              A stale or failed status.operationState can be cleared as for ArgoCDOperationStuck.
+            summary: ArgoCD app {{ $labels.name }} failed to sync 3+ times in the last hour
+          expr: sum by (namespace, name) (increase(argocd_app_sync_total{phase=~"Error|Failed"}[1h])) >= 3
+          for: 5m
+          labels:
+            severity: warning
+        - alert: ArgoCDControllerNotScraped
+          annotations:
+            summary: 'No argocd_app_info series: the argocd-application-controller is not being scraped, so the stuck-sync alerts are blind'
+          expr: absent(argocd_app_info)
+          for: 15m
+          labels:
+            severity: warning

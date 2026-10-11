@@ -1,0 +1,14 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: argocd-controller
+  namespace: cicd
+spec:
+  endpoints:
+    - interval: 30s
+      port: http-metrics
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: application-controller
+      app.kubernetes.io/instance: argod
+      app.kubernetes.io/name: argocd-metrics

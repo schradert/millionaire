@@ -77,6 +77,10 @@ in {
           # repoServer.autoscaling.minReplicas = 2;
           # applicationSet.replicas = 2;
           dex.enabled = false;
+          # argocd_app_info / argocd_app_sync_total for the alerts below.
+          # (The chart's own ServiceMonitor is gated on cluster capabilities, which
+          # helm template lacks; see resources.serviceMonitors.argocd-controller.)
+          controller.metrics.enabled = true;
           server.extraArgs = ["--insecure"];
           # Keycloak SSO; the local admin stays enabled as break-glass
           # (argocd-initial-admin-secret, pushed to Bitwarden below).
@@ -172,6 +176,67 @@ in {
             name = "argod-argocd-server";
             port = 80;
           };
+        };
+      };
+      resources.serviceMonitors.argocd-controller.spec = {
+        selector.matchLabels = {
+          "app.kubernetes.io/instance" = "argod";
+          "app.kubernetes.io/name" = "argocd-metrics";
+          "app.kubernetes.io/component" = "application-controller";
+        };
+        endpoints = lib.toList {
+          port = "http-metrics";
+          interval = "30s";
+        };
+      };
+      # argocd_application_* come from kube-state-metrics custom resource state
+      # (observability/kube-state-metrics.nix): the controller's own metrics do not
+      # expose status.operationState, which is what a stale sync leaves behind.
+      resources.prometheusRules.argocd = {
+        metadata.labels.release = "prometheus";
+        spec.groups = lib.toList {
+          name = "argocd";
+          rules = [
+            {
+              alert = "ArgoCDOperationStuck";
+              expr = ''
+                (time() - argocd_application_operation_started_timestamp_seconds > 900)
+                and on (namespace, name) argocd_application_operation_phase{phase=~"Running|Terminating"} == 1
+              '';
+              "for" = "2m";
+              labels.severity = "warning";
+              annotations = {
+                summary = "ArgoCD app {{ $labels.name }} has had a sync operation Running for over 15m";
+                description = ''
+                  A stale status.operationState (typically an old one-resource auto-heal sync) blocks every later
+                  sync and its PostSync hooks. Check: kubectl -n cicd get application {{ $labels.name }} -o jsonpath='{.status.operationState}'.
+                  If it is not a real sync in progress, clear it: kubectl -n cicd patch application {{ $labels.name }}
+                  --type=json -p='[{"op":"remove","path":"/status/operationState"}]',
+                  then hard-refresh (annotate argocd.argoproj.io/refresh=hard --overwrite).
+                '';
+              };
+            }
+            {
+              alert = "ArgoCDSyncFailingRepeatedly";
+              expr = ''sum by (namespace, name) (increase(argocd_app_sync_total{phase=~"Error|Failed"}[1h])) >= 3'';
+              "for" = "5m";
+              labels.severity = "warning";
+              annotations = {
+                summary = "ArgoCD app {{ $labels.name }} failed to sync 3+ times in the last hour";
+                description = ''
+                  Look at the last operation: kubectl -n cicd get application {{ $labels.name }} -o jsonpath='{.status.operationState.message}'.
+                  A stale or failed status.operationState can be cleared as for ArgoCDOperationStuck.
+                '';
+              };
+            }
+            {
+              alert = "ArgoCDControllerNotScraped";
+              expr = ''absent(argocd_app_info)'';
+              "for" = "15m";
+              labels.severity = "warning";
+              annotations.summary = "No argocd_app_info series: the argocd-application-controller is not being scraped, so the stuck-sync alerts are blind";
+            }
+          ];
         };
       };
       # Keycloak OIDC client credentials (Hostzero operator syncs to K8s Secret)
