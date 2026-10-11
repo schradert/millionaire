@@ -24,7 +24,7 @@ These are third-party credentials that can't be generated in-cluster.
 |---|---|---|
 | `ai/anthropic/api-key`, `ai/openai/api-key`, `ai/google/api-key` | `providerKeys` in `nixidy/system/ai/bifrost.nix` and `nixidy/system/ai/promptfoo.nix` | LLM routing through bifrost (librechat, openviking, openclaw) and promptfoo evals |
 | `ai/openclaw/discord-token` (Discord bot token) | `credentials` in `nixidy/system/ai/openclaw.nix` | the OpenClaw Discord gateway |
-| `vpn/wireguard/private-key`, `vpn/wireguard/addresses`, `vpn/wireguard/public-key`, `vpn/wireguard/endpoint-ip`, `vpn/wireguard/endpoint-port` (all from the provider's WireGuard config file) | `credentials` in `nixidy/apps/media/qbittorrent.nix` | qBittorrent behind the gluetun VPN. The arr apps already have it configured as their download client. |
+| `vpn/wireguard/private-key`, `vpn/wireguard/addresses`, `vpn/wireguard/public-key`, `vpn/wireguard/endpoint-ip`, `vpn/wireguard/endpoint-port` (all from the provider's WireGuard config file) | `credentials` in `nixidy/apps/media/qbittorrent.nix` | qBittorrent behind the gluetun VPN. After qBittorrent is up, sync `prowlarr` in full (not a selective sync) so its bootstrap adds qBittorrent as the download client in Sonarr, Radarr and Lidarr. |
 | `frigate/cameras`, with fields `username`, `password`, `front_ip`, `back_ip` | `credentials` in `nixidy/apps/home/frigate.nix` | Frigate NVR (RTSP cameras) |
 | `govee/email`, `govee/password`, `govee/api-key` | `credentials` in `nixidy/apps/home/govee2mqtt.nix` | Govee devices in Home Assistant through MQTT |
 | `printing/mooncord/discord-token` | `credentials` in `nixidy/apps/printing/mooncord.nix` (only once the Voron exists) | the Moonraker Discord bot |
