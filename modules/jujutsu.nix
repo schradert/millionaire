@@ -9,11 +9,10 @@
     jj = lib.getExe config.programs.jujutsu.package;
   in {
     config = lib.mkIf config.profiles.workstation.enable {
-      home.packages = with pkgs; [jj-fzf watchman];
+      home.packages = with pkgs; [jj-fzf];
       programs = {
         jujutsu.enable = true;
         jujutsu.settings = {
-          core.fsmonitor = "watchman";
           # Same ssh signing key as git (modules/git.nix).
           signing = {
             backend = "ssh";
