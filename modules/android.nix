@@ -174,6 +174,287 @@ in {
       name = "Moonlight";
       settings = apk "nonRoot";
     };
+
+    # already on the pixel (reconciled from `pm list packages -3`)
+    aegis = gh "beemdevelopment/Aegis" "com.beemdevelopment.aegis" {name = "Aegis Authenticator";};
+    amarok = gh "deltazefiro/Amarok-Hider" "deltazero.amarok.foss" {
+      name = "Amarok";
+      settings = apk "foss";
+    };
+    amber = gh "greenart7c3/Amber" "com.greenart7c3.nostrsigner" {
+      name = "Amber";
+      settings = apk "^amber-arm64-v8a";
+    };
+    amethyst = gh "vitorpamplona/amethyst" "com.vitorpamplona.amethyst" {
+      name = "Amethyst";
+      settings = apk "fdroid-arm64-v8a";
+    };
+    animetail = gh "Animetailapp/Animetail" "com.dark.animetailv2" {name = "Animetail";};
+    anytype = gh "anyproto/anytype-kotlin" "io.anytype.app" {
+      name = "Anytype";
+      settings = apk "^anytype-[0-9.]+\\.apk$";
+    };
+    arcanechat = gh "ArcaneChat/android" "chat.delta.lite" {
+      name = "ArcaneChat";
+      settings = apk "foss-arm64-v8a";
+    };
+    aria2app = gh "devgianlu/Aria2App" "com.gianlu.aria2app" {name = "Aria2App";};
+    artemis = gh "ClassicOldSong/moonlight-android" "com.limelight.noir" {
+      name = "Artemis (Moonlight Noir)";
+      settings = apk "nonRoot";
+    };
+    ashell = gh "DP-Hridayan/aShellYou" "in.hridayan.ashell" {
+      name = "aShell You";
+      settings = apk "fdroid-release";
+    };
+    aurora-store = fdroid "com.aurora.store" {name = "Aurora Store";};
+    aves = gh "deckerst/aves" "deckers.thibault.aves.libre" {
+      name = "Aves Libre";
+      settings = apk "libre-arm64-v8a";
+    };
+    avnc = gh "gujjwal00/avnc" "com.gaurav.avnc" {name = "AVNC";};
+    batt = izzy "com.porg.batt" {name = "Batt";};
+    bgg = gh "ccomeaux/boardgamegeek4android" "com.boardgamegeek" {name = "BGG4A";};
+    blocker = gh "lihenggui/blocker" "com.merxury.blocker" {
+      name = "Blocker";
+      settings = apk "foss";
+    };
+    book-story = gh "Acclorite/book-story" "ua.acclorite.book_story" {name = "Book's Story";};
+    bookwyrm = gh "PrivacyDragon/Bookwyrm_Android" "nl.privacydragon.bookwyrm" {name = "BookWyrm";};
+    catima = gh "CatimaLoyalty/Android" "me.hackerchick.catima" {
+      name = "Catima";
+      settings = apk "foss";
+    };
+    cemu = gh "SSimco/Cemu" "info.cemu.cemu" {name = "Cemu (Android)";};
+    chrono = gh "vicolo-dev/chrono" "com.vicolo.chrono" {
+      name = "Chrono";
+      settings = apk "arm64-v8a";
+    };
+    colorblendr = gh "Mahmud0808/ColorBlendr" "com.drdisagree.colorblendr" {name = "ColorBlendr";};
+    daijishou = gh "TapiocaFox/Daijishou" "com.magneticchen.daijishou" {name = "Daijishō";};
+    dankchat = gh "flex3r/DankChat" "com.flxrs.dankchat" {
+      name = "DankChat";
+      settings = apk "release";
+    };
+    delta-chat = gh "deltachat/deltachat-android" "chat.delta" {
+      name = "Delta Chat";
+      settings = apk "gplay";
+    };
+    delta-icons = gh "Delta-Icons/android" "website.leifs.delta.foss" {
+      name = "Delta Icon Pack";
+      settings = apk "^delta-foss-v";
+    };
+    doodle = gh "patzly/doodle-android" "xyz.zedler.patrick.doodle" {name = "Doodle";};
+    element-x = gh "element-hq/element-x-android" "io.element.android.x" {
+      name = "Element X";
+      settings = apk "fdroid-arm64-v8a";
+    };
+    eternity = fdroid "eu.toldi.infinityforlemmy" {name = "Eternity";};
+    fairemail = gh "M66B/FairEmail" "eu.faircode.email" {
+      name = "FairEmail";
+      settings = apk "github-release";
+    };
+    fitotrack = fdroid "de.tadris.fitness" {name = "FitoTrack";};
+    flashy = gh "Crazy-Marvin/Flashy" "rocks.poopjournal.flashy" {
+      name = "Flashy";
+      settings = apk "fdroid-release";
+    };
+    flycast = gh "flyinghead/flycast" "com.flycast.emulator" {name = "Flycast";};
+    fmd = fdroid "de.nulide.findmydevice" {name = "FMD";};
+    fossify-camera = gh "FossifyOrg/Camera" "org.fossify.camera" {name = "Fossify Camera";};
+    fossify-filemanager = gh "FossifyOrg/File-Manager" "org.fossify.filemanager" {name = "Fossify File Manager";};
+    fossify-messages = gh "FossifyOrg/Messages" "org.fossify.messages" {name = "Fossify Messages";};
+    fossify-paint = gh "FossifyOrg/Paint" "org.fossify.paint" {name = "Fossify Paint";};
+    fossify-phone = gh "FossifyOrg/Phone" "org.fossify.phone" {name = "Fossify Phone";};
+    gadgetbridge = fdroid "nodomain.freeyourgadget.gadgetbridge" {name = "Gadgetbridge";};
+    gamenative = gh "utkarshdalal/GameNative" "app.gamenative" {
+      name = "GameNative";
+      settings = apk "legacy-xr" // {invertAPKFilter = true;};
+    };
+    gif-wallpaper = fdroid "net.redwarp.gifwallpaper" {name = "GIF Live Wallpaper";};
+    goguma = fdroid "fr.emersion.goguma" {name = "Goguma";};
+    harmonic = gh "SimonHalvdansson/Harmonic-HN" "com.simon.harmonichackernews" {
+      name = "Harmonic";
+      settings = apk "^app-release\\.apk$";
+    };
+    husky = gh "captainepoch/husky" "su.xash.husky" {name = "Husky";};
+    i2pd = gh "PurpleI2P/i2pd-android" "org.purplei2p.i2pd" {
+      name = "i2pd";
+      settings = apk "universal";
+    };
+    image-toolbox = gh "T8RIN/ImageResizer" "ru.tech.imageresizershrinker" {
+      name = "Image Toolbox";
+      settings = apk "foss-universal";
+    };
+    install-with-options = gh "zacharee/InstallWithOptions" "dev.zwander.installwithoptions" {name = "InstallWithOptions";};
+    insular = fdroid "com.oasisfeng.island.fdroid" {name = "Insular";};
+    jerboa = gh "LemmyNet/jerboa" "com.jerboa" {name = "Jerboa";};
+    jtx = gh "TechbeeAT/jtxBoard" "at.techbee.jtx" {name = "jtx Board";};
+    k9 = gh "thunderbird/thunderbird-android" "com.fsck.k9" {
+      name = "K-9 Mail";
+      settings = apk "^k9mail-";
+    };
+    kde-connect = fdroid "org.kde.kdeconnect_tp" {name = "KDE Connect";};
+    key-mapper = gh "keymapperorg/KeyMapper" "io.github.sds100.keymapper" {name = "Key Mapper";};
+    komi-store = gh "kurikomi-labs/komi-store" "zed.rainxch.githubstore" {name = "Komi Store";};
+    koreader-fdroid = fdroid "org.koreader.launcher.fdroid" {name = "KOReader (F-Droid build)";};
+    kvaesitso = gh "MM2-0/Kvaesitso" "de.mm20.launcher2.release" {name = "Kvaesitso";};
+    kvaesitso-openweathermap = gh "Kvaesitso/Plugin-OpenWeatherMap" "de.mm20.launcher2.plugin.openweathermap" {name = "Kvaesitso OpenWeatherMap";};
+    kvaesitso-publictransport = gh "shtrophic/KvaesitsoPublicTransport" "xyz.sirphotch.kvaesitsoplugin.publictransport" {name = "Kvaesitso Public Transport";};
+    labnex = fdroid "com.labnex.app" {name = "LabNex";};
+    lemmy-redirect = gh "zacharee/MastodonRedirect" "dev.zwander.lemmyredirect" {
+      name = "Lemmy Redirect";
+      settings = apk "^LemmyRedirect_";
+    };
+    libchecker = gh "LibChecker/LibChecker" "com.absinthe.libchecker" {
+      name = "LibChecker";
+      settings = apk "foss-release";
+    };
+    libretorrent = fdroid "org.proninyaroslav.libretorrent" {name = "LibreTorrent";};
+    libretrack = gh "proninyaroslav/libretrack" "org.proninyaroslav.libretrack" {
+      name = "LibreTrack";
+      settings = apk "-all\\.apk$";
+    };
+    libretube = gh "libre-tube/LibreTube" "com.github.libretube" {name = "LibreTube";};
+    logseq = gh "logseq/logseq" "com.logseq.app" {name = "Logseq";};
+    loop-habits = gh "iSoron/uhabits" "org.isoron.uhabits" {
+      name = "Loop Habit Tracker";
+      settings = apk "release";
+    };
+    mastodon-redirect = gh "zacharee/MastodonRedirect" "dev.zwander.mastodonredirect" {
+      name = "Mastodon Redirect";
+      settings = apk "^MastodonRedirect_";
+    };
+    mattermost = fdroid "com.mattermost.rnbeta" {name = "Mattermost";};
+    melonds = gh "rafaelvcaetano/melonDS-android" "me.magnum.melonds.nightly" {
+      name = "melonDS (nightly)";
+      prerelease = true;
+      settings = apk "nightly";
+    };
+    mindustry = fdroid "io.anuke.mindustry" {name = "Mindustry";};
+    mitch = fdroid "ua.gardenapple.itchupdater" {name = "Mitch";};
+    mmrl = gh "DerGoogler/MMRL" "com.dergoogler.mmrl" {
+      name = "MMRL";
+      settings = apk "official";
+    };
+    myne = gh "Pool-Of-Tears/Myne" "com.starry.myne" {name = "Myne";};
+    neko = gh "nekomangaorg/Neko" "org.nekomanga.neko" {
+      name = "Neko";
+      settings = apk "universal";
+    };
+    nethersx2 = gh "Trixarian/NetherSX2-classic" "xyz.aethersx2.android" {name = "NetherSX2";};
+    newpipe = gh "TeamNewPipe/NewPipe" "org.schabi.newpipe" {name = "NewPipe";};
+    nix-on-droid = fdroid "com.termux.nix" {name = "Nix-on-Droid";};
+    octodroid = gh "slapperwan/gh4a" "com.gh4a" {name = "OctoDroid";};
+    odin = fdroid "threads.server" {name = "Odin";};
+    openfoodfacts = fdroid "openfoodfacts.github.scrachx.openfood" {name = "Open Food Facts";};
+    openlib = gh "dstark5/Openlib" "com.app.openlib" {
+      name = "Openlib";
+      settings = apk "universal";
+    };
+    opennutritracker = gh "simonoppowa/OpenNutriTracker" "com.opennutritracker.ont.opennutritracker" {name = "OpenNutriTracker";};
+    opentracks = fdroid "de.dennisguse.opentracks.playstore" {name = "OpenTracks";};
+    opentracks-osm = fdroid "de.storchp.opentracks.osmplugin" {name = "OSM Dashboard for OpenTracks";};
+    organic-maps = gh "organicmaps/organicmaps" "app.organicmaps.web" {name = "Organic Maps";};
+    oss-dict = gh "Akylas/OSS-Dict" "com.akylas.aard2" {name = "OSS-Dict";};
+    peertube-redirect = gh "zacharee/MastodonRedirect" "dev.zwander.peertuberedirect" {
+      name = "PeerTube Redirect";
+      settings = apk "^PeerTubeRedirect_";
+    };
+    phoneprofilesplus = gh "henrichg/PhoneProfilesPlus" "sk.henrichg.phoneprofilesplus" {name = "PhoneProfilesPlus";};
+    pixel-guide = gh "rexmont/Pixel-Guide-Android" "app.nanostack.pixelguide" {
+      name = "Pixel Guide";
+      settings = apk "universal";
+    };
+    pocket-casts = gh "Automattic/pocket-casts-android" "au.com.shiftyjelly.pocketcasts" {
+      name = "Pocket Casts";
+      settings = apk "^app-";
+    };
+    podverse = fdroid "com.podverse.fdroid" {name = "Podverse";};
+    primal = gh "PrimalHQ/primal-android-app" "net.primal.android" {
+      name = "Primal";
+      settings = apk "^primal-[0-9.]+\\.apk$";
+    };
+    protonvpn = gh "ProtonVPN/android-app" "ch.protonvpn.android" {
+      name = "Proton VPN";
+      settings = apk "openSource-release-fdroid";
+    };
+    raccoon = gh "LiveFastEatTrashRaccoon/RaccoonForLemmy" "com.livefast.eattrash.raccoonforlemmy.android" {
+      name = "Raccoon for Lemmy";
+      settings = apk "universal";
+    };
+    rethinkdns = gh "celzero/rethink-app" "com.celzero.bravedns" {
+      name = "RethinkDNS";
+      settings = apk "izzy-arm64-v8a";
+    };
+    rssaid = gh "LeetaoGoooo/RSSAid" "com.gmail.cn.leetao94.rssaid" {
+      name = "RSSAid";
+      settings = apk "arm64-v8a";
+    };
+    ruffle = gh "ruffle-rs/ruffle-android" "rs.ruffle" {
+      name = "Ruffle";
+      prerelease = true;
+      settings = apk "universal";
+    };
+    runnerup = fdroid "org.runnerup.free" {name = "RunnerUp";};
+    savertuner = fdroid "s1m.savertuner" {name = "SaverTuner";};
+    schildichat = fdroid "chat.schildi.android" {name = "SchildiChat Next";};
+    sd-maid = gh "d4rken-org/sdmaid-se" "eu.darken.sdmse" {name = "SD Maid SE";};
+    seal = gh "JunkFood02/Seal" "com.junkfood.seal" {
+      name = "Seal";
+      settings = apk "universal";
+    };
+    secondscreen = gh "farmerbb/SecondScreen" "com.farmerbb.secondscreen.free" {name = "SecondScreen";};
+    shizuku = gh "RikkaApps/Shizuku" "moe.shizuku.privileged.api" {name = "Shizuku";};
+    shizutools = gh "legendsayantan/ShizuTools" "com.legendsayantan.adbtools" {name = "ShizuTools";};
+    simplelogin = gh "simple-login/Simple-Login-Android" "io.simplelogin.android.fdroid" {
+      name = "SimpleLogin";
+      settings = apk "fdroid";
+    };
+    simplewear = gh "SimpleAppProjects/SimpleWear" "com.thewizrd.simplewear" {
+      name = "SimpleWear";
+      settings = apk "^mobile-";
+    };
+    simplex = gh "simplex-chat/simplex-chat" "chat.simplex.app" {
+      name = "SimpleX Chat";
+      settings = apk "aarch64";
+    };
+    siyuan = fdroid "org.b3log.siyuan" {name = "SiYuan";};
+    smartspacer = gh "KieronQuinn/Smartspacer" "com.kieronquinn.app.smartspacer" {name = "Smartspacer";};
+    spam-blocker = gh "aj3423/SpamBlocker" "spam.blocker" {
+      name = "SpamBlocker";
+      settings = apk "^app-release\\.apk$";
+    };
+    spotube = gh "KRTirtho/spotube" "oss.krtirtho.spotube" {name = "Spotube";};
+    stack = gh "tylerbwong/stack" "me.tylerbwong.stack" {name = "Stack";};
+    submersion = gh "submersion-app/submersion" "app.submersion" {name = "Submersion";};
+    system-ui-tuner = izzy "com.zacharee1.systemuituner" {name = "System UI Tuner";};
+    taskbar = gh "farmerbb/Taskbar" "com.farmerbb.taskbar" {name = "Taskbar";};
+    tasks = gh "tasks/tasks" "org.tasks" {
+      name = "Tasks.org";
+      settings = apk "fdroid";
+    };
+    termux = gh "termux/termux-app" "com.termux" {
+      name = "Termux";
+      settings = apk "universal";
+    };
+    thumb-key = gh "dessalines/thumb-key" "com.dessalines.thumbkey" {name = "Thumb-Key";};
+    thunderbird-beta = gh "thunderbird/thunderbird-android" "net.thunderbird.android.beta" {
+      name = "Thunderbird Beta";
+      prerelease = true;
+      settings = apk "^thunderbird-.*b[0-9]+\\.apk$";
+    };
+    translate-you = gh "you-apps/TranslateYou" "com.bnyro.translate" {name = "Translate You";};
+    transportr = fdroid "de.grobox.liberario" {name = "Transportr";};
+    tusky = fdroid "com.keylesspalace.tusky" {name = "Tusky";};
+    unciv = gh "yairm210/Unciv" "com.unciv.app" {name = "Unciv";};
+    wall-you = gh "you-apps/WallYou" "com.bnyro.wallpaper" {name = "Wall You";};
+    wger = gh "wger-project/flutter" "de.wger.flutter" {name = "wger";};
+    yetcalc = gh "Yet-Zio/yetCalc" "yetzio.yetcalc" {name = "yetCalc";};
+    ytdlnis = gh "deniscerri/ytdlnis" "com.deniscerri.ytdl" {
+      name = "YTDLnis";
+      settings = apk "foss-universal";
+    };
   };
 
   android.sets = {
@@ -181,6 +462,7 @@ in {
     homelab = ["jellyfin" "immich" "home-assistant" "syncthing" "orgzly" "davx5" "fossify-calendar" "bitwarden" "waterfly" "mihon" "komelia" "audiobookshelf" "tempus" "mobileraker" "actual" "frigate" "mealie" "atrium" "floccus" "phylax" "findroid" "navic" "flux-news" "umai" "absorb" "qbitcontroller" "music-assistant" "seerr" "pano-scrobbler" "gitnex" "open-alert-viewer" "gatus" "adguard-home-manager" "material-files" "fossify-contacts" "rikkahub" "ltt-rs"];
     eink = ["koreader" "librera" "orgzly" "olauncher"];
     handheld = ["chiaki" "retroarch" "dolphin" "ppsspp" "azahar" "moonlight"];
+    pixel = ["dolphin" "ppsspp" "aegis" "amarok" "amber" "amethyst" "animetail" "anytype" "arcanechat" "aria2app" "artemis" "ashell" "aurora-store" "aves" "avnc" "batt" "bgg" "blocker" "book-story" "bookwyrm" "catima" "cemu" "chrono" "colorblendr" "daijishou" "dankchat" "delta-chat" "delta-icons" "doodle" "element-x" "eternity" "fairemail" "fitotrack" "flashy" "flycast" "fmd" "fossify-camera" "fossify-filemanager" "fossify-messages" "fossify-paint" "fossify-phone" "gadgetbridge" "gamenative" "gif-wallpaper" "goguma" "harmonic" "husky" "i2pd" "image-toolbox" "install-with-options" "insular" "jerboa" "jtx" "k9" "kde-connect" "key-mapper" "komi-store" "koreader-fdroid" "kvaesitso" "kvaesitso-openweathermap" "kvaesitso-publictransport" "labnex" "lemmy-redirect" "libchecker" "libretorrent" "libretrack" "libretube" "logseq" "loop-habits" "mastodon-redirect" "mattermost" "melonds" "mindustry" "mitch" "mmrl" "myne" "neko" "nethersx2" "newpipe" "nix-on-droid" "octodroid" "odin" "openfoodfacts" "openlib" "opennutritracker" "opentracks" "opentracks-osm" "organic-maps" "oss-dict" "peertube-redirect" "phoneprofilesplus" "pixel-guide" "pocket-casts" "podverse" "primal" "protonvpn" "raccoon" "rethinkdns" "rssaid" "ruffle" "runnerup" "savertuner" "schildichat" "sd-maid" "seal" "secondscreen" "shizuku" "shizutools" "simplelogin" "simplewear" "simplex" "siyuan" "smartspacer" "spam-blocker" "spotube" "stack" "submersion" "system-ui-tuner" "taskbar" "tasks" "termux" "thumb-key" "thunderbird-beta" "translate-you" "transportr" "tusky" "unciv" "wall-you" "wger" "yetcalc" "ytdlnis"];
     family = ["obtainium" "tailscale" "ntfy" "heliboard" "jellyfin" "immich" "home-assistant" "bitwarden" "mealie" "syncthing"];
   };
 
@@ -190,7 +472,7 @@ in {
   android.devices = {
     pixel = {
       owner = "tristan";
-      sets = ["base" "homelab"];
+      sets = ["base" "homelab" "pixel"];
     };
     s21 = {
       owner = "tristan";
