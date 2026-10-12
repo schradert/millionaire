@@ -1,6 +1,6 @@
 {
-  "version": "7.0.0",
-  "hash": "sha256-7/sn+8D370BJV0F3BxgFiaUHBIrPXPO+zzzB0USxxWc=",
+  "version": "7.3.0",
+  "hash": "sha256-PPCKLHTPYNTtIxoR/76ydJSSbm0M9fs+pP8z9WD5Gx0=",
   "source": {
     "type": "helm-repo",
     "repo": "https://grafana.github.io/helm-charts/",

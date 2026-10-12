@@ -1,6 +1,6 @@
 {
-  "version": "v2.4.0",
-  "digest": "sha256:b65975397d0900914d4147764ff4979a164ccb2b61bb93515983f8bdcafd3413",
+  "version": "v2.4.1",
+  "digest": "sha256:ee67a5e856c051c4e114418a54b89a3fc3cb5507d0689e5cb89c790305c549cd",
   "source": {
     "type": "oci-tag",
     "repository": "ghcr.io/homarr-labs/homarr",

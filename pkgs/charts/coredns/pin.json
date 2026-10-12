@@ -1,6 +1,6 @@
 {
-  "version": "1.45.2",
-  "hash": "sha256-oBrrQebuTyrWb2vYE7q6sM+ArxAKd8aRXY7/8qEw3pI=",
+  "version": "1.48.2",
+  "hash": "sha256-YOwfhBPSDwVCELGaCeS1Gpc/8ATzlcCD7iLc9IYXMFs=",
   "source": {
     "type": "helm-repo",
     "repo": "https://coredns.github.io/helm",

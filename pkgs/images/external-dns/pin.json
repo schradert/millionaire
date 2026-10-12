@@ -1,6 +1,6 @@
 {
-  "version": "v0.21.0",
-  "digest": "sha256:f53faaf71cb270d1ca9dce6ea0c94bfebf1a18696263487f0fbc74b9bf2bd7ff",
+  "version": "v0.23.0",
+  "digest": "sha256:1854499e2b08cee47c40a08e356bff20dcb192dbcfde8378fc3f900f12cad5a3",
   "source": {
     "type": "oci-tag",
     "repository": "registry.k8s.io/external-dns/external-dns"

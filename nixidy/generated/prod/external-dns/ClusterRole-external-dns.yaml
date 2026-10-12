@@ -20,7 +20,7 @@ rules:
     resources:
       - dnsendpoints/status
     verbs:
-      - '*'
+      - update
   - apiGroups:
       - gateway.networking.k8s.io
     resources:

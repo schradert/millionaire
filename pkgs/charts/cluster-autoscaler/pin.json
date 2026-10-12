@@ -1,6 +1,6 @@
 {
-  "version": "9.57.0",
-  "hash": "sha256-TfMNgTwq0g+faac8ReRD4bMls45kv1IwuLt08Ov0fjE=",
+  "version": "9.59.0",
+  "hash": "sha256-SjjBSsLnojzzJf3khEkG1ozLDPxdqwKjdEUN2XAxHSA=",
   "source": {
     "type": "helm-repo",
     "repo": "https://kubernetes.github.io/autoscaler",

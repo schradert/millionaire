@@ -1,6 +1,6 @@
 {
-  "version": "0.15.0",
-  "hash": "sha256-dq+xNKWWmWTJBuw7npxfl5U/ehrAb7OWmijEwGSvNPQ=",
+  "version": "0.16.0",
+  "hash": "sha256-dvq/x3H+rYRUZwb22OFvghMmdszt5uDkKmU1Wb/v1Po=",
   "source": {
     "type": "github-release",
     "owner": "backube",

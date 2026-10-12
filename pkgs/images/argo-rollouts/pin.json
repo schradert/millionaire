@@ -1,6 +1,6 @@
 {
-  "version": "v1.9.0",
-  "digest": "sha256:13346024500167f71815e1dcd7671f46378137e726ef03b2baf69a188224f813",
+  "version": "v1.10.0",
+  "digest": "sha256:187630ba722846bb8e079630364d3c29c8246a256be95785fd957b088f621c4e",
   "source": {
     "type": "oci-tag",
     "repository": "quay.io/argoproj/argo-rollouts"

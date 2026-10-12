@@ -1,6 +1,6 @@
 {
-  "version": "3.6.7",
-  "digest": "sha256:0dac7d5cb383adb8d3723676a70ed0c65b582e636846f4ce48703556dd509ad1",
+  "version": "3.6.12",
+  "digest": "sha256:1e9bfcff38679ecf9de4e3492050c81b6c64e64421ac13d9a4f936b7d1836179",
   "source": {
     "type": "oci-tag",
     "repository": "docker.io/grafana/loki-canary"

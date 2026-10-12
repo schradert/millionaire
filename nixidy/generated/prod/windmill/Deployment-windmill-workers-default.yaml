@@ -4,7 +4,7 @@ metadata:
   labels:
     app: windmill-workers
     app.kubernetes.io/name: windmill-workers
-    chart: windmill-4.0.119
+    chart: windmill-4.0.280
     heritage: Helm
     release: windmill
     workerGroup: default
@@ -46,7 +46,7 @@ spec:
               value: "true"
             - name: WORKER_GROUP
               value: default
-          image: ghcr.io/windmill-labs/windmill:1.672.0@sha256:b1e3af47adf684aab3aac68b69143f4d7fd6f3a644c0c39ea5e171d1f05c3a6e
+          image: ghcr.io/windmill-labs/windmill:1.828.0@sha256:180e400cd76b2253098875d9f28a9171c7d344eef93b0888070deb23539ce46b
           imagePullPolicy: Always
           name: windmill-worker
           ports:

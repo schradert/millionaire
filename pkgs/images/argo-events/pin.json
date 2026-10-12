@@ -1,6 +1,6 @@
 {
-  "version": "v1.9.10",
-  "digest": "sha256:a83d2699ae536c54fcd83c25e1a10f0193e57411628172a358f8c8e775743e94",
+  "version": "v1.9.11",
+  "digest": "sha256:fa07b2c9ece6ec60a3a8377866dfe21e8bad062d5b5407f1f181d3f1d24fb861",
   "source": {
     "type": "oci-tag",
     "repository": "quay.io/argoproj/argo-events"

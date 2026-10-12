@@ -1,9 +1,9 @@
 apiVersion: v1
 data:
   trafficRouterPlugins: |-
-    - location: https://github.com/argoproj-labs/rollouts-plugin-trafficrouter-gatewayapi/releases/download/v0.15.0/gatewayapi-plugin-linux-amd64
+    - location: https://github.com/argoproj-labs/rollouts-plugin-trafficrouter-gatewayapi/releases/download/v0.17.0/gatewayapi-plugin-linux-amd64
       name: argoproj-labs/gatewayAPI
-      sha256: 24816da0e613836b3f180a2b50f6199431668c72d7f4adeef09284bffc6582a1
+      sha256: 1904ca787d33107c140521899d61fff030ee75d99908bd175fca5a4647759061
 kind: ConfigMap
 metadata:
   labels:

@@ -4,7 +4,7 @@ metadata:
   labels:
     app: windmill-app
     app.kubernetes.io/name: windmill-app
-    chart: windmill-4.0.119
+    chart: windmill-4.0.280
     heritage: Helm
     release: windmill
   name: windmill-app
@@ -43,7 +43,7 @@ spec:
               value: server
             - name: JSON_FMT
               value: "true"
-          image: ghcr.io/windmill-labs/windmill:1.672.0@sha256:b1e3af47adf684aab3aac68b69143f4d7fd6f3a644c0c39ea5e171d1f05c3a6e
+          image: ghcr.io/windmill-labs/windmill:1.828.0@sha256:180e400cd76b2253098875d9f28a9171c7d344eef93b0888070deb23539ce46b
           imagePullPolicy: Always
           lifecycle:
             preStop:
@@ -52,6 +52,14 @@ spec:
                   - /bin/sh
                   - -c
                   - sleep 30
+          livenessProbe:
+            failureThreshold: 6
+            httpGet:
+              path: /api/version
+              port: 8000
+              scheme: HTTP
+            periodSeconds: 10
+            timeoutSeconds: 5
           name: windmill-app
           ports:
             - containerPort: 8000
@@ -72,8 +80,23 @@ spec:
           resources:
             limits:
               memory: 2Gi
+          startupProbe:
+            failureThreshold: 60
+            httpGet:
+              path: /api/version
+              port: 8000
+              scheme: HTTP
+            periodSeconds: 10
+            timeoutSeconds: 5
       securityContext:
         runAsNonRoot: false
         runAsUser: 0
       serviceAccountName: windmill
       terminationGracePeriodSeconds: 40
+      topologySpreadConstraints:
+        - labelSelector:
+            matchLabels:
+              app: windmill-app
+          maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
