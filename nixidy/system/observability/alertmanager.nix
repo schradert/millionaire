@@ -48,6 +48,16 @@
               group_interval = "5m";
               repeat_interval = "4h";
               routes = [
+                # The e2e suite's synthetic alert (apps/e2e, notify family) goes to its own ntfy
+                # topic, which only the tests read, so it never pages anyone.
+                {
+                  matchers = ["alertname = E2EAlert"];
+                  receiver = "e2e-ntfy";
+                  group_by = ["alertname" "e2e"];
+                  group_wait = "0s";
+                  group_interval = "10s";
+                  repeat_interval = "1h";
+                }
                 # Watchdog always fires; its re-notification is a heartbeat for
                 # Gatus on hyena, which alerts via ntfy when it stops.
                 {
@@ -94,6 +104,15 @@
             ];
             receivers = [
               {name = "null";}
+              {
+                name = "e2e-ntfy";
+                webhook_configs = [
+                  {
+                    url = "https://ntfy.${domain}/e2e-alerts?template=alertmanager";
+                    send_resolved = true;
+                  }
+                ];
+              }
               {
                 name = "gatus-heartbeat";
                 webhook_configs = [

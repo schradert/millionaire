@@ -18,8 +18,10 @@
 mod ctx;
 mod flow;
 mod forgejo;
+mod git;
 mod identity;
 mod media;
+mod notify;
 mod report;
 mod web;
 

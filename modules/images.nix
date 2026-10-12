@@ -173,8 +173,9 @@
         };
 
       # Platform end-to-end tests (apps/e2e), run as a Job from a suspended `e2e` CronJob
-      # (nixidy/apps/media/media-e2e.nix for the media family). kubectl is for `exec` into the
-      # qbittorrent pod (VPN leak tests). Replaces library/media-e2e (<= 0.1.8): publish it, then
+      # (nixidy/apps/media/media-e2e.nix for the media family, nixidy/apps/e2e.nix for the rest).
+      # kubectl is for `exec` into the qbittorrent pod (VPN leak tests), git for the git family.
+      # Replaces library/media-e2e (<= 0.1.8): publish it, then
       # add pkgs/images/e2e/pin.json (the shape of media-e2e's, repository library/e2e).
       e2e = let
         amd64Pkgs = import inputs.nixpkgs {system = "x86_64-linux";};
@@ -192,10 +193,10 @@
           arch = "amd64";
           config = {
             Entrypoint = ["${pkg}/bin/e2e"];
-            Env = ["PATH=${amd64Pkgs.kubectl}/bin" "HOME=/tmp"];
+            Env = ["PATH=${amd64Pkgs.kubectl}/bin:${amd64Pkgs.git}/bin" "HOME=/tmp" "GIT_SSL_CAINFO=${amd64Pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"];
           };
           layers = [
-            (n2c.buildLayer {deps = [amd64Pkgs.kubectl];})
+            (n2c.buildLayer {deps = [amd64Pkgs.kubectl amd64Pkgs.git amd64Pkgs.cacert];})
             (n2c.buildLayer {deps = [pkg];})
           ];
         };

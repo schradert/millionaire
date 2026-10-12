@@ -31,6 +31,10 @@ data:
       - severity = info
     receivers:
     - name: "null"
+    - name: e2e-ntfy
+      webhook_configs:
+      - send_resolved: true
+        url: https://ntfy.trdos.me/e2e-alerts?template=alertmanager
     - name: gatus-heartbeat
       webhook_configs:
       - http_config:
@@ -53,6 +57,15 @@ data:
       receiver: default
       repeat_interval: 4h
       routes:
+      - group_by:
+        - alertname
+        - e2e
+        group_interval: 10s
+        group_wait: 0s
+        matchers:
+        - alertname = E2EAlert
+        receiver: e2e-ntfy
+        repeat_interval: 1h
       - group_interval: 1m
         group_wait: 0s
         matchers:
