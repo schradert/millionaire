@@ -356,7 +356,13 @@ in {
               }' \
             | $k create -f -
           echo "job $job (run $run_id, runner $runner); log and report in $out" >&2
-          $k -n "$ns" wait --for=condition=Ready pod -l "job-name=$job" --timeout=300s >/dev/null 2>&1 || true
+          # `kubectl wait pod -l` returns at once while the Job's pod does not exist yet, and `logs -f` fails
+          # on a pod still pulling its image (a new tag): poll the phase instead.
+          for _ in $(seq 120); do
+            phase=$($k -n "$ns" get pod -l "job-name=$job" -o jsonpath='{.items[0].status.phase}' 2>/dev/null || true)
+            case "$phase" in Running|Succeeded|Failed) break ;; esac
+            sleep 5
+          done
           $k -n "$ns" logs -f "job/$job" | tee "$out/$runner.log"
           sed -n '/=== E2E REPORT JSON BEGIN ===/,/=== E2E REPORT JSON END ===/p' "$out/$runner.log" | sed '1d;$d' > "$out/$runner.json"
           # The pod can exit a moment before the Job's status says so: wait for the condition.
