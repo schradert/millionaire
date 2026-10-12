@@ -2,17 +2,18 @@
 # self-signed ECDSA cert once (CN/SAN `syncthing`, like Syncthing's own), an
 # initContainer installs it as cert.pem/key.pem on every start, and a
 # PushSecret keeps a break-glass copy in Bitwarden. The device ID is the
-# cert's hash, so it only changes if the Secret is lost.
+# cert's hash, so it only changes if the Secret is lost; it is recorded as
+# `syncthing.devices.hub.id` (modules/syncthing.nix).
 #
-# The hub's ID, recorded after the pinned cert's first sync (redo only if the
-# Secret is ever lost):
-#   kubectl -n home exec deploy/syncthing -c syncthing -- syncthing --device-id --home /var/syncthing/config
-# Workstations then add the hub as an introducer; accept each workstation once
-# in the hub GUI (sync.trdos.me), and re-pair Android with the new hub ID.
+# Folders and devices come from the table in modules/syncthing.nix: the PVCs sync-docs and
+# sync-saves (sync-storage.nix) and org-files are mounted under /var/syncthing, and the
+# bootstrap Job (apps/app-bootstrap syncthing) declares the folders and the devices through the
+# REST API. Only devices with an ID recorded in the table are accepted.
 {config, ...}: let
   inherit (config.canivete.meta) domain;
+  inherit (config) syncthing;
   hostname = "sync.${domain}";
-  hubDeviceID = "WHD56GJ-S5XJMEV-PJNFHRL-7XZKKIE-IONK2R2-ZIQEN3P-JSQKR77-GLFEDQE";
+  hubDeviceID = syncthing.devices.hub.id;
 in {
   # Personal workstations sync with the hub, which introduces its folders.
   home = {
@@ -40,7 +41,54 @@ in {
     lib,
     pinned,
     ...
-  }: {
+  }: let
+    sync = import ../../../lib/syncthing.nix {inherit lib;};
+    # Hub volumes: the claim behind each (the table's `hub.volume`), mounted at /var/syncthing/<volume>.
+    claims = {
+      docs = "sync-docs";
+      saves = "sync-saves";
+      org = "org-files";
+    };
+    pathOf = f: "/var/syncthing/${f.hub.volume}${lib.optionalString (f.hub.dir != "") "/${f.hub.dir}"}";
+    # Folders under the volumes this module does not already own (org-files predates the table).
+    created = lib.filter (f: f.hub.dir != "") (lib.attrValues syncthing.folders);
+    # Declared state for app-bootstrap syncthing: REST objects, which it overlays on Syncthing's
+    # defaults. A client's `sendonly` is `receiveonly` here: the hub never pushes changes back.
+    # The hub's own ID joins each folder's devices in the bootstrap (it reads it from the API).
+    devices = lib.mapAttrsToList (name: d: {
+      deviceID = d.id;
+      inherit name;
+      introducer = false;
+      autoAcceptFolders = false;
+    }) (sync.clients syncthing);
+    folders =
+      lib.mapAttrsToList (id: f: {
+        inherit id;
+        inherit (f) label;
+        path = pathOf f;
+        type =
+          if f.type == "sendonly"
+          then "receiveonly"
+          else "sendreceive";
+        devices = map (d: {deviceID = d.id;}) (lib.attrValues (sync.sharedWith syncthing id));
+        # clients on other OSes disagree about permissions
+        ignorePerms = true;
+        versioning =
+          if f.versioning == null
+          then {
+            type = "";
+            params = {};
+          }
+          else {
+            inherit (f.versioning) type params;
+            cleanupIntervalS = 3600;
+            fsPath = "";
+            fsType = "basic";
+          };
+      })
+      syncthing.folders;
+    bootstrapped = pinned.images ? app-bootstrap-syncthing;
+  in {
     gatus.endpoints.syncthing = {
       url = "https://${hostname}";
       group = "internal";
@@ -54,6 +102,22 @@ in {
       };
       # GUI API key; org-bridge reads the same Secret.
       generatedSecrets.syncthing.key = "STGUIAPIKEY";
+
+      # Idempotent post-sync bootstrap (apps/app-bootstrap syncthing, >= 0.19.0): declares the
+      # folders and devices above and removes devices that are not in the table. It never deletes
+      # a folder.
+      bootstrap = lib.mkIf bootstrapped {
+        image = with pinned.images.app-bootstrap-syncthing; "${repository}:${tag}@${digest}";
+        args = ["syncthing"];
+        env = {
+          SYNCTHING_URL = "http://syncthing.home.svc.cluster.local:8384";
+          API_KEY_FILE = "/secrets/api/STGUIAPIKEY";
+          HUB_DEVICE_ID = hubDeviceID;
+          DEVICES = builtins.toJSON devices;
+          FOLDERS = builtins.toJSON folders;
+        };
+        secrets.api = "syncthing";
+      };
 
       resources = {
         issuers.syncthing-identity.spec.selfSigned = {};
@@ -109,7 +173,7 @@ in {
               command = [
                 "sh"
                 "-ec"
-                "install -d -o 1000 -g 101 -m 2770 /var/syncthing/config && install -o 1000 -g 101 -m 0664 /identity/tls.crt /var/syncthing/config/cert.pem && install -o 1000 -g 101 -m 0660 /identity/tls.key /var/syncthing/config/key.pem"
+                "install -d -o 1000 -g 101 -m 2770 /var/syncthing/config && install -o 1000 -g 101 -m 0664 /identity/tls.crt /var/syncthing/config/cert.pem && install -o 1000 -g 101 -m 0660 /identity/tls.key /var/syncthing/config/key.pem && install -d -o 1000 -g 101 -m 2775 /var/syncthing/docs /var/syncthing/saves ${lib.concatMapStringsSep " " (f: "${pathOf f} ${pathOf f}/.stfolder") created}"
               ];
             };
             containers.syncthing = {
@@ -184,9 +248,26 @@ in {
                 }
               ];
             };
+            # Their roots and folder directories are made by the identity initContainer.
+            sync-docs = {
+              type = "persistentVolumeClaim";
+              existingClaim = claims.docs;
+              advancedMounts.syncthing = {
+                syncthing = [{path = "/var/syncthing/docs";}];
+                identity = [{path = "/var/syncthing/docs";}];
+              };
+            };
+            sync-saves = {
+              type = "persistentVolumeClaim";
+              existingClaim = claims.saves;
+              advancedMounts.syncthing = {
+                syncthing = [{path = "/var/syncthing/saves";}];
+                identity = [{path = "/var/syncthing/saves";}];
+              };
+            };
             org-files = {
               type = "persistentVolumeClaim";
-              existingClaim = "org-files";
+              existingClaim = claims.org;
               advancedMounts.syncthing.syncthing = [{path = "/var/syncthing/org";}];
             };
           };
