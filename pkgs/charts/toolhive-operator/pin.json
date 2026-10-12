@@ -1,6 +1,6 @@
 {
-  "version": "0.5.5",
-  "hash": "sha256-HtHlH/C79k2SFf8ANTD6u75suQIrq+wOWx5FEamCiCM=",
+  "version": "0.51.4",
+  "hash": "sha256-Wctq8GHRE8Hm+fWjCCuGCT8SNZOQH8uaMsm86Efugbc=",
   "source": {
     "type": "helm-repo",
     "repo": "oci://ghcr.io/stacklok/toolhive",

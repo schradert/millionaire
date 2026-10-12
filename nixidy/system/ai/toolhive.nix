@@ -22,12 +22,13 @@ in {
       };
     };
 
-    applications.toolhive-crds.namespace = "ai";
-    canivete.crds.toolhive = {
-      application = "toolhive-crds";
-      install = true;
-      prefix = "crds";
-      src = crdChart;
+    # Since chart 0.51 the CRDs are templates (gated on crds.install), no longer a crds/ folder.
+    applications.toolhive-crds = {
+      namespace = "ai";
+      helm.releases.toolhive-crds = {
+        chart = crdChart;
+        values.crds.keep = false;
+      };
     };
 
     applications.toolhive = {
