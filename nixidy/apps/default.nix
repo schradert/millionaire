@@ -17,6 +17,7 @@
     ./home/logseq.nix
     ./home/org-bridge.nix
     ./home/org-storage.nix
+    ./home/sync-storage.nix
     ./home/rclone.nix
     ./home/siyuan.nix
     ./home/kosync.nix
