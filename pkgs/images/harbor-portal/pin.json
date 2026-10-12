@@ -1,6 +1,6 @@
 {
-  "version": "v2.14.3",
-  "digest": "sha256:2556b6c7dd832bf22ed8b177245fa5fbcd70255959e69c5d0fbe2153f4bd2243",
+  "version": "v2.15.2",
+  "digest": "sha256:b811b67f7a7f6f1614e4bdf7478b207d13e8aa3f815ff6ad84f216a5098d213d",
   "source": {
     "type": "oci-tag",
     "repository": "goharbor/harbor-portal"

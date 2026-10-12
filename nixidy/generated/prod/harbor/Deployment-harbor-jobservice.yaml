@@ -10,7 +10,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
-    app.kubernetes.io/version: 2.14.3
+    app.kubernetes.io/version: 2.15.2
     chart: harbor
     component: jobservice
     heritage: Helm
@@ -30,10 +30,10 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configmap: f16b5a22e0435d71313354137e35764333625d9422bf98bfd6c9679bcb23d7ef
-        checksum/configmap-env: c989a324bafcbfd6cca67251dbe23d5fb05838424dfb79734d82f0c4ba4630e3
-        checksum/secret: 9b1546d3c5fd40ae3aebead60aae96a30051f0333eeed113cf8746998ae9aa13
-        checksum/secret-core: 823f5bb433208439fa6bfa0a69ac2bd0176d267f0e683d8e24690d11a5270ee6
+        checksum/configmap: fe037279aff621de8cdb42e55af320c2797ac9121258c2eabfb68c2d81ae5a6b
+        checksum/configmap-env: 17a4fa17956987b1975cb3ae96656f7300c23a79e8d99f17bc24cb6612c6d723
+        checksum/secret: d9eb8709eefd92e95da757188dbb38c313a2e766c1b287225effb765c62f7db8
+        checksum/secret-core: 4fb31ac0f7714c9f884a848e8361aba91ef7e39c97e4a6382b48a1d3224bb4f9
       labels:
         app: harbor
         app.kubernetes.io/component: jobservice
@@ -41,7 +41,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: harbor
         app.kubernetes.io/part-of: harbor
-        app.kubernetes.io/version: 2.14.3
+        app.kubernetes.io/version: 2.15.2
         chart: harbor
         component: jobservice
         heritage: Helm
@@ -70,25 +70,31 @@ spec:
                 name: harbor-jobservice-env
             - secretRef:
                 name: harbor-jobservice
-          image: goharbor/harbor-jobservice:v2.14.3@sha256:e2b0298e894d725d68954b786c61c5dd607114f6129534756c8f7985124c07a6
+          image: goharbor/harbor-jobservice:v2.15.2@sha256:f71a4452a095bcd2a8f0683648a3ae28415432df87ccfb00ec7625f3e340a598
           imagePullPolicy: IfNotPresent
           livenessProbe:
+            failureThreshold: 3
             httpGet:
               path: /api/v1/stats
               port: 8080
               scheme: HTTP
             initialDelaySeconds: 300
             periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           name: jobservice
           ports:
             - containerPort: 8080
           readinessProbe:
+            failureThreshold: 3
             httpGet:
               path: /api/v1/stats
               port: 8080
               scheme: HTTP
             initialDelaySeconds: 20
             periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

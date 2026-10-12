@@ -1,6 +1,6 @@
 {
-  "version": "v2.14.3",
-  "digest": "sha256:a30e5a8be3d94b6485e7fdd4ed7fdf9e9724ee0a6d103b3804aacf6784ee358e",
+  "version": "v2.15.2",
+  "digest": "sha256:d7b780d23721a000f0fb8e181add6675eafa336de5d033b77fd7da0c171ff7f7",
   "source": {
     "type": "oci-tag",
     "repository": "goharbor/harbor-core"

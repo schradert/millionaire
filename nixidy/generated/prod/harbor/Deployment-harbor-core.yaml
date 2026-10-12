@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
-    app.kubernetes.io/version: 2.14.3
+    app.kubernetes.io/version: 2.15.2
     chart: harbor
     component: core
     heritage: Helm
@@ -26,9 +26,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configmap: 5bb103c403e3db14fc0e87940a56d81aac672ad7e377c6501f94263e338d8c30
-        checksum/secret: 823f5bb433208439fa6bfa0a69ac2bd0176d267f0e683d8e24690d11a5270ee6
-        checksum/secret-jobservice: 9b1546d3c5fd40ae3aebead60aae96a30051f0333eeed113cf8746998ae9aa13
+        checksum/configmap: 2ad984af78e1a0dbd745b09b7f2417385e9d7394d3ad6b3c1db803cf3b0b0b9b
+        checksum/secret: 4fb31ac0f7714c9f884a848e8361aba91ef7e39c97e4a6382b48a1d3224bb4f9
+        checksum/secret-jobservice: d9eb8709eefd92e95da757188dbb38c313a2e766c1b287225effb765c62f7db8
       labels:
         app: harbor
         app.kubernetes.io/component: core
@@ -36,7 +36,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: harbor
         app.kubernetes.io/part-of: harbor
-        app.kubernetes.io/version: 2.14.3
+        app.kubernetes.io/version: 2.15.2
         chart: harbor
         component: core
         heritage: Helm
@@ -80,7 +80,7 @@ spec:
                 name: harbor-core
             - secretRef:
                 name: harbor-core
-          image: goharbor/harbor-core:v2.14.3@sha256:a30e5a8be3d94b6485e7fdd4ed7fdf9e9724ee0a6d103b3804aacf6784ee358e
+          image: goharbor/harbor-core:v2.15.2@sha256:d7b780d23721a000f0fb8e181add6675eafa336de5d033b77fd7da0c171ff7f7
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 2
@@ -88,7 +88,10 @@ spec:
               path: /api/v2.0/ping
               port: 8080
               scheme: HTTP
+            initialDelaySeconds: 0
             periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           name: core
           ports:
             - containerPort: 8080
@@ -98,7 +101,10 @@ spec:
               path: /api/v2.0/ping
               port: 8080
               scheme: HTTP
+            initialDelaySeconds: 0
             periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -116,6 +122,8 @@ spec:
               scheme: HTTP
             initialDelaySeconds: 10
             periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           volumeMounts:
             - mountPath: /etc/core/app.conf
               name: config

@@ -1,6 +1,6 @@
 {
-  "version": "v2.14.3",
-  "digest": "sha256:e2b0298e894d725d68954b786c61c5dd607114f6129534756c8f7985124c07a6",
+  "version": "v2.15.2",
+  "digest": "sha256:f71a4452a095bcd2a8f0683648a3ae28415432df87ccfb00ec7625f3e340a598",
   "source": {
     "type": "oci-tag",
     "repository": "goharbor/harbor-jobservice"

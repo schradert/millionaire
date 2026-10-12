@@ -1,6 +1,6 @@
 {
-  "version": "v2.14.3",
-  "digest": "sha256:dab60feca79fc2e14d9df879651a0a1d3a0671718ca6bf483332193dda6f73e6",
+  "version": "v2.15.2",
+  "digest": "sha256:e1b0a248f61aad5084c5d1612d5f1da89f99c23ce743eaf8cba913d6d00c0547",
   "source": {
     "type": "oci-tag",
     "repository": "goharbor/harbor-exporter"

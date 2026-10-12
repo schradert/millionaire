@@ -1,6 +1,6 @@
 {
-  "version": "v2.14.3",
-  "digest": "sha256:6533fc396cbce57131053faec55e1bd1da8b92aed318410c203ff1c7a9b910ab",
+  "version": "v2.15.2",
+  "digest": "sha256:c4ebef61ceb50a3d8bc21d149bc280422db20a1e69df317b64b74098c3615855",
   "source": {
     "type": "oci-tag",
     "repository": "goharbor/registry-photon"

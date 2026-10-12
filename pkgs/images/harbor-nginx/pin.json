@@ -1,6 +1,6 @@
 {
-  "version": "v2.14.3",
-  "digest": "sha256:e31b5290e31938fde76590e4f5d7b8eb3d8038ad1485879bdad7a480538dc858",
+  "version": "v2.15.2",
+  "digest": "sha256:0ccc1eca228ecea120d7ad9e4386b8e86ced200212f00060a9abc753dbe7f17f",
   "source": {
     "type": "oci-tag",
     "repository": "goharbor/nginx-photon"
