@@ -16,6 +16,12 @@
       url = "https://f-droid.org/packages/${id}";
     }
     // extra;
+  izzy = id: extra:
+    {
+      inherit id;
+      url = "https://apt.izzysoft.de/fdroid/index/apk/${id}";
+    }
+    // extra;
   apk = regex: {apkFilterRegEx = regex;};
   web = host: name: {
     inherit name;
@@ -94,6 +100,51 @@ in {
     actual = web "actual" "Actual";
     frigate = web "frigate" "Frigate";
     mealie = web "mealie" "Mealie";
+    atrium = gh "retransmit/Atrium" "app.atrium" {
+      name = "Atrium (*arr, qBittorrent)";
+      settings = apk "arm64-v8a";
+    };
+    floccus = gh "floccusaddon/floccus" "org.handmadeideas.floccus" {name = "Floccus (bookmarks via Forgejo)";};
+    phylax = gh "sfortis/phylax" "com.asksakis.freegate" {
+      name = "Phylax (Frigate)";
+      settings = apk "fdroid";
+    };
+    findroid = gh "jarnedemeulemeester/findroid" "dev.jdtech.jellyfin" {
+      name = "Findroid (Jellyfin)";
+      settings = apk "libre-arm64-v8a";
+    };
+    navic = gh "ssalggnikool/Navic" "paige.navic" {
+      name = "Navic (Navidrome)";
+      settings = apk "fdroid";
+    }; # alpha
+    flux-news = gh "KevinCFechtel/FluxNews" "de.circle_dev.flux_news" {
+      name = "Flux News (Miniflux)";
+      settings = apk "arm64-v8a";
+    };
+    umai = gh "sargo22341-prog/Umai" "org.opensources.umai" {name = "Umai (Mealie)";};
+    absorb = gh "pounat/absorb" "com.barnabas.absorb" {name = "Absorb (Audiobookshelf)";};
+    qbitcontroller = gh "Bartuzen/qBitController" "dev.bartuzen.qbitcontroller" {name = "qBitController";};
+    music-assistant = gh "music-assistant/mobile-app" "io.music_assistant.client" {
+      name = "Music Assistant";
+      # the repo also tags ios-* releases that carry no APK
+      settings = apk "\\.apk$";
+    };
+    seerr = gh "seerr-team/mobile-app" "dev.seerr.mobileapp" {
+      name = "Seerr";
+      settings = apk "^seerr-v";
+    };
+    pano-scrobbler = gh "kawaiiDango/pScrobbler" "com.arn.scrobble" {name = "Pano Scrobbler";};
+    gitnex = fdroid "org.mian.gitnex" {name = "GitNex (Forgejo)";};
+    open-alert-viewer = fdroid "studio.okcode.open_alert_viewer" {name = "Open Alert Viewer (Alertmanager)";}; # basic auth only
+    gatus = gh "fengqi/gatus-mobile" "me.fengqi.gatusmobile" {name = "Gatus Mobile";}; # single author
+    adguard-home-manager = gh "JGeek00/adguard-home-manager" "com.jgeek00.adguard_home_manager" {name = "AdGuard Home Manager";};
+    material-files = gh "zhanghai/MaterialFiles" "me.zhanghai.android.files" {
+      name = "Material Files (WebDAV)";
+      settings = apk "fdroid";
+    };
+    fossify-contacts = gh "FossifyOrg/Contacts" "org.fossify.contacts" {name = "Fossify Contacts";};
+    rikkahub = gh "rikkahub/rikkahub" "me.rerere.rikkahub" {name = "RikkaHub (MCP client)";};
+    ltt-rs = fdroid "rs.ltt.android" {name = "Ltt.rs (JMAP mail)";};
 
     # e-ink
     koreader = gh "koreader/koreader" "org.koreader.launcher" {
@@ -127,7 +178,7 @@ in {
 
   android.sets = {
     base = ["obtainium" "dhizuku" "tailscale" "ntfy" "heliboard"];
-    homelab = ["jellyfin" "immich" "home-assistant" "syncthing" "orgzly" "davx5" "fossify-calendar" "bitwarden" "waterfly" "mihon" "komelia" "audiobookshelf" "tempus" "mobileraker" "actual" "frigate" "mealie"];
+    homelab = ["jellyfin" "immich" "home-assistant" "syncthing" "orgzly" "davx5" "fossify-calendar" "bitwarden" "waterfly" "mihon" "komelia" "audiobookshelf" "tempus" "mobileraker" "actual" "frigate" "mealie" "atrium" "floccus" "phylax" "findroid" "navic" "flux-news" "umai" "absorb" "qbitcontroller" "music-assistant" "seerr" "pano-scrobbler" "gitnex" "open-alert-viewer" "gatus" "adguard-home-manager" "material-files" "fossify-contacts" "rikkahub" "ltt-rs"];
     eink = ["koreader" "librera" "orgzly" "olauncher"];
     handheld = ["chiaki" "retroarch" "dolphin" "ppsspp" "azahar" "moonlight"];
     family = ["obtainium" "tailscale" "ntfy" "heliboard" "jellyfin" "immich" "home-assistant" "bitwarden" "mealie" "syncthing"];
