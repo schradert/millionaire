@@ -18,7 +18,6 @@
   # TODO how should I handle the scheduler from scratch?
   canivete.kubernetes.yaml.disable-scheduler = lib.mkForce false;
   environment.systemPackages = [pkgs.kubectl];
-  roles.nix-remote-builder.schedulerPublicKeys = [flake.config.canivete.meta.people.my.profiles.personal.sshPubKey];
   # TODO use 9345 supervisor port upstream for RKE2
   canivete.kubernetes.yaml.server = lib.mkForce "https://sirver:9345";
   # kubelet copies the node's resolv.conf search domains into pods, so tailscale's

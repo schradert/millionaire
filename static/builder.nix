@@ -19,15 +19,24 @@
 #    changes on re-registration), authorized in static/falcon-system.nix.
 #    The cluster's deps-update job builds here too, with an ssh key generated
 #    in-cluster whose public half is committed to generated.json.
+#
+# Not every RKE2 node is a member of the pool: only hosts in builders.nix get the
+# build side (caps, peers' keys, buildMachines). The cap table (`nodes`) holds the
+# headless nodes; falcon is a member without caps (a desktop; idle-scheduled
+# instead); anything else (axolotl, a VM) keeps just the name resolution below,
+# which rke2 (https://sirver:9345) and the attic substituter need.
 {
   config,
+  flake,
   lib,
   ...
 }: let
   pool = import ./builders.nix;
   generated = lib.optionalAttrs (builtins.pathExists ./generated.json) (lib.importJSON ./generated.json);
   name = config.networking.hostName;
-  me = pool.nodes.${name};
+  me = pool.nodes.${name} or null;
+  isFalcon = name == "falcon";
+  member = me != null || isFalcon;
   peers = lib.filterAttrs (n: _: n != name) pool.nodes;
   alias = n: "${n}.tailnet";
   inherit (pool) falcon;
@@ -41,60 +50,69 @@
     maxJobs = p.jobs;
   };
 in {
-  nix.daemonCPUSchedPolicy = "idle";
-  nix.daemonIOSchedClass = "idle";
-  nix.daemonIOSchedPriority = 7;
-  systemd.services.nix-daemon.serviceConfig = {
-    CPUQuota = "${toString me.quota}%";
-    CPUWeight = 10;
-    IOWeight = 10;
-    MemoryHigh = me.memHigh;
-    MemoryMax = me.memMax;
-    OOMScoreAdjust = lib.mkForce 500;
-  };
-  nix.settings = {
-    cores = me.buildCores;
-    max-jobs = me.jobs;
-  };
+  config = lib.mkMerge [
+    {
+      # Bare peer names resolve to their LAN address: rke2 joins via
+      # https://sirver:9345 and the attic substituter is http://sirver:8199, and
+      # nodes run accept-dns=false, so nothing else resolves them.
+      networking.hosts =
+        lib.mapAttrs' (n: p: lib.nameValuePair p.tailnet [(alias n)]) peers
+        // lib.mapAttrs' (n: p: lib.nameValuePair p.lan [n]) peers
+        // lib.optionalAttrs (!isFalcon) {${falcon.lan} = ["falcon"];};
+    }
+    (lib.mkIf member {
+      nix.daemonCPUSchedPolicy = "idle";
+      nix.daemonIOSchedClass = "idle";
+      nix.daemonIOSchedPriority = 7;
+      programs.ssh.knownHosts =
+        lib.mapAttrs' (n: p:
+          lib.nameValuePair "builder-${n}" {
+            hostNames = [(alias n) p.tailnet];
+            publicKey = p.hostKey;
+          })
+        peers
+        // lib.optionalAttrs (!isFalcon) {
+          builder-falcon = {
+            hostNames = ["falcon" falcon.lan];
+            publicKey = falcon.hostKey;
+          };
+        };
+      roles.nix-remote-builder.schedulerPublicKeys =
+        map (p: p.hostKey) (lib.attrValues peers)
+        ++ lib.optional (!isFalcon) falcon.hostKey
+        ++ lib.optional (generated ? deps_update_builder_pubkey) generated.deps_update_builder_pubkey
+        # the dev host (modules/builders.nix); last, matching the order before this was moved here from k8s-node.nix
+        ++ [flake.config.canivete.meta.people.my.profiles.personal.sshPubKey];
+      # A remote client's build runs in this node's daemon, which would otherwise
+      # re-dispatch it through its own `builders` below (hopping it onward to a weaker
+      # peer and back). The forced command starts the daemon proxy with builders
+      # emptied, so builds that arrive over ssh always run here.
+      users.users.nix-remote-builder.openssh.authorizedKeys.keys = lib.mkForce (map
+        (key: ''restrict,command="nix-daemon --stdio --option builders \"\"" ${key}'')
+        config.roles.nix-remote-builder.schedulerPublicKeys);
 
-  # Bare peer names resolve to their LAN address: rke2 joins via
-  # https://sirver:9345 and the attic substituter is http://sirver:8199, and
-  # nodes run accept-dns=false, so nothing else resolves them.
-  networking.hosts =
-    lib.mapAttrs' (n: p: lib.nameValuePair p.tailnet [(alias n)]) peers
-    // lib.mapAttrs' (n: p: lib.nameValuePair p.lan [n]) peers
-    // {${falcon.lan} = ["falcon"];};
-  programs.ssh.knownHosts =
-    lib.mapAttrs' (n: p:
-      lib.nameValuePair "builder-${n}" {
-        hostNames = [(alias n) p.tailnet];
-        publicKey = p.hostKey;
-      })
-    peers
-    // {
-      builder-falcon = {
-        hostNames = ["falcon" falcon.lan];
-        publicKey = falcon.hostKey;
+      nix.distributedBuilds = true;
+      nix.buildMachines =
+        lib.mapAttrsToList (n: machine (alias n)) peers
+        # Same store URI => falcon's native and emulated entries share its slots.
+        ++ lib.optionals (!isFalcon) (map (machine "falcon") [
+          (falcon // {user = falcon.builderUser;})
+          (falcon // falcon.emulated // {user = falcon.builderUser;})
+        ]);
+    })
+    (lib.mkIf (me != null) {
+      systemd.services.nix-daemon.serviceConfig = {
+        CPUQuota = "${toString me.quota}%";
+        CPUWeight = 10;
+        IOWeight = 10;
+        MemoryHigh = me.memHigh;
+        MemoryMax = me.memMax;
+        OOMScoreAdjust = lib.mkForce 500;
       };
-    };
-  roles.nix-remote-builder.schedulerPublicKeys =
-    map (p: p.hostKey) (lib.attrValues peers)
-    ++ [pool.falcon.hostKey]
-    ++ lib.optional (generated ? deps_update_builder_pubkey) generated.deps_update_builder_pubkey;
-  # A remote client's build runs in this node's daemon, which would otherwise
-  # re-dispatch it through its own `builders` below (hopping it onward to a weaker
-  # peer and back). The forced command starts the daemon proxy with builders
-  # emptied, so builds that arrive over ssh always run here.
-  users.users.nix-remote-builder.openssh.authorizedKeys.keys = lib.mkForce (map
-    (key: ''restrict,command="nix-daemon --stdio --option builders \"\"" ${key}'')
-    config.roles.nix-remote-builder.schedulerPublicKeys);
-
-  nix.distributedBuilds = true;
-  nix.buildMachines =
-    lib.mapAttrsToList (n: machine (alias n)) peers
-    # Same store URI => falcon's native and emulated entries share its slots.
-    ++ map (machine "falcon") [
-      (falcon // {user = falcon.builderUser;})
-      (falcon // falcon.emulated // {user = falcon.builderUser;})
-    ];
+      nix.settings = {
+        cores = me.buildCores;
+        max-jobs = me.jobs;
+      };
+    })
+  ];
 }
