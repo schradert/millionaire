@@ -29,7 +29,8 @@
     # Types only — the operator installs the providers' CRDs at runtime.
     canivete.crds.capi = {
       application = "capi-cluster";
-      prefix = "config/crd/bases";
+      # cluster-api 1.14 moved the core CRDs under core/.
+      prefix = "core/config/crd/bases";
       match = ".*_(clusters|machinedeployments|machinehealthchecks)\\.yaml";
       # CloudNativePG's Cluster kind already owns resources.clusters.
       attrNameOverrides."clusters.cluster.x-k8s.io" = "capiClusters";

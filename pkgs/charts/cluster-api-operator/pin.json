@@ -1,6 +1,6 @@
 {
-  "version": "0.27.0",
-  "hash": "sha256-XYJaGk3fU0rL9MMP8vWLS4OFrUdhHDcEwUumJUgHXPU=",
+  "version": "0.29.0",
+  "hash": "sha256-qlvOUpszA4JIY7aenU7qwmx636pcfFhS4qHolucuMKk=",
   "source": {
     "type": "helm-repo",
     "repo": "https://kubernetes-sigs.github.io/cluster-api-operator",

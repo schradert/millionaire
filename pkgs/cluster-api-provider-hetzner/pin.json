@@ -1,6 +1,6 @@
 {
-  "version": "1.1.6",
-  "hash": "sha256-FfwzFqZ9Qva2lG+xFsBwC2D2iuBVHC6lJ62oD75Yibk=",
+  "version": "1.1.9",
+  "hash": "sha256-kO8YeqpfSNROrR5QXk2quU84dyu2x2Oe+mb9rllwzDc=",
   "source": {
     "type": "github-release",
     "owner": "syself",
