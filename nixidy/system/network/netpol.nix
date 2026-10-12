@@ -79,10 +79,12 @@
           }
         ];
         toPorts = lib.toList {
-          ports = map (port: {
-            inherit port;
-            protocol = "TCP";
-          }) ports;
+          ports =
+            map (port: {
+              inherit port;
+              protocol = "TCP";
+            })
+            ports;
         };
       };
     };
@@ -128,10 +130,12 @@
             }
           ];
           toPorts = lib.toList {
-            ports = map (port: {
-              inherit port;
-              protocol = "TCP";
-            }) ports;
+            ports =
+              map (port: {
+                inherit port;
+                protocol = "TCP";
+              })
+              ports;
           };
         }
         ++ c.extraIngress;
@@ -195,7 +199,10 @@
               key = "app.kubernetes.io/name";
               operator = "In";
               values = ["dragonfly"];
-            } "dragonfly-operator" ["6379"];
+              # 6379 for data, 9999 for the admin port the operator uses to verify
+              # readiness and elect the master (without it no pod gets
+              # role=master and the Service has no endpoints).
+            } "dragonfly-operator" ["6379" "9999"];
           };
         })
         enforced);

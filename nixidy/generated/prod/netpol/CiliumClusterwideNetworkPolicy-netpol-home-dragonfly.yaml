@@ -23,3 +23,5 @@ spec:
         - ports:
             - port: "6379"
               protocol: TCP
+            - port: "9999"
+              protocol: TCP
