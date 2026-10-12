@@ -1,6 +1,6 @@
 {
-  "version": "v0.6.9",
-  "digest": "sha256:a01c65ac3d483ccef09c2b14c1b21869da6df2c84f567407239c5d8fe0e74bfd",
+  "version": "v0.51.4",
+  "digest": "sha256:f0365f37e4d90aa78b7ea74d93b7db5f5edc02ba294816a672e89a9add824f47",
   "source": {
     "type": "oci-tag",
     "repository": "ghcr.io/stacklok/toolhive/proxyrunner"
