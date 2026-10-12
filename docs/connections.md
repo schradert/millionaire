@@ -33,10 +33,10 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | windmill, sveltekit-demo | OIDC / none | web | web | n-a | web | — |
 | bifrost | oauth2-proxy (bearer) | done: opencode provider `bifrost` (plugin adds `sso-token`), `modules/sso.nix` | done: same | n-a | n-a | `sso-token` |
 | contextforge (mcp) | oauth2-proxy (bearer) + OAuth virtual server; UI: Keycloak SSO | done: opencode MCP `contextforge` (`sso-token mcp https://mcp.trdos.me/servers/<id>/mcp`), `modules/opencode.nix`; live once `app-bootstrap-contextforge` is pinned | done: same | n-a | n-a | `sso-token` |
-| librechat (chat) | oauth2-proxy + OIDC | web | web | n-a | web | — |
+| librechat (chat) | OIDC (its own login page) | web | web | n-a | web | — |
 | promptfoo | oauth2-proxy | web | web | n-a | n-a | — |
 | Kubernetes MCP | kubeconfig | done: mcp-k8s-go (read-only, context `trdos`), `modules/opencode.nix` | done: same | n-a | n-a | kubeconfig |
-| actual | oauth2-proxy | web | web | n-a | web (`actual` tile) | — |
+| actual | OIDC (native; the sync clients need the bare server URL) | web | web | n-a | web (`actual` tile) | — |
 | firefly | oauth2-proxy | web | web | n-a | Waterfly (blocked: it sends a Firefly personal access token, which oauth2-proxy cannot verify) | — |
 | sure | OIDC | web | web | n-a | web | — |
 | mealie | OIDC | web | web | n-a | web (`mealie` tile) | — |
@@ -45,7 +45,8 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | syncthing (sync) | oauth2-proxy (GUI) | done: `services.syncthing` from the folder table, hub as the only device, `modules/syncthing.nix` (the host's device ID goes in the table first: docs/manual-steps.md step 11) | done: same | n-a | done: Syncthing-Fork (only `org`; add its ID to the table) | hub identity: cert-manager `syncthing-identity`, Bitwarden `syncthing/hub/{cert,key}` |
 | webdav (dav) | oauth2-proxy | n-a (clients cannot pass oauth2-proxy) | n-a | n-a | n-a | — |
 | home-assistant (hass) | OIDC | done: companion cask, `modules/desktop-clients.nix` | web | n-a | done: Home Assistant | — |
-| homepage, homarr, dashy, android | OIDC / oauth2-proxy | web | web | n-a | web | — |
+| homepage, homarr, dashy | OIDC (dashy's catalog exports go through oauth2-proxy) | web | web | n-a | web | — |
+| android (Obtainium pages) | none (read-only, nothing secret) | web | web | n-a | web | — |
 | chirpstack, excalidraw, frigate, logseq, rclone, siyuan, zigbee2mqtt, zwave-js-ui | OIDC / oauth2-proxy | web | web | n-a | web (frigate tile) | — |
 | kosync | KOReader account | n-a | n-a | n-a | done: KOReader (`eink` set) | — |
 | keycloak | — | web (SSO for everything) | web | web | web | — |
@@ -53,7 +54,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | jellyfin | OIDC | done: Jellyfin Media Player cask, `modules/media-clients.nix` | done: delfin, `modules/media-clients.nix` | done: delfin | done: Jellyfin | SSO |
 | navidrome | own login | done: feishin, `modules/media-clients.nix` | done: feishin | done: feishin | done: Tempus | bws `navidrome/admin-password` (navidrome.nix) |
 | immich | OIDC | done: immich-cli, `immich-login` (`modules/media-clients.nix`) | done: same | n-a | done: Immich | bws `immich/tristan/api-key` (app-bootstrap immich >= 0.18.0: the admin's key; the admin is tristan, linked by email) |
-| audiobookshelf | oauth2-proxy | web | web | n-a | done: Audiobookshelf | — |
+| audiobookshelf | OIDC (native) | web | web | n-a | done: Audiobookshelf | — |
 | kavita, komga | OIDC | web (OPDS: docs/ereader-opds.md) | web | n-a | done: Mihon, Komelia | — |
 | sonarr, radarr, lidarr, prowlarr, bazarr, autobrr, maintainerr, seerr, shoko, ryot, multi-scrobbler, maloja | oauth2-proxy / own | web | web | n-a | web | — |
 | owncast, jitsi | own | web | web | n-a | todo (no Jitsi app in catalog) | — |
@@ -73,6 +74,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 - millionaire: headscale runs as a second, userspace tailscaled next to Mill's, so only proxy-aware clients reach `*.trdos.me`, through `trdos <cmd>`. ssh needs `ProxyCommand nc -X 5 -x localhost:1055 %h %p`; Node CLIs (immich), GUI apps and browsers need a SOCKS proxy set per app.
 - oauth2-proxy accepts `Authorization: Bearer $(sso-token)` (`--skip-jwt-bearer-tokens`, audience `oauth2-proxy`), so API and MCP clients pass it as Keycloak user `tristan` with the same `groups` checks. Apps that only take their own API keys or JWTs in `Authorization` still cannot get through (Waterfly, WebDAV clients).
 - contextforge 1.0.11 accepts Keycloak tokens on `/mcp` only for a virtual server with `oauth_enabled` (`oauth_config.authorization_servers` = the realm, `resource` = `oauth2-proxy`), and resolves the user from its own database. app-bootstrap contextforge creates that server (`homelab`, every registered tool, resource and prompt), trusts the `keycloak` SSO provider for API tokens and creates tristan as an admin; Keycloak SSO for the UI comes from `SSO_KEYCLOAK_*` (`nixidy/system/ai/contextforge.nix`).
+- qbittorrent.trdos.me has a route behind oauth2-proxy but no tile or Gatus check (and no pod) until `credentials` is true in `nixidy/apps/media/qbittorrent.nix` (docs/manual-steps.md).
 - Direct routes that skip oauth2-proxy stay where the clients speak a protocol with its own auth: baikal `/dav.php` (Digest), navidrome `/rest` (Subsonic), komga `/opds`, chirpstack gRPC, harbor `/v2` (robot accounts), forgejo git, `/api` and `/tristan/bookmarks.git` (tokens; Floccus).
 - syncthing: the hub's identity is now a cert-manager Secret (stable while the cluster lives, copy in Bitwarden). Its device ID is recorded as `syncthing.devices.hub.id`; the hub stays reachable only through global discovery and relays, as no LoadBalancer exposes port 22000 (the Deck needs no tailnet for this).
 - syncthing folders and devices are one table (`modules/syncthing.nix`): the hub gets them from app-bootstrap syncthing (pins to `pkgs/images/app-bootstrap-syncthing`), each client from `services.syncthing` (no introducer, nothing auto-accepted: a device is accepted only through an ID in the table). `steam-input` and `ludusavi` are one way, client to hub. The Deck is LAN-only until its tailnet join lands, which Syncthing does not need.
