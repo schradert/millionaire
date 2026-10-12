@@ -225,6 +225,9 @@ pub async fn run() -> Result<()> {
                 "allowScrobbling": false,
                 "allowMetadataMatching": true,
                 "enableMetadata": true,
+                // Required since Kavita 0.9 (400 "MetadataProvider is invalid" without it);
+                // 2 = the provider the existing Books library uses.
+                "metadataProvider": 2,
                 "removePrefixForSortName": false,
                 "inheritWebLinksFromFirstChapter": false,
                 "defaultLanguage": "",
