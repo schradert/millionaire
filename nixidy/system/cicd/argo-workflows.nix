@@ -294,7 +294,7 @@ in {
               name = "seed-nix-store";
               image = nixImage;
               command = ["sh" "-c"];
-              args = ["[ -e /cache/.seeded ] || { cp -a /nix/. /cache/ && touch /cache/.seeded; }"];
+              args = ["[ -e /cache/.seeded-${pinned.images.nix.tag} ] || { cp -a /nix/. /cache/ && touch /cache/.seeded-${pinned.images.nix.tag}; }"];
               volumeMounts = lib.toList {
                 name = "nix";
                 mountPath = "/cache";
@@ -481,7 +481,7 @@ in {
                 name = "seed-nix-store";
                 image = nixImage;
                 command = ["sh" "-c"];
-                args = ["[ -e /cache/.seeded ] || { cp -a /nix/. /cache/ && touch /cache/.seeded; }"];
+                args = ["[ -e /cache/.seeded-${pinned.images.nix.tag} ] || { cp -a /nix/. /cache/ && touch /cache/.seeded-${pinned.images.nix.tag}; }"];
                 volumeMounts = lib.toList {
                   name = "nix";
                   mountPath = "/cache";

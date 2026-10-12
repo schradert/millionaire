@@ -182,7 +182,7 @@ spec:
               readOnly: true
         initContainers:
           - args:
-              - '[ -e /cache/.seeded ] || { cp -a /nix/. /cache/ && touch /cache/.seeded; }'
+              - '[ -e /cache/.seeded-2.35.2 ] || { cp -a /nix/. /cache/ && touch /cache/.seeded-2.35.2; }'
             command:
               - sh
               - -c

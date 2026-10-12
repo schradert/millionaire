@@ -12,6 +12,9 @@ FLAKE_IMAGES=".#legacyPackages.x86_64-linux.images"
 MAX_TRIES=3
 MAX_COMMITS=15
 mkdir -p "$STATE" /etc/nix
+# The nix image ships nix.conf as a symlink into /nix/store, which our
+# /nix cache volume may not contain; replace it with a plain file.
+rm -f /etc/nix/nix.conf
 cat > /etc/nix/nix.conf <<NIXCONF
 build-users-group = nixbld
 experimental-features = nix-command flakes
