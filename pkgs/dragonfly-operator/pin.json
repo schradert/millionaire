@@ -1,6 +1,6 @@
 {
-  "version": "1.4.0",
-  "hash": "sha256-QBylTbY+8HcD0Z2VyqtwUYm+MeXCP7IwVtJpCCMswXs=",
+  "version": "1.7.0",
+  "hash": "sha256-XkrDeQXaTNfwjxbkSU/qBwBIsfrlfuLzUfYq5ij1jJs=",
   "source": {
     "type": "github-release",
     "owner": "dragonflydb",

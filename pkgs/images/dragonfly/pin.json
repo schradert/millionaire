@@ -1,6 +1,6 @@
 {
-  "version": "v1.25.5",
-  "digest": "sha256:b01819940a86415d49bf9a692af3e148665bef23e3b8b78f075e00d0ba7e687d",
+  "version": "v2.0.2",
+  "digest": "sha256:061f00b201b58e12f974e4e96c761a881ee1c05e9d8ee967466a604b7299753b",
   "source": {
     "type": "oci-tag",
     "repository": "ghcr.io/dragonflydb/dragonfly",
