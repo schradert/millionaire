@@ -1,6 +1,6 @@
 {
-  "version": "14.0.3-rootless",
-  "digest": "sha256:3bde16a366e57f37c09599b77ceb83ed05b1934f8224072f8140bc66cf243608",
+  "version": "15.0.9-rootless",
+  "digest": "sha256:caf1bca332f95cdcf124227a4bfa3b49bbbfbbc8a5e4a97406921cb581165413",
   "source": {
     "type": "oci-tag",
     "repository": "code.forgejo.org/forgejo/forgejo"
