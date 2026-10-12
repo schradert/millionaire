@@ -11,7 +11,8 @@
     gatus.endpoints.games-webdav = {
       url = "https://${hostname}";
       group = "internal";
-      conditions = ["[STATUS] == 200"];
+      # An anonymous GET on a WebDAV collection answers 207 Multi-Status.
+      conditions = ["[STATUS] == any(200, 207)"];
     };
     # ROMs, BIOS and installers the gaming hosts fetch by URL + pinned hash
     # (pkgs/{roms,bios,game-installers}/pin.json; docs/games.md).
