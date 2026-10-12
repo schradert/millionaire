@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
-  image: harbor.trdos.me/library/app-bootstrap:0.5.0@sha256:d6dc59fafe36b46c1e8abe5b74f265bc8f89f84d063e0f0a88775511eda0b860
-  spec: ca76e2c33d10bb58829e1b1240ef3129783476942e5cbda5c35eb4a8087a2d49
+  image: harbor.trdos.me/library/app-bootstrap:0.19.2@sha256:e715764c57b0275bfb2d586483c156f1410ca87bac650bfbdb924187f13054ec
+  spec: c10379fb24a94329031d6bcb0264b7bfc32a2626b685cf6c7f747d8eb93fd7d5
 kind: ConfigMap
 metadata:
   name: komga-bootstrap

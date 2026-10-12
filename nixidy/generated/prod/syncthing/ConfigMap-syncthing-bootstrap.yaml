@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
-  image: harbor.trdos.me/library/app-bootstrap:0.19.0@sha256:57f0ad275f93a239d07637c7d5144d8cb6402d7df84e62e056b664187bddda10
-  spec: 464d741da3a961c06fff45acbf812af4d8671031497c7c4b07af1366373d6176
+  image: harbor.trdos.me/library/app-bootstrap:0.19.2@sha256:e715764c57b0275bfb2d586483c156f1410ca87bac650bfbdb924187f13054ec
+  spec: b1f757e666ac49d1f35c8c1ba8d2c0b67dbba851b112d7c7f04311dc45410392
 kind: ConfigMap
 metadata:
   name: syncthing-bootstrap

@@ -1,6 +1,6 @@
 {
-  "version": "0.12.0",
-  "digest": "sha256:6e9c8a9052997eab9d35f243be3091270afe41f7e67a50e7d2f2ec4786d9abc7",
+  "version": "0.19.2",
+  "digest": "sha256:e715764c57b0275bfb2d586483c156f1410ca87bac650bfbdb924187f13054ec",
   "source": {
     "type": "oci-tag",
     "repository": "harbor.trdos.me/library/app-bootstrap",
