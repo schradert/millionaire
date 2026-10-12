@@ -1,6 +1,6 @@
 {
-  "version": "8.34.0",
-  "hash": "sha256-7bIAynSLk3Y2bVNRiveF9MT9HeK4d0xsVDiAT3Dk2Hg=",
+  "version": "8.34.1",
+  "hash": "sha256-H5Uzkoe7LmOciBx7Y2A93VwtT3Mb8/zdczenrkiz2r8=",
   "source": {
     "type": "helm-repo",
     "repo": "oci://ghcr.io/homarr-labs/charts",

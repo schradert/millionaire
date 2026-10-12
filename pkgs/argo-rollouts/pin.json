@@ -1,6 +1,6 @@
 {
-  "version": "1.9.0",
-  "hash": "sha256-qpTilslCu9rmBVMo73lHnKD8NPxLHSzeBwkWhEB4If4=",
+  "version": "1.10.0",
+  "hash": "sha256-DEpMNK/NDXykfYDWUCvLm+zoNaQ4YRGExznJoW3l5F0=",
   "source": {
     "type": "github-release",
     "owner": "argoproj",

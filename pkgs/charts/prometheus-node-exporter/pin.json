@@ -1,6 +1,6 @@
 {
-  "version": "4.52.1",
-  "hash": "sha256-44nu8ZcaxFkbwygc11LUo2YOug0iUnKhQxQBqV4dM3o=",
+  "version": "4.59.0",
+  "hash": "sha256-IRWE289jmEjDFp2XNHFLTDXaQA28yd4POtYjJrv3pyM=",
   "source": {
     "type": "helm-repo",
     "repo": "oci://ghcr.io/prometheus-community/charts",

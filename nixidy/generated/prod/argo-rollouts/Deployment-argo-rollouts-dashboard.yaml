@@ -31,14 +31,21 @@ spec:
             - dashboard
             - --loglevel=info
             - --kloglevel=0
-          image: quay.io/argoproj/kubectl-argo-rollouts:v1.9.0@sha256:86e1040c5d12cf4ec5c0d6205c5ca9f51677ad8ddc478a1f0790de9296f190e7
+          image: quay.io/argoproj/kubectl-argo-rollouts:v1.10.0@sha256:bbd72459f66cd8c85660163d951aeb36e1cf91ca29267c931ae108536ed36b19
           imagePullPolicy: IfNotPresent
           name: argo-rollouts-dashboard
           ports:
             - containerPort: 3100
               name: dashboard
           resources: {}
-          securityContext: {}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
       securityContext:
         runAsNonRoot: true
       serviceAccountName: argo-rollouts-dashboard

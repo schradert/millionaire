@@ -199,6 +199,13 @@ rules:
       - list
       - get
   - apiGroups:
+      - eks.amazonaws.com
+    resources:
+      - targetgroupbindings
+    verbs:
+      - list
+      - get
+  - apiGroups:
       - appmesh.k8s.aws
     resources:
       - virtualservices

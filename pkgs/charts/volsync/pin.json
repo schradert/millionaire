@@ -1,6 +1,6 @@
 {
-  "version": "0.15.0",
-  "hash": "sha256-MZxxd26S9wST2Jy7fFhriQX2T4n1gNKu2d+jtlPYpEs=",
+  "version": "0.16.0",
+  "hash": "sha256-AbYJiSSgTGWkDu32Lmc8vz/1SQnu1QSNaOC8PFCUXFw=",
   "source": {
     "type": "helm-repo",
     "repo": "https://backube.github.io/helm-charts",

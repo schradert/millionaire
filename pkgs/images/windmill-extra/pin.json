@@ -1,6 +1,6 @@
 {
-  "version": "1.672.0",
-  "digest": "sha256:c4b5dbcd2c8b1e585f6c773fd3337bc0ccd05be83b6e56806f124901fd4fb479",
+  "version": "1.828.0",
+  "digest": "sha256:c71e24bd2362eb70edc96dfc2e1e2e9193460bbf0c70f511c72d29065682e909",
   "source": {
     "type": "oci-tag",
     "repository": "ghcr.io/windmill-labs/windmill-extra"

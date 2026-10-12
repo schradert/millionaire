@@ -22,7 +22,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/cm: 227b93f17ed8192c00b8f7c921587cae731ccb07eaba4dc721755c54ed5c740f
+        checksum/cm: f5367b30b7f1a987950eaff439cb8fdb1e76aa3ced2605bb73ef5762acd9be2e
       labels:
         app.kubernetes.io/component: rollouts-controller
         app.kubernetes.io/instance: argo-rollouts
@@ -31,12 +31,12 @@ spec:
       containers:
         - args:
             - --healthzPort=8080
-            - --metricsport=8090
+            - --metricsPort=8090
             - --loglevel=info
             - --logformat=text
             - --kloglevel=0
             - --leader-elect
-          image: quay.io/argoproj/argo-rollouts:v1.9.0@sha256:13346024500167f71815e1dcd7671f46378137e726ef03b2baf69a188224f813
+          image: quay.io/argoproj/argo-rollouts:v1.10.0@sha256:187630ba722846bb8e079630364d3c29c8246a256be95785fd957b088f621c4e
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3
@@ -53,15 +53,6 @@ spec:
               name: metrics
             - containerPort: 8080
               name: healthz
-          readinessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /metrics
-              port: metrics
-            initialDelaySeconds: 15
-            periodSeconds: 5
-            successThreshold: 1
-            timeoutSeconds: 4
           resources: {}
           securityContext:
             allowPrivilegeEscalation: false

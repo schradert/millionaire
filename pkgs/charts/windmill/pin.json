@@ -1,6 +1,6 @@
 {
-  "version": "4.0.119",
-  "hash": "sha256-197D3CuiggeCCojavZENj5eWSxAkGApv5RJPXz8hazw=",
+  "version": "4.0.280",
+  "hash": "sha256-KT1uIRTS31UtRigtDJSTYf1zlUwUi0ACrtTPGfcI9Y0=",
   "source": {
     "type": "helm-repo",
     "repo": "https://windmill-labs.github.io/windmill-helm-charts",

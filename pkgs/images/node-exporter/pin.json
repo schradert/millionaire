@@ -1,6 +1,6 @@
 {
-  "version": "v1.10.2",
-  "digest": "sha256:337ff1d356b68d39cef853e8c6345de11ce7556bb34cda8bd205bcf2ed30b565",
+  "version": "v1.12.1",
+  "digest": "sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0",
   "source": {
     "type": "oci-tag",
     "repository": "quay.io/prometheus/node-exporter"
