@@ -30,6 +30,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - args:
+            - serve
             - --workspace=/siyuan/workspace
           command:
             - /opt/siyuan/kernel

@@ -28,7 +28,7 @@
               # overlayfs copy-up waits for a ZFS txg sync on the nodes (hours
               # on the HDD ones). Run the kernel directly as root.
               command = ["/opt/siyuan/kernel"];
-              args = ["--workspace=/siyuan/workspace"];
+              args = ["serve" "--workspace=/siyuan/workspace"];
               env = {
                 # The entrypoint starts as root, creates the user and drops to it.
                 PUID = "0";
