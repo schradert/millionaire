@@ -6,14 +6,18 @@ metadata:
     app.kubernetes.io/instance: prometheus
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: kube-prometheus-stack
-    chart: kube-prometheus-stack-86.1.0
+    chart: kube-prometheus-stack-92.3.0
     heritage: Helm
     release: prometheus
   name: prometheus-kube-prometheus-coredns
   namespace: observability
 spec:
   endpoints:
-    - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    - authorization:
+        credentials:
+          key: token
+          name: prometheus-kube-prometheus-prometheus-token
+        type: Bearer
       port: http-metrics
   jobLabel: jobLabel
   namespaceSelector:

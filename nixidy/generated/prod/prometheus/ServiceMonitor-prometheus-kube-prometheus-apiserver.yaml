@@ -6,14 +6,18 @@ metadata:
     app.kubernetes.io/instance: prometheus
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: kube-prometheus-stack
-    chart: kube-prometheus-stack-86.1.0
+    chart: kube-prometheus-stack-92.3.0
     heritage: Helm
     release: prometheus
   name: prometheus-kube-prometheus-apiserver
   namespace: observability
 spec:
   endpoints:
-    - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    - authorization:
+        credentials:
+          key: token
+          name: prometheus-kube-prometheus-prometheus-token
+        type: Bearer
       metricRelabelings:
         - action: drop
           regex: (etcd_request|apiserver_request_slo|apiserver_request_sli|apiserver_request)_duration_seconds_bucket;(0\.15|0\.2|0\.3|0\.35|0\.4|0\.45|0\.6|0\.7|0\.8|0\.9|1\.25|1\.5|1\.75|2|3|3\.5|4|4\.5|6|7|8|9|15|20|40|45|50)(\.0)?
@@ -23,7 +27,10 @@ spec:
       port: https
       scheme: https
       tlsConfig:
-        caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        ca:
+          configMap:
+            key: ca.crt
+            name: kube-root-ca.crt
         insecureSkipVerify: false
         serverName: kubernetes
   jobLabel: component

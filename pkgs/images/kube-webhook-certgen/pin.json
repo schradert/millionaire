@@ -1,6 +1,6 @@
 {
-  "version": "1.8.3",
-  "digest": "sha256:8ce13c365c8e9ced0aad5ef350a53c50b7ca5817f99d856b9eec895db1056728",
+  "version": "1.8.9",
+  "digest": "sha256:58e4ac2e15bf7785eb00ac90d03f9be1ff3f2fe0add6c71b54af6e5c80031148",
   "source": {
     "type": "oci-tag",
     "repository": "ghcr.io/jkroepke/kube-webhook-certgen"

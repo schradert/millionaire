@@ -1,6 +1,6 @@
 {
-  "version": "v0.91.0",
-  "digest": "sha256:9e53e13139218aca79ee000172de73355e9174ef2904585bfad9497fc71aae2d",
+  "version": "v0.94.1",
+  "digest": "sha256:7c88d4e7bae63bd8d0f8da986054337c23b4472fa8d3c6817f5bc4b8407a2d6a",
   "source": {
     "type": "oci-tag",
     "repository": "quay.io/prometheus-operator/prometheus-operator"

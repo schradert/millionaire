@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/instance: prometheus
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: kube-prometheus-stack
-    chart: kube-prometheus-stack-86.1.0
+    chart: kube-prometheus-stack-92.3.0
     heritage: Helm
     release: prometheus
   name: prometheus-kube-prometheus-prometheus
@@ -39,11 +39,13 @@ spec:
   enableOTLPReceiver: false
   externalUrl: http://prometheus-kube-prometheus-prometheus.observability:9090
   hostNetwork: false
-  image: quay.io/prometheus/prometheus:v3.12.0-distroless@sha256:f39df5334dee301b885f77e0ff1159f5d8a43bf9db518f885544594799a1e3c2
+  image: quay.io/prometheus/prometheus:v3.15.0-distroless@sha256:b2a413d5a03ea6a76782a508d1c7947440bba3b973931a25676e278431891b01
   imagePullPolicy: IfNotPresent
   listenLocal: false
   logFormat: logfmt
   logLevel: info
+  nodeSelector:
+    kubernetes.io/os: linux
   paused: false
   podMonitorNamespaceSelector: {}
   podMonitorSelector: {}
@@ -79,5 +81,5 @@ spec:
             storage: 30Gi
   tsdb:
     outOfOrderTimeWindow: 0s
-  version: v3.12.0-distroless
+  version: v3.15.0-distroless
   walCompression: true
