@@ -16,6 +16,7 @@
   disko.legacyLayout = true;
   profiles.client.enable = true;
   profiles.workstation.enable = true;
+  apiKeys.enable = true; # axolotl is a recipient of personal.yaml (.sops.yaml)
   # Existing install (checked 2026-10-10): NixOS 25.11, pool root/{root,home,tmp}, 1G ESP
   system.stateVersion = "25.11";
   home-manager.sharedModules = [{home.stateVersion = "25.11";}];

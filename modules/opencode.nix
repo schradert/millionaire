@@ -8,15 +8,17 @@ in {
     config,
     flake,
     lib,
+    osConfig ? null,
     pkgs,
     ...
-  }: {
+  }: let
+    # Decrypted by the system's sops (modules/api-keys.nix); a host that is not
+    # a recipient of personal.yaml simply has no keys instead of a broken shell
+    secrets = lib.optionalAttrs (osConfig != null) osConfig.sops.secrets;
+    apiKey = name: lib.optionalAttrs (secrets ? "api-${name}") {"${lib.toUpper name}_API_KEY" = "$(cat ${secrets."api-${name}".path})";};
+  in {
     config = lib.mkIf config.profiles.workstation.enable {
-      home.sessionVariables = {
-        ANTHROPIC_API_KEY = "$(cat ~/.secrets/anthropic)";
-        CONTEXT7_API_KEY = "$(cat ~/.secrets/context7)";
-        OPENAI_API_KEY = "$(cat ~/.secrets/openai)";
-      };
+      home.sessionVariables = lib.mergeAttrsList (map apiKey ["anthropic" "context7" "openai"]);
       home.packages = [pkgs.opencode-desktop];
       programs = {
         claude-code.enable = true;
