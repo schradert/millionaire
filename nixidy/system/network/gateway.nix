@@ -4,6 +4,14 @@
   ...
 }: let
   inherit (config.canivete.meta) domain;
+  # Single source of external-dns annotations. external-dns >= 0.22 reads the
+  # external-dns.kubernetes.io/ prefix by default; both instances still pin
+  # --annotation-prefix=external-dns.alpha.kubernetes.io/ (#540), so emit both
+  # until the pin is dropped.
+  externalDnsAnnotations = lib.concatMapAttrs (key: value: {
+    "external-dns.alpha.kubernetes.io/${key}" = value;
+    "external-dns.kubernetes.io/${key}" = value;
+  });
 in {
   nixidy = {
     pinned,
@@ -68,17 +76,17 @@ in {
           # external-dns creates A records and CNAME targets don't chain locally in
           # AdGuard (https://github.com/AdguardTeam/AdGuardHome/issues/3350). No
           # hostname set, to avoid wildcard creation in AdGuard.
-          metadata.annotations."external-dns.alpha.kubernetes.io/target" = "100.64.0.4,100.64.0.5";
+          metadata.annotations = externalDnsAnnotations {target = "100.64.0.4,100.64.0.5";};
         };
         external = lib.recursiveUpdate gateway {
-          metadata.annotations."external-dns.alpha.kubernetes.io/target" = "external.${domain}";
-          spec.infrastructure.annotations."external-dns.alpha.kubernetes.io/hostname" = "external.${domain}";
+          metadata.annotations = externalDnsAnnotations {target = "external.${domain}";};
+          spec.infrastructure.annotations = externalDnsAnnotations {hostname = "external.${domain}";};
         };
       };
       resources.httpRoutes = let
         redirect = gw: {
           # Prevent external-dns from creating wildcard *.trdos.me DNS records
-          metadata.annotations."external-dns.alpha.kubernetes.io/exclude" = "true";
+          metadata.annotations = externalDnsAnnotations {exclude = "true";};
           spec = {
             hostnames = ["*.${domain}"];
             parentRefs = lib.toList {
