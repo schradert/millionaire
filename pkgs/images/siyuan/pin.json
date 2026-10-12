@@ -1,8 +1,9 @@
 {
-  "version": "v3.8.6",
-  "digest": "sha256:b528a08f75936f19ee647c46c55c4d6924bdd93e30941128e468187bcfbc772d",
+  "version": "v3.6.1",
+  "digest": "sha256:e14f3958fa9d7be867053b0e681f97ad4ec2e410c275b67670690083f81f05db",
   "source": {
     "type": "oci-tag",
     "repository": "b3log/siyuan"
-  }
+  },
+  "hold": "v3.7+ entrypoint chowns the whole workspace on every start and never becomes ready under our securityContext; needs a PUID/PGID or securityContext change before bumping"
 }

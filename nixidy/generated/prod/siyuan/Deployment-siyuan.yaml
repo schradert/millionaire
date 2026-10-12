@@ -38,7 +38,7 @@ spec:
               value: "true"
             - name: TZ
               value: America/Los_Angeles
-          image: b3log/siyuan:v3.8.6@sha256:b528a08f75936f19ee647c46c55c4d6924bdd93e30941128e468187bcfbc772d
+          image: b3log/siyuan:v3.6.1@sha256:e14f3958fa9d7be867053b0e681f97ad4ec2e410c275b67670690083f81f05db
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0
