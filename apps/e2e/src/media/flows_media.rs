@@ -6,9 +6,11 @@ use std::{fs, time::Duration};
 use reqwest::{header, Method, StatusCode};
 use serde_json::{json, Value};
 
-use crate::{
+use super::{
     apps::{maintainerr_url, maloja_url, Abs, Arr, Kavita, Komga, Navidrome},
     content,
+};
+use crate::{
     ctx::{download, excerpt, json, kubectl, need_secret, poll, secret, send, var, write_file, At, Ctx, Fail, R},
     report::Flow,
 };
@@ -410,7 +412,7 @@ pub async fn maintainerr(ctx: &Ctx, f: &mut Flow) -> R<()> {
         return Err(Fail::new("maintainerr", "create test rule group", format!("HTTP {status}: {}", excerpt(&text))));
     }
     if !status.is_success() {
-        let jf = crate::apps::Jellyfin::login(ctx).await?;
+        let jf = super::apps::Jellyfin::login(ctx).await?;
         let real = jf
             .virtual_folders(ctx)
             .await?

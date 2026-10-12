@@ -297,53 +297,85 @@ in {
           *)      echo "Usage: sync <secret|app> <namespace/name>"; exit 1 ;;
         esac
       '';
-      # Media-stack e2e tests (apps/media-e2e) as a Job from the suspended media-e2e CronJob.
-      #   media-e2e                 offline suite (no qBittorrent/VPN needed)
-      #   media-e2e run --full      adds VPN leak tests and downloads over the VPN
-      #   media-e2e cleanup --run <id> [--dry-run] | cleanup --all [--dry-run]
+      # Platform e2e tests (apps/e2e) as Jobs from suspended CronJobs, one per runner:
+      #   media    media/media-e2e   the media family (mounts the media volumes)
+      #   cluster  e2e/e2e           every other family (HTTP only)
+      #   e2e                          default tier of every runner (no qBittorrent/VPN needed)
+      #   e2e run --family identity    only that family (comma list); --flow <name,...> narrows further
+      #   e2e run --full               adds the long flows (media: VPN leak tests, downloads over the VPN)
+      #   e2e cleanup --run <id> [--dry-run] | cleanup --all [--dry-run]   (add --family to narrow)
+      #   e2e list                     families and flows (runs the crate locally)
+      # `media-e2e <args>` is `e2e <cmd> --family media <args>`.
       # KUBECTL overrides kubectl, e.g. off-LAN:
       #   KUBECTL="ssh 192.184.168.248 sudo -n /var/lib/rancher/rke2/bin/kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml"
       # HOME_IP is the home egress IP the VPN leak tests must never see; unset, it is taken from
       # E2E_HOME_IP_HOST (ssh host on the home network, e.g. 192.184.168.248: `curl ifconfig.me`
-      # there), else the Job's own egress.
-      scripts.media-e2e.exec = ''
+      # there), else the Job's own egress. Log and report per runner: $E2E_OUT/<run>/<runner>.{log,json}.
+      scripts.e2e.exec = ''
         set -euo pipefail
         k=''${KUBECTL:-kubectl}
         [ $# -gt 0 ] || set -- run
+        if [ "$1" = list ]; then
+          exec cargo run -q --manifest-path "${config.devenv.root}/apps/e2e/Cargo.toml" -- list
+        fi
         run_id=''${E2E_RUN_ID:-$(date -u +%Y%m%d-%H%M%S)-$(od -An -N2 -tx2 /dev/urandom | tr -d ' ')}
-        job="media-e2e-$run_id"
-        out="''${E2E_OUT:-''${TMPDIR:-/tmp}/media-e2e}/$run_id"
+        out="''${E2E_OUT:-''${TMPDIR:-/tmp}/e2e}/$run_id"
         mkdir -p "$out"
         args=$(printf '%s\n' "$@" | jq -R . | jq -cs .)
+        fam=""; prev=""
+        for a in "$@"; do [ "$prev" = --family ] && fam=$a; prev=$a; done
+        # Which runners the families need; no --family: media, plus cluster once its CronJob exists.
+        runners=()
+        if [ -z "$fam" ]; then
+          runners=(media)
+          $k -n e2e get cronjob e2e >/dev/null 2>&1 && runners+=(cluster)
+        else
+          case ",$fam," in *,media,*) runners+=(media) ;; esac
+          if [ -n "$(printf '%s' "$fam" | tr ',' '\n' | grep -vx media || true)" ]; then runners+=(cluster); fi
+        fi
         home_ip=''${HOME_IP:-}
         if [ -z "$home_ip" ] && [ -n "''${E2E_HOME_IP_HOST:-}" ]; then
           home_ip=$(ssh -o ConnectTimeout=10 "$E2E_HOME_IP_HOST" curl -s -m 10 ifconfig.me || true)
         fi
         printf '%s' "$home_ip" | grep -Eq '^[0-9]{1,3}(\.[0-9]{1,3}){3}$' || home_ip=""
-        $k -n media get cronjob media-e2e -o json \
-          | jq --arg job "$job" --arg run "$run_id" --arg home "$home_ip" --argjson args "$args" '{
-              apiVersion: "batch/v1", kind: "Job",
-              metadata: {name: $job, namespace: "media", labels: {"app.kubernetes.io/name": "media-e2e"}},
-              spec: (.spec.jobTemplate.spec
-                | .template.spec.containers[0].args = $args
-                | .template.spec.containers[0].env += [{name: "E2E_RUN_ID", value: $run}]
-                | .template.spec.containers[0].env += (if $home != "" then [{name: "HOME_IP", value: $home}] else [] end))
-            }' \
-          | $k create -f -
-        echo "job $job (run $run_id); log and report in $out" >&2
-        $k -n media wait --for=condition=Ready pod -l "job-name=$job" --timeout=300s >/dev/null 2>&1 || true
-        $k -n media logs -f "job/$job" | tee "$out/log"
-        sed -n '/=== E2E REPORT JSON BEGIN ===/,/=== E2E REPORT JSON END ===/p' "$out/log" | sed '1d;$d' > "$out/report.json"
-        jq -r '.flows[] | [.flow, .status, (.ms/1000|tostring), (.error.app // ""), (.error.step // "")] | @tsv' "$out/report.json" | column -t -s "$(printf '\t')" || true
-        # The pod can exit a moment before the Job's status says so: wait for the condition.
-        $k -n media wait --for=condition=complete "job/$job" --timeout=60s >/dev/null
+        rc=0
+        for runner in "''${runners[@]}"; do
+          case "$runner" in
+            media) ns=media; cj=media-e2e ;;
+            *)     ns=e2e;   cj=e2e ;;
+          esac
+          job="$cj-$run_id"
+          $k -n "$ns" get cronjob "$cj" -o json \
+            | jq --arg job "$job" --arg ns "$ns" --arg cj "$cj" --arg run "$run_id" --arg home "$home_ip" --argjson args "$args" '{
+                apiVersion: "batch/v1", kind: "Job",
+                metadata: {name: $job, namespace: $ns, labels: {"app.kubernetes.io/name": $cj}},
+                spec: (.spec.jobTemplate.spec
+                  | .template.spec.containers[0].args = $args
+                  | .template.spec.containers[0].env += [{name: "E2E_RUN_ID", value: $run}]
+                  | .template.spec.containers[0].env += (if $home != "" then [{name: "HOME_IP", value: $home}] else [] end))
+              }' \
+            | $k create -f -
+          echo "job $job (run $run_id, runner $runner); log and report in $out" >&2
+          $k -n "$ns" wait --for=condition=Ready pod -l "job-name=$job" --timeout=300s >/dev/null 2>&1 || true
+          $k -n "$ns" logs -f "job/$job" | tee "$out/$runner.log"
+          sed -n '/=== E2E REPORT JSON BEGIN ===/,/=== E2E REPORT JSON END ===/p' "$out/$runner.log" | sed '1d;$d' > "$out/$runner.json"
+          # The pod can exit a moment before the Job's status says so: wait for the condition.
+          $k -n "$ns" wait --for=condition=complete "job/$job" --timeout=60s >/dev/null || rc=1
+        done
+        jq -rs '.[].flows[] | [.family, .flow, .status, (.ms/1000|tostring), (.error.app // ""), (.error.step // "")] | @tsv' "$out"/*.json | column -t -s "$(printf '\t')" || true
+        exit $rc
+      '';
+      scripts.media-e2e.exec = ''
+        [ $# -gt 0 ] || set -- run
+        cmd=$1; shift
+        E2E_OUT=''${E2E_OUT:-''${TMPDIR:-/tmp}/media-e2e} exec e2e "$cmd" --family media "$@"
       '';
       # Rust toolchain from the locked nixpkgs (no extra flake input; nothing is built on entry)
-      # for the standalone crates: apps/{media-e2e,app-bootstrap,jellyfin-bootstrap}, tools/*.
+      # for the standalone crates: apps/{e2e,app-bootstrap,jellyfin-bootstrap}, tools/*.
       # Hooks stay off the shell (see the tasks above); run checks explicitly:
       #   cargo-check [crate...]   cargo check --all-targets      (default: every crate)
       #   cargo-test  [crate...]   cargo test
-      # `crate` is the directory name, e.g. media-e2e. Extra cargo args: CARGO_ARGS="--release".
+      # `crate` is the directory name, e.g. e2e. Extra cargo args: CARGO_ARGS="--release".
       languages.rust = {
         enable = true;
         components = ["rustc" "cargo" "clippy" "rustfmt"];

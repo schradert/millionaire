@@ -172,24 +172,26 @@
           layers = [(n2c.buildLayer {deps = [pkg];})];
         };
 
-      # Media-stack end-to-end tests (apps/media-e2e), run as a Job from the suspended
-      # `media-e2e` CronJob. kubectl is for `exec` into the qbittorrent pod (VPN leak tests).
-      media-e2e = let
+      # Platform end-to-end tests (apps/e2e), run as a Job from a suspended `e2e` CronJob
+      # (nixidy/apps/media/media-e2e.nix for the media family). kubectl is for `exec` into the
+      # qbittorrent pod (VPN leak tests). Replaces library/media-e2e (<= 0.1.8): publish it, then
+      # add pkgs/images/e2e/pin.json (the shape of media-e2e's, repository library/e2e).
+      e2e = let
         amd64Pkgs = import inputs.nixpkgs {system = "x86_64-linux";};
-        src = ../apps/media-e2e;
+        src = ../apps/e2e;
         pkg = amd64Pkgs.rustPlatform.buildRustPackage {
-          pname = "media-e2e";
+          pname = "e2e";
           version = (builtins.fromTOML (builtins.readFile "${src}/Cargo.toml")).package.version;
           inherit src;
           cargoLock.lockFile = "${src}/Cargo.lock";
         };
       in
         n2c.buildImage {
-          name = "${registry}/library/media-e2e";
+          name = "${registry}/library/e2e";
           tag = pkg.version;
           arch = "amd64";
           config = {
-            Entrypoint = ["${pkg}/bin/media-e2e"];
+            Entrypoint = ["${pkg}/bin/e2e"];
             Env = ["PATH=${amd64Pkgs.kubectl}/bin" "HOME=/tmp"];
           };
           layers = [

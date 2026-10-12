@@ -1,4 +1,4 @@
-//! Shared plumbing: run id and marker, errors that carry the failing app and step, HTTP helpers,
+//! Shared plumbing: run id and marker, cleanup scope, errors that carry the failing app and step, HTTP helpers,
 //! secrets, files and `kubectl exec`.
 
 use std::{
@@ -84,6 +84,29 @@ pub struct State {
     /// The movie the chain imported into Jellyfin: (library item id, movie item id).
     pub jellyfin_movie: Option<(String, String)>,
     pub qbt_ready: Option<bool>,
+    #[cfg(test)]
+    pub trace: Vec<&'static str>,
+}
+
+/// What a cleanup or residue pass may touch: only objects whose name, path, label or comment
+/// carries a run marker.
+pub enum Scope {
+    /// One run's marker.
+    Run(String),
+    /// Any run's marker (orphans from crashed runs).
+    All,
+}
+
+impl Scope {
+    pub fn hit(&self, s: &str) -> bool {
+        match self {
+            Scope::Run(m) => s.contains(m.as_str()),
+            Scope::All => find_marker(s).is_some(),
+        }
+    }
+    pub fn hit_v(&self, v: &Value) -> bool {
+        v.as_str().is_some_and(|s| self.hit(s))
+    }
 }
 
 pub struct Ctx {
@@ -98,7 +121,7 @@ pub struct Ctx {
 impl Ctx {
     pub fn new(run: String, full: bool) -> Self {
         let marker = format!("e2e-{run}");
-        let ua = format!("media-e2e/{} ({marker})", env!("CARGO_PKG_VERSION"));
+        let ua = format!("e2e/{} ({marker})", env!("CARGO_PKG_VERSION"));
         Ctx {
             http: Client::builder()
                 .timeout(Duration::from_secs(120))
@@ -197,6 +220,13 @@ pub fn find_marker(s: &str) -> Option<&str> {
         i = start + 4;
     }
     None
+}
+
+/// `e2e-<id>` if that is, in full, a run marker (`id` may already carry the `e2e-` prefix).
+/// Cleanup scopes are built from it, so a typo can never widen the match.
+pub fn run_marker(id: &str) -> Option<String> {
+    let m = format!("e2e-{}", id.strip_prefix("e2e-").unwrap_or(id));
+    (find_marker(&m) == Some(m.as_str())).then_some(m)
 }
 
 pub fn var(name: &str, default: &str) -> String {
@@ -345,6 +375,15 @@ mod tests {
         assert_eq!(find_marker("Books"), None);
         let id = new_run_id();
         assert_eq!(find_marker(&format!("e2e-{id}")), Some(format!("e2e-{id}").as_str()));
+    }
+
+    #[test]
+    fn run_markers_are_whole() {
+        assert_eq!(run_marker("20261011-031200-ab12").as_deref(), Some("e2e-20261011-031200-ab12"));
+        assert_eq!(run_marker("e2e-20261011-031200-ab12").as_deref(), Some("e2e-20261011-031200-ab12"));
+        for bad in ["", "e2e", "2026", "20261011-031200", "20261011-031200-ab12-extra", "x20261011-031200-ab12", "20261011-031200-AB12", "e2e-e2e-20261011-031200-ab12"] {
+            assert_eq!(run_marker(bad), None, "{bad}");
+        }
     }
 
     #[test]
