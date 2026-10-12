@@ -1,6 +1,6 @@
 {
-  "version": "1.19.4",
-  "hash": "sha256-u4FPk5HpTGHUiRMObVrK7v9FaLQSXGNGsCZcqVZ27iw=",
+  "version": "1.20.2",
+  "hash": "sha256-B6yOW8FluRJEF+/bvVvsobW6zUhE2WYE1lprZI/s95U=",
   "source": {
     "type": "helm-repo",
     "repo": "https://helm.cilium.io/",
