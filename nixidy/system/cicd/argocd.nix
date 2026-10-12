@@ -147,10 +147,10 @@ in {
               ];
             };
             # gateway-api apiserver defaults parentRefs.group/kind,
-            # backendRefs.group/kind/weight, and injects a PathPrefix "/" match
-            # when a route omits matches. Trade-off: a real change to .matches on
-            # a route that omits them won't diff — acceptable (routes that set
-            # matches explicitly never drifted).
+            # backendRefs.group/kind/weight, a PathPrefix "/" match when a rule
+            # omits matches, and that same path inside header-only matches. Only
+            # those defaults are ignored: a blanket `.matches` ignore hid real
+            # match edits (forgejo-api's token-endpoint match never applied).
             "resource.customizations.ignoreDifferences.gateway.networking.k8s.io_HTTPRoute" = builtins.toJSON {
               jqPathExpressions = [
                 ".spec.parentRefs[]?.group"
@@ -158,7 +158,8 @@ in {
                 ".spec.rules[]?.backendRefs[]?.group"
                 ".spec.rules[]?.backendRefs[]?.kind"
                 ".spec.rules[]?.backendRefs[]?.weight"
-                ".spec.rules[]?.matches"
+                ''.spec.rules[]? | select(.matches == [{"path":{"type":"PathPrefix","value":"/"}}]) | .matches''
+                ''.spec.rules[]?.matches[]? | select(.path == {"type":"PathPrefix","value":"/"}) | .path''
               ];
             };
           };
