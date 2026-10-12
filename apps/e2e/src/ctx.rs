@@ -325,14 +325,58 @@ pub async fn download(ctx: &Ctx, url: &str, dest: &Path) -> R<u64> {
     if let Some(p) = dest.parent() {
         fs::create_dir_all(p).at("fs", &step)?;
     }
-    let mut r = send(ctx.http.get(url).timeout(Duration::from_secs(1800)), "content", &step).await?;
-    let mut f = fs::File::create(dest).at("fs", &step)?;
+    let first = match send(ctx.http.get(url).timeout(Duration::from_secs(1800)), "content", &step).await {
+        Ok(r) => return save(r, dest, &step).await,
+        Err(e) => e,
+    };
+    // archive.org's /download redirect sometimes lands on a storage node that answers 500/502 while its
+    // metadata still lists healthy ones: retry the file on those nodes directly.
+    for alt in archive_fallbacks(ctx, url).await {
+        if let Ok(r) = send(ctx.http.get(&alt).timeout(Duration::from_secs(1800)), "content", &step).await {
+            return save(r, dest, &step).await;
+        }
+    }
+    Err(first)
+}
+
+async fn save(mut r: Response, dest: &Path, step: &str) -> R<u64> {
+    let mut f = fs::File::create(dest).at("fs", step)?;
     let mut n = 0u64;
-    while let Some(chunk) = r.chunk().await.at("content", &step)? {
-        f.write_all(&chunk).at("fs", &step)?;
+    while let Some(chunk) = r.chunk().await.at("content", step)? {
+        f.write_all(&chunk).at("fs", step)?;
         n += chunk.len() as u64;
     }
     Ok(n)
+}
+
+/// Direct storage-node URLs for an `https://archive.org/download/<item>/<file>` URL, from the item's metadata.
+async fn archive_fallbacks(ctx: &Ctx, url: &str) -> Vec<String> {
+    let Some((item, file)) = url.strip_prefix("https://archive.org/download/").and_then(|r| r.split_once('/')) else {
+        return vec![];
+    };
+    let Ok(r) = ctx.http.get(format!("https://archive.org/metadata/{item}")).timeout(Duration::from_secs(30)).send().await else {
+        return vec![];
+    };
+    let Ok(meta) = r.json::<Value>().await else {
+        return vec![];
+    };
+    archive_nodes(&meta, file)
+}
+
+fn archive_nodes(meta: &Value, file: &str) -> Vec<String> {
+    let Some(dir) = meta["dir"].as_str() else {
+        return vec![];
+    };
+    let mut hosts: Vec<&str> = meta["workable_servers"].as_array().into_iter().flatten().filter_map(Value::as_str).collect();
+    hosts.extend(["server", "d1", "d2"].iter().filter_map(|k| meta[*k].as_str()));
+    let mut out: Vec<String> = vec![];
+    for h in hosts {
+        let u = format!("https://{h}{dir}/{file}");
+        if !out.contains(&u) {
+            out.push(u);
+        }
+    }
+    out
 }
 
 pub fn write_file(path: &Path, bytes: &[u8]) -> R<()> {
@@ -427,6 +471,16 @@ mod tests {
     #[test]
     fn test_emails_use_the_owners_domain() {
         assert_eq!(test_email("e2e-20261011-031200-ab12-admin"), format!("e2e-20261011-031200-ab12-admin@e2e.{}", domain()));
+    }
+
+    #[test]
+    fn archive_nodes_come_from_the_item_metadata() {
+        let meta = serde_json::json!({"server": "dn1.us.archive.org", "workable_servers": ["dn1.us.archive.org", "dn2.ca.archive.org"], "dir": "/0/items/X", "d1": "dn1.us.archive.org"});
+        assert_eq!(
+            archive_nodes(&meta, "Content/a.mp4"),
+            ["https://dn1.us.archive.org/0/items/X/Content/a.mp4", "https://dn2.ca.archive.org/0/items/X/Content/a.mp4"]
+        );
+        assert!(archive_nodes(&serde_json::json!({"server": "x"}), "f").is_empty());
     }
 
     #[test]
