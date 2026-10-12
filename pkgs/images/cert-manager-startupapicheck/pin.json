@@ -1,6 +1,6 @@
 {
-  "version": "v1.20.2",
-  "digest": "sha256:4e2a69b4a0cc9627905bbeecf720f95d5153ca39cacdab923d2748e73556792b",
+  "version": "v1.21.2",
+  "digest": "sha256:46e75b6866359ffb5d82624f41e3ed1c70b2994982702ced547ce5edb418a8f5",
   "source": {
     "type": "oci-tag",
     "repository": "quay.io/jetstack/cert-manager-startupapicheck"

@@ -1,6 +1,6 @@
 {
-  "version": "v1.20.2",
-  "digest": "sha256:fe0623d7d04a382c888f03343a3a2da716e0d96ad3d5d790c0ebcbcb2a4329a5",
+  "version": "v1.21.2",
+  "digest": "sha256:70f532fd9cfde0b09d55687200942399d89838bc2d5d5b45152eb799a15912b8",
   "source": {
     "type": "oci-tag",
     "repository": "quay.io/jetstack/cert-manager-controller"
