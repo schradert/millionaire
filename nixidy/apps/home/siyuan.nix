@@ -25,8 +25,11 @@
               image = pinned.images.siyuan;
               env = {
                 # The entrypoint starts as root, creates the user and drops to it.
-                PUID = "1000";
-                PGID = "1000";
+                # The entrypoint chowns /opt/siyuan (the image layer) to PUID on every
+                # start; on overlayfs over ZFS every copy-up waits for a txg sync, which
+                # takes hours on the HDD nodes. root owns the layer, so 0 is a no-op.
+                PUID = "0";
+                PGID = "0";
                 # oauth2-proxy gates upstream traffic, so disable siyuan's own auth-code prompt.
                 SIYUAN_ACCESS_AUTH_CODE_BYPASS = "true";
                 TZ = "America/Los_Angeles";
