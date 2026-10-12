@@ -4,6 +4,10 @@
   profile = "personal";
   # Installed by the old dotfiles repo
   system.stateVersion = 4;
+  # The nix installer on this Mac created nixbld with GID 350 (the current
+  # default); nix-darwin expects 30000 for stateVersion 4 and refuses to
+  # activate otherwise.
+  ids.gids.nixbld = 350;
   home-manager.sharedModules = [{home.stateVersion = "23.05";}];
   homebrew.casks = ["zotero"];
   services.karabiner-elements.enable = true;
