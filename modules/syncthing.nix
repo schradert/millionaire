@@ -194,4 +194,92 @@ in {
       profiles = ["gaming"];
     };
   };
+
+  # Each client is a Syncthing of its own, peered with the hub only: no introducer and nothing
+  # accepted automatically (overrideDevices/overrideFolders drop whatever is not declared here).
+  # Personal workstations and gaming hosts (the Deck included); the work Mac stays out.
+  home = {
+    config,
+    flake,
+    lib,
+    osConfig ? null,
+    pkgs,
+    ...
+  }: let
+    inherit (flake.config) syncthing;
+    sync = import ../lib/syncthing.nix {inherit lib;};
+    os =
+      if pkgs.stdenv.hostPlatform.isDarwin
+      then "darwin"
+      else "linux";
+    host = lib.optionalString (osConfig != null) (toString (osConfig.networking.hostName or ""));
+    profiles = lib.filter (p: config.profiles.${p}.enable) ["workstation" "gaming"];
+    mine = lib.filterAttrs (_:
+      sync.applies {
+        name = host;
+        inherit os profiles;
+      })
+    syncthing.folders;
+    pathOf = f: "${config.home.homeDirectory}/${f.path.${os}}";
+    ignores = f: lib.optional (os == "darwin") "(?d).DS_Store" ++ f.ignore;
+    inherit (syncthing.devices) hub;
+  in {
+    config = lib.mkIf (config.profile == "personal" && profiles != []) (lib.mkMerge [
+      {
+        assertions = lib.toList {
+          assertion = hub.id != null;
+          message = "syncthing.devices.hub.id is not recorded (modules/syncthing.nix)";
+        };
+        services.syncthing = {
+          enable = true;
+          overrideDevices = true;
+          overrideFolders = true;
+          settings = {
+            devices.hub = {
+              id = hub.id;
+              name = "hub";
+            };
+            folders = lib.mapAttrs' (id: f:
+              lib.nameValuePair (pathOf f) {
+                inherit id;
+                inherit (f) label type;
+                devices = ["hub"];
+                # macOS, Linux and the hub disagree about permissions
+                ignorePerms = true;
+                ignorePatterns = ignores f;
+              })
+            mine;
+          };
+        };
+        # Syncthing refuses a folder without its marker, and an emulator that never ran has made no directory.
+        home.activation.syncthing-folders = lib.hm.dag.entryAfter ["writeBoundary"] (lib.concatMapStringsSep "\n" (f: "run mkdir -p ${lib.escapeShellArg (pathOf f)}/.stfolder") (lib.attrValues mine));
+      }
+      # Per-title save backups from ludusavi's manifest, one directory per host in the synced
+      # `ludusavi` folder (sendonly: the hub keeps them, no host restores from another's).
+      (lib.mkIf (pkgs.stdenv.hostPlatform.isLinux && config.profiles.gaming.enable) {
+        services.ludusavi = {
+          enable = true;
+          settings = rec {
+            manifest.url = "https://raw.githubusercontent.com/mtkennerly/ludusavi-manifest/master/data/manifest.yaml";
+            roots = [
+              {
+                path = "${config.home.homeDirectory}/.local/share/Steam";
+                store = "steam";
+              }
+              {
+                path = "${config.home.homeDirectory}/.config/heroic";
+                store = "heroic";
+              }
+            ];
+            backup.path = "${pathOf syncthing.folders.ludusavi}/${
+              if host == ""
+              then "default"
+              else host
+            }";
+            restore.path = backup.path;
+          };
+        };
+      })
+    ]);
+  };
 }

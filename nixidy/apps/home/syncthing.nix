@@ -15,27 +15,6 @@
   hostname = "sync.${domain}";
   hubDeviceID = syncthing.devices.hub.id;
 in {
-  # Personal workstations sync with the hub, which introduces its folders.
-  home = {
-    config,
-    lib,
-    ...
-  }: {
-    config = lib.mkIf (config.profiles.workstation.enable && config.profile == "personal" && hubDeviceID != null) {
-      services.syncthing = {
-        enable = true;
-        # Keep what the introducer adds (devices) and what gets accepted (folders).
-        overrideDevices = false;
-        overrideFolders = false;
-        settings.devices.hub = {
-          id = hubDeviceID;
-          name = "hub";
-          introducer = true;
-          autoAcceptFolders = true;
-        };
-      };
-    };
-  };
   nixidy = {
     charts,
     lib,
