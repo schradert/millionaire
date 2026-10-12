@@ -26,7 +26,7 @@ spec:
               value: tristan
             - name: USER_PASSWORD_FILE
               value: /secrets/user/password
-          image: harbor.trdos.me/library/app-bootstrap:0.19.2@sha256:e715764c57b0275bfb2d586483c156f1410ca87bac650bfbdb924187f13054ec
+          image: harbor.trdos.me/library/app-bootstrap:0.19.3@sha256:37e151985023c23254a71d250053f53adf74c93fa43176d6d4a9dc236efd35de
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false

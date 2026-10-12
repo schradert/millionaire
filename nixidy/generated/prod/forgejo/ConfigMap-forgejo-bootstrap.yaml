@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
-  image: harbor.trdos.me/library/app-bootstrap:0.19.2@sha256:e715764c57b0275bfb2d586483c156f1410ca87bac650bfbdb924187f13054ec
-  spec: b392b42bcac17a4afd90f9c8e6f3edb0a6b226a8ce3d7a238ba7b5417f072ea6
+  image: harbor.trdos.me/library/app-bootstrap:0.19.3@sha256:37e151985023c23254a71d250053f53adf74c93fa43176d6d4a9dc236efd35de
+  spec: cdcb425ba99e51ee712922b8d752c907199d7867de2c0731ffdd7aa403d9c5c5
 kind: ConfigMap
 metadata:
   name: forgejo-bootstrap
