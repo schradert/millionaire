@@ -115,12 +115,14 @@ class NixOS:
         deploy_hostname: str | pulumi.Output[str] | None = None,
         depends_on: list[pulumi.Resource] | None = None,
         identity: str | None = None,
+        jump: str | None = None,
         preserve_host_key: bool = False,
     ):
         """`target` is the ssh target of the install (a live host that is not
         root-reachable: `user@host` with passwordless sudo; nixos-anywhere
         switches to root@host after kexec). `identity` is an ssh key path, passed
-        as given to the shell (e.g. "$HOME/.ssh/personal"). `preserve_host_key`
+        as given to the shell (e.g. "$HOME/.ssh/personal"); `jump` is an ssh jump host
+        for targets off the dev host's LAN. `preserve_host_key`
         copies the live host's ed25519 ssh host key into the new install, for
         hosts whose key is a sops recipient and is pinned elsewhere (falcon)."""
         nixos_anywhere = Nix.bin(
@@ -130,6 +132,9 @@ class NixOS:
 
         ssh_id = f"-o IdentitiesOnly=yes -i {identity}" if identity else ""
         na_id = f"-i {identity} --ssh-option IdentitiesOnly=yes" if identity else ""
+        if jump:
+            ssh_id += f" -J {jump}"
+            na_id += f" --ssh-option ProxyJump={jump}"
         host_key = (
             f"""
                 # Keep the host's ssh identity across the reinstall: it is a sops

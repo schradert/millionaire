@@ -568,6 +568,20 @@ class Millionaire:
                 depends_on=other_node_deps,
             )
 
+        # axolotl (laptop, RKE2 agent): same path and flag pattern as falcon, via
+        # the edge box when the dev host is off the LAN. Its root disk is its only disk.
+        #   pulumi config set axolotlNode true
+        #   NIXOS_ANYWHERE_INSTALL=axolotl pulumi up --target <urn of nixos-axolotl-install>
+        if pulumi.Config().get_bool("axolotlNode"):
+            millionaire.NixOS(
+                "axolotl",
+                "tristan@192.168.50.250",
+                identity="$HOME/.ssh/personal",
+                jump="tristan@192.184.168.248",
+                preserve_host_key=True,
+                depends_on=other_node_deps,
+            )
+
         # RPI doesn't support kexec
         # millionaire.NixOS("piper", "piper", "--phases disko,install,reboot")
 

@@ -14,6 +14,7 @@ creation_rules:
           # Desktop nodes (k8s-node.nix) read the cluster secrets (RKE2 token,
           # tailnet and attic keys) with their ssh host key
           - *falcon
+          - *axolotl
   - path_regex: secrets/sops/personal\.yaml
     key_groups:
       - age:
