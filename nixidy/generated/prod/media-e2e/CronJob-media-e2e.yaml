@@ -25,7 +25,7 @@ spec:
                   value: trdos.me
                 - name: E2E_RUNNER
                   value: media
-              image: harbor.trdos.me/library/e2e:0.3.2@sha256:aaa3c5d21e9e8d441af61c6fca95439ecf9a863ed62866d0c218f5e70a96b5e1
+              image: harbor.trdos.me/library/e2e:0.3.3@sha256:e1dfa7f648a4f98433d6d0ad7e068acb2c7477929abe2d4178df3bf16b20cfa5
               name: media-e2e
               resources:
                 limits:
