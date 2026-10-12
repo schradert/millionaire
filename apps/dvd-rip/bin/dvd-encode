@@ -1,0 +1,216 @@
+#!/usr/bin/env bash
+# dvd-encode <disc> [--name "Movie (Year)"] — NVENC-encode every kept
+# title from master.iso into a Jellyfin-shaped tree:
+#
+#   library/<Name>/<Name>.mkv              main feature
+#   library/<Name>/<Name> - Fullscreen.mkv alternate cuts (Jellyfin "versions";
+#                                          4:3/16:9 named, else "Title N")
+#   library/<Name>/extras/Title N - …mkv   bonus titles (Jellyfin shows these as extras)
+#   short/Title N - …mkv                   <EXTRA_MIN s bumpers, outside the library
+#
+# Every audio + subtitle track (incl. closed captions) and chapter markers are
+# kept (one variant per subtitle, select-subs.jq); tracks are named and
+# flagged from the DVD's content codes (tags.jq).
+# Already-encoded outputs are skipped, so re-running resumes.
+set -euo pipefail
+here="$(dirname "$0")"
+source "$here/lib.sh"
+
+dir=$(resolve_disc "${1:?usage: dvd-encode <disc> [--name \"Movie (Year)\"]}")
+shift
+name=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --name) name="$2"; shift 2 ;;
+    *) die "unknown arg: $1" ;;
+  esac
+done
+
+iso="$dir/master.iso"
+[ -e "$iso" ] || die "no master.iso in $dir"
+[ -f "$dir/titles.json" ] || "$here/dvd-inspect" "$dir"
+# The name sticks: later runs without --name reuse the last one given.
+[ -n "$name" ] || name=$(cat "$dir/.name" 2>/dev/null || label_to_name "$(basename "$dir")")
+echo "$name" >"$dir/.name"
+lib="$dir/library/$name"
+# short/ always exists, so every later `find ... "$dir/short"` is safe.
+mkdir -p "$lib" "$dir/short" "$dir/logs"
+
+# valid_mkv <file>: true if ffprobe can read at least a second of it. HandBrake
+# can exit 0 yet leave a few-KB stub (still-frame titles); such a file must
+# never reach library/ — it breaks dvd-review and Jellyfin.
+valid_mkv() {
+  local s
+  s=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$1" </dev/null 2>/dev/null | cut -d. -f1 || true)
+  [ "${s:-0}" -ge 1 ] 2>/dev/null
+}
+
+# hb_from_mkv <src.mkv> <out.mkv> <title> <logf> <label>: encode an
+# already-demuxed MakeMKV file (it already named/flagged the tracks).
+hb_from_mkv() {
+  local src="$1" out="$2" title="$3" logf="$4" label="$5" tmp="${2%.mkv}.part.mkv" start=$SECONDS fps
+  HandBrakeCLI -i "$src" -o "$tmp" --format av_mkv --markers \
+    --encoder "$ENCODER" --encoder-preset "$ENCODER_PRESET" --quality "$QUALITY" \
+    --auto-anamorphic --comb-detect --decomb \
+    --all-audio --aencoder copy --audio-fallback ac3 \
+    --all-subtitles --subtitle-burned=none --subtitle-default=none \
+    >"$logf" 2>&1 || {
+    warn "$label failed — see $logf"
+    rm -f "$tmp"
+    return 1
+  }
+  valid_mkv "$tmp" || { warn "$label produced an unreadable file — see $logf"; rm -f "$tmp"; return 1; }
+  mkvpropedit -q "$tmp" --edit info --set "title=$title" >>"$logf" 2>&1 || true
+  mv "$tmp" "$out"
+  fps=$(grep -oE 'average encoding speed for job is [0-9.]+' "$logf" | tail -1 | awk '{printf "%d", $NF}')
+  log "$label done in $(hms $((SECONDS - start)))${fps:+ ($fps fps)} -> ${out#"$dir"/}"
+}
+
+# Protected discs: encode MakeMKV's remux of the title instead of navigating
+# the booby-trapped DVD structure; MakeMKV already named/flagged the tracks.
+encode_remux() {
+  local t="$1" out="$2" title="$3" logf="$dir/logs/encode-t$1.log" src
+  src="$dir/remux/$(jq -r --argjson t "$t" 'first(.[] | select(.title == $t)) | .file' "$dir/titles.json")"
+  # MakeMKV lists identical titles in `info` but saves only one copy of them.
+  [ -f "$src" ] || { log "title $t: no remux (${src##*/}) — MakeMKV dropped it as a duplicate"; return 0; }
+  hb_from_mkv "$src" "$out" "$title" "$logf" "title $t"
+}
+
+# repair_title <t> <out> <title> <role>: a title HandBrake could not encode
+# (libdvdnav trips on its navigation data: "chapter NOT FOUND", bad cells).
+# Let MakeMKV read the title straight off the disc image instead, then
+# encode that. MakeMKV numbers titles its own way, so match by duration.
+repair_title() {
+  local t="$1" out="$2" title="$3" logf="$dir/logs/repair-t$1.log" want id src
+  [ ! -f "$dir/.protected" ] || return 1
+  command -v makemkvcon >/dev/null 2>&1 || return 1
+  want=$(jq -r --argjson t "$t" 'first(.[] | select(.title == $t)) | .seconds | floor' "$dir/titles.json")
+  # One `info` listing per disc, shared by the parallel jobs.
+  (
+    flock 9
+    [ -s "$dir/logs/makemkv-all.log" ] || makemkvcon -r --minlength=1 info "iso:$iso" >"$dir/logs/makemkv-all.log" 2>&1 || true
+  ) 9>"$dir/.makemkv-info.lock"
+  id=$(awk -F, -v want="$want" '/^TINFO:[0-9]+,9,/ {
+         i = substr($1, 7); v = $4; gsub(/"/, "", v); split(v, h, ":")
+         d = h[1] * 3600 + h[2] * 60 + h[3] - want; if (d < 0) d = -d
+         if (d <= 2 && (best == "" || d < bd)) { best = i; bd = d } }
+       END { print best }' "$dir/logs/makemkv-all.log")
+  [ -n "$id" ] || { warn "title $t: MakeMKV has no ~${want}s title to repair it with"; return 1; }
+  log "title $t: HandBrake failed; retrying via MakeMKV title $id"
+  rm -rf "$dir/repair/t$t"
+  mkdir -p "$dir/repair/t$t"
+  makemkvcon -r --minlength=1 mkv "iso:$iso" "$id" "$dir/repair/t$t" >"$logf" 2>&1 || true
+  src=$(find "$dir/repair/t$t" -name '*.mkv' -size +0 -print -quit 2>/dev/null)
+  [ -n "$src" ] || { warn "title $t: MakeMKV couldn't extract title $id either; see $logf"; return 1; }
+  hb_from_mkv "$src" "$out" "$title" "$dir/logs/encode-t$t.log" "title $t (repaired via MakeMKV)" || return 1
+  rm -rf "$dir/repair/t$t"
+}
+
+encode() {
+  local t="$1" out="$2" title="$3" role="${4:-}" tmp="${2%.mkv}.part.mkv" logf="$dir/logs/encode-t$1.log"
+  local start=$SECONDS hb subs subsel args fps want got
+  hb=$(jq -c --argjson t "$t" 'first(.TitleList[] | select(.Index == $t)) // {}' "$dir/scan.json")
+  subs=$(jq -c -f "$here/select-subs.jq" <<<"$hb")
+  subsel=$(jq -r 'map(.TrackNumber) | join(",")' <<<"$subs")
+  HandBrakeCLI -i "$iso" --title "$t" --min-duration 0 -o "$tmp" --format av_mkv --markers \
+    --encoder "$ENCODER" --encoder-preset "$ENCODER_PRESET" --quality "$QUALITY" \
+    --auto-anamorphic --comb-detect --decomb \
+    --all-audio --aencoder copy --audio-fallback ac3 \
+    --subtitle "${subsel:-none}" --subtitle-burned=none --subtitle-default=none \
+    >"$logf" 2>&1 || {
+    warn "title $t failed — see $logf"
+    rm -f "$tmp"
+    return 1
+  }
+  # HandBrake exit 0 but nothing usable written (few-KB stub): fail, so the
+  # title is repaired via MakeMKV instead of poisoning library/.
+  valid_mkv "$tmp" || {
+    warn "title $t produced an unreadable file (HandBrake exit 0) — see $logf"
+    rm -f "$tmp"
+    return 1
+  }
+  # Subtle copy protection (Frozen): HandBrake hits bad navigation data and
+  # ends the feature early, exit 0. Fail so the worker retries via MakeMKV.
+  if [[ "$role" == main || "$role" == alt ]]; then
+    want=$(jq -r --argjson t "$t" 'first(.[] | select(.title == $t)) | .seconds | floor' "$dir/titles.json")
+    got=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$tmp" </dev/null | cut -d. -f1)
+    if [ "${got:-0}" -lt $((want * 9 / 10)) ]; then
+      warn "title $t failed: encoded ${got:-0}s of ${want}s (navigation stopped early)"
+      rm -f "$tmp"
+      return 1
+    fi
+  fi
+  mapfile -t args < <(mkvmerge -J "$tmp" |
+    jq -r --argjson hb "$hb" --argjson subs "$subs" --arg title "$title" -f "$here/tags.jq")
+  mkvpropedit "$tmp" "${args[@]}" >>"$logf" 2>&1 || warn "title $t: track tagging failed — see $logf"
+  mv "$tmp" "$out"
+  fps=$(grep -oE 'average encoding speed for job is [0-9.]+' "$logf" | tail -1 | awk '{printf "%d", $NF}')
+  log "title $t done in $(hms $((SECONDS - start)))${fps:+ ($fps fps)} -> ${out#"$dir"/}"
+}
+
+# Plan: one "title<TAB>role<TAB>output<TAB>segment-title" line per title.
+mapfile -t plan < <(jq -r --arg lib "$lib" --arg short "$dir/short" --arg name "$name" '
+  def dur: "\(. / 60 | floor)m\(. % 60 | floor | tostring | if length < 2 then "0" + . else . end)s";
+  (map(select(.role == "main")) + map(select(.role != "main")))[]
+  | if .role == "main" then [.title, .role, "\($lib)/\($name).mkv", $name]
+    elif .role == "alt" then
+      # Jellyfin shows the part after " - " in its version picker.
+      ({"4/3": "Fullscreen", "16/9": "Widescreen"}[.aspect] // "Title \(.title)") as $v
+      | [.title, .role, "\($lib)/\($name) - \($v).mkv", "\($name) (\($v))"]
+    elif .role == "extra" then [.title, .role, "\($lib)/extras/Title \(.title) - \(.seconds | dur).mkv", "Title \(.title)"]
+    elif .role == "short" then [.title, .role, "\($short)/Title \(.title) - \(.seconds | dur).mkv", "Title \(.title)"]
+    else empty end
+  | @tsv' "$dir/titles.json")
+
+skipped=$(jq -r '[.[] | select(.role | IN("dup", "playall", "part", "stub")) | "\(.title)(\(.role))"] | join(" ")' "$dir/titles.json")
+[ -z "$skipped" ] || log "skipping: $skipped"
+log "encoding ${#plan[@]} titles with $ENCODER/$ENCODER_PRESET q$QUALITY, $PARALLEL at a time"
+
+if [ -f "$dir/.protected" ]; then
+  log "copy-protected disc: remuxing real titles with MakeMKV first"
+  mkdir -p "$dir/remux"
+  if [ -z "$(ls -A "$dir/remux")" ]; then
+    makemkvcon -r --minlength="$EXTRA_MIN" mkv "iso:$iso" all "$dir/remux" >"$dir/logs/remux.log" 2>&1 ||
+      warn "MakeMKV remux reported errors; see logs/remux.log"
+  else
+    log "reusing existing remux"
+  fi
+  encoder=encode_remux
+else
+  encoder=encode
+fi
+
+start=$SECONDS
+failed=0
+for line in "${plan[@]}"; do
+  IFS=$'\t' read -r t role out title <<<"$line"
+  # Already encoded, possibly since moved into a category folder by dvd-sort.
+  if { find "$lib" "$dir/short" -type f -printf '%f\n' 2>/dev/null || true; } | grep -qxF "${out##*/}"; then
+    log "title $t already encoded, skipping"
+    continue
+  fi
+  mkdir -p "$(dirname "$out")"
+  while [ "$(jobs -rp | wc -l)" -ge "$PARALLEL" ]; do wait -n || failed=$((failed + 1)); done
+  log "title $t -> ${out#"$dir"/}"
+  # Only the feature itself is fatal. Extras/bumpers that fail are usually
+  # still-frame galleries HandBrake can't decode; dvd-summary lists them.
+  # A title that fails is repaired via MakeMKV before it counts as failed.
+  { "$encoder" "$t" "$out" "$title" "$role" || repair_title "$t" "$out" "$title" "$role" || [[ "$role" != main && "$role" != alt ]]; } &
+done
+while [ "$(jobs -rp | wc -l)" -gt 0 ]; do wait -n || failed=$((failed + 1)); done
+
+log "encodes finished in $(hms $((SECONDS - start))), $failed failed"
+# Sweep: anything unreadable that slipped through (older runs, resumed
+# encodes) is set aside, never left where dvd-review/Jellyfin will trip on it.
+while IFS= read -r -d '' f; do
+  valid_mkv "$f" || {
+    warn "unreadable output ${f#"$dir"/} — moved to .broken-stubs/"
+    mkdir -p "$dir/.broken-stubs"
+    mv -f "$f" "$dir/.broken-stubs/" || true
+  }
+done < <(find "$dir/library" "$dir/short" -name '*.mkv' ! -name '*.part.mkv' -print0 2>/dev/null)
+rm -rf "$dir/repair"
+# Keep the remux for a retry if anything failed.
+[ "$failed" -ne 0 ] || rm -rf "$dir/remux"
+{ du -sh "$lib" "$dir/short" 2>/dev/null || true; } | sed 's/^/    /' >&2 # short/ may not exist
+[ "$failed" -eq 0 ]

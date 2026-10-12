@@ -1,0 +1,226 @@
+#!/usr/bin/env bash
+# dvd-backup [device] — decrypted 1:1 ISO of the disc (all titles + menus).
+#
+# This is the only step that touches the drive. Everything downstream reads
+# the local master, so the disc can be ejected and the next one started while
+# the previous one encodes. MakeMKV handles CSS, region mismatch and
+# structure-protection (fake titles / bad sectors) better than libdvdread.
+#
+# Prints the disc working dir on stdout.
+set -euo pipefail
+source "$(dirname "$0")/lib.sh"
+
+# Copy with dvdbackup, but give up early on a damaged disc: every unreadable
+# block costs seconds, so a scratched disc takes hours and rarely encodes.
+# After DVD_MAX_READ_ERRORS read errors, stop, drop the partial copy, leave a
+# .needs-recovery note and fail (the watcher then ejects it) so it can be
+# handled properly later. Uses $dev, $dir and $label from the caller.
+mirror_copy() {
+  local max="${DVD_MAX_READ_ERRORS:-3}" log="$dir/logs/dvdbackup.log" pid n=0
+  dvdbackup -M -i "$dev" -o "$dir/mirror" -n "$label" >"$log" 2>&1 &
+  pid=$!
+  while kill -0 "$pid" 2>/dev/null; do
+    sleep "${MIRROR_POLL_SECONDS:-5}"
+    # A DVD-9 holds 8.5 GB. A mirror far past that means the disc's tables point
+    # at fake/duplicate title sets (structure protection): dvdbackup would read
+    # for hours and build a useless image. Stop and fail so it can be handled.
+    if [ "$(du -sm --apparent-size "$dir/mirror" 2>/dev/null | cut -f1)" -gt "${DVD_MAX_MIRROR_MB:-12000}" ] 2>/dev/null; then
+      kill "$pid" 2>/dev/null || true
+      wait "$pid" 2>/dev/null || true
+      rm -rf "$dir/mirror"
+      echo "mirror passed ${DVD_MAX_MIRROR_MB:-12000} MB (more than a DVD holds): structure-protected disc; needs MakeMKV." >"$dir/.needs-recovery"
+      die "dvdbackup copy exceeded ${DVD_MAX_MIRROR_MB:-12000} MB — structure-protected disc; set aside (MakeMKV needed)"
+    fi
+    n=$(grep -c '^Error reading' "$log" 2>/dev/null || true)
+    if [ "${n:-0}" -ge "$max" ]; then
+      kill "$pid" 2>/dev/null || true
+      wait "$pid" 2>/dev/null || true
+      rm -rf "$dir/mirror"
+      echo "$n read errors while copying with dvdbackup (limit $max); partial copy dropped. Clean/resurface the disc and reinsert it. See logs/dvdbackup.log" >"$dir/.needs-recovery"
+      die "$n read errors while copying — set aside for later recovery (clean the disc and reinsert); see $dir/logs/dvdbackup.log"
+    fi
+  done
+  wait "$pid" 2>/dev/null || true
+}
+
+dev="${1:-$DVD_DEVICE}"
+require_drive "$dev"
+
+label=$(disc_label "$dev")
+dir=$(disc_dir "$label" "$(disc_id "$dev")")
+log "disc: $label -> $dir"
+
+iso="$dir/master.iso"
+if [ -f "$dir/.backup-complete" ] && [ ! -f "$dir/.rescue-pending" ]; then
+  log "master already complete, skipping backup"
+  echo "$dir"
+  exit 0
+fi
+
+# `backup` only takes MakeMKV's own drive index (disc:N), not a device path.
+idx=$(makemkvcon -r info disc:9999 2>/dev/null | awk -F, -v dev="\"$dev\"" '/^DRV:/ && $NF == dev { sub("DRV:", "", $1); print $1 }') || true # info exits 253 on discs it cannot authenticate; backup/dvdbackup fallback below handles those
+# MakeMKV unusable (expired version, or it cannot see the disc): copy with dvdbackup/libdvdcss instead.
+use_dvdbackup=0
+[ -n "$idx" ] || use_dvdbackup=1
+# MakeMKV is the primary backup method (handles CSS and structure-protected
+# discs). dvdbackup is only the automatic fallback below; force it with
+# DVD_BACKUP_METHOD=dvdbackup.
+[ "${DVD_BACKUP_METHOD:-makemkv}" != dvdbackup ] || use_dvdbackup=1
+
+rm -rf "$iso"
+start=$SECONDS
+if [ "$use_dvdbackup" = 1 ]; then
+  warn "MakeMKV unavailable for this disc; copying with dvdbackup (libdvdcss) instead"
+  : >"$dir/logs/backup.log"
+else
+log "backing up (decrypting) to $iso ..."
+# For DVDs MakeMKV writes the decrypted backup as a single ISO9660 image.
+makemkvcon -r --noscan --progress=-stdout backup --decrypt "disc:$idx" "$iso" |
+  tee "$dir/logs/backup.log" |
+  # Live percentage on a terminal; 10% steps otherwise (service logs).
+  awk -F'[:,]' -v tty="$([ -t 2 ] && echo 1)" '
+    /^PRGV:/ && $4 > 0 { p = 100 * $2 / $4
+                         if (tty) printf "\r    %5.1f%%", p
+                         else if (int(p / 10) > last) { last = int(p / 10); printf "    %d%%\n", last * 10 }
+                         fflush() }
+    /^PRGT:/ { split($0, a, "\""); printf "\n    %s\n", a[2] }' >&2 || true
+echo >&2
+fi
+
+# Fallback for physically damaged discs. MakeMKV gives up at the first
+# unreadable sector, and walking a scratch block by block is glacial because
+# the drive retries every bad sector for seconds. GNU ddrescue instead:
+#   pass 1  big reads, and on an error jumps ahead (doubling the jump), so the
+#           bad area is crossed in seconds and everything readable is copied;
+#   pass 2  goes back and trims/scrapes the edges of the bad areas
+#           (time-boxed by RESCUE_MINUTES, default 15);
+# keeping a map (raw.map) of exactly what's good, so it can be resumed later
+# (e.g. after cleaning the disc: rerun with the same map).
+# ddrescue copies the raw disc, which is still CSS-encrypted, so MakeMKV then
+# decrypts the image file (dvdbackup as a second decrypter). Unreadable areas
+# stay zero-filled; dvd-damage finds and marks them. Recorded in .damaged.
+# decrypt_raw: raw.iso (CSS-encrypted ddrescue image) -> master.iso.
+decrypt_raw() {
+  local raw="$dir/raw.iso"
+  log "decrypting the rescued image ..."
+  rm -f "$iso"
+  makemkvcon -r --noscan backup --decrypt "iso:$raw" "$iso" >"$dir/logs/decrypt.log" 2>&1 || true
+  if grep -q '"Backup failed' "$dir/logs/decrypt.log" || ! lsdvd "$iso" >/dev/null 2>&1; then
+    warn "MakeMKV couldn't decrypt the image; trying dvdbackup"
+    rm -rf "$iso" "$dir/mirror"
+    dvdbackup -M -i "$raw" -o "$dir/mirror" -n "$label" >>"$dir/logs/decrypt.log" 2>&1 || true
+    [ -d "$dir/mirror/$label/VIDEO_TS" ] || { warn "couldn't decrypt the rescued image; see $dir/logs/decrypt.log"; return 1; }
+    genisoimage -quiet -dvd-video -V "$label" -o "$iso" "$dir/mirror/$label" >>"$dir/logs/decrypt.log" 2>&1 || return 1
+    rm -rf "$dir/mirror"
+  fi
+}
+
+# record_rescue: summarise raw.map into .damaged; when nothing is missing any
+# more, drop the raw image and the pending-rescue marker.
+record_rescue() {
+  local map="$dir/raw.map" pct missing
+  pct=$(ddrescuelog -t "$map" 2>/dev/null | grep -oE 'rescued: +[0-9.]+ [kMG]?B, +in +[0-9]+ area\(s\) +\( *[0-9.]+%' | grep -oE '[0-9.]+%$')
+  missing=$(ddrescuelog -t "$map" 2>/dev/null | awk '/non-tried|non-trimmed|non-scraped|bad-sector/ { u = $3; sub(",", "", u); s += $2 * (u == "kB" ? 1e3 : u == "MB" ? 1e6 : u == "GB" ? 1e9 : 1) } END { printf "%.0f", s }')
+  if [ "${missing:-1}" -eq 0 ]; then
+    rm -f "$dir/raw.iso" "$dir/.rescue-pending" "$dir/.damaged"
+    log "rescue complete: every sector recovered"
+    return
+  fi
+  touch "$dir/.rescue-pending"
+  echo "scratched disc: ${pct:-?} recovered by ddrescue, $((missing / 1000000)) MB unreadable (zero-filled; glitches marked as chapters). Resurface/replace the disc and reinsert it to fill in the gaps (raw.iso + raw.map kept)." >"$dir/.damaged"
+  warn "$(cat "$dir/.damaged")"
+}
+
+fallback_backup() {
+  local raw="$dir/raw.iso" map="$dir/raw.map" logf="$dir/logs/ddrescue.log"
+  log "rescuing with ddrescue (pass 1: skip bad areas, up to ${RESCUE_MINUTES:-60} min) ..."
+  timeout "${RESCUE_MINUTES:-60}m" ddrescue -d -b 2048 -n "$dev" "$raw" "$map" >"$logf" 2>&1 || warn "ddrescue pass 1 stopped early"
+  log "ddrescue pass 2: trimming bad areas (up to ${TRIM_MINUTES:-15} min) ..."
+  timeout "${TRIM_MINUTES:-15}m" ddrescue -d -b 2048 -r1 "$dev" "$raw" "$map" >>"$logf" 2>&1 || true
+  [ -s "$raw" ] || { warn "ddrescue read nothing; see $logf"; return 1; }
+  decrypt_raw || return 1
+  record_rescue
+}
+
+# raw_image_backup: ddrescue the whole disc to raw.iso (pass 1 only, read
+# errors skipped and mapped), then make master.iso from it: decrypt it if it
+# is CSS-scrambled, else (home-burned discs) use the raw image as is.
+raw_image_backup() {
+  local raw="$dir/raw.iso" map="$dir/raw.map" logf="$dir/logs/ddrescue.log"
+  log "imaging the raw disc with ddrescue (up to ${RESCUE_MINUTES:-60} min) ..."
+  rm -f "$raw" "$map" "$iso"
+  timeout "${RESCUE_MINUTES:-60}m" ddrescue -d -b 2048 -n "$dev" "$raw" "$map" >"$logf" 2>&1 || warn "ddrescue stopped early; see $logf"
+  [ -s "$raw" ] || { warn "ddrescue read nothing; see $logf"; return 1; }
+  if decrypt_raw; then
+    :
+  else
+    # Decrypting rebuilds an ISO from the disc structure, which is what fails
+    # on malformed discs. A non-encrypted disc needs no decrypting.
+    warn "couldn't rebuild a decrypted ISO; using the raw image as master.iso (fine for non-encrypted, home-burned discs)"
+    rm -rf "$iso" "$dir/mirror"
+    ln "$raw" "$iso" 2>/dev/null || cp "$raw" "$iso" || return 1
+  fi
+  lsdvd "$iso" >/dev/null 2>&1 || { warn "raw image isn't a readable DVD (lsdvd failed)"; return 1; }
+  record_rescue
+}
+
+# Resume a pending rescue (disc reinserted after cleaning/resurfacing, or a
+# replacement copy): ddrescue re-reads only what raw.map says is missing,
+# then the disc is decrypted again and sent back through the worker.
+if [ -f "$dir/.rescue-pending" ] && [ -f "$dir/raw.iso" ] && [ -f "$dir/raw.map" ]; then
+  log "resuming the rescue of a damaged disc (only missing sectors) ..."
+  # Reading CSS sectors raw needs the drive authenticated; libdvdcss does
+  # that when dvdbackup opens the disc.
+  dvdbackup -I -i "$dev" >/dev/null 2>&1 || true
+  timeout "${RESCUE_MINUTES:-60}m" ddrescue -d -b 2048 -r1 "$dev" "$dir/raw.iso" "$dir/raw.map" >>"$dir/logs/ddrescue.log" 2>&1 || warn "ddrescue resume stopped early"
+  decrypt_raw || die "couldn't decrypt the resumed rescue; see $dir/logs/decrypt.log"
+  record_rescue
+  # Re-encode from the improved master (dvd-sort choices are redone).
+  rm -rf "$dir/library" "$dir/short" "$dir/review" "$dir/titles.json" "$dir/scan.json" \
+    "$dir/summary.json" "$dir/damage.json" "$dir/.done" "$dir/.failed"
+  touch "$dir/.backup-complete"
+  echo "$dir"
+  exit 0
+fi
+
+# makemkvcon exits 0 even when the backup fails; trust its log instead.
+if grep -q '"Backup failed' "$dir/logs/backup.log" && grep -q 'MEDIUM ERROR' "$dir/logs/backup.log"; then
+  grep -a '^MSG' "$dir/logs/backup.log" | cut -d'"' -f2 | grep -iE 'error' | sed 's/^/    /' >&2
+  fallback_backup || die "backup failed even with the ddrescue fallback; see $dir/logs/"
+  touch "$dir/.backup-complete"
+  echo "$dir"
+  exit 0
+elif [ "$use_dvdbackup" = 1 ] || grep -q '"Backup failed' "$dir/logs/backup.log" || grep -q 'too old' "$dir/logs/backup.log"; then
+  # MakeMKV sometimes can't authenticate a disc libdvdcss handles fine
+  # (seen: a Monsters, Inc. bonus disc, "read of scrambled sector without
+  # authentication"). Copy it via dvdbackup (libdvdread + libdvdcss) instead.
+  grep -a '^MSG' "$dir/logs/backup.log" | cut -d'"' -f2 | grep -iE 'error|fail|region|RPC' | sed 's/^/    /' >&2 || true
+  warn "MakeMKV backup failed; retrying with dvdbackup (libdvdcss)"
+  rm -rf "$iso" "$dir/mirror"
+  mirror_copy
+  if [ -d "$dir/mirror/$label/VIDEO_TS" ] &&
+    genisoimage -quiet -dvd-video -V "$label" -o "$iso" "$dir/mirror/$label" >>"$dir/logs/dvdbackup.log" 2>&1 &&
+    lsdvd "$iso" >/dev/null 2>&1; then
+    rm -rf "$dir/mirror"
+    log "dvdbackup fallback worked"
+  else
+    rm -rf "$dir/mirror"
+    grep -q 'RPC protection' "$dir/logs/backup.log" &&
+      warn "drive region lock refused encrypted sectors — check: echo n | regionset $dev"
+    # Last resort, which also covers home-burned/recorder discs whose IFO/VOB
+    # sizes don't add up (genisoimage "Video pad ... is -5"): image the raw
+    # disc sector by sector. Slower than a mirror, but it needs no valid
+    # structure, keeps everything readable, and never throws data away.
+    raw_image_backup || die "backup failed (MakeMKV, dvdbackup and raw imaging); see $dir/logs/"
+    log "raw disc image worked"
+  fi
+fi
+lsdvd "$iso" >/dev/null 2>&1 || die "backup at $iso is not a readable DVD image; see $dir/logs/backup.log"
+errors=$(grep -ciE '^MSG:[0-9]+,[0-9]+,[0-9]+,"[^"]*(error|fail)' "$dir/logs/backup.log" || true)
+[ "$errors" -eq 0 ] || warn "$errors read errors during backup (scratched disc?) — check the encodes"
+
+size=$(du -sm --apparent-size "$iso" | cut -f1)
+elapsed=$((SECONDS - start))
+log "backup done: ${size} MB in $(hms "$elapsed") ($((size / (elapsed > 0 ? elapsed : 1))) MB/s)"
+touch "$dir/.backup-complete"
+echo "$dir"

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# dvd-rename <disc> "Movie Name (Year)" — rename a disc's movie in the library:
+# the library folder, the main feature (and alternate cuts), and the MKV
+# segment title. Later dvd-encode runs keep using the new name.
+set -euo pipefail
+source "$(dirname "$0")/lib.sh"
+
+dir=$(resolve_disc "${1:?usage: dvd-rename <disc> \"Movie Name (Year)\"}")
+new="${2:?usage: dvd-rename <disc> \"Movie Name (Year)\"}"
+[[ "$new" != */* ]] || die "name can't contain '/'"
+old=$(cat "$dir/.name" 2>/dev/null || label_to_name "${dir##*/}")
+[ "$old" != "$new" ] || { log "already named '$new'"; exit 0; }
+[ -d "$dir/library/$old" ] || die "no library/$old to rename"
+[ ! -e "$dir/library/$new" ] || die "library/$new already exists"
+
+mv "$dir/library/$old" "$dir/library/$new"
+for f in "$dir/library/$new/$old".mkv "$dir/library/$new/$old - "*.mkv; do
+  [ -f "$f" ] || continue
+  g="$dir/library/$new/$new${f#"$dir/library/$new/$old"}"
+  mv "$f" "$g"
+  [[ "$g" == *" - "* ]] || mkvpropedit -q "$g" --edit info --set "title=$new"
+done
+echo "$new" >"$dir/.name"
+log "renamed '$old' -> '$new'"

@@ -1,0 +1,7 @@
+allowUnfree: true
+inputs:
+  nixpkgs:
+    url: github:cachix/devenv-nixpkgs/rolling
+  # MakeMKV 1.18.4 expired (2026-10-08); 2.0.0 (2026-09-20) is only in newer nixpkgs.
+  nixpkgs-unstable:
+    url: github:NixOS/nixpkgs/nixos-unstable

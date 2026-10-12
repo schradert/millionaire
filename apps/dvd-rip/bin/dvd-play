@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# dvd-play [--check] <disc | file.mkv> [mpv args...] — preview an encode
+# in the terminal (works over ssh; no audio, that plays on falcon itself).
+#
+# A disc dir resolves to its main feature. The video output is picked from
+# $TERM: kitty graphics for kitty/ghostty/wezterm, sixel for iTerm2/foot,
+# otherwise truecolor text blocks (tct). Override with DVD_PLAY_VO=...
+#
+# --check skips playback and instead decodes every video + audio frame on the
+# GPU, failing on any decode error — proof the whole file is intact.
+#
+# In mpv: space pause, arrows seek, # audio track, j subtitles, q quit.
+set -euo pipefail
+source "$(dirname "$0")/lib.sh"
+
+check=0
+[ "${1:-}" = --check ] && { check=1; shift; }
+target="${1:?usage: dvd-play [--check] <disc|file.mkv> [mpv args...]}"
+shift
+
+if is_disc "$target"; then
+  target=$(resolve_disc "$target")
+  # Main feature: the largest mkv in library/ outside extras/.
+  file=$(find "$target/library" -name '*.mkv' ! -path '*/extras/*' ! -name '*.part.mkv' -printf '%s\t%p\n' 2>/dev/null |
+    sort -rn | head -1 | cut -f2)
+  [ -n "$file" ] || die "no encoded main feature under $target/library"
+elif [ -f "$target" ]; then
+  file="$target"
+else
+  resolve_disc "$target" >/dev/null # dies listing the known discs
+fi
+[ -f "$file" ] || die "no such file: $file"
+
+if [ "$check" -eq 1 ]; then
+  log "decoding every frame of ${file##*/}"
+  start=$SECONDS
+  errors=$(ffmpeg -nostdin -v error -hwaccel cuda -i "$file" -map 0:v -map 0:a -f null - 2>&1 | tee /dev/stderr | wc -l)
+  [ "$errors" -eq 0 ] || die "$errors decode errors"
+  log "clean: no decode errors ($(hms $((SECONDS - start))))"
+  exit 0
+fi
+
+case "${DVD_PLAY_VO:-$TERM}" in
+  *kitty* | *ghostty* | *wezterm*) vo=kitty ;;
+  sixel | *iterm* | *foot* | *mlterm*) vo=sixel ;;
+  caca) vo=caca ;;
+  *) vo=tct ;;
+esac
+log "playing ${file##*/} (--vo=$vo)"
+exec mpv --vo="$vo" --profile=sw-fast "$@" "$file"

@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# dvd-inspect <disc | iso | device> — dump everything the disc says about
+# itself and classify each title.
+#
+# Writes into the disc dir:
+#   disc.json     every title: VTS, cells, chapters, audio/subtitle tracks
+#                 with DVD content flags (commentary, audio description, CC…)
+#   scan.json     HandBrake's scan (incl. its main-feature pick)
+#   titles.json   disc.json + role: main | alt | extra | short | stub | dup | playall
+# and prints a summary table.
+set -euo pipefail
+source "$(dirname "$0")/lib.sh"
+
+target="${1:?usage: dvd-inspect <disc|iso|device> [--main N] [--makemkv]}"
+shift
+main_override="" force_protected=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --main) main_override="$2"; shift 2 ;;
+    --makemkv) force_protected=1; shift ;; # treat as copy-protected
+    *) die "unknown arg: $1" ;;
+  esac
+done
+
+if is_disc "$target"; then
+  dir=$(resolve_disc "$target")
+  src="$dir/master.iso"
+  [ -e "$src" ] || die "no master.iso in $dir — run dvd-backup first"
+else
+  src="$target"
+  dir="$DVD_RIPS/$(disc_label "$src")"
+  mkdir -p "$dir/logs"
+fi
+
+# Copy-protected discs (e.g. Disney "structure protection": ~99 titles, most of
+# them decoys, deliberately malformed IFO tables that libdvdread/lsdvd can't
+# parse): use MakeMKV's title analysis, which drops the decoys. dvd-encode
+# then remuxes the real titles with MakeMKV and encodes those (.protected).
+protected_inspect() {
+  log "copy-protected disc: listing real titles with MakeMKV"
+  makemkvcon -r --minlength="$EXTRA_MIN" info "iso:$src" >"$dir/logs/makemkv-info.log" 2>&1 || true
+  # TINFO:<id>,<attr>,<code>,"<value>"; attr 9 = duration h:mm:ss, 27 = the
+  # remux file name MakeMKV will write. Titles are numbered by MakeMKV's
+  # index + 1 (several can come from one DVD title).
+  awk -F, '/^TINFO:/ { id = substr($1, 7); v = $4; for (i = 5; i <= NF; i++) v = v "," $i; gsub(/"/, "", v)
+                       if ($2 == 9) dur[id] = v; if ($2 == 27) file[id] = v }
+           END { for (id in dur) { split(dur[id], t, ":"); print id, id + 1, t[1] * 3600 + t[2] * 60 + t[3], file[id] } }' \
+    "$dir/logs/makemkv-info.log" | sort -n |
+    jq -R -s --argjson extra "$EXTRA_MIN" '
+      [split("\n")[] | select(length > 0) | split(" ") | {mkv: (.[0] | tonumber), title: (.[1] | tonumber), seconds: (.[2] | tonumber), file: (.[3:] | join(" "))}]
+      | (map(.seconds) | max) as $max
+      | (map(select(.seconds == $max)) | first | .mkv) as $mainid
+      | map(.role =
+          if .mkv == $mainid then "main"
+          elif ((.seconds - $max) | fabs) < ($max * 0.02) then "alt"
+          elif .seconds < $extra then "short"
+          else "extra" end
+        | .aspect = "" | .chapters = [] | .cells = [] | .audio = [] | .subs = [])' >"$dir/titles.json"
+  [ "$(jq length "$dir/titles.json")" -gt 0 ] || die "MakeMKV found no titles; see logs/makemkv-info.log"
+  touch "$dir/.protected"
+  printf '\n%-5s %-8s %9s  (copy-protected: MakeMKV title analysis)\n' TITLE ROLE LENGTH
+  jq -r '.[] | [.title, .role, (.seconds | floor)] | @tsv' "$dir/titles.json" |
+    while IFS=$'\t' read -r t role secs; do printf '%-5s %-8s %9s\n' "$t" "$role" "$(hms "$secs")"; done
+  exit 0
+}
+
+# Sticky: once a disc is known to be protected, keep using MakeMKV for it.
+[ "$force_protected" -eq 0 ] && [ ! -f "$dir/.protected" ] || protected_inspect
+
+log "reading IFO metadata ($src)"
+# lsdvd doesn't escape XML ("<df>Pan&Scan</df>"; it never emits entities)
+# and dumps raw bytes for unset language codes (0xFF 0xFF); its own text is
+# ASCII, so replace anything else with '?'.
+# libdvdread can print warnings ("CHECK_VALUE failed ...") on stdout before the
+# XML on malformed (home-burned/recorder) discs; drop everything before <?xml.
+lsdvd -x -Ox "$src" 2>"$dir/logs/lsdvd.err" | LC_ALL=C tr -c '\11\12\40-\176' '?' | sed -n '/^<?xml/,$p' | sed 's/&/\&amp;/g' >"$dir/disc.xml"
+if ! xq . "$dir/disc.xml" >"$dir/disc.raw.json" 2>>"$dir/logs/lsdvd.err" ||
+  [ "$(jq '[.lsdvd.track] | flatten | length' "$dir/disc.raw.json")" -ge 90 ]; then
+  rm -f "$dir/disc.raw.json"
+  mv "$dir/disc.xml" "$dir/disc.lsdvd-failed.xml" 2>/dev/null || true
+  protected_inspect
+fi
+rm -f "$dir/.protected"
+
+log "HandBrake scan"
+HandBrakeCLI -i "$src" --title 0 --min-duration 0 --scan --json 2>"$dir/logs/scan.log" |
+  sed -n '/^JSON Title Set: /,$p' | sed '1s/^JSON Title Set: //' >"$dir/scan.json"
+# HandBrake reports MainFeature -1 when it can't pick (e.g. single-title
+# discs); fall back to lsdvd's longest title.
+hb_main=$(jq -r 'if (.MainFeature // -1) > 0 then .MainFeature else empty end' "$dir/scan.json")
+[ -n "$hb_main" ] || hb_main=$(xq -r '.lsdvd.longest_track // empty' "$dir/disc.xml")
+main="${main_override:-$hb_main}"
+log "main feature: title ${main:-?}${main_override:+ (override; HandBrake picked $hb_main)}"
+
+jq --argjson main "${main:-0}" --argjson stub "$STUB_MAX" --argjson extra "$EXTRA_MIN" \
+  -f "$(dirname "$0")/classify.jq" "$dir/disc.raw.json" >"$dir/titles.json"
+mv "$dir/disc.raw.json" "$dir/disc.json"
+rm -f "$dir/disc.xml"
+
+printf '\n%-5s %-8s %9s %4s %4s  %-28s %s\n' TITLE ROLE LENGTH VTS CH AUDIO SUBS
+jq -r '.[] | [
+    .title, .role, (.seconds | floor), .vts, (.chapters | length),
+    ([.audio[] | "\(.lang)\(.channels)\(if .content == "Comments1" or .content == "Comments2" then "c" elif .content == "Impaired" then "d" else "" end)"] | join(",")),
+    ([.subs[] | "\(.lang)\(if (.content // "" | test("Director")) then "c" elif (.content // "" | test("CC")) then "h" else "" end)"] | join(","))
+  ] | @tsv' "$dir/titles.json" |
+  while IFS=$'\t' read -r t role secs vts ch audio subs; do
+    printf '%-5s %-8s %9s %4s %4s  %-28s %s\n' "$t" "$role" "$(hms "$secs")" "$vts" "$ch" "${audio:--}" "${subs:--}"
+  done
+printf '\n  audio: <lang><channels>[c=commentary d=audio description]   subs: <lang>[c=commentary h=CC]\n\n'

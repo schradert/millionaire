@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+# dvd-damage <disc> [--force] [--dry-run] — find where a damaged disc glitches and mark it
+# in the library so Jellyfin users can see it:
+#
+#   * a chapter "⚠ Disc damage (brief glitch)" at each glitch in the MKV
+#     (shows in Jellyfin's Scenes list and seek bar);
+#   * for the main feature, <Name>.nfo with <tag>Disc damage</tag> and a
+#     <tagline> naming the timestamps (Jellyfin reads local NFO fields first
+#     and still fetches everything else online; the tagline replaces TMDb's).
+#
+# Glitch times come from decoding each title straight from master.iso and
+# timestamping every *decoder* error (mpeg2video / ac3 lines; ffmpeg's muxer
+# warns about timestamps at every DVD cell boundary, which is not damage).
+# ffmpeg -progress gives the position every 0.5s, so times are accurate to
+# about a second; errors within 10s of each other are one glitch.
+# More than MAX_GLITCHES in one title is treated as detection noise and
+# nothing is marked for it. Results: damage.json.
+#
+# Runs only for discs marked .damaged (the dvdbackup fallback) unless
+# --force. --dry-run reports without touching any files.
+set -euo pipefail
+source "$(dirname "$0")/lib.sh"
+
+dir=$(resolve_disc "${1:?usage: dvd-damage <disc> [--force] [--dry-run]}")
+shift
+force=0 dry=0
+for a in "$@"; do
+  case "$a" in
+    --force) force=1 ;;
+    --dry-run) dry=1 ;;
+    *) die "unknown arg: $a" ;;
+  esac
+done
+MAX_GLITCHES="${MAX_GLITCHES:-10}"
+[ -f "$dir/.damaged" ] || [ "$force" -eq 1 ] || { log "no .damaged marker; nothing to do"; exit 0; }
+iso="$dir/master.iso"
+name=$(cat "$dir/.name" 2>/dev/null || label_to_name "${dir##*/}")
+lib="$dir/library/$name"
+main_t=$(jq -r '.[] | select(.role == "main") | .title' "$dir/titles.json")
+
+ts() { printf '%d:%02d:%02d' $(($1 / 3600)) $(($1 % 3600 / 60)) $(($1 % 60)); }
+
+# scan <title> -> "start end errors" per glitch (seconds)
+scan() {
+  ffmpeg -nostdin -hide_banner -v error -stats_period 0.5 -progress pipe:1 \
+    -f dvdvideo -title "$1" -i "$iso" -map 0:v:0 -map 0:a:0? -f null - 2>&1 |
+    awk -F= '
+      /^out_time_us=/ { if ($2 ~ /^[0-9]+$/) now = int($2 / 1000000); next }
+      /^\[(mpeg2video|mpegvideo|ac3|eac3|dca|mp2) @/ { if (n && now - last <= 10) { last = now; errs++ }
+           else { if (n) print first, last, errs; first = last = now; errs = 1; n++ } }
+      END { if (n) print first, last, errs }'
+}
+
+results="[]"
+while IFS= read -r f; do
+  if [ "${f##*/}" = "$name.mkv" ]; then t="$main_t"; else t=$(sed -nE 's/^Title ([0-9]+) - .*/\1/p' <<<"${f##*/}"); fi
+  [ -n "$t" ] || continue
+  log "scanning title $t (${f#"$dir"/})"
+  glitches=$(scan "$t" | grep -E '^[0-9]+ [0-9]+ [0-9]+$' || true)
+  n=$(grep -c . <<<"$glitches" || true)
+  if [ "$n" -gt "$MAX_GLITCHES" ]; then
+    warn "title $t: $n glitches looks like detection noise, not damage — not marking it"
+    continue
+  fi
+  if [ "$dry" -eq 1 ]; then
+    [ -z "$glitches" ] || while read -r s e c; do log "  [dry-run] glitch at $(ts "$s")–$(ts "$e") ($c decoder errors)"; done <<<"$glitches"
+    continue
+  fi
+
+  # Rewrite chapters: existing ones minus old damage markers, plus one per
+  # glitch (simple format). Skipped when there's nothing to add or remove.
+  chap=$(mktemp)
+  mkvextract "$f" chapters --simple "$chap" >/dev/null 2>&1 || : >"$chap"
+  if [ -z "$glitches" ] && ! grep -q '⚠ Disc damage' "$chap"; then
+    rm -f "$chap"
+    continue
+  fi
+  {
+    # Existing chapters, minus damage markers from an earlier run.
+    sed -nE 's/^CHAPTER[0-9]+=(.*)$/\1/p' "$chap" |
+      paste -d'\t' - <(sed -nE 's/^CHAPTER[0-9]+NAME=(.*)$/\1/p' "$chap") |
+      { grep -v $'\t⚠ Disc damage' || true; }
+    [ -z "$glitches" ] || while read -r start _ _; do
+      printf '%02d:%02d:%02d.000\t⚠ Disc damage (brief glitch)\n' $((start / 3600)) $((start % 3600 / 60)) $((start % 60))
+    done <<<"$glitches"
+  } | sort |
+    awk -F'\t' '{ n++; printf "CHAPTER%02d=%s\nCHAPTER%02dNAME=%s\n", n, $1, n, $2 }' >"$chap.new"
+  mkvpropedit -q "$f" --chapters "$chap.new"
+  rm -f "$chap" "$chap.new"
+
+  [ -z "$glitches" ] || while read -r start end errs; do
+    log "  glitch at $(ts "$start")–$(ts "$end") ($errs decode errors)"
+    results=$(jq -c --argjson t "$t" --arg file "${f#"$dir"/}" --argjson s "$start" --argjson e "$end" --argjson n "$errs" \
+      '. + [{title: $t, file: $file, start: $s, end: $e, errors: $n}]' <<<"$results")
+  done <<<"$glitches"
+done < <(find "$lib" "$dir/short" -name '*.mkv' ! -name '*.part.mkv' 2>/dev/null | sort -V)
+
+[ "$dry" -eq 0 ] || exit 0
+echo "$results" | jq . >"$dir/damage.json"
+
+# NFO for the main feature, so the damage shows on the movie's page.
+main_glitches=$(jq -r --argjson t "${main_t:-0}" '[.[] | select(.title == $t) | .start] | join(" ")' "$dir/damage.json")
+if [ -n "$main_glitches" ]; then
+  times=$(for s in $main_glitches; do ts "$s"; done | paste -sd, | sed 's/,/, /g')
+  cat >"$lib/$name.nfo" <<EOF
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<movie>
+  <tagline>Note: this copy has a brief glitch from disc damage at $times (marked as a chapter)</tagline>
+  <tag>Disc damage</tag>
+</movie>
+EOF
+  log "wrote ${lib#"$dir"/}/$name.nfo (glitches at $times)"
+fi
+log "$(jq length "$dir/damage.json") glitch(es) recorded in damage.json"

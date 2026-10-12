@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# dvd-summary <disc> — compact JSON of what came off a disc and what went
+# wrong: main feature runtime + tracks, every library file by folder, short/
+# bumpers, skipped titles, and warnings (read errors, failed titles). Small
+# enough to read instead of the logs.
+set -euo pipefail
+source "$(dirname "$0")/lib.sh"
+
+dir=$(resolve_disc "${1:?usage: dvd-summary <disc>}")
+name=$(cat "$dir/.name" 2>/dev/null || label_to_name "${dir##*/}")
+lib="$dir/library/$name"
+
+runtime() { hms "$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$1" </dev/null | cut -d. -f1)"; }
+
+main="$lib/$name.mkv"
+main_json=null
+if [ -f "$main" ]; then
+  main_json=$(mkvmerge -J "$main" | jq -c --arg rt "$(runtime "$main")" --arg mb "$(du -m --apparent-size "$main" | cut -f1)" '{
+    runtime: $rt, mb: ($mb | tonumber), chapters: (.chapters[0].num_entries // 0),
+    video: (.tracks[] | select(.type == "video") | .properties.display_dimensions),
+    audio: [.tracks[] | select(.type == "audio") | "\(.properties.language) \(.properties.track_name // "")"],
+    subs: [.tracks[] | select(.type == "subtitles") | "\(.properties.language) \(.properties.track_name // "")"]}')
+fi
+
+secs() { ffprobe -v error -show_entries format=duration -of csv=p=0 "$1" </dev/null | cut -d. -f1; }
+
+files() { # <root> -> [{file, folder, runtime}]
+  [ -d "$1" ] || { echo '[]'; return; }
+  find "$1" -name '*.mkv' ! -name '*.part.mkv' ! -path "$main" -print0 | sort -zV |
+    while IFS= read -r -d '' f; do
+      rel="${f#"$1"/}"
+      jq -cn --arg file "${f##*/}" --arg folder "$(dirname "$rel")" --arg rt "$(runtime "$f")" \
+        '{file: $file, folder: $folder, runtime: $rt}'
+    done | jq -cs .
+}
+
+warnings=$(
+  {
+    n=$(grep -ciE '^MSG:[0-9]+,[0-9]+,[0-9]+,"[^"]*(error|fail)' "$dir/logs/backup.log" 2>/dev/null || true)
+    [ "${n:-0}" -eq 0 ] || echo "$n read errors during backup"
+    sed 's/\x1b\[[0-9;]*m//g' "$dir"/logs/encoding.log 2>/dev/null | grep -oE 'title [0-9]+ failed' | sed 's/$/ (HandBrake couldn'"'"'t decode it)/' || true
+    [ ! -f "$dir/.failed" ] || cat "$dir/.failed"
+    [ ! -f "$dir/.damaged" ] || cat "$dir/.damaged"
+    [ ! -f "$dir/damage.json" ] || jq -r '.[] | "glitch in title \(.title) at \(.start / 60 | floor)m\(.start % 60)s (\(.errors) decode errors) — marked with a chapter"' "$dir/damage.json"
+    # Encodes much shorter than the title on disc: still-frame galleries
+    # (HandBrake keeps only a couple of frames) or a read problem.
+    main_t=$(jq -r '.[] | select(.role == "main") | .title' "$dir/titles.json")
+    { find "$dir/library" "$dir/short" -name '*.mkv' ! -name '*.part.mkv' 2>/dev/null || true; } | while IFS= read -r f; do
+      if [ "$f" = "$main" ]; then t="$main_t"; else t=$(sed -nE 's/^Title ([0-9]+) - .*/\1/p' <<<"${f##*/}"); fi
+      [ -n "$t" ] || continue
+      want=$(jq -r --argjson t "$t" '.[] | select(.title == $t) | .seconds | floor' "$dir/titles.json")
+      got=$(secs "$f")
+      [ "${want:-0}" -gt 10 ] && [ "${got:-0}" -lt $((want * 9 / 10)) ] &&
+        echo "title $t: encoded ${got:-0}s of ${want}s on disc (still-frame gallery or read problem)"
+      true
+    done
+  } | jq -Rcs 'split("\n") | map(select(length > 0))'
+)
+
+jq -n --arg disc "${dir##*/}" --arg name "$name" --arg id "$(cat "$dir/.discid" 2>/dev/null)" \
+  --argjson main "$main_json" --argjson extras "$(files "$lib")" --argjson short "$(files "$dir/short")" \
+  --argjson skipped "$(jq -c '[.[] | select(.role | IN("dup", "playall", "part", "stub")) | "\(.title) (\(.role))"]' "$dir/titles.json")" \
+  --argjson warnings "$warnings" --arg review "$dir/review" \
+  '{disc: $disc, name: $name, fingerprint: $id, main: $main, extras: $extras, short: $short,
+    skipped: $skipped, warnings: $warnings, review: $review}'

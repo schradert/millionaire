@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# dvd-sort <disc> <folder> <title>... — move encoded extras into a Jellyfin
+# extras folder, e.g.  dvd-sort BEETLEJUICE trailers 11 12
+#
+# <folder> is one of Jellyfin's extras folders (behind the scenes, deleted
+# scenes, interviews, scenes, samples, shorts, featurettes, clips, other,
+# extras, trailers) or "junk", which moves the file out of the library into
+# short/. Titles are found wherever they currently are, so re-sorting works.
+set -euo pipefail
+source "$(dirname "$0")/lib.sh"
+
+dir=$(resolve_disc "${1:?usage: dvd-sort <disc> <folder> <title>...}")
+folder="${2:?usage: dvd-sort <disc> <folder> <title>...}"
+shift 2
+[ $# -gt 0 ] || die "no titles given"
+
+case "$folder" in
+  "behind the scenes" | "deleted scenes" | interviews | scenes | samples | shorts | featurettes | clips | other | extras | trailers) ;;
+  junk) ;;
+  *) die "unknown folder '$folder' (Jellyfin: behind the scenes, deleted scenes, interviews, scenes, samples, shorts, featurettes, clips, other, extras, trailers; or junk)" ;;
+esac
+
+name=$(cat "$dir/.name" 2>/dev/null || label_to_name "${dir##*/}")
+lib="$dir/library/$name"
+dest="$lib/$folder"
+[ "$folder" != junk ] || dest="$dir/short"
+
+for t in "$@"; do
+  src=$(find "$lib" "$dir/short" -name "Title $t - *.mkv" ! -name '*.part.mkv' -print -quit 2>/dev/null)
+  [ -n "$src" ] || die "no encoded file for title $t"
+  mkdir -p "$dest"
+  [ "$(dirname "$src")" = "$dest" ] || mv "$src" "$dest/"
+  log "title $t -> ${dest#"$dir"/}/"
+done
+# Drop extras folders left empty.
+find "$lib" -mindepth 1 -type d -empty -delete
