@@ -68,12 +68,21 @@ Unblocks: the build mesh (#225/#227/#233/#247) and the new modules on the Mac.
 
 ## 5. Replace osd.7's drive
 
-osd.7 is sirver bay 7, serial `6XS41YTD`, and SMART predicts failure (the `DiskSmartFailing` alert on `sde`). It is marked out and draining.
+osd.7 was sirver bay 7, serial `6XS41YTD` (`/dev/disk/by-id/scsi-35000c50067fb404b`), SMART-failing. It is already gone from the cluster: the device is out of the CephCluster node list and `removedOsds = [7]` in `nixidy/system/storage/rook-ceph.nix` purges it on every sync (done 2026-10-11, Ceph `HEALTH_OK` with 13 OSDs). The drive is idle.
 
-1. Wait until Ceph is `HEALTH_OK` (or only the slow-op warning remains) and `ceph osd safe-to-destroy osd.7` says yes.
-2. Purge osd.7, swap the drive in bay 7, and let Rook create the new OSD.
+1. Power down sirver (it is an OSD host: `size 2`, so Ceph stays writable but degraded while it is off), swap the drive in bay 7, power up.
+2. Find the new drive's `/dev/disk/by-id/scsi-*` name on sirver, add it to the sirver device list in `rook-ceph.nix`, and remove `7` from `removedOsds`. Render, commit, sync: Rook creates the new OSD.
 
-Unblocks: clears `CephHealthWarning` / `DiskSmartFailing`. rook-ceph stays Degraded until then.
+Unblocks: full OSD count; clears the lingering `DiskSmartFailing` history for `sde`.
+
+## 5b. Reserve the LoadBalancer pool on the router
+
+The Cilium LoadBalancer pool is `192.168.50.240-254` (`nixidy/system/network/cilium.nix`) and the router's DHCP range overlaps it: morgenmuffel got `.249`, axolotl `.250`, a MacBook `.248`, a SwitchBot `.245`. Any new LoadBalancer Service could take a live host's address.
+
+1. In the router's DHCP settings, exclude `192.168.50.240-192.168.50.254` from the dynamic range (or reserve them).
+2. Renew the leases of any host currently inside the range (morgenmuffel, axolotl).
+
+Unblocks: safe new LoadBalancer Services (the Syncthing LAN listener and the rsync ingest receiver use this pool).
 
 ## 6. Decide on hardware and leftovers
 
