@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
-  image: harbor.trdos.me/library/app-bootstrap:0.19.4@sha256:08f59b95160fe6654a178e4a2e35761f0b793408b18c93643ea2866f399c33ca
-  spec: beafe91a5fe3df91363dbc7ad8dde9bbfa8ee86de33c7a22666fc541ab2bfd54
+  image: harbor.trdos.me/library/app-bootstrap:0.19.6@sha256:e6ce713774b09d7c0aaf33951a9a03ec77e56b725cbbd011707ca1c847a06f4c
+  spec: 3cdc1d97a8830ae23a0ea67437ec430ac47160bca935eb2c476104aedf681836
 kind: ConfigMap
 metadata:
   name: actual-bootstrap

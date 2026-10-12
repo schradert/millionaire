@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
-  image: harbor.trdos.me/library/app-bootstrap:0.19.4@sha256:08f59b95160fe6654a178e4a2e35761f0b793408b18c93643ea2866f399c33ca
-  spec: 29b8df9463c1c734e49922e2bb20d93764f563650b9adc5ebed9018634d5a546
+  image: harbor.trdos.me/library/app-bootstrap:0.19.6@sha256:e6ce713774b09d7c0aaf33951a9a03ec77e56b725cbbd011707ca1c847a06f4c
+  spec: 6fec76cccce6642cb91516e0d7efdf034f3856e56491930627e15b7cc0050cf1
 kind: ConfigMap
 metadata:
   name: miniflux-bootstrap
