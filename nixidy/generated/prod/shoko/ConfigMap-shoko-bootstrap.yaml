@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  image: harbor.trdos.me/library/app-bootstrap:0.13.0@sha256:521495088dbcba2c993aef6ffc2586fa0095d1710a0498d74dc3338ceb7719ad
+  spec: d1efb9b854e56a2f08aa3d6b248b2ab63e4956c9351c112d4a133df2d6e4f464
+kind: ConfigMap
+metadata:
+  name: shoko-bootstrap
+  namespace: media

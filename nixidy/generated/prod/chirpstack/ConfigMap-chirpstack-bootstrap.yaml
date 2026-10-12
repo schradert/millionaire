@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  image: ghcr.io/cloudnative-pg/postgresql:17@sha256:148c715c10007a5c0c31f7fdb54bc9991ffbb73c74efa2b35d1fedd3f8103251
+  spec: 4f37bf6ee1301a26613eb39a563e5a73f4aa5445b984161c60d336e6e176a635
+kind: ConfigMap
+metadata:
+  name: chirpstack-bootstrap
+  namespace: home

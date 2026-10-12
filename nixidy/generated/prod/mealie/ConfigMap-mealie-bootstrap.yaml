@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  image: harbor.trdos.me/library/app-bootstrap:0.10.0@sha256:86e6b7640c92e52254803a96defa575ca91774c296f61df26104d04dfb47116b
+  spec: cf538bab676e62f677e831af355ada51409ff9872c41d4e515421490c4968f23
+kind: ConfigMap
+metadata:
+  name: mealie-bootstrap
+  namespace: health

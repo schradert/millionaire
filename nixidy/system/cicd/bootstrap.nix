@@ -64,6 +64,14 @@
               };
             })
             {
+              # Hooks are not live resources, so a bootstrap-only change (new
+              # app-bootstrap pin) never produces a diff and the hook never
+              # reruns. This tracked ConfigMap carries a hash of the Job spec
+              # so every change to it is a diff, hence a sync, hence a run.
+              configMaps.${job}.data = {
+                inherit (cfg) image;
+                spec = builtins.hashString "sha256" (builtins.toJSON cfg);
+              };
               jobs.${job} = {
                 metadata.annotations = {
                   "argocd.argoproj.io/hook" = "PostSync";
