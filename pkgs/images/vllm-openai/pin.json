@@ -1,6 +1,6 @@
 {
-  "version": "v0.8.5",
-  "digest": "sha256:6cf9808ca8810fc6c3fd0451c2e7784fb224590d81f7db338e7eaf3c02a33d33",
+  "version": "v0.31.0",
+  "digest": "sha256:c1c9f6fd5c109ba7f0546a59f5b2f15fb87f64c77782e90a27b648b42a8e67c3",
   "source": {
     "type": "oci-tag",
     "repository": "vllm/vllm-openai",
