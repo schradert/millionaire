@@ -1,6 +1,6 @@
 {
-  "version": "0.28.2",
-  "hash": "sha256-72JIAEZ9bc2z/qYhugF5RkhP0O8wkAAUgduxxMbdZUY=",
+  "version": "0.29.1",
+  "hash": "sha256-VWDikb5gw9s35yZYk3BqcojQtEE/b3gdDN6TCcJXzZ4=",
   "source": {
     "type": "helm-repo",
     "repo": "https://cloudnative-pg.github.io/charts/",
