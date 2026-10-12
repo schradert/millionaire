@@ -191,6 +191,8 @@ pub async fn kavita(ctx: &Ctx, f: &mut Flow) -> R<()> {
             "manageCollections": false, "manageReadingLists": false, "allowScrobbling": false,
             "allowMetadataMatching": false, "enableMetadata": true, "removePrefixForSortName": false,
             "inheritWebLinksFromFirstChapter": false, "defaultLanguage": "", "fileGroupTypes": [2, 3], "excludePatterns": [],
+            // 0.9: required, and 2 is what the real Books library uses (0, 1 and 5 are refused).
+            "metadataProvider": 2,
         })),
         "kavita",
         "create test library",
@@ -337,26 +339,42 @@ pub async fn music(ctx: &Ctx, f: &mut Flow) -> R<()> {
     .await?;
     f.ok("maloja", "scrobble arrived (via Navidrome's ListenBrainz relay)", "");
 
-    let ms = json(ctx.http.get(format!("{}/api/status", var("MULTI_SCROBBLER_URL", "http://multi-scrobbler.media.svc.cluster.local:9078"))), "multi-scrobbler", "status").await?;
-    let bad: Vec<String> = ms["clients"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .chain(ms["sources"].as_array().into_iter().flatten())
-        .filter(|c| c["authed"] != json!(true))
-        .map(|c| format!("{} {}", c["type"], c["status"]))
-        .collect();
+    let base = var("MULTI_SCROBBLER_URL", "http://multi-scrobbler.media.svc.cluster.local:9078");
+    // 0.19 lists sources and clients together at /api/components (it was /api/status before); a component whose
+    // ENV config does not validate (e.g. a missing MALOJA_ID) is silently absent, so an empty list fails.
+    let ms = json(ctx.http.get(format!("{base}/api/components")), "multi-scrobbler", "components").await?;
+    let comps = ms.as_array().cloned().unwrap_or_default();
+    let (bad, clients) = ms_components(&comps)?;
     if !bad.is_empty() {
-        return Err(Fail::new("multi-scrobbler", "status", format!("not authed: {}", bad.join(", "))));
+        return Err(Fail::new("multi-scrobbler", "components", format!("not ready: {}", bad.join(", "))));
     }
-    let clients: Vec<String> = ms["clients"].as_array().into_iter().flatten().map(|c| format!("{}={}", c["type"].as_str().unwrap_or("?"), c["status"].as_str().unwrap_or("?"))).collect();
     let lb = clients.iter().any(|c| c.starts_with("listenbrainz"));
     f.ok(
         "multi-scrobbler",
-        "clients authed",
-        format!("{}{}", clients.join(" "), if lb { "" } else { "; no ListenBrainz client configured (Maloja relay is a TODO in maloja.nix)" }),
+        "components ready",
+        format!("{} components; clients {}{}", comps.len(), clients.join(" "), if lb { "" } else { "; no ListenBrainz client configured (Maloja relay is a TODO in maloja.nix)" }),
     );
     Ok(())
+}
+
+/// Components that are not ready (`type name: status`), and the clients as `type=status`. An empty list is an error.
+fn ms_components(comps: &[Value]) -> R<(Vec<String>, Vec<String>)> {
+    if comps.is_empty() {
+        return Err(Fail::new("multi-scrobbler", "components", "no sources or clients configured (a component whose ENV config fails validation is dropped; see the pod log)"));
+    }
+    let mut bad = vec![];
+    let mut clients = vec![];
+    for c in comps {
+        let (ty, name, status) = (c["type"].as_str().unwrap_or("?"), c["name"].as_str().unwrap_or("?"), c["status"].as_str().unwrap_or("?"));
+        // `state` 7 is Error; `authed`/`initialized` are false until the component's auth and first connection succeed.
+        if c["authed"] == json!(false) || c["initialized"] == json!(false) || c["state"] == json!(7) {
+            bad.push(format!("{ty} {name}: {status}"));
+        }
+        if c.get("tracksScrobbled").is_some() {
+            clients.push(format!("{ty}={status}"));
+        }
+    }
+    Ok((bad, clients))
 }
 
 /// Recyclarr's profiles exist in Radarr and Sonarr, and its CronJob succeeded recently.
@@ -442,4 +460,25 @@ pub async fn bazarr(_ctx: &Ctx, _f: &mut Flow) -> R<()> {
         return Err(Fail::skip("bazarr", "credentials", "no bazarr API key Secret and no OpenSubtitles account (skip-if-no-creds)"));
     }
     Err(Fail::skip("bazarr", "subtitle search", "credentials present but the subtitle flow is not implemented yet"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn multi_scrobbler_components() {
+        let ok = json!([
+            {"type": "jellyfin", "name": "jellyfin", "state": 1, "status": "Polling", "authed": true, "initialized": true, "tracksDiscovered": 0},
+            {"type": "maloja", "name": "maloja", "state": 1, "status": "Running", "authed": true, "initialized": true, "tracksScrobbled": 0}
+        ]);
+        let (bad, clients) = ms_components(ok.as_array().unwrap()).unwrap();
+        assert!(bad.is_empty());
+        assert_eq!(clients, ["maloja=Running"]);
+
+        let down = json!([{"type": "maloja", "name": "maloja", "state": 7, "status": "Communication Failed", "authed": false, "tracksScrobbled": 0}]);
+        assert_eq!(ms_components(down.as_array().unwrap()).unwrap().0, ["maloja maloja: Communication Failed"]);
+
+        assert!(ms_components(&[]).is_err());
+    }
 }
