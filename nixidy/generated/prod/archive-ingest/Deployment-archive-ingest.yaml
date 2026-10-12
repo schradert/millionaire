@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: archive-ingest
+    app.kubernetes.io/instance: archive-ingest
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: archive-ingest
+  name: archive-ingest
+  namespace: media
+spec:
+  replicas: 0
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: archive-ingest
+      app.kubernetes.io/instance: archive-ingest
+      app.kubernetes.io/name: archive-ingest
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 24cf29cd00d2f3d2ad3826ff92e34bfd47d0ac00c0840f04acecb419986d1405
+      labels:
+        app.kubernetes.io/controller: archive-ingest
+        app.kubernetes.io/instance: archive-ingest
+        app.kubernetes.io/name: archive-ingest
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - image: harbor.trdos.me/library/rsyncd:3.5.0@sha256:baad797777550de2a02df519ea8d41d28f2c5ee19a382ec459d29efd47336bb6
+          livenessProbe:
+            tcpSocket:
+              port: 873
+          name: archive-ingest
+          ports:
+            - containerPort: 873
+              name: rsync
+          readinessProbe:
+            tcpSocket:
+              port: 873
+          startupProbe:
+            failureThreshold: 30
+            tcpSocket:
+              port: 873
+          volumeMounts:
+            - mountPath: /config/rsyncd.conf
+              name: config
+              readOnly: true
+              subPath: rsyncd.conf
+            - mountPath: /data/dvd
+              name: media-dvd
+            - mountPath: /data/games
+              name: media-games
+            - mountPath: /data/movies
+              name: media-movies
+            - mountPath: /config/rsyncd.secrets
+              name: secrets
+              readOnly: true
+              subPath: rsyncd.secrets
+            - mountPath: /tmp
+              name: tmp
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: archive-ingest
+      volumes:
+        - configMap:
+            name: archive-ingest
+          name: config
+        - name: media-dvd
+          persistentVolumeClaim:
+            claimName: media-dvd
+        - name: media-games
+          persistentVolumeClaim:
+            claimName: media-games
+        - name: media-movies
+          persistentVolumeClaim:
+            claimName: media-movies
+        - name: secrets
+          secret:
+            secretName: archive-ingest-rsyncd
+        - emptyDir: {}
+          name: tmp
