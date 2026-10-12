@@ -37,6 +37,12 @@
     locations."/" = {
       proxyPass = "http://127.0.0.1:${toString port}";
       proxyWebsockets = true;
+      # ntfy subscriptions are long-lived streams; see the headscale vhost.
+      extraConfig = ''
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+        proxy_buffering off;
+      '';
     };
   };
   # AdGuard user rules (the live config is external-dns-managed, so these are
@@ -114,6 +120,16 @@ in {
       locations."/" = {
         proxyPass = "http://127.0.0.1:8080";
         proxyWebsockets = true;
+        # recommendedProxySettings sets proxy_read_timeout 60s globally, which
+        # cut every idle upgraded stream (DERP relay, noise long-poll) once a
+        # minute: tailscaled logged `derp.Recv: EOF` at :03 every minute and
+        # phones relaying through region 999 lost DNS. Headscale's nginx docs
+        # require a day-long timeout and no buffering on these streams.
+        extraConfig = ''
+          proxy_read_timeout 86400s;
+          proxy_send_timeout 86400s;
+          proxy_buffering off;
+        '';
       };
     };
     virtualHosts.${ntfyHost} = tailnetVhost 2586;
