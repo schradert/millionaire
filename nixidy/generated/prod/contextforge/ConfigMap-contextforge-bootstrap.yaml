@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  image: harbor.trdos.me/library/app-bootstrap:0.19.0@sha256:57f0ad275f93a239d07637c7d5144d8cb6402d7df84e62e056b664187bddda10
+  spec: 6d99ca7b228f99d11cfc9ca26b8375abe8732a16b6d290201ebc1e51aeb8026e
+kind: ConfigMap
+metadata:
+  name: contextforge-bootstrap
+  namespace: ai

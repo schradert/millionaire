@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  image: harbor.trdos.me/library/app-bootstrap:0.16.1@sha256:fb113d4d3813a877ba09b8f862d94bf48816a06aac47d55a0d339bcb4f018739
+  spec: bcb2c4e7e79bc7fd7e7fba01671f2a3da924667900952f39f3ad1e655f896b84
+kind: ConfigMap
+metadata:
+  name: seerr-bootstrap
+  namespace: media

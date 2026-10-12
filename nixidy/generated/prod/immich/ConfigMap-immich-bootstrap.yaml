@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  image: harbor.trdos.me/library/app-bootstrap:0.19.0@sha256:57f0ad275f93a239d07637c7d5144d8cb6402d7df84e62e056b664187bddda10
+  spec: 2074f2e6f255b3dd9e53d75928cea854ed4550273bcce8bee9a3a1bfe7b121c9
+kind: ConfigMap
+metadata:
+  name: immich-bootstrap
+  namespace: media

@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  image: harbor.trdos.me/library/app-bootstrap:0.14.0@sha256:6b5dba1a13b648287fac023dac4e9cdb33787ebede4cc3c79a0e72315acee38c
+  spec: 830633e050457891594f10dbf869b1402ae8e4016cfa6755bf9eb8d9cbf6ede5
+kind: ConfigMap
+metadata:
+  name: ryot-bootstrap
+  namespace: media

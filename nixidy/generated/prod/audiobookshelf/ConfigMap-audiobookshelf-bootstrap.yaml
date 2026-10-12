@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  image: harbor.trdos.me/library/app-bootstrap:0.17.1@sha256:1e96b96dcfa6bd587a64f3dee546ac005ff32418079b2b38d396b89e8540b3fa
+  spec: 79b96702ef7ffbd76fd76bd8b87378fd2709261676040a26be48af0ce041b032
+kind: ConfigMap
+metadata:
+  name: audiobookshelf-bootstrap
+  namespace: media
