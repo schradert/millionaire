@@ -550,6 +550,24 @@ class Millionaire:
         millionaire.NixOS("bonobo", "root@nixos", depends_on=other_node_deps)
         millionaire.NixOS("chinchilla", "root@nixos", depends_on=other_node_deps)
 
+        # falcon (GPU desktop, RKE2 agent) is a live, in-use host: it is registered
+        # only for its one deliberate reinstall onto the standard layout, never
+        # by default (an unguarded `pulumi up` would otherwise fail on its install
+        # step). Procedure and prerequisites: docs/node-standard.md. Once installed,
+        # leave the flag set so the resource (protected) stays in the program.
+        #   pulumi config set falconNode true
+        #   NIXOS_ANYWHERE_INSTALL=falcon pulumi up --target <urn of nixos-falcon-install>
+        # Only the root disk is in disko (the `data` pool is imported, never
+        # formatted) and the host's ssh key is carried over (a sops recipient).
+        if pulumi.Config().get_bool("falconNode"):
+            millionaire.NixOS(
+                "falcon",
+                "tristan@192.168.50.215",
+                identity="$HOME/.ssh/personal",
+                preserve_host_key=True,
+                depends_on=other_node_deps,
+            )
+
         # RPI doesn't support kexec
         # millionaire.NixOS("piper", "piper", "--phases disko,install,reboot")
 

@@ -114,11 +114,36 @@ class NixOS:
         *flags: str,
         deploy_hostname: str | pulumi.Output[str] | None = None,
         depends_on: list[pulumi.Resource] | None = None,
+        identity: str | None = None,
+        preserve_host_key: bool = False,
     ):
+        """`target` is the ssh target of the install (a live host that is not
+        root-reachable: `user@host` with passwordless sudo; nixos-anywhere
+        switches to root@host after kexec). `identity` is an ssh key path, passed
+        as given to the shell (e.g. "$HOME/.ssh/personal"). `preserve_host_key`
+        copies the live host's ed25519 ssh host key into the new install, for
+        hosts whose key is a sops recipient and is pinned elsewhere (falcon)."""
         nixos_anywhere = Nix.bin(
             f"canivete.inputs.nixos-anywhere.packages.{Nix.system()}.default"
         )
         sops_dir = Nix.attr("canivete.sops.directory").value().strip()
+
+        ssh_id = f"-o IdentitiesOnly=yes -i {identity}" if identity else ""
+        na_id = f"-i {identity} --ssh-option IdentitiesOnly=yes" if identity else ""
+        host_key = (
+            f"""
+                # Keep the host's ssh identity across the reinstall: it is a sops
+                # recipient (.sops.yaml) and its public half is pinned in static/builders.nix.
+                mkdir -p "$EXTRA_DIR/etc/ssh"
+                for k in ssh_host_ed25519_key ssh_host_ed25519_key.pub; do
+                    ssh {ssh_id} -o StrictHostKeyChecking=accept-new "$TARGET" "sudo cat /etc/ssh/$k" > "$EXTRA_DIR/etc/ssh/$k"
+                done
+                chmod 600 "$EXTRA_DIR/etc/ssh/ssh_host_ed25519_key"
+                [ -s "$EXTRA_DIR/etc/ssh/ssh_host_ed25519_key" ] || {{ echo "could not read the host key from $TARGET" >&2; exit 1; }}
+"""
+            if preserve_host_key
+            else ""
+        )
 
         def _make_install_cmd(resolved_target: str) -> str:
             return f"""
@@ -131,6 +156,10 @@ class NixOS:
                 fi
                 ulimit -n 1048576
 
+                # nixos-anywhere reconnects as root@<host> once kexec has booted the installer
+                TARGET={shlex.quote(resolved_target)}
+                POST_KEXEC="root@${{TARGET##*@}}"
+
                 EXTRA_DIR=$(mktemp -d)
                 ENCRYPTED="{Nix.root}/{sops_dir}/default.yaml"
                 DECRYPTED="$EXTRA_DIR/root/.config/sops/age/keys.txt"
@@ -139,24 +168,24 @@ class NixOS:
                 mkdir -p "$(dirname "$DECRYPTED")"
                 sops --decrypt --extract '["passwords"]["age"]' "$ENCRYPTED" > "$DECRYPTED"
                 chmod 600 "$DECRYPTED"
-
+                {host_key}
                 NA="{nixos_anywhere}"
                 # --build-on remote: have the target machine build its own closure.
                 # The local linux-builder VM only has 3GB and was OOMing on big closures;
                 # remote-build avoids the VM bottleneck entirely.
-                NA_ARGS=(--extra-files "$EXTRA_DIR" --build-on remote --flake "{Nix.root}#{name}" {" ".join(flags)})
+                NA_ARGS=(--extra-files "$EXTRA_DIR" --build-on remote --flake "{Nix.root}#{name}" {na_id} {" ".join(flags)})
 
                 # Phase 1: kexec into the NixOS installer
-                "$NA" "${{NA_ARGS[@]}}" --phases kexec {resolved_target}
+                "$NA" "${{NA_ARGS[@]}}" --phases kexec "$TARGET"
 
                 # Raise file descriptor limits on the remote NixOS installer.
                 # After kexec the default ulimit is 1024 which is too low for
                 # large NixOS builds (2000+ derivations).
-                ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {resolved_target} \
+                ssh {ssh_id} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$POST_KEXEC" \
                     'for pid in 1 $(pgrep -x sshd) $(pgrep -x nix-daemon); do prlimit --nofile=1048576:1048576 --pid "$pid" 2>/dev/null; done'
 
                 # Phase 2: partition, install, and reboot
-                "$NA" "${{NA_ARGS[@]}}" --phases disko,install,reboot {resolved_target}
+                "$NA" "${{NA_ARGS[@]}}" --phases disko,install,reboot "$POST_KEXEC"
             """
 
         create_cmd = (

@@ -18,9 +18,10 @@
 # Etcd servers get 25% of their cores, agents 50%, and dingo (a 4-core etcd
 # server with ~4G of RAM to spare) a single core. The small boxes carry the
 # lowest weight, and omitting `big-parallel` keeps heavy derivations off them.
-# falcon (`falcon` below) is not an RKE2 node: the biggest builder, uncapped,
-# with idle CPU/IO scheduling so its desktop stays responsive
-# (static/falcon-system.nix).
+# falcon (`falcon` below) is an RKE2 agent too (a GPU desktop, static/desktop-node.nix)
+# but sits outside this cap table: the biggest builder, uncapped, with idle
+# CPU/IO scheduling so its desktop stays responsive (static/builder.nix).
+# Hosts in neither table (axolotl) are not in the pool at all.
 #
 # lan/tailnet are the box's addresses; hostKey pins its ssh host key (also its
 # build-client identity towards peers, see static/builder.nix).
@@ -114,7 +115,7 @@ in {
     };
   };
 
-  # Not an RKE2 node: x86_64 natively, aarch64-linux by binfmt emulation (no
+  # Not in the cap table above (a desktop): x86_64 natively, aarch64-linux by binfmt emulation (no
   # kvm). The dev host reaches it as its login user (`Host falcon` is also its
   # ssh/`build-all --remote` target); the nodes as nix-remote-builder, over the
   # LAN (its tailnet IP is not stable). See static/builder.nix.
