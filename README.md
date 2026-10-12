@@ -29,7 +29,7 @@
 26. TODO outside-in Gatus probes on hyena for every app login page, not just the gateway and apiservers
 27. TODO Jellyfin hardware transcoding via falcon's NVIDIA GPU once falcon joins the cluster
 28. TODO `build-all` never builds aarch64: pass nix-fast-build `--systems` for non-native systems (found during the 26.11 bump)
-29. TODO decide on VolSync backups for the large re-acquirable volumes: frigate-media 1Ti (~$6/mo), media-movies 500Gi (~$3/mo), media-tv 100Gi (~$0.60/mo)
+29. TODO decide on VolSync backups for the large re-acquirable volumes: frigate-media 1Ti (~$6/mo), media-tv 100Gi (~$0.60/mo). media-movies is backed up
 30. TODO back up Bitwarden Secrets Manager: a scheduled `bws` export, encrypted to an offline age key and stored outside Bitwarden, plus a restore test. It holds the restic password, so losing it makes every VolSync backup unreadable
 31. TODO back up hyena's headscale: a nightly consistent `.backup` of `/var/lib/headscale/db.sqlite` plus the noise/derp keys, encrypted and pushed off-host, plus a restore test
 32. TODO make VolSync `restore = false` the module default: committed `-dst` ReplicationDestinations restore into LIVE PVCs, so bumping `trigger.manual` overwrites live data. A restore then becomes a deliberate change to a scratch PVC

@@ -9,7 +9,7 @@
         restore = false;
       };
       # Libraries that cannot be re-downloaded from the *arr stack. Deliberately not backed up:
-      # media-downloads (transient), media-movies/media-tv (re-acquirable, large).
+      # media-downloads (transient), media-tv (re-acquirable, large).
       volsync.pvcs.media-music = {
         title = "media-music";
         cacheAccessModes = ["ReadWriteOnce"];
@@ -39,6 +39,14 @@
         title = "media-games";
         cacheAccessModes = ["ReadWriteOnce"];
         restore = false;
+      };
+      # The curated DVD MKVs: days of encoding and review, with the discs as the only other source.
+      volsync.pvcs.media-movies = {
+        title = "media-movies";
+        cacheAccessModes = ["ReadWriteOnce"];
+        restore = false;
+        # After the 04:00 backups, so the first ~470GB upload does not run beside the other seeds.
+        schedule = "0 6 * * *";
       };
       resources.persistentVolumeClaims = let
         cephfsPVC = size: {
