@@ -1,0 +1,9 @@
+{
+  "version": "v4.1.5",
+  "digest": "sha256:93534a0d0ba3ebd2965af08733852659130a3146a65a9746cbbf72250a92c9c9",
+  "source": {
+    "type": "oci-tag",
+    "repository": "quay.io/argoproj/argo-workflows-crdinstaller"
+  },
+  "follows": "charts/argo-workflows"
+}

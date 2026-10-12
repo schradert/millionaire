@@ -27,28 +27,25 @@ spec:
         app.kubernetes.io/part-of: argo-workflows
     spec:
       containers:
-        - command:
-            - kubectl
-            - apply
-            - --server-side
-            - --force-conflicts
-            - -f
-            - https://raw.githubusercontent.com/argoproj/argo-helm/argo-workflows-1.0.14/charts/argo-workflows/files/crds/full/argoproj.io_clusterworkflowtemplates.yaml
-            - -f
-            - https://raw.githubusercontent.com/argoproj/argo-helm/argo-workflows-1.0.14/charts/argo-workflows/files/crds/full/argoproj.io_cronworkflows.yaml
-            - -f
-            - https://raw.githubusercontent.com/argoproj/argo-helm/argo-workflows-1.0.14/charts/argo-workflows/files/crds/full/argoproj.io_workflowartifactgctasks.yaml
-            - -f
-            - https://raw.githubusercontent.com/argoproj/argo-helm/argo-workflows-1.0.14/charts/argo-workflows/files/crds/full/argoproj.io_workfloweventbindings.yaml
-            - -f
-            - https://raw.githubusercontent.com/argoproj/argo-helm/argo-workflows-1.0.14/charts/argo-workflows/files/crds/full/argoproj.io_workflows.yaml
-            - -f
-            - https://raw.githubusercontent.com/argoproj/argo-helm/argo-workflows-1.0.14/charts/argo-workflows/files/crds/full/argoproj.io_workflowtaskresults.yaml
-            - -f
-            - https://raw.githubusercontent.com/argoproj/argo-helm/argo-workflows-1.0.14/charts/argo-workflows/files/crds/full/argoproj.io_workflowtasksets.yaml
-            - -f
-            - https://raw.githubusercontent.com/argoproj/argo-helm/argo-workflows-1.0.14/charts/argo-workflows/files/crds/full/argoproj.io_workflowtemplates.yaml
-          image: registry.k8s.io/kubectl:v1.36.1@sha256:d08f476d04d0e30f426f06bc6ff6c38913aaa4591943046b77e2f74a72d3611c
+        - image: quay.io/argoproj/argo-workflows-crdinstaller:v4.1.5@sha256:93534a0d0ba3ebd2965af08733852659130a3146a65a9746cbbf72250a92c9c9
+          imagePullPolicy: Always
           name: apply
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 8737
+            runAsNonRoot: true
+            runAsUser: 8737
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp
       restartPolicy: Never
       serviceAccountName: argo-workflows-crd-install
+      volumes:
+        - emptyDir: {}
+          name: tmp
