@@ -13,7 +13,6 @@
   imports = [./facter ./k8s-node.nix ./desktop-node.nix ./zfs-legacy.nix flake.inputs.srvos.nixosModules.desktop];
   desktopNode.lanLink.Driver = "e1000e"; # wired onboard NIC (enp0s31f6); wlp2s0 cannot carry a node
   # existing install is the flat layout; unset at the reinstall (docs/node-standard.md)
-  disko.legacyLayout = true;
   profiles.client.enable = true;
   profiles.workstation.enable = true;
   apiKeys.enable = true; # axolotl is a recipient of personal.yaml (.sops.yaml)
