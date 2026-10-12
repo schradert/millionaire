@@ -5,7 +5,7 @@
   },
   "source": {
     "type": "url-set",
-    "url": "https://games.trdos.me/bios/{name}.zip",
-    "unpack": true
+    "url": "https://games.trdos.me/bios/{name}",
+    "directory": true
   }
 }

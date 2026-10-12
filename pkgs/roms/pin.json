@@ -57,7 +57,7 @@
   },
   "source": {
     "type": "url-set",
-    "url": "https://games.trdos.me/roms/{name}.zip",
-    "unpack": true
+    "url": "https://games.trdos.me/roms/{name}",
+    "directory": true
   }
 }

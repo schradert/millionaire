@@ -8,7 +8,9 @@
 #   "digest": "sha256:…",          required for oci-tag
 #   "hashes": {"vendorHash": …},   optional derived hashes; for url-set, one
 #                                  per file: {"<name>": hash} (fetched as
-#                                  pinned.<pin>.<name>)
+#                                  pinned.<pin>.<name>; with source.directory
+#                                  per directory: the recursive hash of its
+#                                  files)
 #   "source": {"type": …, …},      required; see `sources` below
 #   "constraint": "<2.0",          optional; comma-separated version bounds
 #   "hold": "reason",              optional; blocks updates
@@ -46,10 +48,12 @@
     };
     # many files under one url ("{name}" = key of `hashes`, "/" kept),
     # zips unpacked (fetchzip, stripRoot = false) when `unpack`; files
-    # marked executable (recursive hash) when `executable`
+    # marked executable (recursive hash) when `executable`; each name a
+    # WebDAV directory copied whole (rclone, recursive hash of the tree
+    # as the server lists it, files only) when `directory`
     url-set = {
       required = ["url"];
-      optional = ["unpack" "executable"];
+      optional = ["unpack" "executable" "directory"];
     };
   };
   topKeys = ["version" "hash" "digest" "hashes" "source" "constraint" "hold" "follows"];
@@ -66,6 +70,7 @@
       [(isStr "version") "version must be a string"]
       [(type == "oci-tag" || type == "url-set" || isStr "hash") "hash must be a string"]
       [(type != "url-set" || pin.hashes or {} != {}) "url-set needs hashes"]
+      [(!(src.directory or false) || !(src.unpack or false || src.executable or false)) "url-set directory excludes unpack and executable"]
       [(type != "oci-tag" || isStr "digest") "digest must be a string"]
       [(lib.all (k: src ? ${k}) spec.required) "source.${type} needs ${toString spec.required}"]
       [(lib.subtractLists (["type"] ++ spec.required ++ spec.optional) (lib.attrNames src) == []) "unknown source keys"]
@@ -84,6 +89,29 @@
 
   tag = pin: (pin.source.tagPrefix or "") + pin.version;
   url = pin: builtins.replaceStrings ["{version}"] [pin.version] pin.source.url;
+
+  # A WebDAV collection copied recursively into $out (its files at the root,
+  # no empty directories), fixed by the recursive hash of that tree. The
+  # server is anonymous and read-only (nixidy/apps/media/games-webdav.nix).
+  fetchDirectory = pkgs: {
+    url,
+    name,
+    hash,
+  }:
+    pkgs.runCommand name {
+      nativeBuildInputs = [pkgs.rclone];
+      outputHashMode = "recursive";
+      outputHashAlgo = "sha256";
+      outputHash = hash;
+      inherit url;
+      SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+      preferLocalBuild = true;
+    } ''
+      export HOME=$TMPDIR RCLONE_CONFIG=/dev/null
+      rclone copy --retries 5 --low-level-retries 10 --transfers 2 --size-only \
+        ":webdav,url='$url',vendor=other:" "$out"
+      [ -n "$(ls -A "$out")" ] || { echo "$url: empty or missing directory" >&2; exit 1; }
+    '';
 
   # Fixed-output derivation for a pin. `kubelib` is nix-kube-generators' lib.
   fetch = {
@@ -113,7 +141,9 @@
           inherit hash;
         };
       in
-        if s.unpack or false
+        if s.directory or false
+        then fetchDirectory pkgs args
+        else if s.unpack or false
         then pkgs.fetchzip (args // {stripRoot = false;})
         else pkgs.fetchurl (args // {executable = s.executable or false;}))
       pin.hashes;

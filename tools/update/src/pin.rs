@@ -67,13 +67,16 @@ pub enum Source {
         track: Option<Track>,
     },
     /// Many files under one URL template (`{name}` = a key of `hashes`),
-    /// e.g. the game library. Never updated upstream.
+    /// e.g. the game library. Never updated upstream. With `directory`,
+    /// each name is a WebDAV directory fetched whole.
     UrlSet {
         url: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         unpack: Option<bool>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         executable: Option<bool>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        directory: Option<bool>,
     },
     UrlTemplate {
         url: String,
@@ -276,6 +279,25 @@ mod tests {
         )
         .unwrap();
         assert!(matches!(pin.source, Source::UrlSet { unpack: Some(true), .. }));
+    }
+
+    #[test]
+    fn url_set_directory_round_trips() {
+        let s = r#"{
+  "version": "1",
+  "hashes": {
+    "NES/a": "sha256-x"
+  },
+  "source": {
+    "type": "url-set",
+    "url": "https://e/roms/{name}",
+    "directory": true
+  }
+}
+"#;
+        let pin: Pin = serde_json::from_str(s).unwrap();
+        assert!(matches!(pin.source, Source::UrlSet { directory: Some(true), .. }));
+        assert_eq!(to_string(&pin).unwrap(), s);
     }
 
     #[test]

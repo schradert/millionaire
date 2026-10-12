@@ -10,15 +10,32 @@ source type `url-set`).
 Layout (names must match the pin keys exactly):
 
 ```
-roms/<console>/<title>.zip      e.g. roms/NES/Legend of Zelda, The (USA).zip
-bios/<console>/<name>.zip       e.g. bios/PS1/ps-41a.zip
-installers/<file>               e.g. installers/InstallWizard101.exe
+roms/<console>/<title>/<files>   e.g. roms/PS1/Persona (USA)/Persona (USA).bin, ... .cue
+bios/<console>/<name>/<files>    e.g. bios/PS1/ps-41a/ps-41a.bin
+installers/<file>                e.g. installers/InstallWizard101.exe
 ```
 
-A ROM zip holds the title's files at its root (no top directory): the pinned
-hash is the NAR hash of the unpacked tree, as `fetchzip { stripRoot = false; }`
-computes it. The old myrient hashes (old/old/apps/gaming/games/roms.nix) carry
-over unchanged when the zips are rebuilt from the same files.
+The library stays unpacked: a title is a directory holding its files at the
+root (no further top directory; multi-file titles keep every sibling, e.g.
+`.bin` + `.cue`, and each Chrono Cross disc is its own title). `roms` and
+`bios` are `url-set` pins with `"directory": true`:
+
+```json
+"hashes": {"PS1/Persona (USA)": "sha256-..."},
+"source": {"type": "url-set", "url": "https://games.trdos.me/roms/{name}", "directory": true}
+```
+
+`pinned.roms."<console>/<title>"` is a fixed-output derivation (`fetchDirectory`
+in `lib/pins.nix`) that runs `rclone copy` over WebDAV from
+`<url with {name}>` into `$out`: every file under the directory, recursively,
+no empty directories, no timestamps or permissions beyond the executable bit
+(never set). The pinned hash is the NAR hash of that tree, i.e. `nix hash path`
+of a local copy of the directory (the same value as `fetchzip { stripRoot =
+false; }` gave the zipped title, so the old myrient hashes carry over). Any
+extra file left in a title's directory changes its hash.
+
+`update check` ignores `url-set` pins (nothing upstream to move); a drifted or
+missing title surfaces as a failed build of that title, see the check below.
 
 ## One-time upload (from the Steam Deck)
 
@@ -29,7 +46,7 @@ read-only, so the files go into the PVC through a throwaway pod.
 1. Tools and cluster access:
 
    ```sh
-   nix shell nixpkgs#kubectl nixpkgs#rsync nixpkgs#zip nixpkgs#jq
+   nix shell nixpkgs#kubectl nixpkgs#rsync nixpkgs#jq
    export KUBECONFIG=$(mktemp)
    ssh -i ~/.ssh/personal sirver sudo cat /etc/rancher/rke2/rke2.yaml \
      | sed 's/127\.0\.0\.1/sirver/' > "$KUBECONFIG"
@@ -37,10 +54,10 @@ read-only, so the files go into the PVC through a throwaway pod.
 
    (From off-LAN: `ssh -J tristan@192.184.168.248 ...`.)
 
-2. Build the tree, one zip per title. The old config linked
+2. Build the tree, one directory per title. The old config linked
    `~/Games/ROMs/<console>/` and `~/Games/BIOS/<console>/` through
    `buildEnv`, so each entry is a symlink into the title's
-   `/nix/store/*-<title>` directory; zip that directory's contents:
+   `/nix/store/*-<title>` directory; copy that directory's contents:
 
    ```sh
    out=~/games-upload
@@ -52,19 +69,18 @@ read-only, so the files go into the PVC through a throwaway pod.
          store=$(readlink -f "$f" | cut -d/ -f1-4)   # /nix/store/<hash>-<title>
          [ -d "$store" ] || continue
          title=$(basename "$store" | cut -d- -f2-)
-         zip="$dst/$console/$title.zip"
-         [ -e "$zip" ] || (cd "$store" && zip -qrX "$zip" .)
+         [ -e "$dst/$console/$title" ] || { mkdir -p "$dst/$console/$title"; cp -rL --no-preserve=mode "$store"/. "$dst/$console/$title"; }
        done
      done
    done
    ```
 
-   Each zip must be named after its pin key: `jq -r '.hashes | keys[]'
+   Each directory must be named after its pin key: `jq -r '.hashes | keys[]'
    pkgs/roms/pin.json` lists `<console>/<title>`, e.g.
    `NES/Legend of Zelda, The (USA)`; rename any that differ. If the Deck's
-   `~/Games/ROMs/<console>/` holds plain files instead of store links, zip
-   each title's files (`<title>.<ext>` plus `.cue`/`.bin` siblings) at the
-   zip root under the same name.
+   `~/Games/ROMs/<console>/` holds plain files instead of store links, put
+   each title's files (`<title>.<ext>` plus `.cue`/`.bin` siblings) in a
+   directory of that name.
 
 3. Installers (installers/):
 
@@ -93,20 +109,23 @@ read-only, so the files go into the PVC through a throwaway pod.
    ```
 
 5. Check every pin against what games.trdos.me now serves (in a checkout of
-   this repo, still on the Deck):
+   this repo, on a host that resolves games.trdos.me):
 
    ```sh
-   url() { jq -rn --arg n "$1" '$n|@uri' | sed 's/%2F/\//g'; }
-   jq -r '.hashes | keys[]' pkgs/roms/pin.json | while read -r k; do
-     got=$(nix store prefetch-file --json --unpack "https://games.trdos.me/roms/$(url "$k").zip" | jq -r .hash)
-     want=$(jq -r --arg k "$k" '.hashes[$k]' pkgs/roms/pin.json)
-     [ "$got" = "$want" ] || echo "MISMATCH $k $got"
+   sys=$(nix eval --impure --raw --expr builtins.currentSystem)
+   for set in roms bios; do
+     jq -r '.hashes | keys[]' pkgs/$set/pin.json | while read -r k; do
+       nix build --no-link --no-pure-eval ".#legacyPackages.$sys.pinned.$set.\"$k\"" 2>&1 \
+         | grep -E 'got:|error' | sed "s|^|$set/$k: |"
+     done
    done
    ```
 
-   (`bios` the same; installers with `--executable` instead of `--unpack`,
-   cemu-keys.txt with neither: `pkgs/cemu-keys/pin.json`.) Fix mismatches
-   in the pins (Battle.net's installer changes upstream, so expect one there).
+   A hash mismatch prints the `got:` hash; a title missing from the library
+   prints `empty or missing directory`. (Installers: `nix store prefetch-file
+   --executable`, cemu-keys.txt without it: `pkgs/cemu-keys/pin.json`.) Fix
+   mismatches in the pins (Battle.net's installer changes upstream, so expect
+   one there).
 
 6. Set `programs.steam.external.library = true` in static/systeamadeck.nix:
    until then the Deck's titles, BIOS and installer shortcuts are left out so
@@ -114,7 +133,8 @@ read-only, so the files go into the PVC through a throwaway pod.
 
 ## Adding a title
 
-Upload `roms/<console>/<title>.zip`, add `"<console>/<title>": "<hash>"` to
-`pkgs/roms/pin.json` (hash from the prefetch above), and list the title in the
-host's `programs.steam.external.consoles.<console>.titles`
+Upload `roms/<console>/<title>/<files>`, add `"<console>/<title>": "<hash>"`
+to `pkgs/roms/pin.json` (hash: `nix hash path` of the local directory, or
+`sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=` and copy the `got:` hash
+from the build above), and list the title in the host's `programs.steam.external.consoles.<console>.titles`
 (`.biosNames` for BIOS).
