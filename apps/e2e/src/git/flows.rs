@@ -2,14 +2,14 @@
 //! commit, a second clone reads it back, the repo is deleted. The Floccus variant checks the
 //! bookmarks route and syncs an XBEL file between two clones the way the extension does.
 
-use std::path::Path;
+use std::{path::Path, time::Duration};
 
 use reqwest::{header::USER_AGENT, Method};
 use serde_json::{json, Value};
 
 use super::cmd::{clean_workdirs, git, workdir};
 use crate::{
-    ctx::{domain, json, send, var, At, Ctx, Fail, R},
+    ctx::{domain, json, poll, send, var, At, Ctx, Fail, R},
     forgejo::{cleanup_users, Forgejo, User},
     report::Flow,
     web::b64url_decode,
@@ -32,9 +32,14 @@ async fn create_repo(ctx: &Ctx, fj: &Forgejo, token: &str, name: &str) -> R<Valu
     .await
 }
 
+/// The file as the contents API shows it. Forgejo flags the repo non-empty asynchronously after a
+/// push, so right after `git push` the API still answers `[]` (an empty repo's listing): poll for the file.
 async fn file_via_api(ctx: &Ctx, fj: &Forgejo, token: &str, u: &User, repo: &str, path: &str) -> R<String> {
-    let v = json(fj.as_token(ctx, token, Method::GET, &format!("/repos/{}/{repo}/contents/{path}", u.name)), APP, "read file").await?;
-    let b64: String = v["content"].as_str().at(APP, "file content")?.chars().filter(|c| !c.is_whitespace()).collect();
+    let b64: String = poll(APP, "file content", Duration::from_secs(30), Duration::from_millis(500), || async {
+        let v = json(fj.as_token(ctx, token, Method::GET, &format!("/repos/{}/{repo}/contents/{path}", u.name)), APP, "read file").await?;
+        Ok(v["content"].as_str().map(|c| c.chars().filter(|c| !c.is_whitespace()).collect::<String>()))
+    })
+    .await?;
     String::from_utf8(b64url_decode(&b64).at(APP, "base64")?).at(APP, "utf-8")
 }
 
