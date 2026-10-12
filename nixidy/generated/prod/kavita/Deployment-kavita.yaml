@@ -27,7 +27,7 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - image: jvmilazz0/kavita:0.8.9@sha256:1f2acae7466d022f037ea09f7989eb7c487f916b881174c7a6de33dbfa8acb39
+        - image: jvmilazz0/kavita:0.9.1@sha256:31181a32f0dda73cae68721867028a7253d57881b58bea5754cd9e578e75421a
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0

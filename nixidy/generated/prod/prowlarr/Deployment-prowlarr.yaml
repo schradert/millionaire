@@ -36,7 +36,7 @@ spec:
                 name: prowlarr
             - configMapRef:
                 name: prowlarr
-          image: ghcr.io/home-operations/prowlarr:2.3.4.5307@sha256:4df82f58d39fde43a206c4bba126226b63ecf2394df202e94c31afc9faae3ed9
+          image: ghcr.io/home-operations/prowlarr:2.6.5.5623@sha256:6152751c3ea2e7751564f5952173d5e83eed0e09f3fabd2cb6bdb58690c39e2f
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0

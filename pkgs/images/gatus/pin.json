@@ -1,6 +1,6 @@
 {
-  "version": "v5.34.0",
-  "digest": "sha256:3fff895e77d35ee62e898860f4613755bc2344127d93e3f326429d40270e2115",
+  "version": "v5.37.0",
+  "digest": "sha256:094eb186e55235db367e90e9d56140e5897b7044c41de23cde4cc18e6da1242e",
   "source": {
     "type": "oci-tag",
     "repository": "twinproduction/gatus",

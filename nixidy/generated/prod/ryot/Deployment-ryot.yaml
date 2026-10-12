@@ -36,7 +36,7 @@ spec:
                 name: ryot
             - secretRef:
                 name: ryot
-          image: ignisda/ryot:v10.3.6@sha256:b3b30436bb272f5b7b6f9fd9f60af494cf4300bec61fc7b43daa5bb0b1f01c33
+          image: ignisda/ryot:v10.5.3@sha256:6a475fb30ac3715444e79ff7721ddb24f16cb31314a91c4b0e3b47d7f053b60b
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0

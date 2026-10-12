@@ -1,6 +1,6 @@
 {
-  "version": "2.28.3",
-  "digest": "sha256:e623d73af9cac82d1b50784c83e0cf2a4b83bfd2cfe8d5b67809a2fc94e043ac",
+  "version": "2.35.2",
+  "digest": "sha256:7a007c766426c1877758ddc5cb87a965ac131fc78c582ce0083d922d51ae945c",
   "source": {
     "type": "oci-tag",
     "repository": "nixos/nix",

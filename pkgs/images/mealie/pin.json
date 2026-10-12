@@ -1,6 +1,6 @@
 {
-  "version": "v3.0.1",
-  "digest": "sha256:4d7542becc4f5a2a87c13f1073c974430006f56207278ade541bd93450b8fb5f",
+  "version": "v3.28.0",
+  "digest": "sha256:8b02290f4d1806f02acac6f25f6d48a3c965612fda1f8e914d5af533276f8688",
   "source": {
     "type": "oci-tag",
     "repository": "ghcr.io/mealie-recipes/mealie"

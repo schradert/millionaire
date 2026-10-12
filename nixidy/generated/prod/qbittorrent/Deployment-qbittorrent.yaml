@@ -88,7 +88,7 @@ spec:
               name: config
             - mountPath: /tmp
               name: tmp
-        - image: ghcr.io/home-operations/qbittorrent:5.1.4@sha256:bb82ad6668f8eda1d0fcce6c1341498bfa879155bb1295cd9d314a2c35c07a01
+        - image: ghcr.io/home-operations/qbittorrent:5.2.4@sha256:9307627e03981d5473aa31175ea76ed56ea3752333ca49d601b6af45e281e7ba
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0
@@ -173,7 +173,7 @@ spec:
           env:
             - name: QBT_SETTINGS
               value: '{"BitTorrent":{"Session\\AnonymousModeEnabled":"true","Session\\DHTEnabled":"false","Session\\Encryption":"1","Session\\Interface":"tun0","Session\\InterfaceName":"tun0","Session\\LSDEnabled":"false","Session\\PeXEnabled":"false"},"Network":{"PortForwardingEnabled":"false"},"Preferences":{"WebUI\\AuthSubnetWhitelistEnabled":"false","WebUI\\LocalHostAuth":"false","WebUI\\UseUPnP":"false","WebUI\\Username":"admin"}}'
-          image: ghcr.io/home-operations/qbittorrent:5.1.4@sha256:bb82ad6668f8eda1d0fcce6c1341498bfa879155bb1295cd9d314a2c35c07a01
+          image: ghcr.io/home-operations/qbittorrent:5.2.4@sha256:9307627e03981d5473aa31175ea76ed56ea3752333ca49d601b6af45e281e7ba
           name: admin
           volumeMounts:
             - mountPath: /secrets/admin

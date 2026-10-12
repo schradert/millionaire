@@ -36,7 +36,7 @@ spec:
                 name: maloja
             - secretRef:
                 name: maloja
-          image: krateng/maloja:3.2.4@sha256:4ecea26058d2ca5168a8d53820279942d28f0606664cea6425f42371d5d88f95
+          image: krateng/maloja:3.2.7@sha256:8864145b0107f9edfdd6672b366deb84378f4b20ea48730206bc5a56e3f82460
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0
@@ -97,7 +97,7 @@ spec:
                 secretKeyRef:
                   key: token
                   name: navidrome-maloja
-          image: krateng/maloja:3.2.4@sha256:4ecea26058d2ca5168a8d53820279942d28f0606664cea6425f42371d5d88f95
+          image: krateng/maloja:3.2.7@sha256:8864145b0107f9edfdd6672b366deb84378f4b20ea48730206bc5a56e3f82460
           name: apikeys
           volumeMounts:
             - mountPath: /mljdata

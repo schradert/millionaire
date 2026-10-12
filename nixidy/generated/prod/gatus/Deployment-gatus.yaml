@@ -21,7 +21,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 2939ee5e71eef26a49bb8f0990a18cad63141f2356608b327fca54a208615c44
+        checksum/config: 37e41a1b6e46dc47bfd33c1ffc27b38c1c1c9372d98d1dd94349dfda3f34db69
       labels:
         app.kubernetes.io/instance: gatus
         app.kubernetes.io/name: gatus
@@ -33,7 +33,7 @@ spec:
                 name: gatus
             - secretRef:
                 name: gatus
-          image: twinproduction/gatus:v5.34.0@sha256:3fff895e77d35ee62e898860f4613755bc2344127d93e3f326429d40270e2115
+          image: twinproduction/gatus:v5.37.0@sha256:094eb186e55235db367e90e9d56140e5897b7044c41de23cde4cc18e6da1242e
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:

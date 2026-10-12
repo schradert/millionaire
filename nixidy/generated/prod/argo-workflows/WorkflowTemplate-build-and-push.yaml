@@ -25,7 +25,7 @@ spec:
         command:
           - sh
           - -c
-        image: alpine/git:2.47.2@sha256:062a01ad7a0eb17cff382bc5e26086b4d710e56dfdfdf001109a49b6d9bd378c
+        image: alpine/git:2.54.0@sha256:ce84fd6a057b4dc5cf5009da2dd832f1c6d096c1984bf50496cf3c256402264d
         volumeMounts:
           - mountPath: /workspace
             name: workspace
@@ -45,7 +45,7 @@ spec:
         env:
           - name: REGISTRY_AUTH_FILE
             value: /registry-auth/config.json
-        image: nixos/nix:2.28.3@sha256:e623d73af9cac82d1b50784c83e0cf2a4b83bfd2cfe8d5b67809a2fc94e043ac
+        image: nixos/nix:2.35.2@sha256:7a007c766426c1877758ddc5cb87a965ac131fc78c582ce0083d922d51ae945c
         resources:
           limits:
             memory: 8Gi
