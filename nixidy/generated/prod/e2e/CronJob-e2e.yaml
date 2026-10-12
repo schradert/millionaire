@@ -24,7 +24,7 @@ spec:
                   value: cluster
                 - name: FLOCCUS_REPO
                   value: tristan/bookmarks
-              image: harbor.trdos.me/library/e2e:0.3.1@sha256:e17ef1cc1ca4d1e01fa2e398f36b7059055d11c426c0bb294756968c9d479c7b
+              image: harbor.trdos.me/library/e2e:0.3.2@sha256:aaa3c5d21e9e8d441af61c6fca95439ecf9a863ed62866d0c218f5e70a96b5e1
               name: e2e
               resources:
                 limits:
