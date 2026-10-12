@@ -347,6 +347,25 @@ impl Seerr {
         Ok(Seerr { base, cookie })
     }
 
+    /// `login`, then proof the session may list requests. Seerr (develop) has answered 403 "You do not have
+    /// permission" to the first call after a login once, and fine on a fresh login seconds later: up to
+    /// three sessions.
+    pub async fn session(ctx: &Ctx) -> R<Self> {
+        let mut last = None;
+        for attempt in 0..3u64 {
+            if attempt > 0 {
+                tokio::time::sleep(std::time::Duration::from_secs(3 * attempt)).await;
+            }
+            let s = Seerr::login(ctx).await?;
+            match send(s.req(ctx, Method::GET, "/request?take=1&skip=0&filter=all"), "seerr", "list requests").await {
+                Ok(_) => return Ok(s),
+                Err(e) if e.msg.starts_with("HTTP 403") => last = Some(e),
+                Err(e) => return Err(e),
+            }
+        }
+        Err(last.expect("three failed attempts"))
+    }
+
     pub fn req(&self, ctx: &Ctx, m: Method, path: &str) -> RequestBuilder {
         ctx.http.request(m, format!("{}/api/v1{}", self.base, path)).header("Cookie", &self.cookie)
     }
