@@ -20,6 +20,8 @@ spec:
   serviceName: alertmanager-headless
   template:
     metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: alertmanager
       labels:
         app.kubernetes.io/instance: alertmanager
         app.kubernetes.io/name: alertmanager
@@ -29,10 +31,38 @@ spec:
         - args:
             - --watched-dir=/etc/alertmanager
             - --reload-url=http://127.0.0.1:9093/-/reload
+            - --listen-address=0.0.0.0:8080
           image: quay.io/prometheus-operator/prometheus-config-reloader:v0.81.0@sha256:959d47672fbff2776a04ec62b8afcec89e8c036af84dc5fade50019dab212746
           imagePullPolicy: IfNotPresent
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+              scheme: HTTP
+            initialDelaySeconds: 2
+            periodSeconds: 10
           name: alertmanager-configmap-reload
-          resources: {}
+          ports:
+            - containerPort: 8080
+              name: metrics
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+              scheme: HTTP
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
           volumeMounts:
             - mountPath: /etc/alertmanager
               name: config
@@ -46,12 +76,14 @@ spec:
                 fieldRef:
                   apiVersion: v1
                   fieldPath: status.podIP
-          image: quay.io/prometheus/alertmanager:v0.31.1@sha256:88b605de9aba0410775c1eb3438f951115054e0d307f23f274a4c705f51630c1
+          image: quay.io/prometheus/alertmanager:v0.34.1@sha256:e9733bafb1bdef9b00e25a21f8f99dc26a22224bf16641ad754d1649f4c3357a
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:
-              path: /
+              path: /-/healthy
               port: http
+            initialDelaySeconds: 2
+            periodSeconds: 10
           name: alertmanager
           ports:
             - containerPort: 9093
@@ -59,13 +91,21 @@ spec:
               protocol: TCP
           readinessProbe:
             httpGet:
-              path: /
+              path: /-/ready
               port: http
+            periodSeconds: 10
           resources: {}
           securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
             runAsGroup: 65534
             runAsNonRoot: true
             runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
           volumeMounts:
             - mountPath: /etc/alertmanager
               name: config
@@ -84,7 +124,9 @@ spec:
             name: alertmanager
           name: config
   volumeClaimTemplates:
-    - metadata:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
         name: storage
       spec:
         accessModes:
