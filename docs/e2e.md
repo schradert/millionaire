@@ -1,0 +1,144 @@
+# End-to-end tests
+
+`e2e` (`apps/e2e`, a Rust crate) creates clearly tagged test data in the live cluster, pushes it through real requests across services, checks the result, and deletes everything it created, so the system can be trusted before manual checks. It never touches production data and never uses the owner's account.
+
+```sh
+e2e                              # default tier of every runner
+e2e run --family identity,notify # only these families (comma list)
+e2e run --flow forgejo-repo      # one flow (name or family/name)
+e2e run --full                   # also the long flows (media: VPN leak tests, downloads over the VPN)
+e2e run --keep                   # leave the data in place (remove later with cleanup --run)
+e2e cleanup --all --dry-run      # list leftovers of crashed runs, then run without --dry-run
+e2e cleanup --run <id> [--family media]
+e2e list                         # families and flows (runs the crate locally)
+media-e2e <args>                 # alias: e2e <cmd> --family media <args>
+```
+
+Run them from the devshell. Each runner is a Job created from a suspended CronJob, whose log is followed and saved to `$TMPDIR/e2e/<run>/<runner>.{log,json}`; off-LAN set `KUBECTL` as in `docs/manual-steps.md` step 9. Exit status is non-zero if any flow, sweep or residue check failed.
+
+## How a run works
+
+1. The run gets a tag, `e2e-<YYYYMMDD>-<HHMMSS>-<4 random>`. Every object the run creates carries it in its name, path, label, comment or email (Keycloak and Forgejo users `<tag>-admin`, repos `<tag>-repo`, ntfy topic `<tag>`, Alertmanager label `e2e=<tag>`, hidden folders `.<tag>`, test libraries and tags named after it).
+2. Each flow runs `setup`, `act`, `assert`, then `cleanup`. `cleanup` runs even when an earlier phase failed, and a failing `cleanup` fails the flow. A flow that cannot run here (credential not mounted, app scaled to zero) is reported as `skip`, not `fail`.
+3. After the flows, each family involved runs its sweep (deletes everything in scope carrying a marker), then its residue check (asks every app for anything carrying the marker; any survivor fails the run), then its finalizer.
+4. The report is a table plus one JSON document between `=== E2E REPORT JSON BEGIN/END ===` (`family`, `flow`, `status`, `ms`, `error {app, step, message}`, `steps` with their phase).
+
+## Runners
+
+A family belongs to one runner, set in the registry (`apps/e2e/src/flow.rs`); a Job with `E2E_RUNNER` set runs only its own families, and the devshell script starts the Jobs the requested families need.
+
+| Runner | CronJob | Families | Why |
+|---|---|---|---|
+| `media` | `media/media-e2e` (`nixidy/apps/media/media-e2e.nix`) | `media` | mounts the media volumes and the arr/Jellyfin secrets; execs into qBittorrent for the VPN tests |
+| `cluster` | `e2e/e2e` (`nixidy/apps/e2e.nix`) | everything else | HTTP only; no volumes, no Kubernetes API access |
+
+The `cluster` runner reaches apps through the internal gateway by hostname (`https://<app>.trdos.me`), the same path a client uses, so no network policy changes are needed: enforced namespaces already admit the gateway. Where a probe must be in-cluster (Alertmanager's API) the namespace has no default-deny policy (`observability`, `identity`); a future in-cluster probe into an enforced namespace needs an `extraIngress` rule on that namespace in `nixidy/apps/default.nix` naming the pod label `app.kubernetes.io/name: e2e` (media-e2e's rules in `qbittorrent.nix`, `navidrome.nix`, `maintainerr.nix` are the pattern). ntfy has no public DNS: the Job pins `ntfy.trdos.me` with `hostAliases` like Alertmanager does.
+
+The image is `harbor.trdos.me/library/e2e` (`image publish e2e`, then add `pkgs/images/e2e/pin.json` in the shape of `pkgs/images/media-e2e/pin.json`). Until that pin exists the `cluster` runner is not rendered and the media runner keeps the old `library/media-e2e` pin.
+
+## Authentication
+
+- **Keycloak.** A declarative confidential client `e2e` (`nixidy/apps/e2e.nix`, service-account roles applied by `keycloak-auth.nix`) manages users through the admin API (client credentials) and mints tokens for them with the password grant. Per run it creates `<tag>-admin` (groups `admin`, `family`) and `<tag>-family` (group `family`) with random passwords, and deletes them at cleanup. Tokens carry `groups` and the `oauth2-proxy` audience like `sso-token`'s, so they pass oauth2-proxy as `Authorization: Bearer`. Browser-style logins walk Keycloak's real login pages with the test user's password (username page, password page), so the passkey-first browser flow is exercised.
+- **Test users' emails** are `<tag>@e2e.trdos.me` (an ordinary subdomain of the owner's domain: `.invalid` is a special-use TLD that apps validating with Python's `email-validator` refuse). Nothing is ever sent to them.
+- **Cleanup scopes are strict.** `--run <id>` is accepted only if `e2e-<id>` is, in full, a run marker (`YYYYMMDD-HHMMSS-xxxx`); anything else is refused, so a typo can never widen a match.
+- **The e2e client can manage every user** (`manage-users`). The client code enforces the rule that matters: it creates and deletes only usernames carrying a run marker. Its secret lives only in the `e2e` namespace (an ExternalSecret from the operator's Secret).
+- **Apps with their own accounts** (Forgejo, later Miniflux, Baikal, ...) use a dedicated service credential from the cluster, never `tristan`: Forgejo's `forgejo-admin` creates run-tagged local users, and each mints its own token.
+- Tests never read the owner's Bitwarden items, tokens or passwords; the real Floccus repo `tristan/bookmarks` is probed read-only without credentials.
+
+## Production safety rules
+
+1. Tag everything with the run tag; create nothing without it (helpers refuse unmarked names).
+2. Delete only what carries a marker. Sweeps match by marker (`--run <id>`: that run's; `--all`: any run's), never by "looks like a test".
+3. Never touch untagged data: no reading or writing the owner's repos, libraries, accounts or topics. Read-only probes of real endpoints must be unauthenticated or use a test user.
+4. `cleanup --all --dry-run` lists what would go before anything is deleted.
+5. The residue check fails the run if any tagged object survives; a check that cannot run is reported, not silently passed.
+6. No owner credentials. Test users are created per run and deleted; the e2e client and service accounts are scoped to the `e2e` namespace's secrets.
+7. Test content is public domain or freely licensed (Big Buck Bunny, Sintel, Project Gutenberg, LibriVox, ...), or generated.
+8. Things that cannot be deleted age out and are named in the report: ntfy messages (12 h cache) on the run's topic and on `e2e-alerts`. Alertmanager's test alert goes to `e2e-alerts` (a route in `alertmanager.nix`), which no device subscribes to, so it never pages anyone, and expires by itself after five minutes if the Job dies.
+
+## Implemented flows
+
+| Family | Flow | Create | Propagate | Validate | Delete |
+|---|---|---|---|---|---|
+| identity | `keycloak-user` | test users (admin+family, family) | password grant | token issuer, subject, `groups`, audience `oauth2-proxy`; wrong password refused | sweep |
+| identity | `oidc-mealie` | both users' Mealie accounts (OIDC signup) | Keycloak login pages, Mealie callback | email linked, admin only from the `admin` group | the admin token deletes the family user, then the admin (a refused delete is checked against the user list; the sweep's janitor login is the fallback) |
+| identity | `proxy-bearer` | (users) | Alertmanager behind oauth2-proxy | no token: redirect to Keycloak; admin bearer: 200; family bearer: 403 | sweep |
+| identity | `forgejo-token` | Forgejo user, token | direct `/api` route | anonymous 401, token resolves to the user | admin deletes the user |
+| identity | `user-lifecycle` | throwaway user | token grant, login pages | works, then after deletion no token and the login page refuses | the flow itself |
+| notify | `ntfy-roundtrip` | message on topic `<tag>` | live stream and cache | body and id equal | ages out |
+| notify | `alertmanager-ntfy` | synthetic alert `E2EAlert{e2e=<tag>}` | Alertmanager route, ntfy | firing then resolved message within `E2E_ALERT_TIMEOUT` (90 s) | resolved by the flow; sweep resolves leftovers |
+| git | `forgejo-repo` | repo `<tag>-repo` | push and clone over https (`git/` route) | content, subject, API view and head sha match | repo deleted and checked 404, user purged |
+| git | `bookmarks-floccus` | XBEL repo `<tag>-bookmarks` | two clones sync | route reaches Forgejo (401) for a browser User-Agent, other repos stay behind oauth2-proxy, 3 bookmarks converge | repo and user |
+| media | `sso` ... `prowlarr`, `vpn-*` | see `e2e list` | Servarr, Jellyfin, Navidrome, Kavita, Komga, ... | per flow | markers on hidden folders, libraries, tags, API keys |
+
+## Flow matrix
+
+Every service in `docs/connections.md`. **Status:** implemented · planned · manual (not testable without a person or hardware). **Credential:** `K` = only the e2e Keycloak user (bearer token or Keycloak login pages), `S` = a service credential from the cluster that is not the owner's (an app-bootstrap-style secret: Bitwarden or a generated Kubernetes Secret), `SA` = a Kubernetes ServiceAccount with namespaced RBAC, `-` = none. Planned rows are intentions, not verified against the apps.
+
+| Service | Family | Create → propagate → validate → delete | Status | Cred. |
+|---|---|---|---|---|
+| keycloak | identity | test user → token and login pages → claims, wrong password → user deleted, login refused | implemented | K (client `e2e`) |
+| headscale | identity | tagged user and pre-auth key → register an ephemeral node → node visible, ping the hub → node, key, user deleted | planned | S (headscale API key) |
+| mealie | identity | OIDC signup (done); then a tagged recipe through the API → read back, search → delete | login implemented; data planned | K |
+| sure | identity | OIDC login as the test user (no link-account page) → tagged account → delete | planned | K for login, S for the API |
+| bulwark (webmail) | identity | OIDC login page as the test user; mail send/receive is under notify | planned | K |
+| passkey enrollment, TOTP prompts | identity | needs a WebAuthn authenticator; TOTP could be computed in the test | manual (passkey), planned (TOTP) | - |
+| ntfy | notify | tagged topic → publish, live and cached receive | implemented | - |
+| alertmanager | notify | synthetic alert → route → ntfy firing and resolved; oauth2-proxy bearer and group check | implemented | - / K |
+| Stalwart mail (via bulwark, keycloak, forgejo) | notify | tagged mailbox → SMTP send from the e2e namespace → JMAP read → delete (needs `extraIngress` for port 25 on `mail`) | planned | S (Stalwart admin) |
+| forgejo | git | tagged user and repo → push, clone → API, delete | implemented | S (`forgejo-admin`) |
+| Bookmarks (Floccus, dashy `bookmarks.html`) | git | XBEL repo sync between two clones (done); the real route is probed read-only | implemented | S (`forgejo-admin`) |
+| jellyfin | media | library import and playback (`movie-chain`, `sonarr-chain`); OIDC login as the test user | implemented; OIDC login planned | S (admin) / K |
+| navidrome, maloja, multi-scrobbler | media | track → scan → scrobble to Maloja (`music`, `lidarr`) | implemented | S |
+| audiobookshelf, kavita, komga | media | EPUB or audiobook into a test library → OPDS or API read → library deleted (`books-*`, `audiobookshelf`) | implemented | S |
+| sonarr, radarr, lidarr, prowlarr, seerr, maintainerr | media | tagged series, movie, artist, request, rule group → import → delete (`*-chain`, `seerr`, `lidarr`, `prowlarr`, `maintainerr`) | implemented | S (API keys) |
+| bazarr | media | subtitle for a test movie | planned (skips until it has an API key and subtitle account) | S |
+| qbittorrent + gluetun | media | tagged torrent over the VPN; IP, DNS, kill-switch, tracker leak tests (`vpn-*`, `--full`) | implemented | S |
+| dvd-webdav | media | test ISO served with ranges, basic auth (`kodi`) | implemented | S |
+| games-webdav | media | tagged ROM file PUT/GET/DELETE | planned | S |
+| autobrr, shoko, ryot | media | tagged filter, series, tracked item through the API → delete | planned | S (ryot: K after OIDC) |
+| owncast, jitsi | media | RTMP test stream into owncast (needs ffmpeg in the image) → HLS playlist; jitsi web and BOSH smoke | planned | - |
+| immich | files | OIDC login as the test user → API key → upload a generated image → thumbnail → delete asset and key | planned | K |
+| baikal | files | tagged calendar event and contact over CalDAV/CardDAV → REPORT → delete | planned | S (`baikal/admin-password`) |
+| syncthing | files | tagged folder on the hub through the REST API; a test device pod syncs a file | planned | S (API key) |
+| webdav (dav) | files | tagged file PUT/GET/DELETE with a bearer token through oauth2-proxy | planned | K |
+| kosync | files | tagged KOReader account → push and pull progress → delete | planned | - |
+| atuin | files | tagged account → sync one history record → delete the account | planned | - (if registration is open) else S |
+| home-assistant | home | OIDC login; tagged helper entity through the REST API → state change → delete | planned | K for login, S (long-lived token) for the API |
+| homepage, homarr, dashy, android | home | every portal tile's URL answers (200 or the Keycloak redirect) | planned | K |
+| chirpstack, excalidraw, frigate, logseq, rclone, siyuan, zigbee2mqtt, zwave-js-ui | home | behind oauth2-proxy: admin bearer passes, family bearer is refused where gated; chirpstack gRPC creates and deletes a tagged device | planned | K; S for chirpstack gRPC |
+| miniflux | home | tagged category and feed (served by the Job) → refresh → entry appears → delete | planned | S (a dedicated Miniflux admin, not tristan's) |
+| music-assistant | home | smoke through oauth2-proxy | planned | K |
+| mainsail, obico, spoolman | home | spoolman: tagged filament and spool through the API → delete; others smoke | planned | K |
+| actual | finance | tagged budget file through the sync server → transaction → delete | planned | S (server password) |
+| firefly | finance | tagged account and transaction (personal access token, in-cluster) → read → delete; importer opens without a token | planned | S |
+| bifrost | ai | chat completion through the gateway with a bearer token to a cheap or mock provider, tagged in the request metadata | planned | K (and the provider key already in the cluster) |
+| contextforge | ai | `/mcp` tool list with a bearer token; tagged virtual-server tool registered, called, deleted | planned | K |
+| librechat | ai | OIDC login; tagged conversation → delete | planned | K |
+| promptfoo | ai | smoke through oauth2-proxy | planned | K |
+| Kubernetes MCP | ai | read-only tool call (list namespaces) | planned | SA |
+| prometheus | observability | tagged PrometheusRule firing → Alertmanager → `e2e-alerts` (the full alert chain); query `up` with a bearer token | planned | SA, K |
+| grafana, gatus, status (hyena) | observability | tagged dashboard through the API; Gatus external-endpoint push and status page; Loki push of a tagged log line and query back | planned | K / S (service-account token) |
+| harbor | registry | project `<tag>`, robot, push a generated image, pull it back → delete repository, robot, project | planned | S (Harbor admin) |
+| argocd | registry | tagged Application from a test Forgejo repo into `e2e` → sync, healthy → delete (cascade) | planned | K (argocd accepts the Keycloak token) or S |
+| argo-workflows, argo-rollouts | registry | tagged Workflow submitted and succeeded → deleted; Rollout smoke | planned | K |
+| windmill, sveltekit-demo | registry | windmill: tagged script run through the API → result → delete; sveltekit-demo smoke | planned | S (workspace token) / - |
+| Kubernetes API | storage | tagged ConfigMap and Secret in `e2e` through the ServiceAccount → read → delete | planned | SA |
+| rook-ceph (ceph-block, cephfs) | storage | tagged PVC mounted by a pod → write, read back → delete PVC (and PV released) | planned | SA |
+| rados (object store) | storage | tagged ObjectBucketClaim → put and get an object → delete | planned | SA |
+| backups (VolSync, CNPG) | storage | scratch restore of a tagged PVC; `backup-verify` already covers the real ones monthly | planned | SA |
+| Bitwarden (hosted) | storage | the ClusterSecretStore is Ready and a tagged ExternalSecret resolves (read-only; pushing writes the owner's vault) | planned | SA |
+
+## Which families need what
+
+- **Only the e2e Keycloak user (K):** `identity` (done), the bearer and group-check probes of every oauth2-proxy app (`home` tiles, `ai` smoke, `files/webdav`, `registry` Argo), OIDC logins (Mealie done; Sure, Immich, LibreChat, Home Assistant, Jellyfin, Bulwark), `bifrost`, `contextforge`, `spoolman`.
+- **Need a service credential (S, app-bootstrap style):** `git` (`forgejo-admin`, mounted), `media` (arr API keys, Jellyfin, Kavita, Komga, Audiobookshelf, Navidrome, Maloja, qBittorrent passwords, all mounted in the media runner), and for the planned flows Baikal, Miniflux, Actual, Firefly, Syncthing, Harbor, headscale, Stalwart, Windmill, Home Assistant, chirpstack. Each is an existing Kubernetes Secret or Bitwarden item to be mounted through an ExternalSecret in the `e2e` namespace, as `e2e-forgejo-admin` is.
+- **Only a ServiceAccount (SA):** `storage` and `observability` flows that create tagged Kubernetes objects. They need a Role in `e2e` (or a tagged-object-only ClusterRole), added with the flow.
+
+## Adding a flow
+
+1. Write `async fn(&Ctx, &mut Flow) -> R<()>` steps in the family module (`apps/e2e/src/<family>/flows.rs`); record each check with `f.ok(app, step, detail)` and fail with `Fail::new(app, step, why)` (or `Fail::skip` when the flow cannot run here).
+2. Register it in the family's `flows()` with `FlowDef::new(...)` plus `.setup`, `.assert`, `.cleanup` as needed. `cleanup` must delete only what this flow made.
+3. Extend the family sweep and residue check so a crashed run's leftovers are found by marker.
+4. Name every created object with `ctx.marker`, and mount only the secrets the flow needs in the runner's CronJob.
+5. `cargo test` and `cargo clippy` in `apps/e2e` (a fake-server test for anything with a protocol, as in `web.rs` and `notify/ntfy.rs`), bump the crate version and the image tag in `modules/images.nix`, publish the image, update the pin.
