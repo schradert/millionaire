@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
-  image: harbor.trdos.me/library/app-bootstrap:0.19.2@sha256:e715764c57b0275bfb2d586483c156f1410ca87bac650bfbdb924187f13054ec
-  spec: 57036529b246e25d4d45d6687e332d449568ee4109cb162ba0d689fc1fa0c9ad
+  image: harbor.trdos.me/library/app-bootstrap:0.19.3@sha256:37e151985023c23254a71d250053f53adf74c93fa43176d6d4a9dc236efd35de
+  spec: 2be332635069657ab0832ba10cdfaade6f88b189e38b6c808a35da2e3cfb6fe5
 kind: ConfigMap
 metadata:
   name: contextforge-bootstrap
