@@ -9,8 +9,11 @@
   # activate otherwise.
   ids.gids.nixbld = 350;
   home-manager.sharedModules = [{home.stateVersion = "23.05";}];
-  homebrew.casks = ["zotero"];
-  services.karabiner-elements.enable = true;
+  # nix-darwin's karabiner module is broken since Karabiner-Elements 15
+  # (nix-darwin/nix-darwin#1041, #1679): its user LaunchAgent symlink dangles
+  # and aborts user activation. The cask installs the app with its own agents.
+  homebrew.casks = ["zotero" "karabiner-elements"];
+  services.karabiner-elements.enable = false;
   # Native aarch64-linux builds (gargoyle) in a VM instead of falcon's binfmt
   # emulation; speedFactor above falcon's emulated entry (static/builders.nix: 2).
   nix.linux-builder = {
