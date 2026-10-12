@@ -1,6 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-options: Replace=true
   labels:
     app.kubernetes.io/component: controller-manager
     app.kubernetes.io/instance: argo-events
