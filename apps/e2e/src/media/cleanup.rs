@@ -6,30 +6,11 @@ use std::{fs, time::Duration};
 use reqwest::Method;
 use serde_json::{json, Value};
 
+use super::apps::{maintainerr_url, maloja_url, Abs, Arr, Jellyfin, Kavita, Komga, Navidrome, Qbt, Seerr};
 use crate::{
-    apps::{maintainerr_url, maloja_url, Abs, Arr, Jellyfin, Kavita, Komga, Navidrome, Qbt, Seerr},
-    ctx::{enc, find_marker, json, media_root, poll, secret, send, Ctx, Fail, R},
+    ctx::{enc, json, media_root, poll, secret, send, Ctx, Fail, Scope, R},
     report::Flow,
 };
-
-pub enum Scope {
-    /// One run's marker.
-    Run(String),
-    /// Any run's marker (orphans from crashed runs).
-    All,
-}
-
-impl Scope {
-    pub fn hit(&self, s: &str) -> bool {
-        match self {
-            Scope::Run(m) => s.contains(m.as_str()),
-            Scope::All => find_marker(s).is_some(),
-        }
-    }
-    fn hit_v(&self, v: &Value) -> bool {
-        v.as_str().is_some_and(|s| self.hit(s))
-    }
-}
 
 const LIBS: &[&str] = &["movies", "tv", "music", "books", "audiobooks", "comics", "dvd", "downloads", "podcasts"];
 

@@ -16,11 +16,15 @@ spec:
           containers:
             - args:
                 - run
+                - --family
+                - media
               env:
                 - name: ADMIN_EMAIL
                   value: t0rdos@pm.me
                 - name: DOMAIN
                   value: trdos.me
+                - name: E2E_RUNNER
+                  value: media
               image: harbor.trdos.me/library/media-e2e:0.1.8@sha256:0da310025a405df19054a10f3d6054b36d1640e00ddc140efd6541f5d489693f
               name: media-e2e
               resources:

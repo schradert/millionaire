@@ -1,5 +1,7 @@
-# Media-stack end-to-end tests (apps/media-e2e). A suspended CronJob holds the Job template;
-# `media-e2e` in the devshell creates a Job from it, follows the log and saves the report.
+# Media family of the platform end-to-end tests (apps/e2e). A suspended CronJob holds the Job
+# template; `e2e run --family media` (alias `media-e2e`) in the devshell creates a Job from it,
+# follows the log and saves the report. It lives in `media` because the family mounts the media
+# volumes. The image is library/e2e once pinned, else the old library/media-e2e (same CLI).
 # Test data lives only under `.e2e-<run>` folders and objects named `e2e-<run>`, and is removed
 # (and checked gone) at the end of every run. See docs/manual-steps.md.
 {config, ...}: {
@@ -10,6 +12,7 @@
   }: let
     inherit (config.canivete.meta) domain people;
     name = "media-e2e";
+    image = pinned.images.e2e or (pinned.images.media-e2e or null);
     libs = ["movies" "tv" "music" "books" "audiobooks" "comics" "dvd" "downloads" "podcasts"];
     # Secret name -> mounted at /secrets/<name>.
     secrets = [
@@ -28,7 +31,7 @@
       "qbittorrent-admin"
     ];
   in {
-    applications.${name} = lib.mkIf (pinned.images ? media-e2e) {
+    applications.${name} = lib.mkIf (image != null) {
       namespace = "media";
       resources = {
         serviceAccounts.${name} = {};
@@ -84,9 +87,10 @@
                 };
                 containers = lib.toList {
                   inherit name;
-                  image = with pinned.images.media-e2e; "${repository}:${tag}@${digest}";
-                  args = ["run"];
+                  image = with image; "${repository}:${tag}@${digest}";
+                  args = ["run" "--family" "media"];
                   env = lib.mapAttrsToList (name: value: {inherit name value;}) {
+                    E2E_RUNNER = "media";
                     DOMAIN = domain;
                     ADMIN_EMAIL = people.my.profiles.personal.email;
                   };

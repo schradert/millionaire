@@ -7,6 +7,7 @@ use serde_json::{json, Value};
 use crate::ctx::{Fail, R};
 
 pub struct Step {
+    pub phase: &'static str,
     pub app: String,
     pub name: String,
     pub detail: String,
@@ -14,7 +15,10 @@ pub struct Step {
 }
 
 pub struct Flow {
+    pub family: String,
     pub name: String,
+    /// The phase (setup, act, assert, cleanup) steps are recorded under.
+    pub phase: &'static str,
     pub steps: Vec<Step>,
     started: Instant,
     last: Instant,
@@ -26,7 +30,9 @@ impl Flow {
     pub fn new(name: &str) -> Self {
         let now = Instant::now();
         Flow {
+            family: String::new(),
             name: name.into(),
+            phase: "",
             steps: Vec::new(),
             started: now,
             last: now,
@@ -40,6 +46,7 @@ impl Flow {
         let detail = detail.into();
         println!("  [{}] {app}: {name} ok {detail}", self.name);
         self.steps.push(Step {
+            phase: self.phase,
             app: app.into(),
             name: name.into(),
             detail,
@@ -73,24 +80,25 @@ impl Flow {
             _ => Value::Null,
         };
         json!({
+            "family": self.family,
             "flow": self.name,
             "status": self.status(),
             "ms": self.ms as u64,
             "error": err,
-            "steps": self.steps.iter().map(|s| json!({ "app": s.app, "step": s.name, "detail": s.detail, "ms": s.ms as u64 })).collect::<Vec<_>>(),
+            "steps": self.steps.iter().map(|s| json!({ "phase": s.phase, "app": s.app, "step": s.name, "detail": s.detail, "ms": s.ms as u64 })).collect::<Vec<_>>(),
         })
     }
 }
 
 pub fn print(run: &str, kind: &str, flows: &[Flow]) {
     println!();
-    println!("{:<26} {:<6} {:>8}  FAILING APP / STEP / REASON", "FLOW", "RESULT", "SECONDS");
+    println!("{:<10} {:<26} {:<6} {:>8}  FAILING APP / STEP / REASON", "FAMILY", "FLOW", "RESULT", "SECONDS");
     for f in flows {
         let why = match &f.outcome {
             Some(Err(e)) => format!("{} / {} / {}", e.app, e.step, e.msg),
             _ => String::new(),
         };
-        println!("{:<26} {:<6} {:>8.1}  {}", f.name, f.status().to_uppercase(), f.ms as f64 / 1000.0, why);
+        println!("{:<10} {:<26} {:<6} {:>8.1}  {}", f.family, f.name, f.status().to_uppercase(), f.ms as f64 / 1000.0, why);
     }
     let count = |s: &str| flows.iter().filter(|f| f.status() == s).count();
     println!("pass {}  fail {}  skip {}", count("pass"), count("fail"), count("skip"));

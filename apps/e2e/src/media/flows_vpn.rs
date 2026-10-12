@@ -4,8 +4,8 @@ use std::time::Duration;
 
 use serde_json::Value;
 
+use super::apps::Qbt;
 use crate::{
-    apps::Qbt,
     ctx::{enc, hex, ipv4s, kexec, kubectl, poll, var, xorshift, At, Ctx, Fail, R},
     report::Flow,
 };
