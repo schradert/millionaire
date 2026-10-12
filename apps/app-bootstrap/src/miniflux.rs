@@ -112,7 +112,9 @@ fn form_fields(html: &str) -> Vec<(String, String)> {
     let form = html.split("<form").nth(1).unwrap_or(html);
     let form = form.split("</form>").next().unwrap_or(form);
     let mut fields = Vec::new();
-    let mut select: Option<String> = None;
+    // (name, first option's value, an option was selected): a select with no `selected`
+    // option submits its first option, as a browser does.
+    let mut select: Option<(String, Option<String>, bool)> = None;
     let mut textarea: Option<String> = None;
     for chunk in form.split('<').skip(1) {
         let (tag, after) = chunk.split_once('>').unwrap_or((chunk, ""));
@@ -132,12 +134,22 @@ fn form_fields(html: &str) -> Vec<(String, String)> {
                     fields.push((n.clone(), html_unescape(&v)));
                 }
             }
-            "select" => select = a.get("name").cloned(),
-            "/select" => select = None,
+            "select" => select = a.get("name").map(|n| (n.clone(), None, false)),
+            "/select" => {
+                if let Some((n, Some(first), false)) = select.take() {
+                    fields.push((n, first));
+                }
+            }
             "option" => {
-                if let (Some(n), true) = (&select, a.contains_key("selected")) {
-                    let v = a.get("value").cloned().unwrap_or_else(|| after.split('<').next().unwrap_or_default().trim().to_string());
-                    fields.push((n.clone(), html_unescape(&v)));
+                if let Some((n, first, chosen)) = select.as_mut() {
+                    let v = html_unescape(&a.get("value").cloned().unwrap_or_else(|| after.split('<').next().unwrap_or_default().trim().to_string()));
+                    if first.is_none() {
+                        *first = Some(v.clone());
+                    }
+                    if a.contains_key("selected") && !*chosen {
+                        *chosen = true;
+                        fields.push((n.clone(), v));
+                    }
                 }
             }
             "textarea" => {
@@ -305,6 +317,10 @@ mod form_tests {
 <option value="private">Private</option>
 <option value="public" selected>Public</option>
 </select>
+<select name="other_visibility">
+<option value="private">Private</option>
+<option value="public">Public</option>
+</select>
 <textarea name="webhook_url">https://x/&amp;y</textarea>
 <button type="submit">Save</button>
 </form></html>"#;
@@ -316,6 +332,7 @@ mod form_tests {
                 ("fever_username".to_string(), String::new()),
                 ("linktaco_enabled".to_string(), "1".to_string()),
                 ("linktaco_link_visibility".to_string(), "public".to_string()),
+                ("other_visibility".to_string(), "private".to_string()),
                 ("webhook_url".to_string(), "https://x/&y".to_string()),
             ]
         );
