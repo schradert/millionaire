@@ -30,6 +30,10 @@
         };
       };
       resources = {
+        # Chart 2.4.27 switched the strategy to Recreate; the live Deployment keeps
+        # its old rollingUpdate fields under a 3-way merge, which the API rejects.
+        deployments.argo-events-controller-manager.metadata.annotations."argocd.argoproj.io/sync-options" = "Replace=true";
+
         eventBus.default.spec.jetstream = {
           version = "2.10.10";
           replicas = 1;
