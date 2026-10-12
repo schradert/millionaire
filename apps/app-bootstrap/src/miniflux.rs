@@ -10,9 +10,9 @@
 //! 2. `GET /v1/users/{user}` as the admin. Missing: `POST /v1/users` with the password,
 //!    `is_admin` and the `sub`. Present but linked elsewhere (or not at all): fail clearly.
 //!    Otherwise make sure it is an admin and that the generated password logs in.
-//! 3. Log in to the web UI as tristan; unless the Fever integration is already on under his
-//!    name, save it with his password. There is no API for integrations, so this posts the
-//!    integrations form, which resets the other integrations; it only runs while Fever is off.
+//! 3. Log in to the web UI as tristan (the form is at `/`; GET `/login` answers 405); unless the
+//!    Fever integration is already on under his name, save it with his password. There is no API
+//!    for integrations, so this posts the integrations form, which resets the other integrations; it only runs while Fever is off.
 
 use std::{collections::BTreeMap, time::Duration};
 
@@ -78,7 +78,8 @@ async fn ensure_fever(base: &str, user: &str, password: &str) -> Result<()> {
         base: base.to_string(),
         cookies: BTreeMap::new(),
     };
-    let token = csrf(&ui.get("/login").await?)?;
+    // The login form is served at "/" (GET /login is POST-only and answers 405).
+    let token = csrf(&ui.get("/").await?)?;
     let r = ui
         .post("/login", &[("csrf", &token), ("username", user), ("password", password)])
         .await?;
@@ -180,4 +181,20 @@ pub async fn run() -> Result<()> {
     }
 
     ensure_fever(base, &user, &password).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::csrf;
+
+    #[test]
+    fn csrf_reads_the_hidden_input() {
+        let html = r#"<form action="/login" method="post"><input type="hidden" name="csrf" value="WMZHICSZC5"><input name="username">"#;
+        assert_eq!(csrf(html).unwrap(), "WMZHICSZC5");
+    }
+
+    #[test]
+    fn csrf_missing_is_an_error() {
+        assert!(csrf("<html></html>").is_err());
+    }
 }
