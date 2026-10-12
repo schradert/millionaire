@@ -1,6 +1,6 @@
 {
-  "version": "v4.0.5",
-  "digest": "sha256:0cb732e24c7d13385066c920e2943fdddfa1d15e6bf5ad99f02e48c50625d022",
+  "version": "v4.1.5",
+  "digest": "sha256:8275c3b970f399e9264ebd5f57e17f554e7494046d0f36f5f05ae2570a601de2",
   "source": {
     "type": "oci-tag",
     "repository": "quay.io/argoproj/argoexec"

@@ -20,7 +20,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/cm: 820dc1bf3ef0a7adaae3a573f6a80178351a8b4fef15c4ec6b1e9dac0e893f3f
+        checksum/cm: 23c0db5cce9bb07a19a0944467713436954f8a919d2c310630eb5366811a63ce
       labels:
         app: server
         app.kubernetes.io/component: server
@@ -53,7 +53,7 @@ spec:
                   fieldPath: metadata.namespace
             - name: ARGO_BASE_HREF
               value: /
-          image: quay.io/argoproj/argocli:v4.0.5@sha256:fbe7d1b5fb6fbb81f8e404905eba07b40e0667f9c1a7d66472d3ed523a4a6bd7
+          image: quay.io/argoproj/argocli:v4.1.5@sha256:e0824b55297b8d7a92351a634ff399d01349e41dc16007abdea0cc00dba7dce8
           imagePullPolicy: Always
           name: argo-server
           ports:

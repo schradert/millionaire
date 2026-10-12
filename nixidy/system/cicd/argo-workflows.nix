@@ -68,8 +68,10 @@ in {
           controller.image.tag = with pinned.images.workflow-controller; "${tag}@${digest}";
           server.image.tag = with pinned.images.argocli; "${tag}@${digest}";
           executor.image.tag = with pinned.images.argoexec; "${tag}@${digest}";
-          crds.upgradeJob.image = with pinned.images.argo-workflows-kubectl; {
-            inherit repository;
+          # Chart 2 applies the full CRDs from the installer image (bundled for its own tag).
+          crds.upgradeJob.image = with pinned.images.argo-workflows-crdinstaller; {
+            registry = "quay.io";
+            repository = lib.removePrefix "quay.io/" repository;
             tag = "${tag}@${digest}";
           };
           server = {

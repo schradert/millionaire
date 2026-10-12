@@ -1,6 +1,6 @@
 {
-  "version": "v4.0.5",
-  "digest": "sha256:4001b58f3c34bb65015c79919157e45f51f4d7450806c64987abdb7dc86f8453",
+  "version": "v4.1.5",
+  "digest": "sha256:328307c9436f40883b2e9ada14ca4082f062159818a1ca9a4e88577d5dbba257",
   "source": {
     "type": "oci-tag",
     "repository": "quay.io/argoproj/workflow-controller"
