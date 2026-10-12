@@ -3,7 +3,7 @@
   "hash": "sha256-31od2U/8MtIYh801eBdOvubzON5GpMM/2kWjkGXguAE=",
   "source": {
     "type": "git-commit",
-    "owner": "DarrinTisdale",
+    "owner": "mdarrint",
     "repo": "zsh-aliases-exa",
     "branch": "master"
   }

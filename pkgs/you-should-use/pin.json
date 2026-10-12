@@ -1,9 +1,10 @@
 {
-  "version": "1.7.3",
-  "hash": "sha256-/uVFyplnlg9mETMi7myIndO6IG7Wr9M7xDFfY1pG5Lc=",
+  "version": "1.11.1",
+  "hash": "sha256-a/DNVxD55Bh6AmSh5C4z4JpZM5xUiQgoaFoDgYPQsbo=",
   "source": {
     "type": "github-tag",
     "owner": "MichaelAquilina",
     "repo": "zsh-you-should-use"
-  }
+  },
+  "constraint": "<2"
 }

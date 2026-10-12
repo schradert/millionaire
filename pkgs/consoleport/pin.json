@@ -1,6 +1,6 @@
 {
-  "version": "2.9.27",
-  "hash": "sha256-I3L6P9zOSgLY4DTS1v63GcgdgLT/BojYK6eeknXWGdw=",
+  "version": "3.3.10",
+  "hash": "sha256-YXWjJ7O3UFtvHXnvCtyWx6Zds8yCIN1Z403mZY27T0k=",
   "source": {
     "type": "url-template",
     "url": "https://github.com/seblindfors/ConsolePort/releases/download/{version}/ConsolePort-{version}.zip",
