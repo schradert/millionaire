@@ -211,13 +211,27 @@ pub async fn run() -> Result<()> {
     .await?;
 
     // Onboarding, one step at a time; each call moves the step forward.
+    let mut signed_in = false;
     for _ in 0..8 {
         let step = h.step().await?;
         println!("onboarding step: {step}");
-        match step.as_str() {
-            "finish" => break,
-            _ if !h.cookies.contains_key("homarr-onboarding-claim") => h.claim().await?,
-            _ => {}
+        // Claiming a step after `user` needs the admin session (403
+        // administrator_required otherwise): a previous run created the admin
+        // and stopped, and the claim cookie died with its pod.
+        if !h.cookies.contains_key("homarr-onboarding-claim") {
+            match step.as_str() {
+                "finish" => break,
+                "start" | "user" => {}
+                _ if !signed_in => {
+                    h.sign_in(&admin, &password).await?;
+                    signed_in = true;
+                    println!("resuming onboarding at {step} as {admin}");
+                }
+                _ => {}
+            }
+            h.claim().await?;
+        } else if step == "finish" {
+            break;
         }
         match step.as_str() {
             "start" => {
@@ -272,7 +286,9 @@ pub async fn run() -> Result<()> {
         return Err("onboarding did not reach finish".into());
     }
 
-    h.sign_in(&admin, &password).await?;
+    if !signed_in {
+        h.sign_in(&admin, &password).await?;
+    }
     println!("signed in as {admin}");
 
     let board_v = h

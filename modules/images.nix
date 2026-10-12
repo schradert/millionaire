@@ -139,7 +139,7 @@
         src = ../apps/jellyfin-bootstrap;
         pkg = amd64Pkgs.rustPlatform.buildRustPackage {
           pname = "jellyfin-bootstrap";
-          version = "0.3.0";
+          version = (builtins.fromTOML (builtins.readFile "${src}/Cargo.toml")).package.version;
           inherit src;
           cargoLock.lockFile = "${src}/Cargo.lock";
         };
@@ -159,7 +159,7 @@
         src = ../apps/app-bootstrap;
         pkg = amd64Pkgs.rustPlatform.buildRustPackage {
           pname = "app-bootstrap";
-          version = "0.19.0";
+          version = (builtins.fromTOML (builtins.readFile "${src}/Cargo.toml")).package.version;
           inherit src;
           cargoLock.lockFile = "${src}/Cargo.lock";
         };
@@ -179,7 +179,7 @@
         src = ../apps/media-e2e;
         pkg = amd64Pkgs.rustPlatform.buildRustPackage {
           pname = "media-e2e";
-          version = "0.1.8";
+          version = (builtins.fromTOML (builtins.readFile "${src}/Cargo.toml")).package.version;
           inherit src;
           cargoLock.lockFile = "${src}/Cargo.lock";
         };

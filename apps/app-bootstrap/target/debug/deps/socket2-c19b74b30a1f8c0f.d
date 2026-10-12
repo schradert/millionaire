@@ -1,9 +1,0 @@
-/private/tmp/claude-501/-Users-tristan-Projects-millionaire--claude-worktrees-funny-dubinsky-ed632f/1bfd6912-00c0-4ab1-8328-0028af75c3a0/scratchpad/wt-miniflux/apps/app-bootstrap/target/debug/deps/socket2-c19b74b30a1f8c0f.d: /Users/tristan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.5/src/lib.rs /Users/tristan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.5/src/sockaddr.rs /Users/tristan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.5/src/socket.rs /Users/tristan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.5/src/sockref.rs /Users/tristan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.5/src/sys/unix.rs
-
-/private/tmp/claude-501/-Users-tristan-Projects-millionaire--claude-worktrees-funny-dubinsky-ed632f/1bfd6912-00c0-4ab1-8328-0028af75c3a0/scratchpad/wt-miniflux/apps/app-bootstrap/target/debug/deps/libsocket2-c19b74b30a1f8c0f.rmeta: /Users/tristan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.5/src/lib.rs /Users/tristan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.5/src/sockaddr.rs /Users/tristan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.5/src/socket.rs /Users/tristan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.5/src/sockref.rs /Users/tristan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.5/src/sys/unix.rs
-
-/Users/tristan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.5/src/lib.rs:
-/Users/tristan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.5/src/sockaddr.rs:
-/Users/tristan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.5/src/socket.rs:
-/Users/tristan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.5/src/sockref.rs:
-/Users/tristan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.5/src/sys/unix.rs:
