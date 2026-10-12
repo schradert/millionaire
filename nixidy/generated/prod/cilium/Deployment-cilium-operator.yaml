@@ -22,7 +22,7 @@ spec:
   template:
     metadata:
       annotations:
-        cilium.io/cilium-configmap-checksum: 1657884205b557b797e730e9c65968e0ec0efb52ccfe91105960fe54e135f5e8
+        cilium.io/cilium-configmap-checksum: 43aa590997fd56db8d2a79e2536e9e54ea14da324c290e95edc0fd59eefc81d2
       labels:
         app.kubernetes.io/name: cilium-operator
         app.kubernetes.io/part-of: cilium
@@ -64,7 +64,7 @@ spec:
               value: 127.0.0.1
             - name: KUBERNETES_SERVICE_PORT
               value: "6443"
-          image: quay.io/cilium/operator-generic:v1.19.4@sha256:1aa2b62735e7d8ab49ee840ae59c346932024c88901579121395c1271b435f71
+          image: quay.io/cilium/operator-generic:v1.20.2@sha256:64d8798350e8569b8e7622563fed6e44dce2625f311e4651b774816516c744fc
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:
@@ -105,6 +105,7 @@ spec:
               name: cilium-config-path
               readOnly: true
       hostNetwork: true
+      hostUsers: true
       nodeSelector:
         kubernetes.io/os: linux
       priorityClassName: system-cluster-critical
