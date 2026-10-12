@@ -31,9 +31,9 @@ spec:
       containers:
         - env:
             - name: PGID
-              value: "1000"
+              value: "0"
             - name: PUID
-              value: "1000"
+              value: "0"
             - name: SIYUAN_ACCESS_AUTH_CODE_BYPASS
               value: "true"
             - name: TZ
