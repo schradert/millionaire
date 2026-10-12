@@ -9,7 +9,6 @@
 }: {
   imports = [
     ./facter
-    ./zfs-legacy.nix
     flake.inputs.srvos.nixosModules.desktop
     flake.inputs.jovian.nixosModules.jovian
     flake.inputs.mynur.nixosModules.decky
@@ -20,8 +19,32 @@
   system.stateVersion = "25.11";
   # node hostname is the LAN IP (ssh target)
   networking.hostName = lib.mkForce "systeamadeck";
-  networking.hostId = "58ea3dec";
-  disko.devices.disk.root.device = "/dev/disk/by-id/nvme-Phison_ESMP001TMN48C3-E21TS_23445M001T05978";
+
+  # Disk layout as OBSERVED on the live device 2026-10-11 (nvme0n1, GPT; no ZFS
+  # pool exists): 500M vfat ESP, 952G ext4 root, 1G swap, by partlabel from the
+  # old dotfiles disko `base` disk. The fleet's ZFS layout (modules/disko.nix,
+  # static/zfs-legacy.nix) does not match this device, so disko is switched off
+  # entirely: it generates no fileSystems here and has no devices to format, so
+  # nixos-anywhere / disko can never wipe the Deck. The host is slated for the
+  # standard layout (modules/disko.nix) on reinstall, once its data is restored
+  # from the cluster; drop this block then.
+  disko.enableConfig = false;
+  disko.devices.disk = lib.mkForce {};
+  disko.devices.zpool = lib.mkForce {};
+  boot.supportedFilesystems = lib.mkForce ["ext4" "vfat"];
+  services.zfs.autoScrub.enable = lib.mkForce false;
+  services.zfs.trim.enable = lib.mkForce false;
+  fileSystems."/" = {
+    device = "/dev/disk/by-partlabel/disk-base-root";
+    fsType = "ext4";
+  };
+  fileSystems."/boot" = {
+    device = "/dev/disk/by-partlabel/disk-base-ESP";
+    fsType = "vfat";
+    options = ["umask=0077"];
+  };
+  swapDevices = [{device = "/dev/disk/by-partlabel/disk-base-swap";}];
+
   # The Deck's patched kernel over srvos' latest-zfs-kernel (modules/disko.nix)
   boot.kernelPackages = lib.mkForce pkgs.linuxPackages_jovian;
   environment.systemPackages = with pkgs; [maliit-keyboard maliit-framework];
