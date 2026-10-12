@@ -1,0 +1,9 @@
+{
+  "version": "3.5.0",
+  "digest": "sha256:baad797777550de2a02df519ea8d41d28f2c5ee19a382ec459d29efd47336bb6",
+  "source": {
+    "type": "oci-tag",
+    "repository": "harbor.trdos.me/library/rsyncd",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}
