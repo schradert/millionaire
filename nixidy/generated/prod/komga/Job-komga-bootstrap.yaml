@@ -22,7 +22,7 @@ spec:
               value: /secrets/admin/password
             - name: KOMGA_URL
               value: http://komga.media.svc.cluster.local:25600
-          image: harbor.trdos.me/library/app-bootstrap:0.19.3@sha256:37e151985023c23254a71d250053f53adf74c93fa43176d6d4a9dc236efd35de
+          image: harbor.trdos.me/library/app-bootstrap:0.19.4@sha256:08f59b95160fe6654a178e4a2e35761f0b793408b18c93643ea2866f399c33ca
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
