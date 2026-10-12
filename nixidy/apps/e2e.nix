@@ -16,7 +16,7 @@
     pinned,
     ...
   }: let
-    inherit (config.canivete.meta) domain;
+    inherit (config.canivete.meta) domain people;
     name = "e2e";
     image = pinned.images.e2e or null;
     # Secret name -> mounted at /secrets/<name>.
@@ -118,6 +118,12 @@
                 restartPolicy = "Never";
                 serviceAccountName = name;
                 automountServiceAccountToken = false;
+                # hyena's ntfy has no public DNS and CoreDNS can't see AdGuard: pinned to its
+                # tailnet IP like Alertmanager's (nixidy/system/observability/alertmanager.nix).
+                hostAliases = lib.toList {
+                  ip = "100.64.0.1";
+                  hostnames = ["ntfy.${domain}"];
+                };
                 securityContext = {
                   runAsNonRoot = true;
                   runAsUser = 65534;
@@ -131,6 +137,8 @@
                   env = lib.mapAttrsToList (name: value: {inherit name value;}) {
                     E2E_RUNNER = "cluster";
                     DOMAIN = domain;
+                    # Read-only route probe (no token): Floccus's repo is never written.
+                    FLOCCUS_REPO = "${people.me}/bookmarks";
                   };
                   resources = {
                     requests = {

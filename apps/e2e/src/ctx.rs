@@ -89,6 +89,8 @@ pub struct State {
     /// Mealie login of each test user, for app-side cleanup: (username, mealie user id, token).
     pub mealie: Vec<(String, String, String)>,
     pub forgejo_users: Vec<String>,
+    /// Repos a flow made, until it deletes them: (owner, repo, owner's token).
+    pub forgejo_repos: Vec<(String, String, String)>,
     /// The lifecycle flow's user while it exists: (keycloak id, username).
     pub life_user: Option<(String, String)>,
     #[cfg(test)]
@@ -206,6 +208,17 @@ fn civil(z: i64) -> (i64, i64, i64) {
     let d = doy - (153 * mp + 2) / 5 + 1;
     let m = if mp < 10 { mp + 3 } else { mp - 9 };
     (yoe + era * 400 + if m <= 2 { 1 } else { 0 }, m, d)
+}
+
+/// Unix seconds as `YYYY-MM-DDTHH:MM:SSZ`.
+pub fn rfc3339(unix: i64) -> String {
+    let (y, m, d) = civil(unix.div_euclid(86400));
+    let t = unix.rem_euclid(86400);
+    format!("{y:04}-{m:02}-{d:02}T{:02}:{:02}:{:02}Z", t / 3600, t % 3600 / 60, t % 60)
+}
+
+pub fn unix_now() -> i64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64
 }
 
 pub fn xorshift(mut x: u64) -> u64 {
@@ -420,6 +433,12 @@ mod tests {
     fn civil_dates() {
         assert_eq!(civil(0), (1970, 1, 1));
         assert_eq!(civil(20737), (2026, 10, 11));
+    }
+
+    #[test]
+    fn rfc3339_times() {
+        assert_eq!(rfc3339(0), "1970-01-01T00:00:00Z");
+        assert_eq!(rfc3339(20737 * 86400 + 3661), "2026-10-11T01:01:01Z");
     }
 
     #[test]

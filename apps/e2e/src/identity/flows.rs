@@ -231,22 +231,6 @@ pub async fn forgejo_token(ctx: &Ctx, f: &mut Flow) -> R<()> {
     Ok(())
 }
 
-pub async fn forgejo_cleanup(ctx: &Ctx, f: &mut Flow) -> R<()> {
-    let names: Vec<String> = std::mem::take(&mut ctx.st().forgejo_users);
-    if names.is_empty() {
-        return Ok(());
-    }
-    let fj = Forgejo::admin()?;
-    for n in names {
-        fj.delete_user(ctx, &n).await?;
-        if fj.user_exists(ctx, &n).await? {
-            return Err(Fail::new("forgejo", "delete user", format!("{n} still exists")));
-        }
-        f.ok("forgejo", "user deleted", n);
-    }
-    Ok(())
-}
-
 // ---------- user lifecycle ----------
 
 /// A throwaway user logs in (token grant and Keycloak's login pages), is deleted, and then can

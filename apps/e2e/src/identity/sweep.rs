@@ -12,7 +12,6 @@ use super::{
 };
 use crate::{
     ctx::{json, new_run_id, send, Ctx, Fail, Scope, R},
-    forgejo::Forgejo,
     report::Flow,
 };
 
@@ -43,17 +42,6 @@ async fn mealie(ctx: &Ctx, kc: &Kc, scope: &Scope, delete: bool) -> R<Vec<String
     let found = res?;
     gone?;
     Ok(found)
-}
-
-async fn forgejo(ctx: &Ctx, scope: &Scope, delete: bool) -> R<Vec<String>> {
-    let fj = Forgejo::admin()?;
-    let names = fj.tagged_users(ctx, scope).await?;
-    if delete {
-        for n in &names {
-            fj.delete_user(ctx, n).await?;
-        }
-    }
-    Ok(names.into_iter().map(|n| format!("forgejo user {n}")).collect())
 }
 
 async fn keycloak(ctx: &Ctx, kc: &Kc, scope: &Scope, delete: bool) -> R<Vec<String>> {
@@ -88,7 +76,7 @@ async fn passes(ctx: &Ctx, scope: &Scope, delete: bool, with_mealie: bool, f: &m
         Ok(_) => f.ok("mealie", "sweep", "dry run: needs a janitor login, not done"),
         Err(e) => skipped.push(format!("mealie: {}", e.msg)),
     }
-    pass!("forgejo", forgejo(ctx, scope, delete).await);
+    pass!("forgejo", crate::forgejo::sweep_users(ctx, scope, delete).await);
     match &kc {
         Ok(kc) => pass!("keycloak", keycloak(ctx, kc, scope, delete).await),
         Err(e) => skipped.push(format!("keycloak: {}", e.msg)),

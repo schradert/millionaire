@@ -5,7 +5,10 @@
 use reqwest::{Method, RequestBuilder};
 use serde_json::{json, Value};
 
-use crate::ctx::{domain, find_marker, json, need_secret, random_hex, send, var, At, Ctx, Fail, Scope, R};
+use crate::{
+    ctx::{domain, find_marker, json, need_secret, random_hex, send, var, At, Ctx, Fail, Scope, R},
+    report::Flow,
+};
 
 const APP: &str = "forgejo";
 
@@ -94,4 +97,44 @@ impl Forgejo {
 
 pub fn login_of(v: &Value) -> Option<&str> {
     v["login"].as_str().or(v["username"].as_str())
+}
+
+/// Flow cleanup: delete the users the flow made (and with them their repos), and check they are gone.
+pub async fn cleanup_users(ctx: &Ctx, f: &mut Flow) -> R<()> {
+    let names: Vec<String> = std::mem::take(&mut ctx.st().forgejo_users);
+    if names.is_empty() {
+        return Ok(());
+    }
+    let fj = Forgejo::admin()?;
+    for n in names {
+        fj.delete_user(ctx, &n).await?;
+        if fj.user_exists(ctx, &n).await? {
+            return Err(Fail::new(APP, "delete user", format!("{n} still exists")));
+        }
+        f.ok(APP, "user deleted", n);
+    }
+    Ok(())
+}
+
+/// Family sweep: tagged users in scope (deleted when `delete`), as report lines.
+pub async fn sweep_users(ctx: &Ctx, scope: &Scope, delete: bool) -> R<Vec<String>> {
+    let fj = Forgejo::admin()?;
+    let names = fj.tagged_users(ctx, scope).await?;
+    if delete {
+        for n in &names {
+            fj.delete_user(ctx, n).await?;
+        }
+    }
+    Ok(names.into_iter().map(|n| format!("forgejo user {n}")).collect())
+}
+
+/// A run-tagged Forgejo user `<marker>-<suffix>` with a token of `scopes`; registered for
+/// [`cleanup_users`].
+pub async fn test_user(ctx: &Ctx, f: &mut Flow, suffix: &str, scopes: &[&str]) -> R<(Forgejo, User, String)> {
+    let fj = Forgejo::admin()?;
+    let user = fj.create_user(ctx, &format!("{}-{suffix}", ctx.marker)).await?;
+    ctx.st().forgejo_users.push(user.name.clone());
+    let token = fj.mint_token(ctx, &user, scopes).await?;
+    f.ok(APP, "test user and token", format!("{} ({})", user.name, scopes.join(",")));
+    Ok((fj, user, token))
 }
