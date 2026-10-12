@@ -175,8 +175,10 @@ in {
             storage.nodes = [
               {
                 name = "sirver";
+                # Bay 7 (serial 6XS41YTD, scsi-35000c50067fb404b) is SMART-failing:
+                # it was osd.7, now listed in removedOsds below. Add the
+                # replacement drive's by-id here after the swap (manual-steps 5).
                 devices = [
-                  {name = "/dev/disk/by-id/scsi-35000c50067fb404b";}
                   {name = "/dev/disk/by-id/scsi-35000c50067fc5df3";}
                   {name = "/dev/disk/by-id/scsi-35000c50067fc640b";}
                   {name = "/dev/disk/by-id/scsi-35000c50067fcc0d3";}
@@ -251,6 +253,121 @@ in {
         };
       };
       resources = {
+        # OSDs retired in git: every sync runs this hook, which takes each id
+        # through out → safe-to-destroy → down (noup so the daemon stays down)
+        # → `rook ceph osd remove` (deletes the Deployment, purges the OSD and
+        # its CRUSH entry). An id that no longer exists is a no-op, so the list
+        # is a durable statement of what must not be in the cluster. Drop the
+        # id (and the device above) once the drive is physically replaced.
+        jobs.rook-ceph-remove-osds = let
+          removedOsds = [7];
+          script = ''
+            set -u
+            mkdir -p /etc/ceph
+            cat > /etc/ceph/ceph.conf <<EOF
+            [global]
+            fsid = $ROOK_FSID
+            mon_host = $(echo "$ROOK_MON_ENDPOINTS" | tr ',' '\n' | cut -d= -f2 | paste -sd, -)
+            EOF
+            install -m 600 /etc/ceph-admin/keyring /etc/ceph/keyring
+            rc=0
+            for id in ${lib.concatMapStringsSep " " toString removedOsds}; do
+              if ! ceph osd find "$id" >/dev/null 2>&1; then
+                echo "osd.$id: not in the cluster, nothing to do"
+                continue
+              fi
+              ceph osd out "$id"
+              until ceph osd safe-to-destroy "osd.$id" >/dev/null 2>&1; do
+                echo "osd.$id: waiting for its data to migrate"
+                sleep 30
+              done
+              ceph osd add-noup "osd.$id"
+              ceph osd down "$id"
+              sleep 5
+              rook ceph osd remove --osd-ids "$id" --preserve-pvc false --force-osd-removal false || rc=$?
+            done
+            exit $rc
+          '';
+        in {
+          metadata.annotations = {
+            "argocd.argoproj.io/hook" = "PostSync";
+            "argocd.argoproj.io/hook-delete-policy" = "BeforeHookCreation";
+          };
+          spec = {
+            backoffLimit = 3;
+            activeDeadlineSeconds = 7200;
+            template.spec = {
+              restartPolicy = "OnFailure";
+              serviceAccountName = "rook-ceph-purge-osd";
+              containers = lib.toList {
+                name = "remove-osds";
+                image = with pinned.images.rook-ceph; "${repository}:${tag}@${digest}";
+                command = ["/bin/sh" "-c" script];
+                env = let
+                  fromSecret = name: key: {
+                    inherit name;
+                    valueFrom.secretKeyRef = {
+                      name = "rook-ceph-mon";
+                      inherit key;
+                    };
+                  };
+                in [
+                  {
+                    name = "POD_NAMESPACE";
+                    valueFrom.fieldRef.fieldPath = "metadata.namespace";
+                  }
+                  {
+                    name = "ROOK_MON_ENDPOINTS";
+                    valueFrom.configMapKeyRef = {
+                      name = "rook-ceph-mon-endpoints";
+                      key = "data";
+                    };
+                  }
+                  (fromSecret "ROOK_CEPH_USERNAME" "ceph-username")
+                  (fromSecret "ROOK_CEPH_SECRET" "ceph-secret")
+                  (fromSecret "ROOK_FSID" "fsid")
+                  {
+                    name = "ROOK_CONFIG_DIR";
+                    value = "/var/lib/rook";
+                  }
+                  {
+                    name = "ROOK_CEPH_CONFIG_OVERRIDE";
+                    value = "/etc/rook/config/override.conf";
+                  }
+                ];
+                volumeMounts = [
+                  {
+                    name = "ceph-conf";
+                    mountPath = "/etc/ceph";
+                  }
+                  {
+                    name = "rook-config";
+                    mountPath = "/var/lib/rook";
+                  }
+                  {
+                    name = "admin-keyring";
+                    mountPath = "/etc/ceph-admin";
+                    readOnly = true;
+                  }
+                ];
+              };
+              volumes = [
+                {
+                  name = "ceph-conf";
+                  emptyDir = {};
+                }
+                {
+                  name = "rook-config";
+                  emptyDir = {};
+                }
+                {
+                  name = "admin-keyring";
+                  secret.secretName = "rook-ceph-admin-keyring";
+                }
+              ];
+            };
+          };
+        };
         # The chart's Ceph alert rules (health, device failure, slow ops), selected by Prometheus.
         prometheusRules.prometheus-ceph-rules.metadata.labels.release = "prometheus";
         storageClasses.ceph-bucket.parameters.region = lib.mkForce "us-west-004";
