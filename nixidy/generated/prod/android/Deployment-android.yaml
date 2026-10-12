@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 990b52fb9933ac38586cf625098ce59f6e2083b451abae100e7eec44d099e768
+        checksum/configMaps: d1102cfedbae54bad24d6f86b79ae56ab7d198df75d9648fedd30341edd1f0b0
       labels:
         app.kubernetes.io/controller: android
         app.kubernetes.io/instance: android
