@@ -1,5 +1,7 @@
 import json
 
+import os
+
 import pulumi
 import pulumi_b2 as b2
 import pulumi_bitwarden as bw
@@ -568,8 +570,10 @@ class Millionaire:
                 depends_on=other_node_deps,
             )
 
-        # axolotl (laptop, RKE2 agent): same path and flag pattern as falcon, via
-        # the edge box when the dev host is off the LAN. Its root disk is its only disk.
+        # axolotl (laptop, RKE2 agent): same path and flag pattern as falcon. Its
+        # root disk is its only disk. Off the LAN, set NIXOS_ANYWHERE_JUMP to the
+        # edge box (e.g. tristan@192.184.168.248); on the LAN no jump is needed and
+        # nixos-anywhere's own key cannot authenticate through one.
         #   pulumi config set axolotlNode true
         #   NIXOS_ANYWHERE_INSTALL=axolotl pulumi up --target <urn of nixos-axolotl-install>
         if pulumi.Config().get_bool("axolotlNode"):
@@ -577,7 +581,7 @@ class Millionaire:
                 "axolotl",
                 "tristan@192.168.50.250",
                 identity="$HOME/.ssh/personal",
-                jump="tristan@192.184.168.248",
+                jump=os.environ.get("NIXOS_ANYWHERE_JUMP"),
                 preserve_host_key=True,
                 depends_on=other_node_deps,
             )
