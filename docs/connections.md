@@ -12,7 +12,7 @@ Credentials: Keycloak SSO where the client speaks OIDC; CLIs and API clients pre
 | millionaire | macOS | work, workstation | Mill's tailnet on the system tailscaled; headscale on a second, userspace tailscaled (`modules/tailnet.nix`), used through `trdos <cmd>` (SOCKS5 :1055, HTTP :1056) |
 | morgenmuffel | macOS | personal, workstation | done: `modules/tailnet.nix` (host lands with the hosts workstream) |
 | falcon, axolotl | NixOS | client, workstation | done: `static/tailnet-personal.nix` |
-| systeamadeck | NixOS (Jovian) | client, gaming | todo: not a `personal.yaml` recipient in `.sops.yaml`, so its clients below cannot reach the cluster yet |
+| systeamadeck | NixOS (Jovian) | client, gaming | done: `static/tailnet-personal.nix` (a `personal.yaml` recipient; joins once the host is switched to this config) |
 | echidna | NixOS-WSL | pending (hosts workstream) | n/a until the host exists |
 | Android | `modules/android.nix` | `base` / `homelab` / `family` sets | done: Tailscale app (docs/android.md) |
 
