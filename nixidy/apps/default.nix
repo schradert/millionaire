@@ -60,6 +60,7 @@
     ./media/jitsi.nix
     ./media/kavita.nix
     ./media/komga.nix
+    ./media/archive-ingest.nix
     ./media/dvd-webdav.nix
     ./media/games-webdav.nix
     # TODO obs-studio: currently a dotfiles-style NixOS config, not nixidy.
@@ -84,7 +85,16 @@
     extraIngress = [
       {
         fromEntities = ["world"];
-        toPorts = [{ports = [{port = "1935"; protocol = "TCP";}];}];
+        toPorts = [
+          {
+            ports = [
+              {
+                port = "1935";
+                protocol = "TCP";
+              }
+            ];
+          }
+        ];
       }
     ];
   };
@@ -112,7 +122,16 @@
     extraIngress = [
       {
         fromEntities = ["world"];
-        toPorts = [{ports = [{port = "2222"; protocol = "TCP";}];}];
+        toPorts = [
+          {
+            ports = [
+              {
+                port = "2222";
+                protocol = "TCP";
+              }
+            ];
+          }
+        ];
       }
     ];
   };
@@ -137,7 +156,20 @@
             };
           }
         ];
-        toPorts = [{ports = [{port = "8000"; protocol = "TCP";} {port = "8080"; protocol = "TCP";}];}];
+        toPorts = [
+          {
+            ports = [
+              {
+                port = "8000";
+                protocol = "TCP";
+              }
+              {
+                port = "8080";
+                protocol = "TCP";
+              }
+            ];
+          }
+        ];
       }
     ];
   };
@@ -162,7 +194,16 @@
             ];
           }
         ];
-        toPorts = [{ports = [{port = "25"; protocol = "TCP";}];}];
+        toPorts = [
+          {
+            ports = [
+              {
+                port = "25";
+                protocol = "TCP";
+              }
+            ];
+          }
+        ];
       }
     ];
   };

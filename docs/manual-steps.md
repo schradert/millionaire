@@ -106,6 +106,27 @@ media-e2e run --full
 
 It runs the VPN leak tests first (pod IP is the VPN exit, DNS only via gluetun, kill switch, tracker IP check against ipleak.net, whatismyip.net and ipMagnet: any home IP fails, any VPN IP passes, skipped only if none is reachable), then every download chain over the VPN. If any leak test fails, it refuses to download. Test data is deleted at the end and checked gone. Log and JSON report: `$TMPDIR/media-e2e/<run>/`. Leftovers from a crashed run: `media-e2e cleanup --all --dry-run`, then without `--dry-run`. Without `--full`, it runs the offline suite, which needs no VPN.
 
+## 10. Archive ingest (DVD library, game library)
+
+One-time bulk copy of the DVD ISOs, the curated MKVs and the game library from falcon and the Deck into `media-dvd`, `media-movies` and `media-games`, through an rsync receiver on a LAN LoadBalancer address (`nixidy/apps/media/archive-ingest.nix`). Raw TCP is not relayed over the tailnet, so the pushing host must be on the LAN. The three PVCs are backed up by VolSync, so let `ReplicationSource` `lastSyncTime` pass the last write before deleting any source.
+
+1. Publish the receiver image (`image publish rsyncd`) and add its pin `pkgs/images/rsyncd/pin.json`: the shape of `pkgs/images/app-bootstrap/pin.json` with `repository` `harbor.trdos.me/library/rsyncd` and `tagPattern` `(\d+)\.(\d+)\.(\d+)`. Until then the Deployment is not rendered.
+2. Check the LoadBalancer address `lbAddress` in the file (`192.168.50.253`) is free: `kubectl get svc -A | grep 192.168.50.253` and the router's DHCP table. The pool is `192.168.50.240-254`, which also holds the gateway (.241), forgejo (.251), owncast (.252), jitsi (.254) and some DHCP hosts.
+3. Flip `enabled` to `true` in `nixidy/apps/media/archive-ingest.nix`. Render (`archive-ingest` and `netpol`), commit, sync. That adds the Service, 1 replica and the port 873 ingress rule. Check `kubectl -n media get svc archive-ingest` shows the address.
+4. Copy Bitwarden `archive/ingest-password` to `~/.config/archive/ingest.pw` (mode 600) on each pushing host. Neither falcon nor the Deck can decrypt `default.yaml`, so use `bws-get archive/ingest-password` on the Mac.
+5. Push from each host. Modules: `dvd` (media-dvd, the ISOs), `movies` (media-movies, the curated MKVs), `games` (media-games, ROMs/BIOS/installers):
+
+   ```sh
+   rsync -rtv --partial --progress --timeout=120 --chmod=D755,F644 \
+     --exclude='*.part.mkv' --password-file="$HOME/.config/archive/ingest.pw" \
+     <source dir>/ rsync://transfer@192.168.50.253/<module>/
+   ```
+
+   Rerun the same command to resume. Verify with `-n --itemize-changes` added (an empty listing means no differences; add `-c` on a sample of ISOs to compare checksums, not just size and mtime).
+6. Flip `enabled` back to `false`, render, commit, sync: the Service, the address and the ingress rule go away.
+
+Unblocks: deleting the sources on falcon and the Deck, after the VolSync check above.
+
 ## 8. Later
 
 - Rotate secrets (README todo 17).

@@ -362,6 +362,31 @@
           layers = [(n2c.buildLayer {deps = [pkg amd64Pkgs.nodejs_22 amd64Pkgs.ffmpeg-headless amd64Pkgs.cacert];})];
         };
 
+      # rsync daemon for the one-time bulk ingest (nixidy/apps/media/archive-ingest.nix); the
+      # Deployment mounts its rsyncd.conf and secrets at /config. amd64 as above.
+      rsyncd = let
+        amd64Pkgs = import inputs.nixpkgs {system = "x86_64-linux";};
+        root = amd64Pkgs.runCommand "rsyncd-root" {} "mkdir -p $out/tmp";
+      in
+        n2c.buildImage {
+          name = "${registry}/library/rsyncd";
+          tag = amd64Pkgs.rsync.version;
+          arch = "amd64";
+          config = {
+            Entrypoint = ["${amd64Pkgs.rsync}/bin/rsync" "--daemon" "--no-detach" "--config=/config/rsyncd.conf"];
+            ExposedPorts."873/tcp" = {};
+          };
+          copyToRoot = [root];
+          perms = [
+            {
+              path = root;
+              regex = "/tmp";
+              mode = "1777";
+            }
+          ];
+          layers = [(n2c.buildLayer {deps = [amd64Pkgs.rsync];})];
+        };
+
       govee2mqtt = n2c.buildImage {
         name = "${registry}/library/govee2mqtt";
         tag = linuxPkgs.govee2mqtt.version;
