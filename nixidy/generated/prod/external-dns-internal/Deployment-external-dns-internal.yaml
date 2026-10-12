@@ -36,6 +36,7 @@ spec:
             - --txt-prefix=k8s-internal.
             - --domain-filter=trdos.me
             - --provider=webhook
+            - --annotation-prefix=external-dns.alpha.kubernetes.io/
             - --gateway-name=internal
             - --annotation-filter=external-dns.alpha.kubernetes.io/exclude notin (true)
           image: registry.k8s.io/external-dns/external-dns:v0.23.0@sha256:1854499e2b08cee47c40a08e356bff20dcb192dbcfde8378fc3f900f12cad5a3
