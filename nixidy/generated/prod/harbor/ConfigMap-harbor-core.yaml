@@ -1,15 +1,13 @@
 apiVersion: v1
 data:
-  _REDIS_URL_CORE: redis://harbor-dragonfly.cicd.svc.cluster.local:6379/0?idle_timeout_seconds=30
-  _REDIS_URL_REG: redis://harbor-dragonfly.cicd.svc.cluster.local:6379/2?idle_timeout_seconds=30
   CHART_CACHE_DRIVER: redis
   CONFIG_PATH: /etc/core/app.conf
   CORE_LOCAL_URL: http://127.0.0.1:8080
   CORE_URL: http://harbor-core:80
   DATABASE_TYPE: postgresql
   EXT_ENDPOINT: https://harbor.trdos.me
-  HTTP_PROXY: ""
   HTTPS_PROXY: ""
+  HTTP_PROXY: ""
   JOBSERVICE_URL: http://harbor-jobservice
   LOG_LEVEL: info
   METRIC_ENABLE: "true"
@@ -37,6 +35,8 @@ data:
   TOKEN_SERVICE_URL: http://harbor-core:80/service/token
   TRIVY_ADAPTER_URL: http://harbor-trivy:8080
   WITH_TRIVY: "true"
+  _REDIS_URL_CORE: redis://harbor-dragonfly.cicd.svc.cluster.local:6379/0?idle_timeout_seconds=30
+  _REDIS_URL_REG: redis://harbor-dragonfly.cicd.svc.cluster.local:6379/2?idle_timeout_seconds=30
   app.conf: |
     appname = Harbor
     runmode = prod
@@ -52,7 +52,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
-    app.kubernetes.io/version: 2.14.3
+    app.kubernetes.io/version: 2.15.2
     chart: harbor
     heritage: Helm
     release: harbor

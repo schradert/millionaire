@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: harbor
     app.kubernetes.io/part-of: harbor
-    app.kubernetes.io/version: 2.14.3
+    app.kubernetes.io/version: 2.15.2
     chart: harbor
     component: exporter
     heritage: Helm
@@ -26,8 +26,8 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configmap: 037e684ada3fb9c3bf0f34266122395b71caff9838eb0a111e96129a9699905c
-        checksum/secret: b40bf6ba2d644add2bf5cf8591620f8974f6eba7fb5b82d44e7f7bc6cb7740bd
+        checksum/configmap: 71713530ffdc3f73ce7b3e01f91991f30d8a650205c2c10228ec8666c1493629
+        checksum/secret: 13b7001600bb92360474ffc2d6c3a66c4db926ef7477437d27949f899bf86c27
       labels:
         app: harbor
         app.kubernetes.io/component: exporter
@@ -35,7 +35,7 @@ spec:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: harbor
         app.kubernetes.io/part-of: harbor
-        app.kubernetes.io/version: 2.14.3
+        app.kubernetes.io/version: 2.15.2
         chart: harbor
         component: exporter
         heritage: Helm
@@ -62,23 +62,29 @@ spec:
                 name: harbor-exporter-env
             - secretRef:
                 name: harbor-exporter
-          image: goharbor/harbor-exporter:v2.14.3@sha256:dab60feca79fc2e14d9df879651a0a1d3a0671718ca6bf483332193dda6f73e6
+          image: goharbor/harbor-exporter:v2.15.2@sha256:e1b0a248f61aad5084c5d1612d5f1da89f99c23ce743eaf8cba913d6d00c0547
           imagePullPolicy: IfNotPresent
           livenessProbe:
+            failureThreshold: 3
             httpGet:
               path: /
               port: 8001
             initialDelaySeconds: 300
             periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           name: exporter
           ports:
             - containerPort: 8001
           readinessProbe:
+            failureThreshold: 3
             httpGet:
               path: /
               port: 8001
             initialDelaySeconds: 30
             periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
