@@ -11,7 +11,7 @@ Phones pull their app list. Nothing listens on a phone and nothing pushes to one
 - Obtainium checks for updates every 6h, on Wi-Fi only. On a `deviceOwner = true` device it installs silently through Dhizuku. Everywhere else it notifies, and you tap to install. Updates to apps that Obtainium installed itself can still install silently on Android 12+.
 - Import only adds or updates apps. To remove an app, delete it from the catalog and uninstall it by hand.
 
-Devices: pixel, s21 (base + homelab), boox (base + eink), odin (base + handheld), all `tristan`. a10e and vivo are `family`: the family set (plus HeliBoard), stable releases only, headscale user `family`.
+Devices: pixel (base + homelab + the `pixel` set of apps already on it), s21 (base + homelab), boox (base + eink), odin (base + handheld), all `tristan`. a10e and vivo are `family`: the family set (plus HeliBoard), stable releases only, headscale user `family`.
 
 All six run Android 12+, so Obtainium silently updates every app it installed itself on every device. Only s21 is a device owner (`deviceOwner = true`, factory reset + Dhizuku), which adds silent first installs and Obtainium self-updates; the others tap to install new apps.
 
