@@ -13,7 +13,7 @@ data:
   OAUTH2_OIDC_PROVIDER_NAME: Keycloak
   OAUTH2_PROVIDER: oidc
   OAUTH2_REDIRECT_URL: https://rss.trdos.me/oauth2/oidc/callback
-  OAUTH2_USER_CREATION: "1"
+  OAUTH2_USER_CREATION: "0"
   RUN_MIGRATIONS: "1"
 kind: ConfigMap
 metadata:
