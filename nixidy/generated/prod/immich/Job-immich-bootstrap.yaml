@@ -11,7 +11,7 @@ spec:
   backoffLimit: 6
   template:
     spec:
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
       containers:
         - args:
             - immich
@@ -20,11 +20,13 @@ spec:
               value: t0rdos@pm.me
             - name: ADMIN_PASSWORD_FILE
               value: /secrets/admin/password
+            - name: API_KEY_SECRET
+              value: immich-tristan-api-key
             - name: IMMICH_URL
               value: http://immich-server.media.svc.cluster.local:2283
             - name: REQUIRE_OAUTH
               value: "1"
-          image: harbor.trdos.me/library/app-bootstrap:0.1.0@sha256:bca881228655434a4822e73f2e06db3476c34c35696b59926f4aba9b9ddc396c
+          image: harbor.trdos.me/library/app-bootstrap:0.19.0@sha256:57f0ad275f93a239d07637c7d5144d8cb6402d7df84e62e056b664187bddda10
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
@@ -43,6 +45,7 @@ spec:
         runAsUser: 65534
         seccompProfile:
           type: RuntimeDefault
+      serviceAccountName: immich-bootstrap
       volumes:
         - name: admin
           secret:
