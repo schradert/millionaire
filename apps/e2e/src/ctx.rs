@@ -84,6 +84,13 @@ pub struct State {
     /// The movie the chain imported into Jellyfin: (library item id, movie item id).
     pub jellyfin_movie: Option<(String, String)>,
     pub qbt_ready: Option<bool>,
+    /// The identity family's shared Keycloak test users.
+    pub users: Option<crate::identity::kc::Users>,
+    /// Mealie login of each test user, for app-side cleanup: (username, mealie user id, token).
+    pub mealie: Vec<(String, String, String)>,
+    pub forgejo_users: Vec<String>,
+    /// The lifecycle flow's user while it exists: (keycloak id, username).
+    pub life_user: Option<(String, String)>,
     #[cfg(test)]
     pub trace: Vec<&'static str>,
 }
@@ -156,6 +163,16 @@ impl Ctx {
     pub fn lib_root(&self, lib: &str) -> PathBuf {
         PathBuf::from(format!("{}/downloads/{}/{lib}", media_root(), self.marker))
     }
+}
+
+/// Email of a test user: an ordinary-looking subdomain of the owner's domain (`.invalid` is a
+/// special-use TLD that validating apps refuse). Nothing is ever sent to it.
+pub fn test_email(name: &str) -> String {
+    format!("{name}@e2e.{}", domain())
+}
+
+pub fn domain() -> String {
+    var("DOMAIN", "trdos.me")
 }
 
 pub fn media_root() -> String {
@@ -348,6 +365,14 @@ pub fn enc(s: &str) -> String {
     out
 }
 
+/// 24 random hex chars from the kernel (test passwords; not for anything real).
+pub fn random_hex() -> R<String> {
+    use std::io::Read;
+    let mut b = [0u8; 12];
+    fs::File::open("/dev/urandom").and_then(|mut f| f.read_exact(&mut b)).at("fs", "read /dev/urandom")?;
+    Ok(hex(&b))
+}
+
 pub fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
@@ -384,6 +409,11 @@ mod tests {
         for bad in ["", "e2e", "2026", "20261011-031200", "20261011-031200-ab12-extra", "x20261011-031200-ab12", "20261011-031200-AB12", "e2e-e2e-20261011-031200-ab12"] {
             assert_eq!(run_marker(bad), None, "{bad}");
         }
+    }
+
+    #[test]
+    fn test_emails_use_the_owners_domain() {
+        assert_eq!(test_email("e2e-20261011-031200-ab12-admin"), format!("e2e-20261011-031200-ab12-admin@e2e.{}", domain()));
     }
 
     #[test]

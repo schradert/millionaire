@@ -1,5 +1,6 @@
 {
   imports = [
+    ./e2e.nix
     ./development/atuin.nix
     ./development/sveltekit-demo.nix
     ./development/forgejo.nix
@@ -209,6 +210,7 @@
   };
   nixidy.applications.namespaces.resources.namespaces = {
     development = {};
+    e2e = {};
     finance = {};
     health = {};
     home = {};

@@ -10,7 +10,8 @@
 # The same step assigns client scopes: the operator only sends
 # defaultClientScopes/optionalClientScopes when it creates a client, and
 # Keycloak ignores them on update. It adds whatever a keycloakClients entry
-# lists that Keycloak lacks, and never removes anything.
+# lists that Keycloak lacks, and never removes anything. Service-account roles
+# (`keycloak.serviceAccountRoles.<clientId>`, realm-management roles) are added the same way.
 {config, ...}: let
   inherit (config.canivete.meta) people;
 in {
@@ -31,6 +32,7 @@ in {
     in
       lib.optionalString ((d.attributes or {}) != {}) "ensure_group_attrs ${lib.escapeShellArg d.name} ${lib.escapeShellArg (builtins.toJSON d.attributes)}\n")
     config.applications.keycloak.resources.keycloakGroups);
+    serviceRoles = lib.concatStrings (lib.mapAttrsToList (client: roles: "ensure_service_roles ${client} ${lib.concatStringsSep " " roles}\n") config.keycloak.serviceAccountRoles);
     exec = authenticator: requirement: priority: {
       inherit authenticator requirement priority;
       authenticatorFlow = false;
@@ -140,6 +142,20 @@ in {
         done
       }
       ${clientScopes}
+      # Realm-management roles for a client's service account (the account exists once the
+      # operator has created the client with serviceAccountsEnabled; until then the Job fails
+      # and its backoffLimit retries, so the roles are never silently skipped).
+      ensure_service_roles() {
+        local client=$1 r
+        shift
+        kc get users -r $R -q username="service-account-$client" -q exact=true --fields id --format csv --noquotes | grep -q . \
+          || { echo "service account of $client not created yet"; exit 1; }
+        for r in "$@"; do
+          kc add-roles -r $R --uusername "service-account-$client" --cclientid realm-management --rolename "$r"
+        done
+        echo "service account of $client: roles $*"
+      }
+      ${serviceRoles}
       # Group attributes (e.g. immich_role, abs_group): the operator reports the
       # group synchronized but never applies them, so set what a keycloakGroups
       # entry declares.
@@ -178,7 +194,12 @@ in {
       capabilities.drop = ["ALL"];
     };
   in {
-    applications.keycloak.resources = {
+    options.keycloak.serviceAccountRoles = lib.mkOption {
+      description = "Realm-management roles for a Keycloak client's service account, by clientId";
+      type = lib.types.attrsOf (lib.types.listOf lib.types.str);
+      default = {};
+    };
+    config.applications.keycloak.resources = {
       # The script lives here too: ArgoCD doesn't diff hook Jobs, so a change
       # only triggers a sync (and so the PostSync job) via a regular resource.
       configMaps.keycloak-auth.data = {

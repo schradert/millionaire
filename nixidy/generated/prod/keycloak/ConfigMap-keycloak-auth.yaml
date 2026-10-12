@@ -73,6 +73,7 @@ data:
     ensure_scopes cli optional offline_access
     ensure_scopes contextforge default openid profile email groups
     ensure_scopes dashy default openid profile email groups
+    ensure_scopes e2e default openid profile email groups
     ensure_scopes forgejo default openid profile email groups
     ensure_scopes grafana default openid profile email groups
     ensure_scopes harbor default openid profile email groups
@@ -93,6 +94,21 @@ data:
     ensure_scopes sure default openid profile email groups
     ensure_scopes toolhive default openid profile email
     ensure_scopes windmill default openid profile email groups
+
+    # Realm-management roles for a client's service account (the account exists once the
+    # operator has created the client with serviceAccountsEnabled; until then the Job fails
+    # and its backoffLimit retries, so the roles are never silently skipped).
+    ensure_service_roles() {
+      local client=$1 r
+      shift
+      kc get users -r $R -q username="service-account-$client" -q exact=true --fields id --format csv --noquotes | grep -q . \
+        || { echo "service account of $client not created yet"; exit 1; }
+      for r in "$@"; do
+        kc add-roles -r $R --uusername "service-account-$client" --cclientid realm-management --rolename "$r"
+      done
+      echo "service account of $client: roles $*"
+    }
+    ensure_service_roles e2e manage-users view-users query-users query-groups
 
     # Group attributes (e.g. immich_role, abs_group): the operator reports the
     # group synchronized but never applies them, so set what a keycloakGroups

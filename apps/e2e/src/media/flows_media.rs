@@ -408,7 +408,7 @@ pub async fn maintainerr(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let r = ctx.http.post(format!("{base}/api/rules")).json(&body).send().await.at("maintainerr", "create test rule group")?;
     let status = r.status();
     let text = r.text().await.unwrap_or_default();
-    if !status.is_success() && !(status == reqwest::StatusCode::BAD_REQUEST && text.contains("does not exist")) {
+    if !(status.is_success() || status == reqwest::StatusCode::BAD_REQUEST && text.contains("does not exist")) {
         return Err(Fail::new("maintainerr", "create test rule group", format!("HTTP {status}: {}", excerpt(&text))));
     }
     if !status.is_success() {

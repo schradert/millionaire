@@ -17,8 +17,11 @@
 
 mod ctx;
 mod flow;
+mod forgejo;
+mod identity;
 mod media;
 mod report;
+mod web;
 
 use std::{env, process::ExitCode};
 
