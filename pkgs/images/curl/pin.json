@@ -1,6 +1,6 @@
 {
-  "version": "8.13.0",
-  "digest": "sha256:d43bdb28bae0be0998f3be83199bfb2b81e0a30b034b6d7586ce7e05de34c3fd",
+  "version": "8.22.0",
+  "digest": "sha256:58adaa4e8dca9c988bae2aba4ab3434a0bb2da16bbe3f92dec39ec7785166777",
   "source": {
     "type": "oci-tag",
     "repository": "curlimages/curl",

@@ -1,6 +1,6 @@
 {
-  "version": "v2.13.1",
-  "digest": "sha256:bc681d561db387c5dbc2dbc3b6bfd054ba40770c85d68e8a1c4acb97f1309302",
+  "version": "v2.19.0",
+  "digest": "sha256:adcadcdb6f9f6ede1f347ca4ac5f469dcc07f3677d46f8ffcd23696c66681893",
   "source": {
     "type": "oci-tag",
     "repository": "ghcr.io/mainsail-crew/mainsail",
