@@ -106,10 +106,16 @@ fn attrs(tag: &str) -> BTreeMap<String, String> {
     out
 }
 
-/// Every field a browser would submit from the first `<form>` of the page: inputs (checkboxes
-/// and radios only when checked), the selected option of each select, textareas.
-fn form_fields(html: &str) -> Vec<(String, String)> {
-    let form = html.split("<form").nth(1).unwrap_or(html);
+/// Every field a browser would submit from the `<form>` posting to `action` (the page also
+/// carries a logout form): inputs (checkboxes and radios only when checked), the selected
+/// option of each select, textareas.
+fn form_fields(html: &str, action: &str) -> Vec<(String, String)> {
+    let needle = format!(r#"action="{action}""#);
+    let form = html
+        .split("<form")
+        .skip(1)
+        .find(|f| f.split('>').next().unwrap_or_default().contains(&needle))
+        .unwrap_or(html);
     let form = form.split("</form>").next().unwrap_or(form);
     let mut fields = Vec::new();
     // (name, first option's value, an option was selected): a select with no `selected`
@@ -195,7 +201,7 @@ async fn ensure_fever(base: &str, user: &str, password: &str) -> Result<()> {
         return Ok(());
     }
     // Resubmit the form as shown, with only the Fever fields changed.
-    let mut fields: Vec<(String, String)> = form_fields(&page)
+    let mut fields: Vec<(String, String)> = form_fields(&page, "/integration")
         .into_iter()
         .filter(|(k, _)| !matches!(k.as_str(), "csrf" | "fever_enabled" | "fever_username" | "fever_password"))
         .collect();
@@ -308,7 +314,8 @@ mod form_tests {
 
     #[test]
     fn keeps_selects_checked_boxes_and_textareas() {
-        let html = r#"<html><form method="post" action="/integration">
+        let html = r#"<html><form action="/logout" method="post"><input type="hidden" name="csrf" value="other"></form>
+<form method="post" autocomplete="off" action="/integration" class="integration-form">
 <input type="hidden" name="csrf" value="tok">
 <input type="checkbox" name="fever_enabled" value="1">
 <input type="text" name="fever_username" id="form-fever-username" value="">
@@ -324,7 +331,7 @@ mod form_tests {
 <textarea name="webhook_url">https://x/&amp;y</textarea>
 <button type="submit">Save</button>
 </form></html>"#;
-        let f = form_fields(html);
+        let f = form_fields(html, "/integration");
         assert_eq!(
             f,
             vec![
