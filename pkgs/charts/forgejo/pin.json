@@ -1,6 +1,6 @@
 {
-  "version": "16.2.1",
-  "hash": "sha256-aA1ZUGa6q2sm1GYsxnex/Z2THC9GsVYvNz6e88Dl1XM=",
+  "version": "17.2.0",
+  "hash": "sha256-BESPtfcOgn2/bV9nDNGDvY9Fbxpd6u02h/1W0HE46eg=",
   "source": {
     "type": "helm-repo",
     "repo": "oci://code.forgejo.org/forgejo-helm",

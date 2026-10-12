@@ -5,10 +5,11 @@ metadata:
     lbipam.cilium.io/ips: 192.168.50.251
   labels:
     app: forgejo
+    app.kubernetes.io/component: ssh
     app.kubernetes.io/instance: forgejo
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: forgejo
-    version: 14.0.3
+    version: 15.0.9
   name: forgejo-ssh
   namespace: development
 spec:
