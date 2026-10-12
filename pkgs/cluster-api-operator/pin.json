@@ -1,6 +1,6 @@
 {
-  "version": "0.27.0",
-  "hash": "sha256-tmdmi23AEc9BsslQSG6N88RpE9qGuy+acIzw/Ni9v5g=",
+  "version": "0.29.0",
+  "hash": "sha256-2uEKaeUnRenBjDvb40vWJrtUO58X26bw+2+lzHQX56g=",
   "source": {
     "type": "github-release",
     "owner": "kubernetes-sigs",
