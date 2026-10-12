@@ -56,6 +56,9 @@
 52. TODO hyena: verify STUN (udp 3478) answers from outside (bonobo's netcheck shows no latency for the hyena DERP region); `systemd-tmpfiles-clean` fails daily with ENXIO on the ZFS legacy /tmp
 53. TODO `sirver` and the other node names do not resolve from the Macs (the attic cache `http://sirver:8199` retries on every nix command): put the nodes in `/etc/hosts` or tailnet DNS in the darwin config
 54. TODO the one-time catalog reconciliation found 183 Play-installed apps on the Pixel with FOSS twins for 17; decide per app and add them to `modules/android.nix`
+55. TODO containerd layers on ZFS: overlayfs copy-up waits for a txg sync per file (`ovl_copy_up_one → zfs_link → txg_wait_synced`), so an entrypoint that `chown -R`s its layer takes hours on the HDD nodes (siyuan runs as root and shoko has a 20-minute startup budget as workarounds). Give every node a dedicated `root/local/containerd` dataset (`sync=disabled`, `copies=1`) mounted at `/var/lib/rancher/rke2/agent/containerd`, migrated per node with rke2 stopped.
+56. TODO the Deck's DNS stalls (~3 s, about half of back-to-back A+AAAA queries) are packet loss on its tailnet path to hyena, not resolved config (dropping the IPv6 resolver and the second default route changed nothing; `.5` relay pings were clean). Decide on a LAN-local resolver for home hosts (an AdGuard replica on a node, advertised by headscale for the home subnet) or find the loss.
+57. TODO the e2e Keycloak client `e2e` holds `manage-users`, so it could reset any user; limit it with fine-grained admin permissions to users carrying the run marker (or a dedicated group), and keep its secret out of the generic `kubernetes-identity` store.
 
 ## Conventions
 
