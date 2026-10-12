@@ -6,7 +6,7 @@
   },
   "source": {
     "type": "git-commit",
-    "owner": "datadog-labs",
+    "owner": "DataDog",
     "repo": "pup",
     "branch": "main"
   }
