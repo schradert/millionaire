@@ -64,17 +64,14 @@ impl FlowDef {
     pub fn new(family: &'static str, name: &'static str, tier: Tier, about: &'static str, act: Step) -> Self {
         FlowDef { family, name, tier, about, setup: None, act, assert: None, cleanup: None }
     }
-    #[allow(dead_code)] // used by the identity flows
     pub fn setup(mut self, s: Step) -> Self {
         self.setup = Some(s);
         self
     }
-    #[allow(dead_code)]
     pub fn assert(mut self, s: Step) -> Self {
         self.assert = Some(s);
         self
     }
-    #[allow(dead_code)]
     pub fn cleanup(mut self, s: Step) -> Self {
         self.cleanup = Some(s);
         self
@@ -108,7 +105,7 @@ pub struct Family {
 
 /// Every family, in run order.
 pub fn families() -> Vec<Family> {
-    vec![crate::media::family()]
+    vec![crate::media::family(), crate::identity::family()]
 }
 
 /// Run one flow through its phases. A failing phase stops the later ones but not `cleanup`; a

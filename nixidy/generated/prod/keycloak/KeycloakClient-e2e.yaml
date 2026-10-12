@@ -1,0 +1,35 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: e2e
+  namespace: identity
+spec:
+  clientSecretRef:
+    create: true
+    name: e2e
+  definition:
+    clientId: e2e
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+      - groups
+    directAccessGrantsEnabled: true
+    enabled: true
+    name: End-to-end tests
+    protocol: openid-connect
+    protocolMappers:
+      - config:
+          access.token.claim: "true"
+          id.token.claim: "false"
+          included.client.audience: oauth2-proxy
+          introspection.token.claim: "true"
+        consentRequired: false
+        name: audience
+        protocol: openid-connect
+        protocolMapper: oidc-audience-mapper
+    publicClient: false
+    serviceAccountsEnabled: true
+    standardFlowEnabled: false
+  realmRef:
+    name: default
