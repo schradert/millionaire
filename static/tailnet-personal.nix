@@ -15,6 +15,15 @@
   # declares `tailnet.enable` (inert until set)
   imports = [./tailnet.nix];
   config = lib.mkIf (!config.tailnet.enable) {
+    # These hosts decrypt with their ssh host key alone; the inherited
+    # sops.age.keyFile (/root/.config/sops/age/keys.txt) does not exist on
+    # them and sops-install-secrets refuses to run without it. Priority 40
+    # beats the mkForce upstream.
+    sops.age.keyFile = lib.mkOverride 40 null;
+    # A tailnet client needs the stub resolver (override_local_dns). Without
+    # it the Deck's first generation carried a bare systemd-resolved unit
+    # (no ExecStart) that failed at activation.
+    services.resolved.enable = true;
     services.tailscale = {
       enable = true;
       package = pinned.tailscale;
