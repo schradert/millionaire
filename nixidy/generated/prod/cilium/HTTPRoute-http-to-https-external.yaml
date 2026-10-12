@@ -3,6 +3,7 @@ kind: HTTPRoute
 metadata:
   annotations:
     external-dns.alpha.kubernetes.io/exclude: "true"
+    external-dns.kubernetes.io/exclude: "true"
   name: http-to-https-external
   namespace: kube-system
 spec:
