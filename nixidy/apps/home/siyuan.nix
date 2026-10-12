@@ -23,11 +23,14 @@
             annotations."reloader.stakater.com/auto" = "true";
             containers.siyuan = {
               image = pinned.images.siyuan;
+              # Skip the image entrypoint: it chown -Rs /opt/siyuan (the image
+              # layer) even when ownership is already right, and every file's
+              # overlayfs copy-up waits for a ZFS txg sync on the nodes (hours
+              # on the HDD ones). Run the kernel directly as root.
+              command = ["/opt/siyuan/kernel"];
+              args = ["--workspace=/siyuan/workspace"];
               env = {
                 # The entrypoint starts as root, creates the user and drops to it.
-                # The entrypoint chowns /opt/siyuan (the image layer) to PUID on every
-                # start; on overlayfs over ZFS every copy-up waits for a txg sync, which
-                # takes hours on the HDD nodes. root owns the layer, so 0 is a no-op.
                 PUID = "0";
                 PGID = "0";
                 # oauth2-proxy gates upstream traffic, so disable siyuan's own auth-code prompt.
