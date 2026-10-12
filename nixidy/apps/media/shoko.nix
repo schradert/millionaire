@@ -40,7 +40,14 @@
             image = pinned.images.shoko;
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
-            probes.startup.enabled = true;
+            probes.startup = {
+              enabled = true;
+              # The entrypoint chowns /home/shoko on every start; on a busy
+              # Ceph that outlives the chart's 30s budget and the kubelet
+              # kills it (exit 137) forever.
+              spec.failureThreshold = 120;
+              spec.periodSeconds = 10;
+            };
           };
           service.shoko.ports.http.port = 8111;
           persistence.config = {
