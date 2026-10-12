@@ -262,6 +262,10 @@ in {
           }
         ];
       in {
+        # Hooks are not live resources, so a change to retiredOsds alone is no
+        # diff and would never sync (see nixidy/system/cicd/bootstrap.nix). This
+        # tracked ConfigMap makes it one.
+        configMaps.rook-ceph-retired-osds.data.retired = builtins.toJSON retiredOsds;
         # OSDs retired in git: every sync runs this hook, which takes each id
         # through out → safe-to-destroy → down (noup so the daemon stays down)
         # → `rook ceph osd remove` (deletes the Deployment, purges the OSD and
