@@ -1,0 +1,75 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: e2e
+  namespace: e2e
+spec:
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 3600
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: e2e
+        spec:
+          automountServiceAccountToken: false
+          containers:
+            - args:
+                - run
+              env:
+                - name: DOMAIN
+                  value: trdos.me
+                - name: E2E_RUNNER
+                  value: cluster
+                - name: FLOCCUS_REPO
+                  value: tristan/bookmarks
+              image: harbor.trdos.me/library/e2e:0.3.0@sha256:341df9945c21bd925699fe98a7d7c2eaa884f0caf8adf30fa2a73e0bf59cc808
+              name: e2e
+              resources:
+                limits:
+                  memory: 256Mi
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - mountPath: /tmp
+                  name: tmp
+                - mountPath: /secrets/e2e-keycloak
+                  name: e2e-keycloak
+                  readOnly: true
+                - mountPath: /secrets/e2e-forgejo-admin
+                  name: e2e-forgejo-admin
+                  readOnly: true
+          hostAliases:
+            - hostnames:
+                - ntfy.trdos.me
+              ip: 100.64.0.1
+          restartPolicy: Never
+          securityContext:
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          serviceAccountName: e2e
+          volumes:
+            - emptyDir: {}
+              name: tmp
+            - name: e2e-keycloak
+              secret:
+                optional: true
+                secretName: e2e-keycloak
+            - name: e2e-forgejo-admin
+              secret:
+                optional: true
+                secretName: e2e-forgejo-admin
+      ttlSecondsAfterFinished: 86400
+  schedule: 0 0 1 1 *
+  suspend: true

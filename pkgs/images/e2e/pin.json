@@ -1,0 +1,9 @@
+{
+  "version": "0.3.0",
+  "digest": "sha256:341df9945c21bd925699fe98a7d7c2eaa884f0caf8adf30fa2a73e0bf59cc808",
+  "source": {
+    "type": "oci-tag",
+    "repository": "harbor.trdos.me/library/e2e",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}
