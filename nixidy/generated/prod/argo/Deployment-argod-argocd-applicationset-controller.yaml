@@ -19,7 +19,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/cmd-params: 67450a3302d32a3a20ef3234944b3d8b84fb82d4048bd7e54d3e5b1ba80a2a3a
+        checksum/cmd-params: dd2f29174915dc15f83e1cb57e42e44f7048b89c0aa381fbc3e13e892d31054d
       labels:
         app.kubernetes.io/component: applicationset-controller
         app.kubernetes.io/instance: argod
@@ -48,6 +48,12 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+            - name: GRPC_ENABLE_TXT_SERVICE_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.grpc.enable.txt.service.config
+                  name: argocd-cmd-params-cm
+                  optional: true
             - name: ARGOCD_APPLICATIONSET_CONTROLLER_GLOBAL_PRESERVED_ANNOTATIONS
               valueFrom:
                 configMapKeyRef:
@@ -210,7 +216,7 @@ spec:
                   key: applicationsetcontroller.status.max.resources.count
                   name: argocd-cmd-params-cm
                   optional: true
-          image: quay.io/argoproj/argocd:v3.4.3@sha256:b6d161b4984c4bffb8c02250252fdd17f23fa4e2aa25fada0e606e1fa08d2348
+          image: quay.io/argoproj/argocd:v3.5.4@sha256:49dff79439bb38b1b942b19a113fe1fec7e6b6c671ddf9fe6a4a7c46bde0b77b
           imagePullPolicy: IfNotPresent
           name: applicationset-controller
           ports:
@@ -259,6 +265,7 @@ spec:
           name: ssh-known-hosts
         - configMap:
             name: argocd-tls-certs-cm
+            optional: true
           name: tls-certs
         - configMap:
             name: argocd-gpg-keys-cm

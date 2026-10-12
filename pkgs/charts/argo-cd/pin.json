@@ -1,6 +1,6 @@
 {
-  "version": "9.5.17",
-  "hash": "sha256-uKgIPZY35s0p/y8IdYTzCzfCkt/a653MFFUewPJTuGU=",
+  "version": "10.10.2",
+  "hash": "sha256-39IWj0TeK3fQuuLX66YwPBTMhGl++j8G2N6/5fbIHyg=",
   "source": {
     "type": "helm-repo",
     "repo": "https://argoproj.github.io/argo-helm/",

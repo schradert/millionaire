@@ -68,6 +68,8 @@ in {
             tag = "${tag}@${digest}";
           };
           global.domain = "argocd.${domain}";
+          # Chart 10 defaults this to true; policies here are CiliumNetworkPolicies.
+          global.networkPolicy.create = false;
           # TODO activate HA mode with autoscaling (after multi-node)
           # redis-ha.enabled = true;
           # controller.replicas = 1;
