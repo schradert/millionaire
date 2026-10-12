@@ -140,7 +140,7 @@ data:
       name: frigate
       url: https://frigate.trdos.me
     - conditions:
-      - '[STATUS] == 200'
+      - '[STATUS] == any(200, 207)'
       group: internal
       interval: 1m
       name: games-webdav
