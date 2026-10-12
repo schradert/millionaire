@@ -73,11 +73,8 @@
             };
           };
           extraArgs = [
-            # external-dns 0.22 defaulted to the external-dns.kubernetes.io/ prefix;
-            # the repo still annotates with the alpha prefix (target, exclude).
-            "--annotation-prefix=external-dns.alpha.kubernetes.io/"
             "--gateway-name=internal"
-            "--annotation-filter=external-dns.alpha.kubernetes.io/exclude notin (true)"
+            "--annotation-filter=external-dns.kubernetes.io/exclude notin (true)"
           ];
           policy = "sync";
           sources = ["gateway-httproute"];
