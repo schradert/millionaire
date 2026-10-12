@@ -259,7 +259,7 @@ pub async fn seerr(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let radarr = Arr::new("radarr")?;
     let (tag, root) = radarr_setup(ctx, &radarr).await?;
     refuse_existing("radarr", &radarr.get(ctx, &format!("/movie?tmdbId={SINTEL_TMDB}")).await?, ctx, "Sintel")?;
-    let s = Seerr::login(ctx).await?;
+    let s = Seerr::session(ctx).await?;
     f.ok("seerr", "login (Jellyfin admin)", "");
     let media = json(s.req(ctx, Method::GET, &format!("/movie/{SINTEL_TMDB}")), "seerr", "movie details").await?;
     let real: Vec<&Value> = media["mediaInfo"]["requests"].as_array().into_iter().flatten().filter(|r| !r["rootFolder"].as_str().is_some_and(|p| p.contains(&ctx.marker))).collect();

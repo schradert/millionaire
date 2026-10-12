@@ -78,7 +78,7 @@ async fn arr(c: &mut Clean<'_>, app: &'static str, collection: &str) -> R<()> {
 
 async fn seerr(c: &mut Clean<'_>) -> R<()> {
     let ctx = c.ctx;
-    let s = Seerr::login(ctx).await?;
+    let s = Seerr::session(ctx).await?;
     let reqs = json(s.req(ctx, Method::GET, "/request?take=200&skip=0&filter=all"), "seerr", "list requests").await?;
     let mut media = Vec::new();
     for r in reqs["results"].as_array().cloned().unwrap_or_default() {
@@ -363,7 +363,7 @@ pub async fn residue(ctx: &Ctx, scope: &Scope) -> Flow {
         .await);
     }
     check!("seerr", async {
-        let s = Seerr::login(ctx).await?;
+        let s = Seerr::session(ctx).await?;
         let reqs = json(s.req(ctx, Method::GET, "/request?take=200&skip=0&filter=all"), "seerr", "list requests").await?;
         Ok(reqs["results"].as_array().into_iter().flatten().filter(|r| scope.hit_v(&r["rootFolder"])).map(|r| format!("request {}", r["id"])).collect())
     }

@@ -325,10 +325,19 @@ pub async fn download(ctx: &Ctx, url: &str, dest: &Path) -> R<u64> {
     if let Some(p) = dest.parent() {
         fs::create_dir_all(p).at("fs", &step)?;
     }
-    let first = match send(ctx.http.get(url).timeout(Duration::from_secs(1800)), "content", &step).await {
-        Ok(r) => return save(r, dest, &step).await,
-        Err(e) => e,
-    };
+    // Public hosts answer 5xx now and then (Project Gutenberg 503, archive.org 500/502): try three times.
+    let mut first = None;
+    for attempt in 0..3u64 {
+        if attempt > 0 {
+            tokio::time::sleep(Duration::from_secs(3 * attempt)).await;
+        }
+        match send(ctx.http.get(url).timeout(Duration::from_secs(1800)), "content", &step).await {
+            Ok(r) => return save(r, dest, &step).await,
+            Err(e) if e.msg.starts_with("HTTP 4") => return Err(e),
+            Err(e) => first = first.or(Some(e)),
+        }
+    }
+    let first = first.expect("three failed attempts");
     // archive.org's /download redirect sometimes lands on a storage node that answers 500/502 while its
     // metadata still lists healthy ones: retry the file on those nodes directly.
     for alt in archive_fallbacks(ctx, url).await {
