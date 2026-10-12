@@ -200,7 +200,7 @@
             # Personal attic cache is NOT set system-wide on the dev host.
             # It's activated per-project via devenv's nix.settings to avoid
             # caching work builds on the personal cache.
-            # Nodes (server.nix) have it system-wide since they're personal-only.
+            # Nodes (k8s-node.nix) have it system-wide since they're personal-only.
           };
         };
         # Personal Mac (./static/morgenmuffel.nix).
@@ -220,7 +220,7 @@
         #           modules = [modules];
         #         };
         #       configuration = {
-        #         imports = [./static/rpi.nix ./static/server.nix];
+        #         imports = [./static/rpi.nix ./static/k8s-node.nix ./static/server.nix];
         #         system.stateVersion = "26.05";
         #         home-manager.sharedModules = [{home.stateVersion = "26.05";}];
         #         disko.devices.disk.root.device = "/dev/mmcblk0";
@@ -231,7 +231,7 @@
         sirver = {
           remoteBuild = true;
           profiles.system.canivete.configuration = {config, ...}: {
-            imports = [./static/facter ./static/server.nix];
+            imports = [./static/facter ./static/k8s-node.nix ./static/server.nix];
             boot.initrd.availableKernelModules = ["sr_mod"];
             disko.devices.disk.root.device = "/dev/disk/by-id/scsi-35000c50067faa64b";
             # Mini switch on spare LAN to connect another system (dingo)
@@ -251,7 +251,7 @@
         octopus = {
           remoteBuild = true;
           profiles.system.canivete.configuration = {
-            imports = [./static/facter ./static/server.nix];
+            imports = [./static/facter ./static/k8s-node.nix ./static/server.nix];
             boot.initrd.availableKernelModules = ["sr_mod"];
             disko.devices.disk.root.device = "/dev/disk/by-id/scsi-36b82a720cf60ce002fd94d2e2991b17e";
             services.rke2.role = "server";
@@ -260,7 +260,7 @@
         dingo = {
           remoteBuild = true;
           profiles.system.canivete.configuration = {
-            imports = [./static/facter ./static/server.nix];
+            imports = [./static/facter ./static/k8s-node.nix ./static/server.nix];
             disko.devices.disk.root.device = "/dev/disk/by-id/ata-LITEON_IT_LCS-256L9S_SD0E97900L2TH61100DL";
             services.rke2.role = "server";
           };
@@ -270,7 +270,7 @@
         bonobo = {
           remoteBuild = true;
           profiles.system.canivete.configuration = {
-            imports = [./static/facter ./static/server.nix];
+            imports = [./static/facter ./static/k8s-node.nix ./static/server.nix];
             disko.devices.disk.root.device = "/dev/disk/by-id/ata-Micron_1100_SATA_256GB_165015496CBD";
             # Host-level TCP relay fronting the internal Cilium gateway on bonobo's
             # tailnet IP (external-dns-internal points *.trdos.me here). See tailnet.nix.
@@ -280,7 +280,7 @@
         chinchilla = {
           remoteBuild = true;
           profiles.system.canivete.configuration = {
-            imports = [./static/facter ./static/server.nix];
+            imports = [./static/facter ./static/k8s-node.nix ./static/server.nix];
             disko.devices.disk.root.device = "/dev/disk/by-id/ata-MTFDDAK256TBN-1AR1ZABHA_UGXVK01J7BDCER";
             # Second gateway relay (round-robin with bonobo) on chinchilla's
             # tailnet IP; external-dns-internal lists both A records. See tailnet.nix.

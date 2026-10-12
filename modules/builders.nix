@@ -7,7 +7,7 @@
 # reaches the rest of the LAN). Parallel builds multiplex over one connection
 # (ControlMaster) so they do not trip sshd's MaxStartups, and every host key is
 # pinned. Cluster nodes are used as `nix-remote-builder` (forced command
-# `nix-daemon --stdio`, authorized for the personal key by static/server.nix);
+# `nix-daemon --stdio`, authorized for the personal key by static/k8s-node.nix);
 # falcon is also the dev host's login and `build-all --remote` box, so it is
 # used as tristan.
 #

@@ -31,7 +31,7 @@
                 # AdGuard Home on hyena VPS, reached over the tailnet. The
                 # single-label `hyena` only resolved by accident via the
                 # leaked ts.trdos.me MagicDNS search domain (removed by the
-                # kubelet resolv-conf fix in static/server.nix), so address
+                # kubelet resolv-conf fix in static/k8s-node.nix), so address
                 # hyena by its stable headscale-assigned tailnet IP. Pods
                 # reach it now that the cluster nodes are on the tailnet
                 # (verified: curl http://100.64.0.1:3000 → 302 from a pod).
