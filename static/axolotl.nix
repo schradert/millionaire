@@ -8,6 +8,8 @@
   ...
 }: {
   imports = [./facter ./tailnet-personal.nix ./zfs-legacy.nix flake.inputs.srvos.nixosModules.desktop];
+  # existing install is the flat layout; unset at the reinstall (docs/node-standard.md)
+  disko.legacyLayout = true;
   profiles.client.enable = true;
   profiles.workstation.enable = true;
   # Existing install (checked 2026-10-10): NixOS 25.11, pool root/{root,home,tmp}, 1G ESP
