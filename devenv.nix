@@ -478,6 +478,7 @@ in {
         cilium-cli
         hcloud
         hcloud-upload-image
+        android-tools # adb for the Android fleet (docs/android.md)
       ];
 
       images.ha = "Home Assistant with custom components";
