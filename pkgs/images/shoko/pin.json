@@ -1,8 +1,9 @@
 {
-  "version": "v5.3.3",
-  "digest": "sha256:b841f8249c9edfba102e4072e2b2a3eae4179e5dd553f29e11b9898a44f1e836",
+  "version": "v5.3.1",
+  "digest": "sha256:8bfa235fc36a7147443679c242368f30a532e12de3f52e0de2dcc7743fa37044",
   "source": {
     "type": "oci-tag",
     "repository": "shokoanime/server"
-  }
+  },
+  "hold": "v5.3.2+ entrypoint adds the shoko user and chowns /home/shoko, then exits 0 under our non-root securityContext (CrashLoopBackOff); needs a PUID/PGID or securityContext change before bumping"
 }
