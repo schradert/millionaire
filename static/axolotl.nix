@@ -1,5 +1,7 @@
-# axolotl (Dell Precision 7510 laptop) driving DisplayLink docks.
+# axolotl (Dell Precision 7510 laptop) driving DisplayLink docks, and an RKE2
+# agent (k8s-node + desktop-node; no GPU workloads, the NVIDIA side is off).
 # The DisplayLink driver needs a one-time manual download: docs/displaylink.md.
+# Standard layout: docs/node-standard.md.
 {
   config,
   flake,
@@ -7,7 +9,9 @@
   pkgs,
   ...
 }: {
-  imports = [./facter ./tailnet-personal.nix ./zfs-legacy.nix flake.inputs.srvos.nixosModules.desktop];
+  # A node joins the cluster tailnet (k8s-node), so tailnet-personal.nix is not imported.
+  imports = [./facter ./k8s-node.nix ./desktop-node.nix ./zfs-legacy.nix flake.inputs.srvos.nixosModules.desktop];
+  desktopNode.lanLink.Driver = "e1000e"; # wired onboard NIC (enp0s31f6); wlp2s0 cannot carry a node
   # existing install is the flat layout; unset at the reinstall (docs/node-standard.md)
   disko.legacyLayout = true;
   profiles.client.enable = true;
@@ -50,12 +54,16 @@
   hardware.i2c.enable = true;
   environment.systemPackages = with pkgs; [brightnessctl ddcutil];
   users.users.${flake.config.canivete.meta.people.me}.extraGroups = ["i2c"];
-  # Lid closed on a dock: stay awake
-  services.logind.settings.Login.HandleLidSwitch = "ignore";
-  systemd.targets = {
-    sleep.enable = false;
-    suspend.enable = false;
-    hibernate.enable = false;
-    hybrid-sleep.enable = false;
+  # A laptop that is a cluster node: the lid and a low battery
+  # must not take the node down (desktop-node.nix already masks sleep). It runs
+  # from the dock's AC; on a dying battery shut down cleanly (hibernate is masked).
+  services.logind.settings.Login = {
+    HandleLidSwitch = "ignore";
+    HandleLidSwitchExternalPower = "ignore";
+    HandleLidSwitchDocked = "ignore";
+  };
+  services.upower = {
+    enable = true;
+    criticalPowerAction = "PowerOff";
   };
 }
