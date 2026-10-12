@@ -45,12 +45,20 @@ in {
               inject = can.enable "Inject dataSourceRef into a PVC" {};
               restore = can.enable "ReplicationDestination that restores the latest snapshot into the PVC" {default = true;};
               cacheAccessModes = can.list.str "Mover cache access modes (RWX sources need ReadWriteOnce on ceph-block)" {default = [];};
+              schedule = can.str "Cron schedule of the backup" {default = "0 4 * * *";};
+              retain = lib.mkOption {
+                description = "Snapshots kept per period; pruned every 8 days";
+                default = {};
+                type = lib.types.submodule {
+                  options = lib.genAttrs ["daily" "weekly" "monthly" "yearly"] (period: can.int "${period} snapshots to keep" {default = 1;});
+                };
+              };
             };
           });
         };
         config = lib.mkIf config.volsync.enable {
           resources = lib.mkMerge (lib.flip lib.mapAttrsToList config.volsync.pvcs (pvcName: pvc: let
-            inherit (pvc) title inject path uid gid cacheAccessModes restore;
+            inherit (pvc) title inject path uid gid cacheAccessModes restore schedule retain;
             cache = lib.optionalAttrs (cacheAccessModes != []) {inherit cacheAccessModes;};
             region = "us-west-004";
             repository = "volsync--${name}--${pvcName}";
@@ -91,10 +99,10 @@ in {
                     AWS_DEFAULT_REGION = region;
                   };
                 };
-                # Copy every day at 4am, pruning every 8 days down to 1 per day/week/month/year
+                # Copy on `schedule` (4am daily by default), pruning every 8 days down to `retain`
                 replicationSources."${repository}-src".spec = {
                   sourcePVC = title;
-                  trigger.schedule = "0 4 * * *";
+                  trigger.schedule = schedule;
                   restic =
                     cache
                     // {
@@ -102,12 +110,7 @@ in {
                       copyMethod = "Direct";
                       pruneIntervalDays = 8;
                       inherit repository;
-                      retain = {
-                        daily = 1;
-                        weekly = 1;
-                        monthly = 1;
-                        yearly = 1;
-                      };
+                      inherit retain;
                     };
                 };
                 replicationDestinations = lib.mkIf restore {
