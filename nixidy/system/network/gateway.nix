@@ -4,14 +4,8 @@
   ...
 }: let
   inherit (config.canivete.meta) domain;
-  # Single source of external-dns annotations. external-dns >= 0.22 reads the
-  # external-dns.kubernetes.io/ prefix by default; both instances still pin
-  # --annotation-prefix=external-dns.alpha.kubernetes.io/ (#540), so emit both
-  # until the pin is dropped.
-  externalDnsAnnotations = lib.concatMapAttrs (key: value: {
-    "external-dns.alpha.kubernetes.io/${key}" = value;
-    "external-dns.kubernetes.io/${key}" = value;
-  });
+  # Single source of external-dns annotations (external-dns >= 0.22 default prefix).
+  externalDnsAnnotations = lib.mapAttrs' (key: lib.nameValuePair "external-dns.kubernetes.io/${key}");
 in {
   nixidy = {
     pinned,

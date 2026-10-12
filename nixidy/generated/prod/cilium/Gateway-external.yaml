@@ -2,7 +2,6 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   annotations:
-    external-dns.alpha.kubernetes.io/target: external.trdos.me
     external-dns.kubernetes.io/target: external.trdos.me
     io.cilium/lb-ipam-ips: home-pool
   name: external
@@ -11,7 +10,6 @@ spec:
   gatewayClassName: cilium
   infrastructure:
     annotations:
-      external-dns.alpha.kubernetes.io/hostname: external.trdos.me
       external-dns.kubernetes.io/hostname: external.trdos.me
   listeners:
     - allowedRoutes:

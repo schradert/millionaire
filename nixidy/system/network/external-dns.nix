@@ -36,14 +36,12 @@
             };
           };
           extraArgs = [
-            # Same prefix pin as external-dns-internal.
-            "--annotation-prefix=external-dns.alpha.kubernetes.io/"
             "--cloudflare-dns-records-per-page=1000"
             "--crd-source-apiversion=externaldns.k8s.io/v1alpha1"
             "--crd-source-kind=DNSEndpoint"
             "--gateway-name=external"
             "--cloudflare-proxied"
-            "--annotation-filter=external-dns.alpha.kubernetes.io/exclude notin (true)"
+            "--annotation-filter=external-dns.kubernetes.io/exclude notin (true)"
           ];
           policy = "sync";
           sources = ["crd" "gateway-httproute"];

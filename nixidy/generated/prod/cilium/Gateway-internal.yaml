@@ -2,7 +2,6 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   annotations:
-    external-dns.alpha.kubernetes.io/target: 100.64.0.4,100.64.0.5
     external-dns.kubernetes.io/target: 100.64.0.4,100.64.0.5
     io.cilium/lb-ipam-ips: home-pool
   name: internal
