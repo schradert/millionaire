@@ -260,7 +260,11 @@ in {
         # is a durable statement of what must not be in the cluster. Drop the
         # id (and the device above) once the drive is physically replaced.
         jobs.rook-ceph-remove-osds = let
-          removedOsds = [7];
+          # osd.7 (sirver bay 7): purged once, but Rook re-activates an OSD whose
+          # bluestore label is still on the disk even when the device is not in
+          # the node list, so purge-without-zap just churns the pool. Empty until
+          # the owner decides between zapping the disk and keeping the OSD.
+          removedOsds = [];
           script = ''
             set -u
             mkdir -p /etc/ceph
