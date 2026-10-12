@@ -68,76 +68,76 @@
       };
       helm.releases = lib.mkIf published {
         archive-ingest = {
-        chart = charts.bjw-s-labs.app-template-patched;
-        values = {
-          controllers.archive-ingest = {
-            replicas =
-              if enabled
-              then 1
-              else 0;
-            annotations."reloader.stakater.com/auto" = "true";
-            containers.archive-ingest = {
-              image = pinned.images.rsyncd;
-              ports = lib.toList {
-                name = "rsync";
-                containerPort = port;
+          chart = charts.bjw-s-labs.app-template-patched;
+          values = {
+            controllers.archive-ingest = {
+              replicas =
+                if enabled
+                then 1
+                else 0;
+              annotations."reloader.stakater.com/auto" = "true";
+              containers.archive-ingest = {
+                image = pinned.images.rsyncd;
+                ports = lib.toList {
+                  name = "rsync";
+                  containerPort = port;
+                };
+                probes.liveness = probe {};
+                probes.readiness = probe {};
+                probes.startup = probe {spec.failureThreshold = 30;};
               };
-              probes.liveness = probe {};
-              probes.readiness = probe {};
-              probes.startup = probe {spec.failureThreshold = 30;};
+            };
+            service = lib.optionalAttrs enabled {
+              archive-ingest = {
+                type = "LoadBalancer";
+                annotations."lbipam.cilium.io/ips" = lbAddress;
+                ports.rsync = {
+                  inherit port;
+                  protocol = "TCP";
+                };
+              };
+            };
+            configMaps.archive-ingest.data."rsyncd.conf" = rsyncdConf;
+            persistence = {
+              config = {
+                type = "configMap";
+                name = "archive-ingest";
+                globalMounts = lib.toList {
+                  path = "/config/rsyncd.conf";
+                  subPath = "rsyncd.conf";
+                  readOnly = true;
+                };
+              };
+              secrets = {
+                type = "secret";
+                name = "archive-ingest-rsyncd";
+                globalMounts = lib.toList {
+                  path = "/config/rsyncd.secrets";
+                  subPath = "rsyncd.secrets";
+                  readOnly = true;
+                };
+              };
+              tmp = {
+                type = "emptyDir";
+                globalMounts = lib.toList {path = "/tmp";};
+              };
+              media-dvd = {
+                type = "persistentVolumeClaim";
+                existingClaim = "media-dvd";
+                advancedMounts.archive-ingest.archive-ingest = lib.toList {path = "/data/dvd";};
+              };
+              media-movies = {
+                type = "persistentVolumeClaim";
+                existingClaim = "media-movies";
+                advancedMounts.archive-ingest.archive-ingest = lib.toList {path = "/data/movies";};
+              };
+              media-games = {
+                type = "persistentVolumeClaim";
+                existingClaim = "media-games";
+                advancedMounts.archive-ingest.archive-ingest = lib.toList {path = "/data/games";};
+              };
             };
           };
-          service = lib.optionalAttrs enabled {
-            archive-ingest = {
-              type = "LoadBalancer";
-              annotations."lbipam.cilium.io/ips" = lbAddress;
-              ports.rsync = {
-                inherit port;
-                protocol = "TCP";
-              };
-            };
-          };
-          configMaps.archive-ingest.data."rsyncd.conf" = rsyncdConf;
-          persistence = {
-            config = {
-              type = "configMap";
-              name = "archive-ingest";
-              globalMounts = lib.toList {
-                path = "/config/rsyncd.conf";
-                subPath = "rsyncd.conf";
-                readOnly = true;
-              };
-            };
-            secrets = {
-              type = "secret";
-              name = "archive-ingest-rsyncd";
-              globalMounts = lib.toList {
-                path = "/config/rsyncd.secrets";
-                subPath = "rsyncd.secrets";
-                readOnly = true;
-              };
-            };
-            tmp = {
-              type = "emptyDir";
-              globalMounts = lib.toList {path = "/tmp";};
-            };
-            media-dvd = {
-              type = "persistentVolumeClaim";
-              existingClaim = "media-dvd";
-              advancedMounts.archive-ingest.archive-ingest = lib.toList {path = "/data/dvd";};
-            };
-            media-movies = {
-              type = "persistentVolumeClaim";
-              existingClaim = "media-movies";
-              advancedMounts.archive-ingest.archive-ingest = lib.toList {path = "/data/movies";};
-            };
-            media-games = {
-              type = "persistentVolumeClaim";
-              existingClaim = "media-games";
-              advancedMounts.archive-ingest.archive-ingest = lib.toList {path = "/data/games";};
-            };
-          };
-        };
         };
       };
     };
