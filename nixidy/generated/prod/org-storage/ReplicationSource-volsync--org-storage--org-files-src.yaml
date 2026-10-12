@@ -1,0 +1,22 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: volsync--org-storage--org-files-src
+  namespace: home
+spec:
+  restic:
+    cacheAccessModes:
+      - ReadWriteOnce
+    copyMethod: Direct
+    moverSecurityContext:
+      fsGroup: 101
+    pruneIntervalDays: 8
+    repository: volsync--org-storage--org-files
+    retain:
+      daily: 1
+      monthly: 1
+      weekly: 1
+      yearly: 1
+  sourcePVC: org-files
+  trigger:
+    schedule: 0 4 * * *
