@@ -9,6 +9,7 @@
 }: {
   imports = [
     ./facter
+    ./tailnet-personal.nix
     flake.inputs.srvos.nixosModules.desktop
     flake.inputs.jovian.nixosModules.jovian
     flake.inputs.mynur.nixosModules.decky
