@@ -29,7 +29,11 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - env:
+        - args:
+            - --workspace=/siyuan/workspace
+          command:
+            - /opt/siyuan/kernel
+          env:
             - name: PGID
               value: "0"
             - name: PUID
