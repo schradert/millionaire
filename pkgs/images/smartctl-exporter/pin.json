@@ -1,8 +1,9 @@
 {
-  "version": "v0.15.0",
-  "digest": "sha256:a76e08dbf5db4781fefd1ed81c65ad46ae8d2849dae6b6d3acebcde2fc4e59d6",
+  "version": "v0.14.0",
+  "digest": "sha256:cfe22c36d7d2fac48ebf619707305acb65eb0fb670656eb80f356e606d782bc1",
   "source": {
     "type": "oci-tag",
     "repository": "quay.io/prometheuscommunity/smartctl-exporter"
-  }
+  },
+  "hold": "v0.15.0 answers /metrics with HTTP 500 on hosts with SAS/SCSI disks ('collected metric smartctl_verify_errors_* with unregistered descriptor'), which silenced SMART monitoring on sirver while two of its disks were failing; wait for the upstream fix"
 }
