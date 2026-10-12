@@ -11,6 +11,9 @@
 
   # TODO follow broken Nix 2.33 with Devenv 1.11.2 support
   # NOTE https://github.com/cachix/devenv/issues/2364
+  # Pre-existing dotfiles (an old ~/.profile on morgenmuffel) abort the
+  # home-manager activation; back them up like modules/client.nix does.
+  home-manager.backupFileExtension = "bak";
   nix.settings.experimental-features = lib.mkForce [
     "nix-command"
     "flakes"
