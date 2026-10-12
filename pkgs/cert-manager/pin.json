@@ -1,6 +1,6 @@
 {
-  "version": "1.19.4",
-  "hash": "sha256-meWu8R33djzvszlj8H8++CHwDYtQh1optWgmiR/Gmk8=",
+  "version": "1.21.2",
+  "hash": "sha256-GIRYQwZPnYSIUMkqVO0+cLnLmTaofnK0G/5Y0AngJRg=",
   "source": {
     "type": "github-release",
     "owner": "cert-manager",
