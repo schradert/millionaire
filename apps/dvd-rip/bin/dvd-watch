@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+# dvd-watch — drive half of the ripping service (run by `devenv up`).
+#
+# Loops forever: wait for a disc -> fingerprint it -> if already ripped, eject;
+# otherwise back it up to master.iso -> eject -> leave it for dvd-worker.
+# The drive is free again as soon as the backup is done, so the next disc can
+# go in while the previous one encodes.
+#
+# `touch $DVD_RIPS/.pause` pauses it (the drive is left alone until removed).
+#
+# Every state change is an event() line (stderr + $DVD_EVENTS). A failed disc
+# gets <disc>/.failed (reason inside) and is ejected; reinsert it to retry.
+set -uo pipefail
+here="$(dirname "$0")"
+source "$here/lib.sh"
+
+dev="$DVD_DEVICE"
+trap 'event stopped error "" "dvd-watch exited"' EXIT
+
+# udev resets the drive's ACL on media changes, so re-grant whenever it's gone.
+ensure_access() {
+  [ -r "$dev" ] && [ -w "$dev" ] && return
+  event access info "" "granting $USER access to $dev"
+  "$here/dvd-access" "$dev" 2>/dev/null || {
+    event error error "" "can't get access to $dev (sudo modprobe sg / setfacl failed)"
+    exit 1
+  }
+}
+ensure_access
+
+prop() { udevadm info --query=property --name="$dev" 2>/dev/null | grep -qx "$1=1"; }
+eject_disc() {
+  ensure_access
+  event ejecting info "$1" "ejecting"
+  eject "$dev" 2>/dev/null || event error warn "$1" "eject failed — remove the disc manually"
+  # Don't re-detect the same disc while the tray is still open.
+  while prop ID_CDROM_MEDIA; do sleep 2; done
+}
+
+waiting=0 paused=0
+while true; do
+  # `touch $DVD_RIPS/.pause` to leave the drive alone (e.g. to investigate a
+  # disc by hand); remove it to resume.
+  if [ -f "$DVD_RIPS/.pause" ]; then
+    [ "$paused" -eq 1 ] || event paused info "" "paused ($DVD_RIPS/.pause exists) — not touching the drive"
+    paused=1 waiting=0
+    sleep 3
+    continue
+  fi
+  [ "$paused" -eq 0 ] || { event resumed info "" "pause removed"; paused=0; }
+  if ! prop ID_CDROM_MEDIA; then
+    [ "$waiting" -eq 1 ] || event waiting info "" "waiting for a disc in $dev"
+    waiting=1
+    sleep 3
+    continue
+  fi
+  waiting=0
+  # A dual-layer master is up to ~8.5 GB plus encodes; a full disk fails the
+  # backup (and the event log) silently, so leave the disc in and pause.
+  free_gb=$(($(df --output=avail -k "$DVD_RIPS" | tail -1) / 1024 / 1024))
+  if [ "$free_gb" -lt 20 ]; then
+    event error error "" "only ${free_gb} GB free in $DVD_RIPS — pausing; free space, then rm $DVD_RIPS/.pause"
+    touch "$DVD_RIPS/.pause"
+    continue
+  fi
+  sleep 5 # let the drive spin up before reading
+  ensure_access
+
+  if ! prop ID_CDROM_MEDIA_DVD; then
+    event error error "" "inserted disc isn't a DVD (CD or Blu-ray?)"
+    eject_disc ""
+    continue
+  fi
+
+  label=$(disc_label "$dev")
+  id=$(disc_id "$dev")
+  if [ -z "$id" ]; then
+    event error error "$label" "can't read the disc's VIDEO_TS (not a video DVD, or dirty/scratched)"
+    eject_disc "$label"
+    continue
+  fi
+
+  known=$(find_disc "$id")
+  if [ -n "$known" ] && [ -f "$known/.rescue-pending" ]; then
+    event rescuing info "${known##*/}" "damaged disc is back — re-reading only the missing sectors"
+  elif [ -n "$known" ] && [ -f "$known/.backup-complete" ] && [ ! -e "$known/master.iso" ] &&
+    [ "$KEEP_MASTERS" = 1 ]; then
+    # Ripped before masters were kept: re-copy just the ISO (the encodes stay;
+    # .done stops the worker from re-encoding).
+    event re-archiving info "${known##*/}" "already encoded, but its master.iso was deleted — copying the disc again"
+    rm -f "$known/.backup-complete"
+  elif [ -n "$known" ] && [ -f "$known/.backup-complete" ]; then
+    event duplicate info "${known##*/}" "already ripped (fingerprint $id) — nothing to do"
+    eject_disc "${known##*/}"
+    continue
+  fi
+
+  if [ ! -f "${known:-/nonexistent}/.rescue-pending" ] && [ ! -f "${known:-/nonexistent}/.done" ]; then
+    event detected info "$label" "new disc (fingerprint $id)"
+    event backing-up info "$label" "copying the disc to master.iso"
+  fi
+  start=$SECONDS
+  blog="$DVD_RIPS/.watch-backup.log" out="$DVD_RIPS/.watch-backup.out"
+  "$here/dvd-backup" "$dev" 2>&1 >"$out" | tee "$blog" >&2
+  rc=${PIPESTATUS[0]}
+  dir=$(cat "$out")
+  if [ "$rc" -eq 0 ] && [ -n "$dir" ]; then
+    disc="${dir##*/}"
+    rm -f "$dir/.failed"
+    mb=$(du -sm --apparent-size "$dir/master.iso" | cut -f1)
+    if [ -f "$dir/.done" ]; then next="ISO archived; existing encodes kept"; else next="queued for encoding"; fi
+    event backed-up info "$disc" "${mb} MB in $(hms $((SECONDS - start))) — $next"
+    eject_disc "$disc"
+  else
+    dir=$(find_disc "$id")
+    reason=$(grep -aiE 'error|warning' "$blog" | tail -3 | sed 's/\x1b\[[0-9;]*m//g' | paste -sd' ')
+    [ -z "$dir" ] || echo "backup: $reason" >"$dir/.failed"
+    event error error "${dir##*/}" "backup failed: ${reason:-see logs/backup.log}"
+    eject_disc "${dir##*/}"
+  fi
+  rm -f "$blog" "$out"
+done

@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# dvd-rip [--name "Movie (Year)"] [--keep-disc] [device] — the whole pipeline
+# for the disc in the drive:
+#
+#   dvd-backup   decrypted master.iso (only drive-bound step), then eject
+#   dvd-inspect  metadata dump + title classification
+#   dvd-encode   NVENC encode into library/<Name>/ (+ extras/, short/)
+#   dvd-review   contact sheets for identifying the extras
+#
+# The disc ejects as soon as the backup is done; start the next disc in
+# another shell (tmux window) while this one encodes.
+set -euo pipefail
+here="$(dirname "$0")"
+source "$here/lib.sh"
+
+name=() eject=1 dev="$DVD_DEVICE"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --name) name=(--name "$2"); shift 2 ;;
+    --keep-disc) eject=0; shift ;;
+    -*) die "unknown arg: $1" ;;
+    *) dev="$1"; shift ;;
+  esac
+done
+
+dir=$("$here/dvd-backup" "$dev")
+[ "$eject" -eq 0 ] || eject "$dev" 2>/dev/null || true
+"$here/dvd-inspect" "$dir"
+"$here/dvd-encode" "$dir" "${name[@]}"
+"$here/dvd-review" "$dir"
+
+cat >&2 <<EOF
+
+Done: $dir
+  library/   Jellyfin-ready. Rename the folder + main file to "Movie Name (Year)"
+             (optionally "[tmdbid-NNN]" on the folder) if --name wasn't given.
+  extras/    Works as-is in Jellyfin; for nicer grouping move files into
+             trailers/ featurettes/ "deleted scenes"/ "behind the scenes"/
+             interviews/ scenes/ shorts/ — use review/index.html to tell them apart.
+  short/     Logos/bumpers under ${EXTRA_MIN}s; usually junk, check review/ first.
+  master.iso Decrypted archive of the full disc (menus included). Keep it to
+             re-encode later, or delete once happy.
+EOF

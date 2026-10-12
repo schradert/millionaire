@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# dvd-worker — encode half of the ripping service (run by `devenv up`).
+#
+# Loops forever over $DVD_RIPS, oldest backup first: any disc with
+# .backup-complete but no .done/.failed gets dvd-inspect -> dvd-encode ->
+# dvd-review -> dvd-summary, then .done. master.iso is kept (KEEP_MASTERS=0
+# deletes it, except for damaged discs). The movie is named from the disc
+# label ("Beetlejuice"); rename later with dvd-rename.
+#
+# A failing step writes <disc>/.failed (reason inside) and emits an error
+# event; `rm <disc>/.failed` to have it retried.
+set -uo pipefail
+here="$(dirname "$0")"
+source "$here/lib.sh"
+
+trap 'event stopped error "" "dvd-worker exited"' EXIT
+
+next_disc() {
+  local f d
+  while IFS= read -r f; do
+    d="${f%/.backup-complete}"
+    [ -f "$d/.done" ] || [ -f "$d/.failed" ] || { echo "$d"; return; }
+  done < <(find "$DVD_RIPS" -mindepth 2 -maxdepth 2 -name .backup-complete -printf '%T@ %p\n' 2>/dev/null | sort -n | cut -d' ' -f2-)
+}
+
+# step <dir> <state> <message> <cmd...>: run one pipeline step, logging to
+# logs/<state>.log; on failure mark the disc failed with the last error line.
+step() {
+  local dir="$1" state="$2" msg="$3" disc="${1##*/}"
+  shift 3
+  event "$state" info "$disc" "$msg"
+  if ! "$@" >"$dir/logs/$state.log" 2>&1; then
+    local reason
+    reason=$(sed 's/\x1b\[[0-9;]*m//g' "$dir/logs/$state.log" | grep -iE 'error|warning|failed' | tail -3 | paste -sd' ')
+    echo "$state: $reason" >"$dir/.failed"
+    event error error "$disc" "$state failed: ${reason:-see logs/$state.log}"
+    return 1
+  fi
+}
+
+idle=0
+while true; do
+  dir=$(next_disc)
+  if [ -z "$dir" ]; then
+    [ "$idle" -eq 1 ] || event idle info "" "no discs waiting to be encoded"
+    idle=1
+    sleep 10
+    continue
+  fi
+  idle=0
+  disc="${dir##*/}"
+  start=$SECONDS
+
+  step "$dir" inspecting "reading titles and tracks" "$here/dvd-inspect" "$dir" || continue
+  plan=$(jq -r '[group_by(.role)[] | "\(length) \(.[0].role)"] | join(", ")' "$dir/titles.json")
+  if ! step "$dir" encoding "NVENC encode ($plan)" "$here/dvd-encode" "$dir"; then
+    # Subtle copy protection (bad navigation data that libdvdread/HandBrake
+    # trip over mid-title) — retry once via MakeMKV's analysis + remux.
+    [ ! -f "$dir/.protected" ] || continue
+    rm -f "$dir/.failed"
+    event retrying warn "$disc" "encode failed; retrying via MakeMKV remux (possible copy protection)"
+    rm -rf "$dir/library" "$dir/short"
+    step "$dir" inspecting "MakeMKV title analysis" "$here/dvd-inspect" "$dir" --makemkv || continue
+    step "$dir" encoding "NVENC encode via MakeMKV remux" "$here/dvd-encode" "$dir" || continue
+  fi
+  if [ -f "$dir/.damaged" ]; then
+    # Glitch marking is a nicety: its failure must not fail the disc.
+    step "$dir" damage "locating disc-damage glitches and marking them" "$here/dvd-damage" "$dir" ||
+      { rm -f "$dir/.failed"; event damage warn "$disc" "damage marking failed (non-fatal) — see logs/damage.log"; }
+  fi
+  # Preview grids are for humans: if they fail the encodes are still good, so
+  # warn and carry on instead of marking the whole disc failed.
+  step "$dir" reviewing "making preview grids" "$here/dvd-review" "$dir" ||
+    { rm -f "$dir/.failed"; event reviewing warn "$disc" "preview grids failed (non-fatal) — see logs/reviewing.log"; }
+  "$here/dvd-summary" "$dir" >"$dir/summary.json" 2>"$dir/logs/summary.log" ||
+    event error warn "$disc" "summary failed — see logs/summary.log"
+
+  touch "$dir/.done"
+  # Masters are kept by default (full-disc archive); KEEP_MASTERS=0 drops
+  # them once encoded, except for damaged discs awaiting a rescue.
+  if [ "$KEEP_MASTERS" != 1 ] && [ ! -f "$dir/.rescue-pending" ] && [ ! -f "$dir/.damaged" ]; then
+    rm -f "$dir/master.iso"
+  fi
+  event "done" info "$disc" "$(jq -r '"\(.name): main \(.main.runtime // "?"), \(.extras | length) extras, \(.short | length) short, \(.warnings | length) warnings"' "$dir/summary.json" 2>/dev/null) in $(hms $((SECONDS - start)))"
+done

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# dvd-access — grant $USER raw access to the optical drive until next reboot.
+#
+# falcon's drive is root:cdrom 0660 and tristan isn't in `cdrom`; MakeMKV also
+# needs the SCSI-generic node, whose `sg` module isn't loaded by default.
+# Permanent NixOS equivalent (needs a rebuild, so not done here):
+#   users.users.tristan.extraGroups = [ "cdrom" ];
+#   boot.kernelModules = [ "sg" ];
+set -euo pipefail
+source "$(dirname "$0")/lib.sh"
+
+dev="${1:-$DVD_DEVICE}"
+sudo modprobe sg
+sg=$(ls "/sys/block/$(basename "$dev")/device/scsi_generic/" 2>/dev/null || true)
+sudo setfacl -m "u:$USER:rw" "$dev" ${sg:+"/dev/$sg"}
+log "granted $USER rw on $dev${sg:+ and /dev/$sg}"

@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# dvd-review <disc> — contact sheets for every extra/short so they can be
+# identified (trailer vs featurette vs deleted scene) without watching them.
+#
+# Writes review/<file>.jpg (4x4 frames spread across the title) and
+# review/index.html listing each with runtime and tracks. review/ sits outside
+# library/, so Jellyfin never sees it.
+set -euo pipefail
+source "$(dirname "$0")/lib.sh"
+
+dir=$(resolve_disc "${1:?usage: dvd-review <disc>}")
+out="$dir/review"
+mkdir -p "$out"
+
+html="$out/index.html"
+{
+  echo "<!doctype html><meta charset=utf-8><title>$(basename "$dir") extras</title>"
+  echo "<style>body{font:14px system-ui;margin:16px;background:#111;color:#eee}figure{margin:0 0 24px}img{max-width:100%}code{color:#9cf}</style>"
+  echo "<h1>$(basename "$dir")</h1>"
+} >"$html"
+
+{ find "$dir/library" "$dir/short" -name '*.mkv' ! -name '*.part.mkv' -print0 2>/dev/null || true; } | sort -zV |
+  while IFS= read -r -d '' f; do
+    base=$(basename "$f" .mkv)
+    rel="${f#"$dir"/}"
+    secs=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$f" </dev/null 2>/dev/null | cut -d. -f1 || true)
+    # An unreadable/empty output (e.g. a 3 KB stub from a still-frame title) must
+    # never fail the whole disc: set it aside and carry on.
+    if ! [ "${secs:-0}" -gt 0 ] 2>/dev/null; then
+      warn "unreadable output $rel — moved to .broken-stubs/"
+      mkdir -p "$dir/.broken-stubs"
+      mv -f "$f" "$dir/.broken-stubs/" || true
+      continue
+    fi
+    sheet="$out/$base.jpg"
+    if [ ! -f "$sheet" ]; then
+      ffmpeg -nostdin -v error -y -i "$f" -vf "fps=16/$secs,scale=360:-2,tile=4x4:padding=4" -frames:v 1 "$sheet" ||
+        warn "contact sheet failed for $rel"
+    fi
+    tracks=$(ffprobe -v error -show_entries stream=codec_type,codec_name:stream_tags=language,title -of compact=p=0:nk=1 "$f" </dev/null 2>/dev/null |
+      { grep -v '^video' || true; } | sed 's/|/ /g' | paste -sd ';' | sed 's/;/; /g' || true)
+    printf '<figure><h3>%s <small>(%s)</small></h3><code>%s</code><br><code>%s</code><br><img src="%s"></figure>\n' \
+      "$base" "$(hms "$secs")" "$rel" "$tracks" "$(basename "$sheet")" >>"$html"
+  done
+
+# One labelled montage of every library extra (not the main feature, not
+# short/) — a single image to categorise a whole disc's extras at a glance.
+name=$(cat "$dir/.name" 2>/dev/null || label_to_name "${dir##*/}")
+mapfile -t sheets < <(find "$dir/library" -name '*.mkv' ! -name '*.part.mkv' ! -name "$name.mkv" -printf '%f\n' 2>/dev/null |
+  sed 's/\.mkv$/.jpg/' | sort -V | while read -r j; do [ -f "$out/$j" ] && echo "$j"; done)
+# montage <out.jpg> <sheet>...: labelled 4-column grid of contact sheets.
+montage() {
+  local dest="$1" inputs=() filter="" stack="" i label cols rows n
+  shift
+  n=$#
+  i=0
+  for j in "$@"; do
+    inputs+=(-i "$out/$j")
+    label=$(sed -E 's/^Title ([0-9]+) - (.*)\.jpg$/T\1 \2/' <<<"$j")
+    filter+="[$i]scale=480:360,setsar=1,drawtext=text='$label':x=6:y=6:fontsize=28:fontcolor=yellow:box=1:boxcolor=black@0.7[v$i];"
+    stack+="[v$i]"
+    i=$((i + 1))
+  done
+  cols=$((n < 4 ? n : 4))
+  rows=$(((n + cols - 1) / cols))
+  if [ "$n" -eq 1 ]; then
+    filter+="${stack}null"
+  else
+    # Pad the grid with black tiles so xstack's grid is full.
+    for ((i = n; i < cols * rows; i++)); do
+      filter+="color=black:s=480x360:d=1[v$i];"
+      stack+="[v$i]"
+    done
+    filter+="${stack}xstack=inputs=$((cols * rows)):grid=${cols}x${rows}"
+  fi
+  ffmpeg -nostdin -v error -y "${inputs[@]}" -filter_complex "$filter" -frames:v 1 "$dest" || warn "montage $dest failed"
+}
+
+# Pages of 16 (extras.jpg when they fit on one), small enough to read.
+rm -f "$out"/extras.jpg "$out"/extras-*.jpg
+if [ "${#sheets[@]}" -gt 0 ] && [ "${#sheets[@]}" -le 16 ]; then
+  montage "$out/extras.jpg" "${sheets[@]}"
+elif [ "${#sheets[@]}" -gt 16 ]; then
+  for ((p = 0; p * 16 < ${#sheets[@]}; p++)); do
+    montage "$out/extras-$((p + 1)).jpg" "${sheets[@]:p*16:16}"
+  done
+fi
+
+log "review sheets in $out (open index.html; all extras in extras.jpg / extras-N.jpg)"
