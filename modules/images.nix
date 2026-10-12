@@ -159,7 +159,7 @@
         src = ../apps/app-bootstrap;
         pkg = amd64Pkgs.rustPlatform.buildRustPackage {
           pname = "app-bootstrap";
-          version = "0.18.0";
+          version = "0.19.0";
           inherit src;
           cargoLock.lockFile = "${src}/Cargo.lock";
         };
