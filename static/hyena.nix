@@ -148,6 +148,13 @@ in {
         region_code = "hyena";
         region_name = "Hyena DERP";
         stun_listen_addr = "0.0.0.0:3478";
+        # Advertise the DERP by IP. Clients resolve the region's hostname
+        # through the tailnet resolver (AdGuard, above), which is only
+        # reachable once a path to hyena exists: a phone whose path went cold
+        # looped on "connect to region 999: context deadline exceeded" and
+        # never recovered until hyena pinged it. The IP is hyena's pulumi
+        # server address (headscale.${domain}'s A record).
+        ipv4 = "178.104.61.137";
       };
       # Push AdGuard (hyena's tailnet IP) to tailnet CLIENTS as their resolver —
       # ad-blocking + internal *.trdos.me names for laptop/PC/mobile. magic_dns
@@ -176,6 +183,30 @@ in {
   # *.trdos.me resolves to (nixidy/system/network/gateway.nix). ACLs are
   # stateful, so nothing has to allow the replies. Until pulumi creates the
   # `family` user, headscale skips its rules (unresolved users only log).
+  # Keep a path to every online peer warm. A client behind NAT whose session to
+  # hyena went idle could not re-establish one on its own (its DERP bootstrap
+  # depends on the tailnet resolver, see derp.server.ipv4), but a disco ping
+  # from hyena reopens the direct path at once; this makes that automatic.
+  systemd.services.tailnet-keepalive = {
+    description = "disco-ping every online tailnet peer";
+    after = ["tailscaled.service"];
+    path = [config.services.tailscale.package pkgs.jq];
+    serviceConfig.Type = "oneshot";
+    script = ''
+      for ip in $(tailscale status --json | jq -r '.Peer[] | select(.Online) | .TailscaleIPs[0]'); do
+        tailscale ping -c 1 --timeout 3s "$ip" >/dev/null 2>&1 || true
+      done
+    '';
+  };
+  systemd.timers.tailnet-keepalive = {
+    wantedBy = ["timers.target"];
+    timerConfig = {
+      OnBootSec = "1min";
+      OnUnitActiveSec = "30s";
+      AccuracySec = "5s";
+    };
+  };
+
   services.headscale.settings.policy = {
     mode = "file";
     path = pkgs.writeText "headscale-policy.json" (builtins.toJSON {
