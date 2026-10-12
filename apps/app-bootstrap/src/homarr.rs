@@ -78,12 +78,14 @@ impl Homarr {
         }
     }
 
+    /// A `Null` input is sent as no input at all: procedures declared without one (app.all)
+    /// reject `{"json":null}` ("expected void, received null").
     async fn query(&mut self, path: &str, input: Value) -> Result<Value> {
-        let input = serde_json::to_string(&json!({ "json": input }))?;
-        let b = self
-            .http
-            .get(format!("{}/api/trpc/{path}", self.base))
-            .query(&[("input", input)]);
+        let mut b = self.http.get(format!("{}/api/trpc/{path}", self.base));
+        if !input.is_null() {
+            let input = serde_json::to_string(&json!({ "json": input }))?;
+            b = b.query(&[("input", input)]);
+        }
         let r = self.req(b).send().await?;
         self.keep_cookies(&r);
         data(ok(r, path).await?).await

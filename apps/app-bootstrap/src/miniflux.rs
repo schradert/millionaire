@@ -12,7 +12,9 @@
 //!    Otherwise make sure it is an admin and that the generated password logs in.
 //! 3. Log in to the web UI as tristan (the form is at `/`; GET `/login` answers 405); unless the
 //!    Fever integration is already on under his name, save it with his password. There is no API
-//!    for integrations, so this posts the integrations form, which resets the other integrations; it only runs while Fever is off.
+//!    for integrations, so this re-posts the integrations form with every field it currently
+//!    shows (selects included: an omitted enum field such as `linktaco_link_visibility` is a
+//!    500) and only the Fever fields changed; it only runs while Fever is off.
 
 use std::{collections::BTreeMap, time::Duration};
 
@@ -72,6 +74,91 @@ fn csrf(html: &str) -> Result<String> {
     Ok(rest.split('"').next().unwrap_or_default().to_string())
 }
 
+/// Attributes of one HTML start tag (`name="value"` and bare flags), lowercase keys.
+fn attrs(tag: &str) -> BTreeMap<String, String> {
+    let mut out = BTreeMap::new();
+    let mut rest = tag.trim_end_matches('/').trim();
+    while let Some(i) = rest.find(|c: char| !c.is_whitespace()) {
+        rest = &rest[i..];
+        let end = rest.find(|c: char| c.is_whitespace() || c == '=').unwrap_or(rest.len());
+        let key = rest[..end].to_ascii_lowercase();
+        rest = rest[end..].trim_start();
+        if key.is_empty() {
+            break;
+        }
+        let value = if let Some(r) = rest.strip_prefix('=') {
+            let r = r.trim_start();
+            if let Some(q) = r.strip_prefix('"').or_else(|| r.strip_prefix('\'')) {
+                let quote = r.chars().next().unwrap_or('"');
+                let close = q.find(quote).unwrap_or(q.len());
+                rest = &q[(close + 1).min(q.len())..];
+                q[..close].to_string()
+            } else {
+                let close = r.find(char::is_whitespace).unwrap_or(r.len());
+                rest = &r[close..];
+                r[..close].to_string()
+            }
+        } else {
+            String::new()
+        };
+        out.insert(key, value);
+    }
+    out
+}
+
+/// Every field a browser would submit from the first `<form>` of the page: inputs (checkboxes
+/// and radios only when checked), the selected option of each select, textareas.
+fn form_fields(html: &str) -> Vec<(String, String)> {
+    let form = html.split("<form").nth(1).unwrap_or(html);
+    let form = form.split("</form>").next().unwrap_or(form);
+    let mut fields = Vec::new();
+    let mut select: Option<String> = None;
+    let mut textarea: Option<String> = None;
+    for chunk in form.split('<').skip(1) {
+        let (tag, after) = chunk.split_once('>').unwrap_or((chunk, ""));
+        let (name, rest) = tag.split_once(char::is_whitespace).unwrap_or((tag, ""));
+        let a = attrs(rest);
+        match name.to_ascii_lowercase().as_str() {
+            "input" => {
+                let ty = a.get("type").map(String::as_str).unwrap_or("text");
+                if matches!(ty, "submit" | "button" | "reset" | "file") {
+                    continue;
+                }
+                if matches!(ty, "checkbox" | "radio") && !a.contains_key("checked") {
+                    continue;
+                }
+                if let Some(n) = a.get("name") {
+                    let v = a.get("value").cloned().unwrap_or_else(|| if matches!(ty, "checkbox" | "radio") { "on".into() } else { String::new() });
+                    fields.push((n.clone(), html_unescape(&v)));
+                }
+            }
+            "select" => select = a.get("name").cloned(),
+            "/select" => select = None,
+            "option" => {
+                if let (Some(n), true) = (&select, a.contains_key("selected")) {
+                    let v = a.get("value").cloned().unwrap_or_else(|| after.split('<').next().unwrap_or_default().trim().to_string());
+                    fields.push((n.clone(), html_unescape(&v)));
+                }
+            }
+            "textarea" => {
+                if let Some(n) = a.get("name") {
+                    let v = after.split("</textarea>").next().unwrap_or_default();
+                    fields.push((n.clone(), html_unescape(v)));
+                    textarea = Some(n.clone());
+                }
+            }
+            "/textarea" => textarea = None,
+            _ => {}
+        }
+    }
+    let _ = textarea;
+    fields
+}
+
+fn html_unescape(s: &str) -> String {
+    s.replace("&quot;", "\"").replace("&#34;", "\"").replace("&#39;", "'").replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+}
+
 async fn ensure_fever(base: &str, user: &str, password: &str) -> Result<()> {
     let mut ui = Ui {
         http: Client::builder().timeout(Duration::from_secs(60)).redirect(redirect::Policy::none()).build()?,
@@ -95,13 +182,17 @@ async fn ensure_fever(base: &str, user: &str, password: &str) -> Result<()> {
         println!("fever already enabled for {user}");
         return Ok(());
     }
-    let token = csrf(&page)?;
-    let r = ui
-        .post(
-            "/integration",
-            &[("csrf", &token), ("fever_enabled", "1"), ("fever_username", user), ("fever_password", password)],
-        )
-        .await?;
+    // Resubmit the form as shown, with only the Fever fields changed.
+    let mut fields: Vec<(String, String)> = form_fields(&page)
+        .into_iter()
+        .filter(|(k, _)| !matches!(k.as_str(), "csrf" | "fever_enabled" | "fever_username" | "fever_password"))
+        .collect();
+    fields.push(("csrf".into(), csrf(&page)?));
+    fields.push(("fever_enabled".into(), "1".into()));
+    fields.push(("fever_username".into(), user.into()));
+    fields.push(("fever_password".into(), password.into()));
+    let form: Vec<(&str, &str)> = fields.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+    let r = ui.post("/integration", &form).await?;
     if !r.status().is_redirection() {
         return Err(format!("POST /integration: HTTP {}", r.status()).into());
     }
@@ -196,5 +287,37 @@ mod tests {
     #[test]
     fn csrf_missing_is_an_error() {
         assert!(csrf("<html></html>").is_err());
+    }
+}
+
+#[cfg(test)]
+mod form_tests {
+    use super::form_fields;
+
+    #[test]
+    fn keeps_selects_checked_boxes_and_textareas() {
+        let html = r#"<html><form method="post" action="/integration">
+<input type="hidden" name="csrf" value="tok">
+<input type="checkbox" name="fever_enabled" value="1">
+<input type="text" name="fever_username" id="form-fever-username" value="">
+<input type="checkbox" name="linktaco_enabled" value="1" checked>
+<select id="form-linktaco-link-visibility" name="linktaco_link_visibility">
+<option value="private">Private</option>
+<option value="public" selected>Public</option>
+</select>
+<textarea name="webhook_url">https://x/&amp;y</textarea>
+<button type="submit">Save</button>
+</form></html>"#;
+        let f = form_fields(html);
+        assert_eq!(
+            f,
+            vec![
+                ("csrf".to_string(), "tok".to_string()),
+                ("fever_username".to_string(), String::new()),
+                ("linktaco_enabled".to_string(), "1".to_string()),
+                ("linktaco_link_visibility".to_string(), "public".to_string()),
+                ("webhook_url".to_string(), "https://x/&y".to_string()),
+            ]
+        );
     }
 }
