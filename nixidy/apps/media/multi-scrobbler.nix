@@ -59,6 +59,9 @@ in {
             LOG_LEVEL = "info";
             # Maloja sink (canonical private DB). multi-scrobbler will create a Maloja
             # client automatically when MALOJA_URL is set.
+            # 0.19 drops env-configured components that have no <PREFIX>_ID.
+            MALOJA_ID = "maloja";
+            JELLYFIN_ID = "jellyfin";
             MALOJA_URL = "http://maloja.media.svc.cluster.local:42010";
             # Jellyfin source (0.13 polls the API): authenticate as the bootstrapped
             # Jellyfin admin (password in JELLYFIN_PASSWORD) and scrobble tristan's plays.
