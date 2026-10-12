@@ -53,18 +53,10 @@
           # Disable bundled MinIO — not needed at homelab scale
           minio.enabled = false;
 
-          # Disable chart ingress — we use HTTPRoute
+          # Disable chart ingress and its HTTPRoute (nixidy merges list elements
+          # by index, so the chart's two rules collapse into the /ws/ one and
+          # "/" never reached the app); the routes are below
           ingress.enabled = false;
-
-          # Enable chart's built-in HTTPRoute support
-          httproute = {
-            enabled = true;
-            parentRefs = lib.toList {
-              name = "internal";
-              namespace = "kube-system";
-              sectionName = "https";
-            };
-          };
 
           windmill = {
             tag = with pinned.images.windmill; "${tag}@${digest}";
@@ -353,6 +345,43 @@
                   secret.secretName = "windmill-oidc";
                 }
               ];
+            };
+          };
+        };
+
+        httpRoutes.windmill.spec = {
+          hostnames = [hostname];
+          parentRefs = lib.toList {
+            name = "internal";
+            namespace = "kube-system";
+            sectionName = "https";
+          };
+          rules = lib.toList {
+            backendRefs = lib.toList {
+              name = "windmill-app";
+              port = 8000;
+            };
+          };
+        };
+        # LSP and debugger websockets go to the gateway; the longer path
+        # prefixes outrank the plain "/" route (Gateway API precedence).
+        httpRoutes.windmill-ws.spec = {
+          hostnames = [hostname];
+          parentRefs = lib.toList {
+            name = "internal";
+            namespace = "kube-system";
+            sectionName = "https";
+          };
+          rules = lib.toList {
+            matches = map (p: {
+              path = {
+                type = "PathPrefix";
+                value = p;
+              };
+            }) ["/ws/" "/ws_debug/"];
+            backendRefs = lib.toList {
+              name = "windmill-extra";
+              port = 3000;
             };
           };
         };
