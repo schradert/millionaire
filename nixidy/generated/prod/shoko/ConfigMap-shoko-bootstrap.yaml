@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
-  image: harbor.trdos.me/library/app-bootstrap:0.19.3@sha256:37e151985023c23254a71d250053f53adf74c93fa43176d6d4a9dc236efd35de
-  spec: 91364372842f55e742c69f45ef1c37dc503e4622f3253d3167c68f97813b53e6
+  image: harbor.trdos.me/library/app-bootstrap:0.19.4@sha256:08f59b95160fe6654a178e4a2e35761f0b793408b18c93643ea2866f399c33ca
+  spec: 2a08853d63bd0ce4403f625626b05b62624f3d4d866cb6667a48e68f13ae0dc8
 kind: ConfigMap
 metadata:
   name: shoko-bootstrap
