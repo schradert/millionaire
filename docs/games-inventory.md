@@ -1,5 +1,7 @@
 # Game inventory (every disk, every system)
 
+<!-- markdownlint-disable MD060 -->
+
 Taken 2026-10-11 by read-only inspection of Deck (`systeamadeck`, 192.168.50.155), falcon (192.168.50.215), morgenmuffel (.249), axolotl (.250), plus the repo worktree; `[observed]` = seen on the host, `[assumed]` = emulator/launcher default not seen on disk, `[planned]` = designed in `data-archive-design.md` but not implemented.
 
 Abbreviations: **SN-D** = Deck safety-net restic repo `s3:https://s3.us-west-004.backblazeb2.com/trdos-me--volsync/systeamadeck-safety-net-2026-10-11` (snapshots `user` cc2d0f37, `root` 407dc24a, `roms` still running when last checked 20:29 PDT, id not yet known); **SN-F** = falcon restic repo `.../falcon-safety-net-2026-10-11` (snapshots `user` f339afeb, `root` 371578e9); **SYNC** = planned Syncthing `sync-saves` folders (not implemented); falcon repo credentials are in Bitwarden (`backblaze/bucket/*`, `restic/falcon-safety-net/password`); the Deck repo credentials are in the session scratchpad `systeamadeck-safety-net.env` (a Bitwarden entry for the Deck repo was not checked).
