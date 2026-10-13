@@ -69,44 +69,6 @@ spec:
             - mountPath: /tmp/dashboards
               name: sc-dashboard-volume
         - env:
-            - name: METHOD
-              value: WATCH
-            - name: LABEL
-              value: grafana_datasource
-            - name: FOLDER
-              value: /etc/grafana/provisioning/datasources
-            - name: RESOURCE
-              value: both
-            - name: NAMESPACE
-              value: ALL
-            - name: REQ_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  key: admin-user
-                  name: grafana-admin
-            - name: REQ_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  key: admin-password
-                  name: grafana-admin
-            - name: REQ_URL
-              value: http://localhost:3000/api/admin/provisioning/datasources/reload
-            - name: REQ_METHOD
-              value: POST
-          image: quay.io/kiwigrid/k8s-sidecar:2.5.0@sha256:a6b3f707f883108376514489a94d6629109a327b2978e1d826cd104c4ca436df
-          imagePullPolicy: IfNotPresent
-          name: grafana-sc-datasources
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
-            seccompProfile:
-              type: RuntimeDefault
-          volumeMounts:
-            - mountPath: /etc/grafana/provisioning/datasources
-              name: sc-datasources-volume
-        - env:
             - name: POD_IP
               valueFrom:
                 fieldRef:
@@ -212,6 +174,55 @@ spec:
           volumeMounts:
             - mountPath: /var/lib/grafana
               name: storage
+        - env:
+            - name: HEALTH_PORT
+              value: "8082"
+            - name: METHOD
+              value: WATCH
+            - name: LABEL
+              value: grafana_datasource
+            - name: FOLDER
+              value: /etc/grafana/provisioning/datasources
+            - name: RESOURCE
+              value: both
+            - name: NAMESPACE
+              value: ALL
+            - name: REQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  key: admin-user
+                  name: grafana-admin
+            - name: REQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: admin-password
+                  name: grafana-admin
+            - name: REQ_URL
+              value: http://localhost:3000/api/admin/provisioning/datasources/reload
+            - name: REQ_METHOD
+              value: POST
+            - name: REQ_SKIP_INIT
+              value: "true"
+          image: quay.io/kiwigrid/k8s-sidecar:2.5.0@sha256:a6b3f707f883108376514489a94d6629109a327b2978e1d826cd104c4ca436df
+          imagePullPolicy: IfNotPresent
+          name: grafana-init-sc-datasources
+          restartPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          startupProbe:
+            failureThreshold: 60
+            httpGet:
+              path: /healthz
+              port: 8082
+            periodSeconds: 2
+          volumeMounts:
+            - mountPath: /etc/grafana/provisioning/datasources
+              name: sc-datasources-volume
       securityContext:
         fsGroup: 472
         runAsGroup: 472
