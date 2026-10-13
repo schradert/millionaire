@@ -27,6 +27,9 @@ spec:
         - args:
             - -config.file=/conf/tempo.yaml
             - -mem-ballast-size-mbs=1024
+          env:
+            - name: GOMEMLIMIT
+              value: 1536MiB
           image: docker.io/grafana/tempo:2.9.5@sha256:785fd6c81d7f26ff0973208cd7093ac6030e13946c288612ff32f02416941d3a
           imagePullPolicy: IfNotPresent
           livenessProbe:
@@ -77,7 +80,7 @@ spec:
             limits:
               memory: 2Gi
             requests:
-              cpu: 50m
+              cpu: 100m
               memory: 768Mi
           securityContext:
             allowPrivilegeEscalation: false
