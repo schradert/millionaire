@@ -3,7 +3,14 @@
     flake,
     lib,
     ...
-  }: {
+  }: let
+    # The pool sets atime=off, and OpenZFS then marks the superblock SB_NOATIME, so
+    # the kernel drops STATX_ATIME from statx results. systemd-tmpfiles --clean
+    # requires atime and fails ("statx(/var/tmp) failed: Protocol driver not
+    # attached"). Datasets it cleans mount with relatime instead (cheap: atime is
+    # only written when older than mtime/ctime, or after 24h).
+    cleanable = ["defaults" "atime" "relatime"];
+  in {
     imports = [
       flake.inputs.disko.nixosModules.default
       flake.inputs.srvos.nixosModules.mixins-latest-zfs-kernel
@@ -70,6 +77,7 @@
             options.mountpoint = "legacy";
             options."com.sun:auto-snapshot" = "false";
             mountpoint = "/nix";
+            mountOptions = cleanable;
           };
 
           system = {
@@ -89,6 +97,7 @@
             type = "zfs_fs";
             options.mountpoint = "legacy";
             mountpoint = "/var";
+            mountOptions = cleanable;
           };
 
           # user and services
@@ -106,6 +115,7 @@
             type = "zfs_fs";
             options.mountpoint = "legacy";
             mountpoint = "/var/lib";
+            mountOptions = cleanable;
           };
 
           # temp
@@ -119,6 +129,7 @@
             options.mountpoint = "legacy";
             options."com.sun:auto-snapshot" = "false";
             mountpoint = "/tmp";
+            mountOptions = cleanable;
           };
         };
       };
