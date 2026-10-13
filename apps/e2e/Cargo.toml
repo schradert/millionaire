@@ -1,6 +1,6 @@
 [package]
 name = "e2e"
-version = "0.3.10"
+version = "0.3.11"
 description = "Platform end-to-end tests: tagged test data through real requests, then cleanup and a residue check"
 publish = false
 edition = "2021"
@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "multipart"] }
 serde_json = "1"
+sha2 = "0.10"
+hmac = "0.12"
 tokio = { version = "1", features = ["macros", "rt", "time", "process"] }
 
 [dev-dependencies]

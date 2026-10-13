@@ -14,7 +14,7 @@ pub const NS: &str = "e2e";
 /// The label every test object carries (selector form).
 pub const SELECTOR: &str = "app.kubernetes.io/name=e2e-test";
 /// Kinds the tests create, in deletion order (pods first so their volumes can go).
-pub const KINDS: [&str; 3] = ["pod", "volumesnapshot", "persistentvolumeclaim"];
+pub const KINDS: [&str; 4] = ["pod", "volumesnapshot", "persistentvolumeclaim", "objectbucketclaim"];
 
 fn kubectl_bin() -> String {
     var("E2E_KUBECTL", "kubectl")
@@ -84,8 +84,13 @@ pub async fn list(kind: &str) -> R<Vec<Value>> {
 
 /// `(kind, name)` of every labelled test object whose name is in `scope` and starts with `prefix`.
 pub async fn tagged(scope: &Scope, prefix: &str) -> R<Vec<(String, String)>> {
+    tagged_kinds(scope, prefix, &KINDS).await
+}
+
+/// [`tagged`] over the given kinds, in the order they should be deleted.
+pub async fn tagged_kinds(scope: &Scope, prefix: &str, kinds: &[&str]) -> R<Vec<(String, String)>> {
     let mut out = Vec::new();
-    for kind in KINDS {
+    for kind in kinds {
         out.extend(names(&list(kind).await?, scope, prefix).into_iter().map(|n| (kind.to_string(), n)));
     }
     Ok(out)
@@ -119,7 +124,7 @@ pub async fn cleanup_prefix(ctx: &Ctx, prefix: &str) -> R<usize> {
 
 // ---------- manifests ----------
 
-fn meta(name: &str) -> Value {
+pub fn meta(name: &str) -> Value {
     json!({ "name": name, "namespace": NS, "labels": { "app.kubernetes.io/name": "e2e-test" } })
 }
 
@@ -173,7 +178,12 @@ pub fn pod(name: &str, image: &str, args: &[&str], claims: &[(&str, &str)]) -> V
 
 /// Run a Pod to completion: its last log line on success, an error carrying its logs if it fails.
 pub async fn run_pod(ctx: &Ctx, name: &str, image: &str, args: &[&str], claims: &[(&str, &str)]) -> R<String> {
-    create(ctx, &pod(name, image, args, claims)).await?;
+    run_manifest(ctx, name, &pod(name, image, args, claims)).await
+}
+
+/// [`run_pod`] for a Pod manifest built by the caller (other volume kinds).
+pub async fn run_manifest(ctx: &Ctx, name: &str, manifest: &Value) -> R<String> {
+    create(ctx, manifest).await?;
     let phase = poll("kubernetes", &format!("pod {name} finishes"), Duration::from_secs(300), Duration::from_secs(3), || async {
         let p = get("pod", name).await?.at("kubernetes", "pod vanished")?;
         Ok(match p["status"]["phase"].as_str() {

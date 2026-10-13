@@ -8,8 +8,12 @@ rules:
       - ""
     resources:
       - configmaps
+      - secrets
     verbs:
+      - get
+      - list
       - create
+      - delete
   - apiGroups:
       - ""
     resourceNames:
@@ -17,9 +21,28 @@ rules:
     resources:
       - configmaps
     verbs:
-      - get
       - update
       - patch
+  - apiGroups:
+      - objectbucket.io
+    resources:
+      - objectbucketclaims
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - delete
+  - apiGroups:
+      - external-secrets.io
+    resources:
+      - externalsecrets
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - delete
   - apiGroups:
       - ""
     resources:
