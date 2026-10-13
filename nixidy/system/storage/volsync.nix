@@ -26,6 +26,21 @@ in {
           });
       };
     };
+    # volsync_* backup health (missed intervals, out-of-sync volumes). Metrics are TLS + token-authorized on :8443.
+    applications.volsync.resources.serviceMonitors.volsync.spec = {
+      selector.matchLabels = {
+        "app.kubernetes.io/name" = "volsync";
+        "control-plane" = "volsync-controller";
+      };
+      endpoints = lib.toList {
+        port = "https";
+        scheme = "https";
+        path = "/metrics";
+        interval = "1m";
+        bearerTokenFile = "/var/run/secrets/kubernetes.io/serviceaccount/token";
+        tlsConfig.insecureSkipVerify = true;
+      };
+    };
     # Movers mount the live PVC (copyMethod Direct). Unprivileged, a mover needs an fsGroup that kubelet then applies
     # as a recursive chown of the workload's volume (re-owning it away from the app's own gid on every backup).
     # Privileged movers run as root with no fsGroup: nothing is chowned, any ownership is readable, and restores

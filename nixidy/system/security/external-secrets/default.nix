@@ -31,6 +31,21 @@
         };
       };
       resources = {
+        # serviceMonitor.enabled renders nothing here (capability-gated), so scrape the pods' named port.
+        podMonitors.external-secrets.spec = {
+          selector = {
+            matchLabels."app.kubernetes.io/instance" = "external-secrets";
+            matchExpressions = lib.toList {
+              key = "app.kubernetes.io/name";
+              operator = "In";
+              values = ["external-secrets" "external-secrets-cert-controller" "external-secrets-webhook"];
+            };
+          };
+          podMetricsEndpoints = lib.toList {
+            port = "metrics";
+            interval = "1m";
+          };
+        };
         clusterSecretStores = lib.flip lib.mapAttrs' config.applications.namespaces.resources.namespaces (ns: _:
           lib.nameValuePair "kubernetes-${ns}" {
             spec.provider.kubernetes = {

@@ -192,6 +192,22 @@ in {
           interval = "30s";
         };
       };
+      # The other components expose a named "metrics" port; the chart's Services and monitors for them are
+      # capability-gated like the controller's, so one PodMonitor covers them.
+      resources.podMonitors.argocd.spec = {
+        selector = {
+          matchLabels."app.kubernetes.io/instance" = "argod";
+          matchExpressions = lib.toList {
+            key = "app.kubernetes.io/name";
+            operator = "In";
+            values = ["argocd-server" "argocd-repo-server" "argocd-applicationset-controller" "argocd-notifications-controller"];
+          };
+        };
+        podMetricsEndpoints = lib.toList {
+          port = "metrics";
+          interval = "30s";
+        };
+      };
       # argocd_application_* come from kube-state-metrics custom resource state
       # (observability/kube-state-metrics.nix): the controller's own metrics do not
       # expose status.operationState, which is what a stale sync leaves behind.

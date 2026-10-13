@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: argo-events-workloads
+  namespace: cicd
+spec:
+  podMetricsEndpoints:
+    - interval: 1m
+      port: metrics
+  selector:
+    matchExpressions:
+      - key: controller
+        operator: In
+        values:
+          - eventbus-controller
+          - eventsource-controller
+          - sensor-controller

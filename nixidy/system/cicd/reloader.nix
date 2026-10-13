@@ -1,5 +1,9 @@
 {
-  nixidy = {pinned, ...}: {
+  nixidy = {
+    lib,
+    pinned,
+    ...
+  }: {
     applications.reloader = {
       namespace = "cicd";
       helm.releases.reloader = {
@@ -12,6 +16,13 @@
         values.reloader = {
           reloadOnCreate = true;
           syncAfterRestart = false;
+        };
+      };
+      resources.podMonitors.reloader.spec = {
+        selector.matchLabels."app.kubernetes.io/name" = "reloader";
+        podMetricsEndpoints = lib.toList {
+          port = "http";
+          interval = "1m";
         };
       };
     };

@@ -30,6 +30,18 @@
         };
       };
       resources = {
+        # The bus (NATS exporter sidecar), every EventSource and every Sensor serve a named "metrics" port.
+        podMonitors.argo-events-workloads.spec = {
+          selector.matchExpressions = lib.toList {
+            key = "controller";
+            operator = "In";
+            values = ["eventbus-controller" "eventsource-controller" "sensor-controller"];
+          };
+          podMetricsEndpoints = lib.toList {
+            port = "metrics";
+            interval = "1m";
+          };
+        };
         # Chart 2.4.27 switched the strategy to Recreate; the live Deployment keeps
         # its old rollingUpdate fields under a 3-way merge, which the API rejects.
         deployments.argo-events-controller-manager.metadata.annotations."argocd.argoproj.io/sync-options" = "Replace=true";
