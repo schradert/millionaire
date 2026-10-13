@@ -163,7 +163,21 @@ data:
       .text-rose-500 { color: var(--dracula-red); }
       .text-white { color: var(--dracula-text); }
     }
-  custom.js: ""
+  custom.js: |
+    (function () {
+      var s = document.createElement("script");
+      s.src = "https://faro.trdos.me/sdk/faro-web-sdk-2.12.1.iife.js";
+      s.async = true;
+      s.onload = function () {
+        var f = window.GrafanaFaroWebSdk;
+        f.initializeFaro({
+          url: "https://faro.trdos.me/collect",
+          app: { name: "homepage", environment: "production" },
+          instrumentations: f.getWebInstrumentations({ captureConsole: true }),
+        });
+      };
+      document.head.appendChild(s);
+    })();
   docker.yaml: ""
   kubernetes.yaml: |
     %YAML 1.1

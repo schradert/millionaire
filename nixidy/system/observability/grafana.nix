@@ -30,6 +30,7 @@
         defaultClientScopes = ["openid" "profile" "email" "groups"];
       };
     };
+    faro.apps.grafana.origin = "https://${hostname}";
     portal.apps.grafana = {
       title = "Grafana";
       description = "Monitoring dashboards";
@@ -139,6 +140,10 @@
           GF_TRACING_OPENTELEMETRY_OTLP_PROPAGATION = "w3c";
           GF_TRACING_OPENTELEMETRY_SAMPLER_TYPE = "probabilistic";
           GF_TRACING_OPENTELEMETRY_SAMPLER_PARAM = "0.1";
+          # Grafana's own frontend reports (errors, console, web vitals, traces) through its bundled Faro agent, to
+          # the receiver in alloy.nix instead of Grafana's built-in log endpoint.
+          GF_LOG_FRONTEND_ENABLED = "true";
+          GF_LOG_FRONTEND_CUSTOM_ENDPOINT = "https://faro.${domain}/collect";
           GF_SMTP_ENABLED = "true";
           GF_SMTP_HOST = "stalwart.mail.svc.cluster.local:25";
           GF_SMTP_FROM_ADDRESS = "noreply@${domain}";

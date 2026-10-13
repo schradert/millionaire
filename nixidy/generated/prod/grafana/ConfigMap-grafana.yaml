@@ -24,6 +24,8 @@ data:
   GF_DATE_FORMATS_USE_BROWSER_LOCALE: "true"
   GF_EXPLORE_ENABLED: "true"
   GF_FEATURE_TOGGLES_ENABLE: publicDashboards
+  GF_LOG_FRONTEND_CUSTOM_ENDPOINT: https://faro.trdos.me/collect
+  GF_LOG_FRONTEND_ENABLED: "true"
   GF_LOG_MODE: console
   GF_NEWS_NEWS_FEED_ENABLED: "false"
   GF_SECURITY_COOKIE_SAMESITE: grafana

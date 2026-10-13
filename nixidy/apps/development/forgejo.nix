@@ -19,6 +19,7 @@ in {
     };
   };
   nixidy = {
+    config,
     lib,
     pinned,
     ...
@@ -29,6 +30,8 @@ in {
     bootstrapped = pinned.images ? app-bootstrap-forgejo;
   in {
     portal.apps.forgejo.groups = ["admin"];
+    # Browser telemetry: custom/header.tmpl is Forgejo's own hook for extra <head> content.
+    faro.apps.forgejo.origin = "https://${hostname}";
     gatus.endpoints.forgejo = {
       url = "https://${hostname}";
       group = "internal";
@@ -119,6 +122,19 @@ in {
             storageClass = "ceph-block";
           };
 
+          # Templates are read at start-up: roll the Pod when the snippet changes.
+          deployment.annotations."reloader.stakater.com/auto" = "true";
+          extraVolumes = lib.toList {
+            name = "faro";
+            configMap.name = "forgejo-faro";
+          };
+          extraContainerVolumeMounts = lib.toList {
+            name = "faro";
+            mountPath = "/data/gitea/templates/custom/header.tmpl";
+            subPath = "header.tmpl";
+            readOnly = true;
+          };
+
           gitea = {
             admin.existingSecret = "forgejo-admin";
 
@@ -191,6 +207,10 @@ in {
       };
 
       resources = {
+        configMaps.forgejo-faro.data."header.tmpl" = ''
+          <script>
+          ${config.faro.snippet "forgejo"}</script>
+        '';
         # The chart's own ServiceMonitor is gated on cluster capabilities, which helm template lacks.
         serviceMonitors.forgejo.spec = {
           selector.matchLabels = {

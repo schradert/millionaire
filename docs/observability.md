@@ -8,6 +8,30 @@ Pyroscope (pyroscope.nix; profiles kept forever in a Ceph bucket). `service_name
 `host/<exe>` (`host/kubelet`); labels `pod`, `container`, `node`. Grafana: the Pyroscope datasource, or Explore > Profiles. Python's
 unwinder is off (the 7.0 kernel's verifier rejects it); Python processes show native frames only.
 
+## Browser telemetry (Grafana Faro)
+
+Alloy's `faro.receiver` (alloy.nix) takes Faro payloads at `https://faro.trdos.me/collect`; the route has no oauth2-proxy because
+browsers post anonymously. Logs, exceptions, web vitals and events go to Loki (tenant `cluster`) as `{source="faro", app, kind}`
+(`kind` = log | exception | measurement | event; query `{source="faro", app="forgejo"} | logfmt`); traces go to Tempo through the same
+OTLP pipeline. Guards, since anyone on the tailnet can post: CORS only for the registered origins, the receiver's own limit (50 req/s,
+burst 100, 1 MiB per payload; the Cilium gateway has no declarative rate limit), and an `app` label that is only a registered name or
+`other` (the payload's real name stays in the line as `app_name=`). Source maps are off.
+
+An app registers itself with `faro.apps.<app.name>.origin = "https://<host>"`, which adds its CORS origin and its `app` value. The SDK for
+apps that are not built here is self-hosted: `faro-sdk.nix` serves the npm package's IIFE bundle (pinned by hash and in the file name,
+`faro-web-sdk-<version>.iife.js`) at `https://faro.trdos.me/sdk/`, and `config.faro.snippet "<app.name>"` returns the script that loads it and starts
+Faro. Nothing loads from a public CDN.
+
+| App | Reports | How |
+|---|---|---|
+| sveltekit-demo | yes, with traces | `@grafana/faro-web-sdk` + `faro-web-tracing` in `src/hooks.client.ts` (bundled) |
+| forgejo | yes | `custom/header.tmpl` (chart `extraVolumes` + `extraContainerVolumeMounts`) |
+| homepage | yes | its `custom.js` (served after login) |
+| grafana | yes | `[log.frontend]` (`GF_LOG_FRONTEND_*`), Grafana's bundled agent |
+| dashy | no | no option takes a script: `appConfig` has `customCss` and `externalStyleSheet` only; `pageInfo.footer` HTML is sanitized |
+| keycloak | no | the login pages need a custom theme, and the image (modules/images.nix) ships none |
+| everything else | no | no custom head/script hook, or not worth patching the image |
+
 Audit of 2026-10-13 (`kubectl -n cicd get applications`, 136 apps).
 
 | | before | after |

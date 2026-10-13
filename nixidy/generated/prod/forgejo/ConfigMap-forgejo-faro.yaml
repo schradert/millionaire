@@ -1,0 +1,23 @@
+apiVersion: v1
+data:
+  header.tmpl: |
+    <script>
+    (function () {
+      var s = document.createElement("script");
+      s.src = "https://faro.trdos.me/sdk/faro-web-sdk-2.12.1.iife.js";
+      s.async = true;
+      s.onload = function () {
+        var f = window.GrafanaFaroWebSdk;
+        f.initializeFaro({
+          url: "https://faro.trdos.me/collect",
+          app: { name: "forgejo", environment: "production" },
+          instrumentations: f.getWebInstrumentations({ captureConsole: true }),
+        });
+      };
+      document.head.appendChild(s);
+    })();
+    </script>
+kind: ConfigMap
+metadata:
+  name: forgejo-faro
+  namespace: development

@@ -261,6 +261,8 @@ in {
       }
     '';
   in {
+    # Browser telemetry through Homepage's own custom.js hook (served only after login).
+    faro.apps.homepage.origin = "https://${hostname}";
     gatus.endpoints.homepage = {
       # public; everything else redirects to sign-in
       url = "https://${hostname}/api/healthcheck";
@@ -378,7 +380,7 @@ in {
           gateway = true;
         };
         "custom.css" = draculaCSS;
-        "custom.js" = "";
+        "custom.js" = config.faro.snippet "homepage";
         "docker.yaml" = "";
       };
 
