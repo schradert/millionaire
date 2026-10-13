@@ -286,12 +286,13 @@ in {
                   };
                 };
                 # The gateway runs on the host network and binds 0.0.0.0:80, which
-                # collides with the internal-gateway relay (100.64.0.4:80/443) on bonobo.
+                # collides with the internal-gateway relays (100.64.0.4:80/443 on bonobo,
+                # 100.64.0.5:80 on chinchilla).
                 placement.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms = lib.toList {
                   matchExpressions = lib.toList {
                     key = "kubernetes.io/hostname";
                     operator = "NotIn";
-                    values = ["bonobo"];
+                    values = ["bonobo" "chinchilla"];
                   };
                 };
               };
