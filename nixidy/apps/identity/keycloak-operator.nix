@@ -20,6 +20,13 @@ in {
         values.crds.install = false;
         values.image.tag = with pinned.images.keycloak-operator; "${tag}@${digest}";
       };
+      resources.podMonitors.keycloak-operator.spec = {
+        selector.matchLabels."app.kubernetes.io/name" = "keycloak-operator";
+        podMetricsEndpoints = lib.toList {
+          port = "metrics";
+          interval = "1m";
+        };
+      };
     };
     applications.keycloak.resources = {
       keycloakInstances.default.spec = {

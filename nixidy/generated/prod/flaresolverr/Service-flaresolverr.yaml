@@ -14,6 +14,10 @@ spec:
       port: 8191
       protocol: TCP
       targetPort: 8191
+    - name: metrics
+      port: 8192
+      protocol: TCP
+      targetPort: 8192
   selector:
     app.kubernetes.io/controller: flaresolverr
     app.kubernetes.io/instance: flaresolverr

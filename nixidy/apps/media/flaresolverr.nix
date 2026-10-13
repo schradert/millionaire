@@ -1,6 +1,7 @@
 {...}: {
   nixidy = {
     charts,
+    lib,
     pinned,
     ...
   }: {
@@ -17,11 +18,26 @@
         values = {
           controllers.flaresolverr.containers.flaresolverr = {
             image = pinned.images.flaresolverr;
+            env = {
+              PROMETHEUS_ENABLED = "true";
+              PROMETHEUS_PORT = "8192";
+            };
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
             probes.startup.enabled = true;
           };
-          service.flaresolverr.ports.http.port = 8191;
+          service.flaresolverr.ports = {
+            http.port = 8191;
+            metrics.port = 8192;
+          };
+          serviceMonitor.flaresolverr = {
+            serviceName = "flaresolverr";
+            endpoints = lib.toList {
+              port = "metrics";
+              path = "/metrics";
+              interval = "1m";
+            };
+          };
         };
       };
     };
