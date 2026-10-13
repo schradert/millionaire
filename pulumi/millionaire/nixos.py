@@ -167,6 +167,20 @@ class NixOS:
         def _make_install_cmd(resolved_target: str) -> str:
             return f"""
                 set -euo pipefail
+                # nixos-anywhere reconnects as root@<host> once kexec has booted the installer
+                TARGET={shlex.quote(f"{resolved_target.split('@')[0]}@{via_host}" if via else resolved_target)}
+                POST_KEXEC="root@${{TARGET##*@}}"
+
+                # Idempotent: a target that already runs NixOS under this node's name on
+                # the standard dataset layout (modules/disko.nix) has nothing to install.
+                # Any failure here (unreachable, other host key, legacy layout) falls
+                # through to the guard below.
+                if ssh {ssh_id} -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new "$TARGET" \
+                    'test -e /etc/NIXOS && test "$(hostname)" = {name} && {{ zfs list -H -o name root/system/root root/local/nix || sudo -n zfs list -H -o name root/system/root root/local/nix; }}' >/dev/null 2>&1; then
+                    echo "{name}: already installed on the standard layout"
+                    exit 0
+                fi
+
                 # Wipes the target's disks. Only ever runs on an explicit,
                 # per-node request — never because state or a URN drifted.
                 if [ "${{NIXOS_ANYWHERE_INSTALL:-}}" != "{name}" ]; then
@@ -174,10 +188,6 @@ class NixOS:
                     exit 1
                 fi
                 ulimit -n 1048576
-
-                # nixos-anywhere reconnects as root@<host> once kexec has booted the installer
-                TARGET={shlex.quote(f"{resolved_target.split('@')[0]}@{via_host}" if via else resolved_target)}
-                POST_KEXEC="root@${{TARGET##*@}}"
 
                 EXTRA_DIR=$(mktemp -d)
                 ENCRYPTED="{Nix.root}/{sops_dir}/default.yaml"
