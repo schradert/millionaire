@@ -225,6 +225,8 @@
               # The owner's explicit choice: metrics are kept forever, the compactor never deletes blocks. The
               # bucket only grows; MimirBucketGrowth watches the rate.
               compactor_blocks_retention_period = "0s";
+              # Lets `mimirtool backfill` upload TSDB blocks (the Prometheus history older than Mimir's first sample).
+              compactor_block_upload_enabled = true;
               # Defaults (10k samples/s, 150k series) are below this cluster's ~19k samples/s over ~430k series.
               ingestion_rate = 100000;
               ingestion_burst_size = 1000000;
