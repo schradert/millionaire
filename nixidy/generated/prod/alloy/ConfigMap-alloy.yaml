@@ -201,6 +201,129 @@ data:
         }
       }
     }
+
+    // ---- Continuous profiling (eBPF) -> Pyroscope ----------------------------------------------------
+    // Every container on this node (the Pod targets discovered above) plus the host's own daemons
+    // (kubelet, containerd, ...), sampled at 19 Hz system-wide. A profile's `service_name` is
+    // <namespace>/<workload>; the Pod, container and node are labels, so one workload's replicas merge
+    // or split in Grafana. Python's unwinder is off: the verifier of the nodes' 7.0 kernel rejects it
+    // ("BPF program is too large"), and it would stop the whole profiler from loading.
+    discovery.relabel "profiled" {
+      targets = discovery.kubernetes.pods.targets
+      rule {
+        action        = "drop"
+        source_labels = ["__meta_kubernetes_pod_phase"]
+        regex         = "Succeeded|Failed"
+      }
+      rule {
+        action        = "drop"
+        source_labels = ["__meta_kubernetes_pod_container_init"]
+        regex         = "true"
+      }
+      // workload: the controller without the ReplicaSet hash, the CronJob timestamp or the static Pod's
+      // node suffix; a Pod without controller is its own workload.
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "workload"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_controller_kind", "__meta_kubernetes_pod_controller_name"]
+        separator     = ";"
+        regex         = "(?:DaemonSet|StatefulSet|Job);(.+)"
+        target_label  = "workload"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_controller_kind", "__meta_kubernetes_pod_controller_name"]
+        separator     = ";"
+        regex         = "Job;(.+)-\\d{6,}"
+        target_label  = "workload"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_controller_kind", "__meta_kubernetes_pod_controller_name"]
+        separator     = ";"
+        regex         = "ReplicaSet;(.+)-[a-z0-9]{8,10}"
+        target_label  = "workload"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_controller_kind", "__meta_kubernetes_pod_name"]
+        separator     = ";"
+        regex         = "Node;(.+)-" + sys.env("NODE_NAME")
+        target_label  = "workload"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_namespace", "workload"]
+        separator     = "/"
+        target_label  = "service_name"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        target_label  = "container"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_node_name"]
+        target_label  = "node"
+      }
+    }
+
+    discovery.process "host" {
+      refresh_interval = "60s"
+      discover_config {
+        cwd         = false
+        commandline = false
+        uid         = false
+        username    = false
+      }
+    }
+
+    discovery.relabel "host" {
+      targets = discovery.process.host.targets
+      // Processes in a container are covered by their Pod's target.
+      rule {
+        action        = "drop"
+        source_labels = ["__container_id__"]
+        regex         = ".+"
+      }
+      // Kernel threads have no executable.
+      rule {
+        action        = "drop"
+        source_labels = ["__meta_process_exe"]
+        regex         = ""
+      }
+      rule {
+        source_labels = ["__meta_process_exe"]
+        regex         = ".*/([^/]+)"
+        replacement   = "host/$1"
+        target_label  = "service_name"
+      }
+      rule {
+        target_label = "node"
+        replacement  = sys.env("NODE_NAME")
+      }
+    }
+
+    pyroscope.ebpf "nodes" {
+      targets        = array.concat(discovery.relabel.profiled.output, discovery.relabel.host.output)
+      forward_to     = [pyroscope.write.pyroscope.receiver]
+      sample_rate    = 19
+      python_enabled = false
+      // Only needed to correlate with traces of OBI; it would want a writable /sys/fs/bpf.
+      obi_process_context_enabled = false
+    }
+
+    pyroscope.write "pyroscope" {
+      endpoint {
+        url = "http://pyroscope.observability.svc.cluster.local:4040"
+      }
+    }
+    // ---- end of continuous profiling -----------------------------------------------------------------
 kind: ConfigMap
 metadata:
   labels:

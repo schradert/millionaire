@@ -43,11 +43,13 @@
           rules = [
             {
               # Informational: with retention off the bucket only grows; this is the early look at the rate.
+              # Segment bytes written before compaction, so an upper bound of what stays (the object store's
+              # upload counters read 0 for these writes).
               alert = "PyroscopeBucketGrowth";
-              expr = ''sum(increase(objstore_bucket_operation_transferred_bytes_sum{operation="upload", namespace="observability", pod=~"pyroscope-.*"}[1d])) > 5e9'';
+              expr = ''sum(increase(pyroscope_segment_writer_segment_size_bytes_sum[1d])) > 3e9'';
               "for" = "1h";
               labels.severity = "info";
-              annotations.summary = "Pyroscope uploads more than 5 GB/day of profile data to the bucket (retention is unlimited by design)";
+              annotations.summary = "Pyroscope writes more than 3 GB/day of profile segments to the bucket (retention is unlimited by design)";
             }
             {
               alert = "PyroscopeDown";

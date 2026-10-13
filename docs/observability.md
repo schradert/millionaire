@@ -3,6 +3,10 @@
 Metrics: Prometheus (kube-prometheus-stack) selects every ServiceMonitor, PodMonitor, Probe and ScrapeConfig in all namespaces.
 Logs: one Alloy per node tails every Pod's stdout/stderr into Loki (tenant `cluster`). Dashboards: Grafana's sidecar loads every
 ConfigMap labelled `grafana_dashboard` from any namespace.
+Profiles: Alloy's `pyroscope.ebpf` (alloy.nix) samples every container and the host's own daemons on each node at 19 Hz and pushes to
+Pyroscope (pyroscope.nix; profiles kept forever in a Ceph bucket). `service_name` is `<namespace>/<workload>` (`kube-system/cilium`) or
+`host/<exe>` (`host/kubelet`); labels `pod`, `container`, `node`. Grafana: the Pyroscope datasource, or Explore > Profiles. Python's
+unwinder is off (the 7.0 kernel's verifier rejects it); Python processes show native frames only.
 
 Audit of 2026-10-13 (`kubectl -n cicd get applications`, 136 apps).
 
@@ -33,7 +37,7 @@ default on, nixidy/system/storage/postgres.nix), so every database is scraped; t
 |---|---|---|
 | actual | none | no metrics endpoint upstream |
 | alertmanager | PodMonitor |  |
-| alloy | ServiceMonitor |  |
+| alloy | ServiceMonitor (also exposes `pyroscope_ebpf_*`) |  |
 | android | none | static nginx; no stub_status exporter |
 | apps | n/a | app-of-apps (ArgoCD Applications); state comes from kube-state-metrics custom resource metrics |
 | archive-ingest | none | rsyncd; no metrics |
