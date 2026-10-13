@@ -54,8 +54,8 @@ spec:
   probeNamespaceSelector: {}
   probeSelector: {}
   replicas: 1
-  retention: 10d
-  retentionSize: 25GB
+  retention: 60d
+  retentionSize: 85GB
   routePrefix: /
   ruleNamespaceSelector: {}
   ruleSelector: {}
@@ -79,7 +79,7 @@ spec:
           - ReadWriteOnce
         resources:
           requests:
-            storage: 30Gi
+            storage: 100Gi
   tsdb:
     outOfOrderTimeWindow: 0s
   version: v3.15.0-distroless

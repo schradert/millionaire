@@ -5,6 +5,7 @@
     ...
   }: let
     chart = pinned.charts.kube-prometheus-stack;
+    title = "prometheus-prometheus-kube-prometheus-prometheus-db-prometheus-prometheus-kube-prometheus-prometheus-0";
   in {
     applications.prometheus-crds.namespace = "kube-system";
     canivete.crds.prometheus = {
@@ -32,8 +33,20 @@
       canivete.bootstrap.enable = true;
       # TODO what happens with multiple deployments???
       volsync.pvcs.prometheus = {
-        title = "prometheus-prometheus-kube-prometheus-prometheus-db-prometheus-prometheus-kube-prometheus-prometheus-0";
+        inherit title;
         path = ["prometheuses" "prometheus-kube-prometheus-prometheus" "spec" "storage" "volumeClaimTemplate"];
+      };
+      # The Prometheus CR's volumeClaimTemplate is immutable on the StatefulSet, so the volume grows through the PVC
+      # it created (as for Loki); the claim only ever grows (ceph-block expands online). New claims start at the
+      # template's size.
+      resources.persistentVolumeClaims.${title} = {
+        # The metrics live here: never let a manifest edit prune the claim.
+        metadata.annotations."argocd.argoproj.io/sync-options" = "Prune=false";
+        spec = {
+          accessModes = ["ReadWriteOnce"];
+          storageClassName = "ceph-block";
+          resources.requests.storage = "100Gi";
+        };
       };
       helm.releases.prometheus = {
         chart = pinned.charts.kube-prometheus-stack;
@@ -60,8 +73,10 @@
               scrapeConfigSelectorNilUsesHelmValues = false;
               # Tempo's metrics-generator remote-writes service-graph and span metrics (tempo.nix).
               enableRemoteWriteReceiver = true;
-              # Size cap below the volume, or a full disk crashloops WAL replay.
-              retentionSize = "25GB";
+              # ~19k samples/s over ~430k series fills ~1-1.8 GB/day, so 60d is ~60-105 GB. The size cap sits
+              # below the volume, or a full disk crashloops WAL replay; it is the real limit if growth outpaces 1 GB/day.
+              retention = "60d";
+              retentionSize = "85GB";
               # alertmanager.enabled = false below (it is deployed separately), so
               # the chart emits no `alerting:` block unless pointed at it here.
               alertingEndpoints = lib.toList {
@@ -72,7 +87,7 @@
               };
               storageSpec.volumeClaimTemplate.spec = {
                 accessModes = ["ReadWriteOnce"];
-                resources.requests.storage = "30Gi";
+                resources.requests.storage = "100Gi";
               };
             };
           };
