@@ -1,12 +1,17 @@
 set -euo pipefail
 # usage: image-publish.sh plan  <repo-url> <revision> <only> <force>
 #        image-publish.sh build <repo-url> <name@tag>
+#        image-publish.sh verdict <items.json> <blocked.json>
 #
 # plan  : for the revision and every recent commit that could have changed an
 #         image tag, list the images whose <name>:<tag> is missing from Harbor.
-#         Writes a JSON array of "name@tag" to /tmp/items.json.
-# build : build and push one "name@tag". Each runs as its own workflow step, so
-#         one broken image neither blocks the others nor fails the run.
+#         Writes a JSON array of "name@tag" to /tmp/items.json, and the ones it
+#         gave up on (too many failed builds) to /tmp/blocked.json.
+# build : build and push one "name@tag". Each runs as its own workflow step
+#         (continueOn failed), so one broken image does not block the others.
+# verdict: runs last and fails the workflow unless every planned image was
+#         pushed and nothing is blocked, so a broken image never reads as
+#         published. An image counts as pushed once build() removes its plan file.
 STATE=/nix/.image-publish
 FLAKE_IMAGES=".#legacyPackages.x86_64-linux.images"
 MAX_TRIES=3
@@ -34,9 +39,16 @@ registry_code() {
     "https://$registry/api/v2.0/projects/${path%%/*}/repositories/${path#*/}/artifacts/$tag" || true
 }
 
+# a file of lines as a JSON array of strings
+json_list() {
+  local json="" item
+  while read -r item; do json="$json${json:+,}\"$item\""; done < "$1"
+  echo "[$json]"
+}
+
 plan() {
   local REPO="$1" REF="$2" ONLY="$3" FORCE="$4" rev="" explicit=0
-  echo '[]' > /tmp/items.json
+  echo '[]' > /tmp/items.json; echo '[]' > /tmp/blocked.json
   case "$REF" in
     [0-9a-f]*) if [ "${#REF}" -eq 40 ]; then rev="$REF"; explicit=1; fi ;;
   esac
@@ -44,7 +56,12 @@ plan() {
   [ -n "$rev" ] || { echo "cannot resolve $REF in $REPO" >&2; exit 1; }
   echo "revision: $rev"
   if [ "$(cat "$STATE/clean-sha" 2>/dev/null || true)" = "$rev" ] && [ "$FORCE" != true ] && [ -z "$ONLY" ]; then
-    echo "all images of $rev already published, nothing to do"
+    if [ -s "$STATE/blocked" ]; then
+      echo "images of $rev already inspected, but still blocked:"; cat "$STATE/blocked"
+      json_list "$STATE/blocked" > /tmp/blocked.json
+    else
+      echo "all images of $rev already published, nothing to do"
+    fi
     return 0
   fi
 
@@ -69,7 +86,7 @@ plan() {
   fi
   echo "commits to inspect: $(echo "$revs" | wc -l)"
 
-  : > "$work/items"; : > "$work/seen"
+  : > "$work/items"; : > "$work/seen"; : > "$work/blocked"
   local unknown=0 c list name repo tag code key tries
   for c in $revs; do
     git checkout -q --detach "$c"
@@ -90,7 +107,8 @@ plan() {
       if [ "$code" != 404 ]; then echo "[$key] registry check returned HTTP $code" >&2; unknown=1; continue; fi
       tries=$(cat "$STATE/tries-$name-$tag" 2>/dev/null || echo 0)
       if [ "$FORCE" != true ] && [ "$tries" -ge "$MAX_TRIES" ]; then
-        echo "[$key] GIVING UP after $tries failed builds (force=true retries)"; continue
+        echo "[$key] GIVING UP after $tries failed builds (force=true retries)" >&2
+        echo "$key" >> "$work/blocked"; continue
       fi
       echo "[$key] missing, will build from ${c:0:8}"
       echo "$c $repo" > "$STATE/plan-$name-$tag"
@@ -100,12 +118,13 @@ $list
 LIST
   done
 
-  local json="" item
-  while read -r item; do json="$json${json:+,}\"$item\""; done < "$work/items"
-  echo "[$json]" > /tmp/items.json
+  json_list "$work/items" > /tmp/items.json
+  json_list "$work/blocked" > /tmp/blocked.json
   echo "to build: $(cat /tmp/items.json)"
+  # Blocked images are remembered with the sha, so later polls of it keep failing
+  # (cheaply) instead of reading as "already published".
   if [ ! -s "$work/items" ] && [ "$unknown" = 0 ] && [ "$explicit" = 0 ] && [ -z "$ONLY" ]; then
-    echo "$rev" > "$STATE/clean-sha"
+    echo "$rev" > "$STATE/clean-sha"; cp "$work/blocked" "$STATE/blocked"
   fi
 }
 
@@ -113,7 +132,9 @@ build() {
   local REPO="$1" key="$2" name tag rev repo work out tries
   name=${key%@*}; tag=${key#*@}
   read -r rev repo < "$STATE/plan-$name-$tag"
-  if [ "$(registry_code "$repo" "$tag")" = 200 ]; then echo "[$key] already in registry"; return 0; fi
+  if [ "$(registry_code "$repo" "$tag")" = 200 ]; then
+    rm -f "$STATE/plan-$name-$tag"; echo "[$key] already in registry"; return 0
+  fi
   work=$(mktemp -d); cd "$work"
   git init -q .
   git fetch -q --depth 1 "$REPO" "$rev"
@@ -131,8 +152,26 @@ build() {
   fi
 }
 
+# fails unless every planned image was pushed and none is blocked
+verdict() {
+  local key name tag bad=0
+  for key in $(echo "$1" | tr -d '[]"' | tr ',' ' '); do
+    name=${key%@*}; tag=${key#*@}
+    if [ -e "$STATE/plan-$name-$tag" ]; then
+      echo "[$key] NOT published" >&2; bad=1
+    else
+      echo "[$key] published"
+    fi
+  done
+  for key in $(echo "$2" | tr -d '[]"' | tr ',' ' '); do
+    echo "[$key] BLOCKED: given up after $MAX_TRIES failed builds, not published (force=true retries)" >&2; bad=1
+  done
+  [ "$bad" = 0 ] || { echo "image-publish FAILED: see the lines above" >&2; exit 1; }
+  echo "every image published"
+}
+
 mode="$1"; shift
 case "$mode" in
-  plan | build) "$mode" "$@" ;;
+  plan | build | verdict) "$mode" "$@" ;;
   *) echo "unknown mode $mode" >&2; exit 2 ;;
 esac

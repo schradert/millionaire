@@ -235,7 +235,8 @@ in {
         # <name>:<tag> is missing from the registry, so the tag in images.nix
         # is the release switch. Every commit since the last fully published
         # one is inspected, so a tag bumped mid-series still gets built. One
-        # pod per missing image; a broken image fails only its own step.
+        # pod per missing image; a broken image fails only its own step, and a
+        # final verdict step fails the run unless every one was pushed.
         # Triggered by the image-poll sensor.
         workflowTemplates.image-publish.spec = {
           serviceAccountName = "argo-workflows-ci";
@@ -330,9 +331,11 @@ in {
               resources.limits.memory = "12Gi";
             };
           in [
-            # plan, then one pod per missing image. continueOn keeps a broken
-            # image from skipping the rest or failing the run; each image is
-            # its own node, so its pass/fail is visible per image.
+            # plan, then one pod per missing image, then the verdict. continueOn
+            # keeps a broken image from skipping the rest; each image is its own
+            # node, so its pass/fail is visible per image. continueOn also makes
+            # the run read as Succeeded, so the verdict step is what fails it
+            # (a build that failed, or an image plan gave up on).
             {
               name = "publish";
               parallelism = 1;
@@ -355,15 +358,37 @@ in {
                     continueOn.failed = true;
                   }
                 ]
+                [
+                  {
+                    name = "verdict";
+                    template = "verdict";
+                    arguments.parameters = [
+                      {
+                        name = "items";
+                        value = "{{steps.plan.outputs.parameters.images}}";
+                      }
+                      {
+                        name = "blocked";
+                        value = "{{steps.plan.outputs.parameters.blocked}}";
+                      }
+                    ];
+                  }
+                ]
               ];
             }
             {
               name = "plan";
               inherit affinity initContainers;
-              outputs.parameters = lib.toList {
-                name = "images";
-                valueFrom.path = "/tmp/items.json";
-              };
+              outputs.parameters = [
+                {
+                  name = "images";
+                  valueFrom.path = "/tmp/items.json";
+                }
+                {
+                  name = "blocked";
+                  valueFrom.path = "/tmp/blocked.json";
+                }
+              ];
               container = step [
                 "plan"
                 "{{workflow.parameters.repo-url}}"
@@ -381,6 +406,30 @@ in {
                 "{{workflow.parameters.repo-url}}"
                 "{{inputs.parameters.image}}"
               ];
+            }
+            {
+              name = "verdict";
+              inherit affinity initContainers;
+              inputs.parameters = [
+                {name = "items";}
+                {name = "blocked";}
+              ];
+              # Only reads state files: no build-sized request.
+              container =
+                step [
+                  "verdict"
+                  "{{inputs.parameters.items}}"
+                  "{{inputs.parameters.blocked}}"
+                ]
+                // {
+                  resources = {
+                    requests = {
+                      cpu = "10m";
+                      memory = "64Mi";
+                    };
+                    limits.memory = "1Gi";
+                  };
+                };
             }
           ];
         };
