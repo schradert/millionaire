@@ -15,6 +15,8 @@
       spec.httpGet.port = "http";
     };
   in {
+    # Reports browser telemetry (src/hooks.client.ts) to the Faro receiver in Alloy.
+    faro.apps.sveltekit-demo.origin = "https://${hostname}";
     gatus.endpoints.sveltekit-demo = {
       url = "https://${hostname}";
       group = "internal";
