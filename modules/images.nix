@@ -174,7 +174,7 @@
 
       # Platform end-to-end tests (apps/e2e), run as a Job from a suspended `e2e` CronJob
       # (nixidy/apps/media/media-e2e.nix for the media family, nixidy/apps/e2e.nix for the rest).
-      # kubectl is for `exec` into the qbittorrent pod (VPN leak tests), git for the git family.
+      # kubectl is for `exec` into the qbittorrent pod (VPN leak tests) and the storage flows (tagged Pods, PVCs and snapshots in `e2e`), git for the git family.
       # Replaces library/media-e2e (<= 0.1.8): publish it, then
       # add pkgs/images/e2e/pin.json (the shape of media-e2e's, repository library/e2e).
       e2e = let

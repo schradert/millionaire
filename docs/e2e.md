@@ -30,7 +30,7 @@ A family belongs to one runner, set in the registry (`apps/e2e/src/flow.rs`); a 
 | Runner | CronJob | Families | Why |
 |---|---|---|---|
 | `media` | `media/media-e2e` (`nixidy/apps/media/media-e2e.nix`) | `media` | mounts the media volumes and the arr/Jellyfin secrets; execs into qBittorrent for the VPN tests |
-| `cluster` | `e2e/e2e` (`nixidy/apps/e2e.nix`) | everything else | HTTP only; no volumes, no Kubernetes API access |
+| `cluster` | `e2e/e2e` (`nixidy/apps/e2e.nix`) | everything else | HTTP, plus `kubectl` in namespace `e2e` through the `e2e` ServiceAccount (a Role for pods, pod logs, PVCs and VolumeSnapshots there; no Secrets, no other namespace, nothing cluster-scoped); no volumes |
 
 The `cluster` runner reaches apps through the internal gateway by hostname (`https://<app>.trdos.me`), the same path a client uses, so no network policy changes are needed: enforced namespaces already admit the gateway. Where a probe must be in-cluster (Alertmanager's API) the namespace has no default-deny policy (`observability`, `identity`); a future in-cluster probe into an enforced namespace needs an `extraIngress` rule on that namespace in `nixidy/apps/default.nix` naming the pod label `app.kubernetes.io/name: e2e` (media-e2e's rules in `qbittorrent.nix`, `navidrome.nix`, `maintainerr.nix` are the pattern). ntfy has no public DNS: the Job pins `ntfy.trdos.me` with `hostAliases` like Alertmanager does.
 
@@ -73,6 +73,8 @@ The image is `harbor.trdos.me/library/e2e` (`image publish e2e`, then add `pkgs/
 | notify | `alertmanager-ntfy` | synthetic alert `E2EAlert{e2e=<tag>}` | Alertmanager route, ntfy | firing then resolved message within `E2E_ALERT_TIMEOUT` (90 s) | resolved by the flow; sweep resolves leftovers |
 | git | `forgejo-repo` | repo `<tag>-repo` | push and clone over https (`git/` route) | content, subject, API view and head sha match | repo deleted and checked 404, user purged |
 | git | `bookmarks-floccus` | XBEL repo `<tag>-bookmarks` | two clones sync | route reaches Forgejo (401) for a browser User-Agent, other repos stay behind oauth2-proxy, 3 bookmarks converge | repo and user |
+| storage | `ceph-block` | PVC `<tag>-blk` on `ceph-block`, Pods `<tag>-blk-*`, VolumeSnapshot `<tag>-blk-snap`, PVC `<tag>-blk-restore` | one Pod writes, another reads; snapshot, overwrite, restore | PVC Bound; read-back equal; the restore holds the content from before the overwrite, the original the later one | Pods, snapshot, PVCs deleted and polled until gone; sweep by label and marker |
+| storage | `ceph-filesystem` | PVC `<tag>-fs` on `ceph-filesystem` (ReadWriteMany), Pods `<tag>-fs-*` | a Pod writes; a second holds the volume while a third reads | read-back equal while the other Pod still mounts it | same |
 | media | `sso` ... `prowlarr`, `vpn-*` | see `e2e list` | Servarr, Jellyfin, Navidrome, Kavita, Komga, ... | per flow | markers on hidden folders, libraries, tags, API keys |
 
 ## Flow matrix
@@ -127,17 +129,21 @@ Every service in `docs/connections.md`. **Status:** implemented · planned · ma
 | argocd | registry | tagged Application from a test Forgejo repo into `e2e` → sync, healthy → delete (cascade) | planned | K (argocd accepts the Keycloak token) or S |
 | argo-workflows, argo-rollouts | registry | tagged Workflow submitted and succeeded → deleted; Rollout smoke | planned | K |
 | windmill, sveltekit-demo | registry | windmill: tagged script run through the API → result → delete; sveltekit-demo smoke | planned | S (workspace token) / - |
-| Kubernetes API | storage | tagged ConfigMap and Secret in `e2e` through the ServiceAccount → read → delete | planned | SA |
-| rook-ceph (ceph-block, cephfs) | storage | tagged PVC mounted by a pod → write, read back → delete PVC (and PV released) | planned | SA |
+| Kubernetes API | storage | tagged ConfigMap and Secret in `e2e` through the ServiceAccount → read → delete (the Role has no Secret access yet) | planned | SA |
+| rook-ceph (ceph-block, cephfs) | storage | tagged PVC mounted by a Pod → write, read back from another Pod, RBD snapshot and restore → delete (`storage/ceph-block`, `storage/ceph-filesystem`). A released PV is not checked: PVs are cluster-scoped and the Role is not | implemented | SA |
 | rados (object store) | storage | tagged ObjectBucketClaim → put and get an object → delete | planned | SA |
-| backups (VolSync, CNPG) | storage | scratch restore of a tagged PVC; `backup-verify` already covers the real ones monthly | planned | SA |
+| backups (VolSync, CNPG) | storage | scratch restore of a tagged PVC (the RBD snapshot restore is in `storage/ceph-block`; VolSync and CNPG restores still planned); `backup-verify` already covers the real ones monthly | partly implemented | SA |
 | Bitwarden (hosted) | storage | the ClusterSecretStore is Ready and a tagged ExternalSecret resolves (read-only; pushing writes the owner's vault) | planned | SA |
 
 ## Which families need what
 
 - **Only the e2e Keycloak user (K):** `identity` (done), the bearer and group-check probes of every oauth2-proxy app (`home` tiles, `ai` smoke, `files/webdav`, `registry` Argo), OIDC logins (Mealie, Jellyfin, Home Assistant, Sure and Immich done as far as each app allows deleting what a login creates; LibreChat and Bulwark planned), `bifrost`, `contextforge`, `spoolman`.
 - **Need a service credential (S, app-bootstrap style):** `git` (`forgejo-admin`, mounted), `media` (arr API keys, Jellyfin, Kavita, Komga, Audiobookshelf, Navidrome, Maloja, qBittorrent passwords, all mounted in the media runner), and for the planned flows Baikal, Miniflux, Actual, Firefly, Syncthing, Harbor, headscale, Stalwart, Windmill, Home Assistant, chirpstack. Each is an existing Kubernetes Secret or Bitwarden item to be mounted through an ExternalSecret in the `e2e` namespace, as `e2e-forgejo-admin` is.
-- **Only a ServiceAccount (SA):** `storage` and `observability` flows that create tagged Kubernetes objects. They need a Role in `e2e` (or a tagged-object-only ClusterRole), added with the flow.
+- **Only a ServiceAccount (SA):** `storage` (done) and `observability` flows that create tagged Kubernetes objects. The Role in `e2e` (`nixidy/apps/e2e.nix`) covers pods, PVCs and VolumeSnapshots; a flow that needs more adds the verb there, nothing cluster-scoped.
+
+## Test Pods
+
+`storage` and `observability` run short-lived Pods in `e2e` from the runner's own image (`E2E_IMAGE`, set by the CronJob): `e2e __pod write|check|sleep` (`apps/e2e/src/pod.rs`); the Pod's exit status is the assertion. Every test object is named after the run marker and labelled `app.kubernetes.io/name=e2e-test`; the Pods are non-root with a read-only root, no capabilities and no ServiceAccount token, and end themselves after ten minutes. Sweeps and residue checks select by that label, so the runner's own Job and Pod (also named `e2e-<run>`) are never touched. The RBD snapshot step uses the VolumeSnapshotClass in `E2E_SNAPSHOT_CLASS` (default `ceph-block`; empty skips it).
 
 ## Adding a flow
 
