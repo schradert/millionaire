@@ -249,7 +249,11 @@ in {
             org-files = {
               type = "persistentVolumeClaim";
               existingClaim = claims.org;
-              advancedMounts.syncthing.syncthing = [{path = "/var/syncthing/org";}];
+              advancedMounts.syncthing = {
+                syncthing = [{path = "/var/syncthing/org";}];
+                # The init step creates the folder marker here too.
+                identity = [{path = "/var/syncthing/org";}];
+              };
             };
           };
 
