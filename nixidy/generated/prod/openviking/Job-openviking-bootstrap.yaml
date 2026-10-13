@@ -19,7 +19,7 @@ spec:
               value: http://openviking.ai.svc.cluster.local:1933
             - name: ROOT_API_KEY_FILE
               value: /secrets/root/OPENVIKING_ROOT_API_KEY
-          image: harbor.trdos.me/library/app-bootstrap:0.20.0@sha256:8782b64b001d01a3cc8250d754befac9a07eb01619cb881fb63f9f88c0d4fa7a
+          image: harbor.trdos.me/library/app-bootstrap:0.21.0@sha256:c9c03ae43d7502edf415eff12c7e2b8c8206d0b3ff5b80e9c08d6142a6e9bb53
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false

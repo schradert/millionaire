@@ -31,7 +31,11 @@ spec:
                   value: media
                 - name: OTEL_EXPORTER_OTLP_ENDPOINT
                   value: http://alloy.observability.svc.cluster.local:4318
-              image: harbor.trdos.me/library/e2e:0.6.1@sha256:2542fc870033ab3cbfa8231454ee0ca29fa7e50afa2617ef710b75c3d394894a
+                - name: PYROSCOPE_SAMPLE_RATE
+                  value: "1000"
+                - name: PYROSCOPE_SERVER_ADDRESS
+                  value: http://pyroscope.observability.svc.cluster.local:4040
+              image: harbor.trdos.me/library/e2e:0.7.0@sha256:523e82dd51855a2a2885bde41b1faa607e3e6047305f71a5448a3875702434ab
               name: media-e2e
               resources:
                 limits:

@@ -93,26 +93,47 @@
                     containers = lib.toList {
                       name = "bootstrap";
                       inherit (cfg) image args;
-                      # OTLP traces (app-bootstrap >= 0.20; older images ignore it). Not part of the spec hash
-                      # above, so adding it re-runs no hook.
-                      env = lib.mapAttrsToList (name: value: {inherit name value;}) ({OTEL_EXPORTER_OTLP_ENDPOINT = "http://alloy.observability.svc.cluster.local:4318";} // cfg.env);
-                      volumeMounts = lib.mapAttrsToList (dir: _: {
-                        name = dir;
-                        mountPath = "/secrets/${dir}";
-                        readOnly = true;
-                      })
-                      cfg.secrets;
+                      # OTLP traces (app-bootstrap >= 0.20) and CPU profiles (>= 0.21, tagged with the app); older
+                      # images ignore both. Not part of the spec hash above, so adding them re-runs no hook.
+                      env = lib.mapAttrsToList (name: value: {inherit name value;}) ({
+                          OTEL_EXPORTER_OTLP_ENDPOINT = "http://alloy.observability.svc.cluster.local:4318";
+                          PYROSCOPE_SERVER_ADDRESS = "http://pyroscope.observability.svc.cluster.local:4040";
+                          # A bootstrap burns milliseconds of CPU: 1 kHz (CPU-time sampling, free while idle) gives it samples.
+                          PYROSCOPE_SAMPLE_RATE = "1000";
+                        }
+                        // cfg.env);
+                      volumeMounts =
+                        [
+                          {
+                            # The profiler spills samples to a temporary file.
+                            name = "tmp";
+                            mountPath = "/tmp";
+                          }
+                        ]
+                        ++ lib.mapAttrsToList (dir: _: {
+                          name = dir;
+                          mountPath = "/secrets/${dir}";
+                          readOnly = true;
+                        })
+                        cfg.secrets;
                       securityContext = {
                         allowPrivilegeEscalation = false;
                         readOnlyRootFilesystem = true;
                         capabilities.drop = ["ALL"];
                       };
                     };
-                    volumes = lib.mapAttrsToList (dir: secretName: {
-                      name = dir;
-                      secret.secretName = secretName;
-                    })
-                    cfg.secrets;
+                    volumes =
+                      [
+                        {
+                          name = "tmp";
+                          emptyDir = {};
+                        }
+                      ]
+                      ++ lib.mapAttrsToList (dir: secretName: {
+                        name = dir;
+                        secret.secretName = secretName;
+                      })
+                      cfg.secrets;
                   };
                 };
               };

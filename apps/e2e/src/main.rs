@@ -35,6 +35,7 @@ mod mediasvc;
 mod notify;
 mod observability;
 mod pod;
+mod profile;
 mod proxy;
 mod registry;
 mod report;
@@ -111,11 +112,14 @@ async fn main() -> ExitCode {
     let traced = env::args().nth(1).as_deref() != Some("__pod");
     if traced {
         trace::init("e2e");
+        // Profiles (profile.rs) are off unless PYROSCOPE_SERVER_ADDRESS is set.
+        profile::init("e2e", &[]);
     }
     let root = trace::span(format!("e2e {}", env::args().nth(1).unwrap_or_else(|| "run".into())));
     let code = run().await;
     drop(root);
     trace::flush().await;
+    profile::stop();
     code
 }
 

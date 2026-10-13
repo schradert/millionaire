@@ -19,6 +19,7 @@ mod mealie;
 mod miniflux;
 mod navidrome;
 mod openviking;
+mod profile;
 mod ryot;
 mod seerr;
 mod shoko;
@@ -32,6 +33,8 @@ async fn main() -> ExitCode {
     let app = env::args().nth(1).unwrap_or_default();
     // Traces (trace.rs) are off unless OTEL_EXPORTER_OTLP_ENDPOINT is set.
     trace::init("app-bootstrap");
+    // Profiles (profile.rs) are off unless PYROSCOPE_SERVER_ADDRESS is set.
+    profile::init("app-bootstrap", &[("app", app.as_str())]);
     let mut root = trace::span(format!("app-bootstrap {app}"));
     let res = match app.as_str() {
         "actual" => actual::run().await,
@@ -67,5 +70,6 @@ async fn main() -> ExitCode {
     };
     drop(root);
     trace::flush().await;
+    profile::stop();
     code
 }
