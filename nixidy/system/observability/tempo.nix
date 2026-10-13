@@ -51,9 +51,16 @@
               capabilities.drop = ["ALL"];
               seccompProfile.type = "RuntimeDefault";
             };
+            # Go's heap doubles between collections; an e2e burst peaked at 1.86Gi of the 2Gi limit with no
+            # GOMEMLIMIT, so the collector now works from 1.5Gi.
+            extraEnv = lib.toList {
+              name = "GOMEMLIMIT";
+              value = "1536MiB";
+            };
             resources = {
               requests = {
-                cpu = "50m";
+                # Measured: peak 130m during an e2e run, ~15m otherwise.
+                cpu = "100m";
                 memory = "768Mi";
               };
               # A traced e2e run is one burst of ~450 spans/s; 1Gi was OOMKilled (and again replaying its WAL).
