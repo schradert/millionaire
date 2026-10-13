@@ -62,10 +62,12 @@ spec:
               value: http://alloy.observability.svc.cluster.local:4317
             - name: KC_TRACING_SAMPLER_RATIO
               value: "0.1"
+            - name: KC_TRACING_SAMPLER_TYPE
+              value: parentbased_traceidratio
           envFrom:
             - secretRef:
                 name: keycloak
-          image: harbor.trdos.me/library/keycloak:26.1.5-optimized-1@sha256:1345506cf728d06bae4f5a623347808349055aec49ab62bdf6a3d1fee021a5d5
+          image: harbor.trdos.me/library/keycloak:26.1.5-optimized-2@sha256:2deba9e3e6be975f431a6b1dd351c6bece9cdb93764ce2660b5f8ea5af7ba33f
           livenessProbe:
             httpGet:
               path: /health/live
