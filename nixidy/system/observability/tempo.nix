@@ -54,9 +54,10 @@
             resources = {
               requests = {
                 cpu = "50m";
-                memory = "256Mi";
+                memory = "768Mi";
               };
-              limits.memory = "1Gi";
+              # A traced e2e run is one burst of ~450 spans/s; 1Gi was OOMKilled (and again replaying its WAL).
+              limits.memory = "2Gi";
             };
           };
         };
