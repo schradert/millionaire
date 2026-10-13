@@ -85,6 +85,20 @@ After:
 - `kubectl get node falcon` (NotReady until Cilium schedules on it), `systemctl --failed`, `tailscale status` (now as a cluster node).
 - falcon only: `nvidia.com/gpu` appears on the node once the gpu-operator pods run (README todo 27).
 
+## Migrating a live node to the containerd dataset
+
+`root/local/containerd` (`sync=disabled`, `copies=1`, legacy mount at `/var/lib/rancher/rke2/agent/containerd`) is declared in
+`static/k8s-node.nix`, so reinstalls get it from disko. disko does not run on live nodes, and the switch that adds the fileSystems
+entry is `nofail` (an unmigrated node keeps running on the old directory, silently), so run `static/containerd-zfs-migrate.sh` as root
+on each node BEFORE its switch. One node at a time, never while another server is down (sirver stays out until its disk is replaced):
+
+1. etcd 3/3, all nodes Ready, ceph known state. `seed` (rke2 running; copies the layers into the new dataset, about the size of
+   `du -sh /var/lib/rancher/rke2/agent/containerd`, 50-80 GB; the script refuses if the pool lacks 120% of that).
+2. `cutover` (stops rke2, `rke2-killall.sh`, final rsync, old dir moved to `containerd.premigration`, dataset mounted).
+3. Switch the node (runbook), then `systemctl is-active rke2-server rke2-agent`, starting the unit if the switch left it stopped.
+4. Verify: `findmnt /var/lib/rancher/rke2/agent/containerd`, `zfs get sync,copies root/local/containerd`, node Ready, pods Running.
+5. `cleanup` once satisfied (deletes `containerd.premigration`, freeing its `copies=2` space). `rollback` undoes step 2 before it.
+
 ## Not verified
 
 - No node has been installed through this path; the pulumi step was only rendered and syntax-checked, never run.
