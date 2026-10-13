@@ -26,7 +26,7 @@ spec:
         - alert: MimirBucketGrowth
           annotations:
             summary: Mimir uploads more than 3 GB/day of new blocks to the bucket (retention is unlimited by design)
-          expr: sum(deriv(cortex_ingester_shipper_uploaded_bytes_total[1h])) * 86400 > 3e9
+          expr: sum(increase(thanos_objstore_bucket_operation_transferred_bytes_sum{component="ingester",operation="upload"}[6h])) * 4 > 3e9
           for: 1h
           labels:
             severity: info

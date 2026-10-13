@@ -79,8 +79,9 @@
             }
             {
               # Informational: with retention off the bucket only grows; this is the early look at the rate.
+              # Ingesters upload a block every 2h, so the rate is taken over 6h (x4 = bytes/day).
               alert = "MimirBucketGrowth";
-              expr = ''sum(deriv(cortex_ingester_shipper_uploaded_bytes_total[1h])) * 86400 > 3e9'';
+              expr = ''sum(increase(thanos_objstore_bucket_operation_transferred_bytes_sum{component="ingester",operation="upload"}[6h])) * 4 > 3e9'';
               "for" = "1h";
               labels.severity = "info";
               annotations.summary = "Mimir uploads more than 3 GB/day of new blocks to the bucket (retention is unlimited by design)";
