@@ -62,5 +62,31 @@ spec:
               port: 8080
           resources: {}
           securityContext: {}
+        - command:
+            - /prometheus-jitsi-meet-exporter
+            - -videobridge-url
+            - http://localhost:8080/colibri/stats
+          image: systemli/prometheus-jitsi-meet-exporter:1.4.2@sha256:30fff1244515284b9c40c86c315283cd5a65ac24e17f70d320e08c5a3d0a6c06
+          imagePullPolicy: IfNotPresent
+          name: metrics
+          ports:
+            - containerPort: 9888
+              name: tcp-metrics
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9888
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            limits:
+              cpu: 20m
+              memory: 32Mi
+            requests:
+              cpu: 10m
+              memory: 16Mi
+          securityContext:
+            runAsUser: 10001
       securityContext: {}
       serviceAccountName: jitsi-jitsi-meet

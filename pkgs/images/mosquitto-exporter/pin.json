@@ -1,0 +1,8 @@
+{
+  "version": "0.8.0",
+  "digest": "sha256:241570341cd144c27ca0952255a2726a4964b7397bfed93a98707b32eb06858c",
+  "source": {
+    "type": "oci-tag",
+    "repository": "sapcc/mosquitto-exporter"
+  }
+}

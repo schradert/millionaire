@@ -10,6 +10,10 @@ metadata:
   namespace: home
 spec:
   ports:
+    - name: metrics
+      port: 9234
+      protocol: TCP
+      targetPort: 9234
     - name: mqtt
       port: 1883
       protocol: TCP
