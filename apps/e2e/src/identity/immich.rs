@@ -193,10 +193,12 @@ pub async fn asset_roundtrip(ctx: &Ctx, base: &str, s: &Session, marker: &str) -
         return Err(Fail::new(APP, "asset info", excerpt(&info.to_string())));
     }
     send(ctx.http.delete(format!("{base}/api/assets")).bearer_auth(&s.token).json(&json!({ "ids": [id], "force": true })), APP, "delete asset").await?;
-    let gone = ctx.http.get(format!("{base}/api/assets/{id}")).bearer_auth(&s.token).send().await.at(APP, "get deleted asset")?;
-    if gone.status().is_success() {
-        return Err(Fail::new(APP, "asset deleted", "still readable after the forced delete"));
-    }
+    // A forced delete is carried out by a queued job: the asset disappears within moments.
+    poll(APP, "asset deleted", Duration::from_secs(60), Duration::from_secs(2), || async {
+        let gone = ctx.http.get(format!("{base}/api/assets/{id}")).bearer_auth(&s.token).send().await.at(APP, "get deleted asset")?;
+        Ok((!gone.status().is_success()).then_some(()))
+    })
+    .await?;
     Ok(id)
 }
 
