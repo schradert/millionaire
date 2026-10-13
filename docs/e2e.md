@@ -54,7 +54,7 @@ The image is `harbor.trdos.me/library/e2e` (`image publish e2e`, then add `pkgs/
 5. The residue check fails the run if any tagged object survives; a check that cannot run is reported, not silently passed.
 6. No owner credentials. Test users are created per run and deleted; the e2e client and service accounts are scoped to the `e2e` namespace's secrets.
 7. Test content is public domain or freely licensed (Big Buck Bunny, Sintel, Project Gutenberg, LibriVox, ...), or generated.
-8. Things that cannot be deleted age out and are named in the report: ntfy messages (12 h cache) on the run's topic and on `e2e-alerts`. Alertmanager's test alert goes to `e2e-alerts` (a route in `alertmanager.nix`), which no device subscribes to, so it never pages anyone, and expires by itself after five minutes if the Job dies.
+8. Things that cannot be deleted age out and are named in the report: ntfy messages (12 h cache) on the run's topic and on `e2e-alerts`, and the Loki lines of `observability/loki-roundtrip` (tenant `e2e`, retention). Alertmanager's test alert goes to `e2e-alerts` (a route in `alertmanager.nix`), which no device subscribes to, so it never pages anyone, and expires by itself after five minutes if the Job dies.
 
 ## Implemented flows
 
@@ -75,6 +75,8 @@ The image is `harbor.trdos.me/library/e2e` (`image publish e2e`, then add `pkgs/
 | git | `bookmarks-floccus` | XBEL repo `<tag>-bookmarks` | two clones sync | route reaches Forgejo (401) for a browser User-Agent, other repos stay behind oauth2-proxy, 3 bookmarks converge | repo and user |
 | storage | `ceph-block` | PVC `<tag>-blk` on `ceph-block`, Pods `<tag>-blk-*`, VolumeSnapshot `<tag>-blk-snap`, PVC `<tag>-blk-restore` | one Pod writes, another reads; snapshot, overwrite, restore | PVC Bound; read-back equal; the restore holds the content from before the overwrite, the original the later one | Pods, snapshot, PVCs deleted and polled until gone; sweep by label and marker |
 | storage | `ceph-filesystem` | PVC `<tag>-fs` on `ceph-filesystem` (ReadWriteMany), Pods `<tag>-fs-*` | a Pod writes; a second holds the volume while a third reads | read-back equal while the other Pod still mounts it | same |
+| observability | `prometheus-pod` | tagged Pod `<tag>-obs` | kube-state-metrics, Prometheus scrape | `up` for kube-state-metrics, an Alertmanager discovered, `kube_pod_info` and `kube_pod_status_phase` for the Pod appear (up to 240 s) | Pod deleted and polled until gone; series go stale by themselves |
+| observability | `loki-roundtrip` | Pod `<tag>-log` pushes a line to stream `{app="e2e", e2e="<tag>"}` in Loki tenant `e2e` | Loki push API from inside the cluster | `query_range` returns the line with the stream labels; another tenant does not see it | Pod deleted; the line ages out with Loki's retention (no immediate delete) |
 | media | `sso` ... `prowlarr`, `vpn-*` | see `e2e list` | Servarr, Jellyfin, Navidrome, Kavita, Komga, ... | per flow | markers on hidden folders, libraries, tags, API keys |
 
 ## Flow matrix
@@ -123,8 +125,8 @@ Every service in `docs/connections.md`. **Status:** implemented · planned · ma
 | librechat | ai | OIDC login; tagged conversation → delete. Blocked today: `/oauth/openid` answers 500 and the pod log says `Unknown authentication strategy "openid"`; the likely cause (not verified) is the missing `OPENID_SESSION_SECRET` env | planned, blocked | K |
 | promptfoo | ai | smoke through oauth2-proxy | planned | K |
 | Kubernetes MCP | ai | read-only tool call (list namespaces) | planned | SA |
-| prometheus | observability | tagged PrometheusRule firing → Alertmanager → `e2e-alerts` (the full alert chain); query `up` with a bearer token | planned | SA, K |
-| grafana, gatus, status (hyena) | observability | tagged dashboard through the API; Gatus external-endpoint push and status page; Loki push of a tagged log line and query back | planned | K / S (service-account token) |
+| prometheus | observability | a tagged Pod's series appear (`observability/prometheus-pod`, done); tagged PrometheusRule firing → Alertmanager → `e2e-alerts` (the full alert chain; needs a Role for PrometheusRules); query `up` with a bearer token | Pod series implemented; alert chain planned | SA, K |
+| grafana, gatus, status (hyena) | observability | tagged dashboard through the API; Gatus external-endpoint push and status page; Loki: a tagged Pod pushes a line, `query_range` returns it (`observability/loki-roundtrip`, done). No Pod logs reach Loki today: the cluster has no log collector, `loki-canary` queries the `loki-gateway` Service, which has no replicas, and Grafana has no Loki datasource; a flow that proves a Pod's stdout arrives needs a shipper first | Loki push and query implemented; the rest planned | K / S (service-account token) |
 | harbor | registry | project `<tag>`, robot, push a generated image, pull it back → delete repository, robot, project | planned | S (Harbor admin) |
 | argocd | registry | tagged Application from a test Forgejo repo into `e2e` → sync, healthy → delete (cascade) | planned | K (argocd accepts the Keycloak token) or S |
 | argo-workflows, argo-rollouts | registry | tagged Workflow submitted and succeeded → deleted; Rollout smoke | planned | K |
@@ -139,11 +141,11 @@ Every service in `docs/connections.md`. **Status:** implemented · planned · ma
 
 - **Only the e2e Keycloak user (K):** `identity` (done), the bearer and group-check probes of every oauth2-proxy app (`home` tiles, `ai` smoke, `files/webdav`, `registry` Argo), OIDC logins (Mealie, Jellyfin, Home Assistant, Sure and Immich done as far as each app allows deleting what a login creates; LibreChat and Bulwark planned), `bifrost`, `contextforge`, `spoolman`.
 - **Need a service credential (S, app-bootstrap style):** `git` (`forgejo-admin`, mounted), `media` (arr API keys, Jellyfin, Kavita, Komga, Audiobookshelf, Navidrome, Maloja, qBittorrent passwords, all mounted in the media runner), and for the planned flows Baikal, Miniflux, Actual, Firefly, Syncthing, Harbor, headscale, Stalwart, Windmill, Home Assistant, chirpstack. Each is an existing Kubernetes Secret or Bitwarden item to be mounted through an ExternalSecret in the `e2e` namespace, as `e2e-forgejo-admin` is.
-- **Only a ServiceAccount (SA):** `storage` (done) and `observability` flows that create tagged Kubernetes objects. The Role in `e2e` (`nixidy/apps/e2e.nix`) covers pods, PVCs and VolumeSnapshots; a flow that needs more adds the verb there, nothing cluster-scoped.
+- **Only a ServiceAccount (SA):** `storage` and `observability` (both done) flows that create tagged Kubernetes objects. The Role in `e2e` (`nixidy/apps/e2e.nix`) covers pods, PVCs and VolumeSnapshots; a flow that needs more adds the verb there, nothing cluster-scoped.
 
 ## Test Pods
 
-`storage` and `observability` run short-lived Pods in `e2e` from the runner's own image (`E2E_IMAGE`, set by the CronJob): `e2e __pod write|check|sleep` (`apps/e2e/src/pod.rs`); the Pod's exit status is the assertion. Every test object is named after the run marker and labelled `app.kubernetes.io/name=e2e-test`; the Pods are non-root with a read-only root, no capabilities and no ServiceAccount token, and end themselves after ten minutes. Sweeps and residue checks select by that label, so the runner's own Job and Pod (also named `e2e-<run>`) are never touched. The RBD snapshot step uses the VolumeSnapshotClass in `E2E_SNAPSHOT_CLASS` (default `ceph-block`; empty skips it).
+`storage` and `observability` run short-lived Pods in `e2e` from the runner's own image (`E2E_IMAGE`, set by the CronJob): `e2e __pod write|check|sleep|loki-push` (`apps/e2e/src/pod.rs`); the Pod's exit status is the assertion. Every test object is named after the run marker and labelled `app.kubernetes.io/name=e2e-test`; the Pods are non-root with a read-only root, no capabilities and no ServiceAccount token, and end themselves after ten minutes. Sweeps and residue checks select by that label, so the runner's own Job and Pod (also named `e2e-<run>`) are never touched. The RBD snapshot step uses the VolumeSnapshotClass in `E2E_SNAPSHOT_CLASS` (default `ceph-block`; empty skips it).
 
 ## Adding a flow
 
