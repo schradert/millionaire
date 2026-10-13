@@ -17,6 +17,7 @@ data:
 kind: ConfigMap
 metadata:
   annotations:
+    configmap.reloader.stakater.com/reload: grafana-datasource-loki
     reloader.stakater.com/auto: "true"
   labels:
     app.kubernetes.io/instance: grafana

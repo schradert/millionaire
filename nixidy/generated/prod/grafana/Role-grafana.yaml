@@ -2,6 +2,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   annotations:
+    configmap.reloader.stakater.com/reload: grafana-datasource-loki
     reloader.stakater.com/auto: "true"
   labels:
     app.kubernetes.io/instance: grafana
