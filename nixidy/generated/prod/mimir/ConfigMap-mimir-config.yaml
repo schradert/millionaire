@@ -76,6 +76,7 @@ data:
         max_recv_msg_size: 104857600
         max_send_msg_size: 104857600
     limits:
+      compactor_block_upload_enabled: true
       compactor_blocks_retention_period: 0s
       ingestion_burst_size: 1000000
       ingestion_rate: 100000
