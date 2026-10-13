@@ -64,8 +64,8 @@ spec:
       remoteTimeout: 30s
       url: http://mimir-distributor.observability.svc.cluster.local:8080/api/v1/push
   replicas: 1
-  retention: 60d
-  retentionSize: 85GB
+  retention: 15d
+  retentionSize: 25GB
   routePrefix: /
   ruleNamespaceSelector: {}
   ruleSelector: {}
