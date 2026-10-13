@@ -9,6 +9,8 @@
       helm.releases.loki = {
         chart = pinned.charts.loki;
         values = {
+          # nginx resolves the backend through this Service; RKE2 here names it coredns.
+          global.dnsService = "coredns";
           # tag@digest: with .digest the chart drops the tag.
           lokiCanary.image.tag = with pinned.images.loki-canary; "${tag}@${digest}";
           gateway.image.tag = with pinned.images.loki-gateway; "${tag}@${digest}";
