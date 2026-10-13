@@ -29,7 +29,9 @@ spec:
                   value: media/media-e2e-last-report
                 - name: E2E_RUNNER
                   value: media
-              image: harbor.trdos.me/library/e2e:0.5.2@sha256:2275c2d5dff2394fcd80a84d2f0eeabe49212a7346d3d62861097a015eca45a1
+                - name: OTEL_EXPORTER_OTLP_ENDPOINT
+                  value: http://alloy.observability.svc.cluster.local:4318
+              image: harbor.trdos.me/library/e2e:0.6.0@sha256:96cde60ddb3a4345bf038f1eeedd54e08b18798826b1f178beb91ae5f951c14a
               name: media-e2e
               resources:
                 limits:

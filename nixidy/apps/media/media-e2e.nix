@@ -109,6 +109,7 @@
                   args = ["run" "--family" "media"];
                   env = lib.mapAttrsToList (name: value: {inherit name value;}) {
                     E2E_RUNNER = "media";
+                    OTEL_EXPORTER_OTLP_ENDPOINT = "http://alloy.observability.svc.cluster.local:4318";
                     E2E_REPORT_CONFIGMAP = "media/${name}-last-report";
                     DOMAIN = domain;
                     ADMIN_EMAIL = people.my.profiles.personal.email;

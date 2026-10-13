@@ -24,6 +24,8 @@ spec:
               value: http://miniflux.home.svc.cluster.local:8080
             - name: OIDC_USERNAME
               value: tristan
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4318
             - name: USER_PASSWORD_FILE
               value: /secrets/user/password
           image: harbor.trdos.me/library/app-bootstrap:0.19.6@sha256:e6ce713774b09d7c0aaf33951a9a03ec77e56b725cbbd011707ca1c847a06f4c

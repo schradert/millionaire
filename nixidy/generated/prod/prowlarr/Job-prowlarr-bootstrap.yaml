@@ -18,6 +18,8 @@ spec:
           env:
             - name: LIDARR_API_KEY_FILE
               value: /secrets/lidarr/apikey
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4318
             - name: PROWLARR_API_KEY_FILE
               value: /secrets/prowlarr/apikey
             - name: QBITTORRENT_PASSWORD_FILE

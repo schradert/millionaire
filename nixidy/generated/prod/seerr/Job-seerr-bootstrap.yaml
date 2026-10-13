@@ -26,6 +26,8 @@ spec:
               value: jellyfin.media.svc.cluster.local
             - name: JELLYFIN_PORT
               value: "8096"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4318
             - name: RADARR_API_KEY_FILE
               value: /secrets/radarr/apikey
             - name: RADARR_PROFILE

@@ -109,6 +109,8 @@ spec:
                   end loop;
                 end
                 $bootstrap$;
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4318
             - name: PGDATABASE
               value: chirpstack
             - name: PGHOST
