@@ -116,6 +116,12 @@ data:
       name: excalidraw
       url: https://excalidraw.trdos.me
     - conditions:
+      - '[STATUS] == 405'
+      group: internal
+      interval: 1m
+      name: faro
+      url: https://faro.trdos.me/collect
+    - conditions:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m

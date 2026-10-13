@@ -1,8 +1,24 @@
 {
-  nixidy = {pinned, ...}: let
+  can,
+  config,
+  ...
+}: let
+  inherit (config.canivete.meta) domain;
+  faroHost = "faro.${domain}";
+in {
+  nixidy = {
+    config,
+    lib,
+    pinned,
+    ...
+  }: let
     # Grafana's Loki datasource (grafana.nix) queries this tenant.
     tenant = "cluster";
+    faroApps = config.faro.apps;
   in {
+    options.faro.apps = can.attrs.submodule "Web apps that report browser telemetry (Faro) to Alloy; the name is the `app.name` they send" {
+      options.origin = can.str "Origin the app is served from, allowed to POST to the receiver (CORS)" {};
+    };
     # Ships every Pod's stdout/stderr to Loki: one Alloy per node tails only that node's Pods
     # through the API server (no hostPath, no root).
     # Also the cluster's OTLP gateway: any Pod sends traces to http://alloy.observability.svc:4318 (or
@@ -12,8 +28,40 @@
     # on the node, always on, and pushes to Pyroscope (pyroscope.nix). That needs root, the host PID namespace and
     # the capabilities listed under securityContext; it stays in this one DaemonSet (not a second one) because
     # sirver is at its 110-Pod limit, so an extra Pod per node would not fit there.
-    applications.alloy = {
+    # Browser telemetry: `faro.receiver` takes Grafana Faro payloads (logs, exceptions, web vitals, events, traces) that
+    # the web apps listed in `faro.apps` post to https://${faroHost}/collect; see the Faro block in the config.
+    # The route has no oauth2-proxy: browsers post anonymously. What keeps it from being an open sink: CORS limited to
+    # the registered origins (browsers only), the receiver's own rate limit and 1MiB payload cap, and an `app` label
+    # that is only ever a registered app name or `other`. The Cilium gateway has no declarative rate limit.
+    # A GET is a 405 from the receiver, which only takes POSTs: reachable through the gateway and answering.
+    config.gatus.endpoints.faro = {
+      url = "https://${faroHost}/collect";
+      group = "internal";
+      conditions = ["[STATUS] == 405"];
+    };
+    config.portal.apps.faro.enable = false;
+    config.applications.alloy = {
       namespace = "observability";
+      resources.httpRoutes.faro.spec = {
+        hostnames = [faroHost];
+        parentRefs = lib.toList {
+          name = "internal";
+          namespace = "kube-system";
+          sectionName = "https";
+        };
+        rules = lib.toList {
+          matches = lib.toList {
+            path = {
+              type = "PathPrefix";
+              value = "/collect";
+            };
+          };
+          backendRefs = lib.toList {
+            name = "alloy";
+            port = 12347;
+          };
+        };
+      };
       helm.releases.alloy = {
         chart = pinned.charts.alloy;
         values = {
@@ -84,6 +132,12 @@
                 name = "otlp-http";
                 port = 4318;
                 targetPort = 4318;
+                protocol = "TCP";
+              }
+              {
+                name = "faro";
+                port = 12347;
+                targetPort = 12347;
                 protocol = "TCP";
               }
             ];
@@ -356,6 +410,63 @@
                   }
                 }
               }
+
+              // ---- Frontend observability (Grafana Faro) -------------------------------------------------------
+              // Browsers post to https://${faroHost}/collect (the HTTPRoute above). Logs, exceptions, measurements and
+              // events go to Loki as `{source="faro", app, kind}`; traces join the OTLP pipeline at the batch step
+              // (no k8sattributes: the sender is a browser, not a Pod). Source maps are off.
+              faro.receiver "browsers" {
+                extra_log_labels = {
+                  source = "faro",
+                }
+                server {
+                  listen_address           = "0.0.0.0"
+                  listen_port              = 12347
+                  cors_allowed_origins     = ${builtins.toJSON (lib.mapAttrsToList (_: a: a.origin) faroApps)}
+                  max_allowed_payload_size = "1MiB"
+                  rate_limiting {
+                    enabled    = true
+                    strategy   = "global"
+                    rate       = 50
+                    burst_size = 100
+                  }
+                }
+                sourcemaps {
+                  download = false
+                }
+                output {
+                  logs   = [loki.process.faro.receiver]
+                  traces = [otelcol.processor.batch.default.input]
+                }
+              }
+
+              // `kind` (log | exception | measurement | event) is the receiver's own. `app` comes from the payload,
+              // which anyone who can reach the receiver controls: only registered names become a label value,
+              // anything else is `other` (bounded label cardinality).
+              loki.process "faro" {
+                forward_to = [loki.write.loki.receiver]
+                stage.logfmt {
+                  mapping = {
+                    app  = "app_name",
+                    kind = "kind",
+                  }
+                }
+                stage.labels {
+                  values = {
+                    app  = "",
+                    kind = "",
+                  }
+                }
+                stage.match {
+                  selector = "{source=\"faro\", app!~\"${lib.concatStringsSep "|" (lib.attrNames faroApps)}\"}"
+                  stage.static_labels {
+                    values = {
+                      app = "other",
+                    }
+                  }
+                }
+              }
+              // ---- end of frontend observability ---------------------------------------------------------------
 
               // ---- Continuous profiling (eBPF) -> Pyroscope ----------------------------------------------------
               // Every container on this node (the Pod targets discovered above) plus the host's own daemons
