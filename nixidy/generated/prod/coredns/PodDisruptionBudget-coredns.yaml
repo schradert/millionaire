@@ -11,7 +11,7 @@ metadata:
   name: coredns
   namespace: kube-system
 spec:
-  minAvailable: 1
+  minAvailable: 2
   selector:
     matchLabels:
       app.kubernetes.io/instance: coredns

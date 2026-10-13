@@ -11,7 +11,7 @@ metadata:
   name: coredns
   namespace: kube-system
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
       app.kubernetes.io/instance: coredns
@@ -32,6 +32,18 @@ spec:
         app.kubernetes.io/name: coredns
         k8s-app: coredns
     spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - preference:
+                matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - dingo
+                      - bonobo
+                      - chinchilla
+              weight: 100
       containers:
         - args:
             - -conf
@@ -100,6 +112,8 @@ spec:
             matchLabels:
               app.kubernetes.io/instance: coredns
               app.kubernetes.io/name: coredns
+          matchLabelKeys:
+            - pod-template-hash
           maxSkew: 1
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: DoNotSchedule

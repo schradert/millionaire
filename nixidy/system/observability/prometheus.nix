@@ -90,6 +90,10 @@
           kubeEtcd.service.enabled = false;
           kubeEtcd.serviceMonitor.enabled = false;
 
+          # The chart's CoreDNS scrape Service selects k8s-app=kube-dns; ours are
+          # labelled coredns, so no coredns_* metric was ever collected.
+          coreDns.service.selector."k8s-app" = "coredns";
+
           # Deployed separately
           alertmanager.enabled = false;
           kubeControllerManager.enabled = false;
@@ -131,6 +135,20 @@
               "for" = "1m";
               labels.severity = "critical";
               annotations.summary = "etcd member {{ $labels.instance }} has no leader";
+            }
+            {
+              alert = "CoreDNSSlow";
+              expr = ''histogram_quantile(0.99, sum by (le, instance) (rate(coredns_dns_request_duration_seconds_bucket[5m]))) > 1'';
+              "for" = "10m";
+              labels.severity = "warning";
+              annotations.summary = "CoreDNS {{ $labels.instance }} p99 latency is above 1s";
+            }
+            {
+              alert = "CoreDNSServfail";
+              expr = ''sum by (instance) (rate(coredns_dns_responses_total{rcode="SERVFAIL"}[5m])) / sum by (instance) (rate(coredns_dns_responses_total[5m])) > 0.02'';
+              "for" = "10m";
+              labels.severity = "warning";
+              annotations.summary = "CoreDNS {{ $labels.instance }} answers over 2% of queries with SERVFAIL";
             }
             {
               alert = "NodeNotReady";
