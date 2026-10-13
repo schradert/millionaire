@@ -23,6 +23,7 @@ mod identity;
 mod kube;
 mod media;
 mod notify;
+mod observability;
 mod pod;
 mod report;
 mod storage;

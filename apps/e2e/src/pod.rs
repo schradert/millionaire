@@ -5,6 +5,7 @@
 //! e2e __pod write <dir> <text>    write <dir>/e2e.txt and sync it
 //! e2e __pod check <dir> <text>    exit 1 unless <dir>/e2e.txt holds exactly <text>
 //! e2e __pod sleep <secs>          hold the Pod (and its volumes) for a while
+//! e2e __pod loki-push <url> <tenant> <marker> <line>   push one log line to Loki from inside the cluster
 //! ```
 
 use std::{fs, io::Write, path::Path, process::ExitCode, time::Duration};
@@ -20,7 +21,14 @@ pub async fn main(args: &[String]) -> ExitCode {
             tokio::time::sleep(Duration::from_secs(secs.parse().unwrap_or(60))).await;
             Ok("slept".into())
         }
-        _ => Err("usage: e2e __pod (write <dir> <text> | check <dir> <text> | sleep <secs>)".into()),
+        ["loki-push", url, tenant, marker, line] => {
+            let http = reqwest::Client::builder().timeout(Duration::from_secs(30)).build().map_err(|e| e.to_string());
+            match http {
+                Ok(h) => crate::observability::loki::push(&h, url, tenant, marker, line).await.map(|_| format!("pushed to {url} as tenant {tenant}")).map_err(|e| format!("{}: {}", e.step, e.msg)),
+                Err(e) => Err(e),
+            }
+        }
+        _ => Err("usage: e2e __pod (write <dir> <text> | check <dir> <text> | sleep <secs> | loki-push <url> <tenant> <marker> <line>)".into()),
     };
     match res {
         Ok(msg) => {

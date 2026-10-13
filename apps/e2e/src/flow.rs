@@ -105,7 +105,7 @@ pub struct Family {
 
 /// Every family, in run order.
 pub fn families() -> Vec<Family> {
-    vec![crate::media::family(), crate::identity::family(), crate::notify::family(), crate::git::family(), crate::storage::family()]
+    vec![crate::media::family(), crate::identity::family(), crate::notify::family(), crate::git::family(), crate::storage::family(), crate::observability::family()]
 }
 
 /// Run one flow through its phases. A failing phase stops the later ones but not `cleanup`; a
