@@ -28,9 +28,13 @@ spec:
               rc=0
               for dev in /dev/disk/by-id/scsi-35000c50067fb404b; do
                 if [ ! -e "$dev" ]; then echo "$dev: not present on $(hostname), skipping"; continue; fi
-                if ! label=$(ceph-bluestore-tool show-label --dev "$dev" 2>/dev/null); then
-                  echo "$dev: no bluestore label, nothing to zap"
+                # blkid sees the signature even while the disk is open; show-label does not.
+                if [ "$(blkid -o value -s TYPE "$dev" 2>/dev/null)" != "ceph_bluestore" ]; then
+                  echo "$dev: no bluestore signature, nothing to zap"
                   continue
+                fi
+                if ! label=$(ceph-bluestore-tool show-label --dev "$dev" 2>&1); then
+                  echo "$dev: cannot read the bluestore label (in use?): $label"; rc=1; continue
                 fi
                 fsid=$(echo "$label" | sed -n 's/.*"ceph_fsid": "\([^"]*\)".*/\1/p' | head -1)
                 id=$(echo "$label" | sed -n 's/.*"whoami": "\([^"]*\)".*/\1/p' | head -1)
@@ -51,7 +55,7 @@ spec:
                 secretKeyRef:
                   key: fsid
                   name: rook-ceph-mon
-          image: docker.io/rook/ceph:v1.19.6@sha256:eab4005612a6d10cac3d947f9846380ea13ecd2336c7397f519f0009578329c2
+          image: quay.io/ceph/ceph:v19.2.3@sha256:af0c5903e901e329adabe219dfc8d0c3efc1f05102a753902f33ee16c26b6cee
           name: zap
           securityContext:
             privileged: true
