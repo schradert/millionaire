@@ -44,12 +44,14 @@
             {
               # Informational: with retention off the bucket only grows; this is the early look at the rate.
               # Segment bytes written before compaction, so an upper bound of what stays (the object store's
-              # upload counters read 0 for these writes).
+              # upload counters read 0 for these writes). Measured with the eBPF profiler on 5 nodes: about
+              # 15 GB/day of segments, of which roughly 2 GB/day remain as compacted blocks (bucket: 359 MB after
+              # 2.7 h). The threshold is twice the segment rate: it fires when something doubles it.
               alert = "PyroscopeBucketGrowth";
-              expr = ''sum(increase(pyroscope_segment_writer_segment_size_bytes_sum[1d])) > 3e9'';
+              expr = ''sum(increase(pyroscope_segment_writer_segment_size_bytes_sum[1d])) > 30e9'';
               "for" = "1h";
               labels.severity = "info";
-              annotations.summary = "Pyroscope writes more than 3 GB/day of profile segments to the bucket (retention is unlimited by design)";
+              annotations.summary = "Pyroscope writes more than 30 GB/day of profile segments (about twice the usual); the bucket keeps everything (retention is unlimited by design)";
             }
             {
               alert = "PyroscopeDown";
