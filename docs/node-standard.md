@@ -89,8 +89,8 @@ After:
 
 `root/local/containerd` (`sync=disabled`, `copies=1`, legacy mount at `/var/lib/rancher/rke2/agent/containerd`) is declared in
 `static/k8s-node.nix`, so reinstalls get it from disko. disko does not run on live nodes, and the switch that adds the fileSystems
-entry fails the rke2 start (`RequiresMountsFor`) if the dataset is missing, so run `static/containerd-zfs-migrate.sh` as root on
-each node BEFORE its switch. One node at a time, never while another server is down (sirver stays out until its disk is replaced):
+entry is `nofail` (an unmigrated node keeps running on the old directory, silently), so run `static/containerd-zfs-migrate.sh` as root
+on each node BEFORE its switch. One node at a time, never while another server is down (sirver stays out until its disk is replaced):
 
 1. etcd 3/3, all nodes Ready, ceph known state. `seed` (rke2 running; copies the layers into the new dataset, about the size of
    `du -sh /var/lib/rancher/rke2/agent/containerd`, 50-80 GB; the script refuses if the pool lacks 120% of that).

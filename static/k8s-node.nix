@@ -44,9 +44,11 @@ in {
   # hung start; Restart=always (upstream) then retries it.
   systemd.services = lib.mkMerge [
     {rke2-server.serviceConfig.TimeoutStartSec = lib.mkForce "15min";}
-    # Keep rke2 behind the containerd dataset mount below (a dynamic key cannot sit
-    # beside the static one in a single attrset, hence mkMerge).
-    {"rke2-${config.services.rke2.role}".unitConfig.RequiresMountsFor = containerdDir;}
+    # Start rke2 after the containerd dataset mount below. Ordering only, and the mount is
+    # nofail: a node that has not been migrated yet keeps running on the old directory
+    # instead of failing to start rke2. (A dynamic key cannot sit beside the static one
+    # in a single attrset, hence mkMerge.)
+    {"rke2-${config.services.rke2.role}".after = ["var-lib-rancher-rke2-agent-containerd.mount"];}
   ];
   # Image layers and snapshots are disposable and re-pullable, so they get their own
   # dataset instead of inheriting root/safe's copies=2 and sync=standard. overlayfs
@@ -63,6 +65,7 @@ in {
       "com.sun:auto-snapshot" = "false";
     };
     mountpoint = containerdDir;
+    mountOptions = ["defaults" "nofail"];
   };
   # Ceph mons need <50ms skew; timesyncd (SNTP, 34min polls, random pool servers) drifted ~70ms.
   # chrony disciplines the clock; enabling it disables timesyncd.
