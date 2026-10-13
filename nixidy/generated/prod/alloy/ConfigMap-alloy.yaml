@@ -151,6 +151,20 @@ data:
         endpoint = "0.0.0.0:4318"
       }
       output {
+        traces = [otelcol.processor.filter.noise.input]
+      }
+    }
+
+    // Keycloak's internal transaction-commit and connection-checkout spans were ~40% of an e2e run's
+    // spans (a run is ~600 spans/s for six minutes) and say nothing the SQL and HTTP spans do not.
+    otelcol.processor.filter "noise" {
+      error_mode = "ignore"
+      traces {
+        span = [
+          `resource.attributes["service.name"] == "keycloak" and kind == SPAN_KIND_INTERNAL and (IsMatch(name, "\\.commit$") or name == "DataSource.getConnection")`,
+        ]
+      }
+      output {
         traces = [otelcol.processor.k8sattributes.default.input]
       }
     }
