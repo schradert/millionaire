@@ -98,6 +98,12 @@ in {
           key = "JWT_SECRET";
           length = 64;
         };
+        # Without it LibreChat does not register the OpenID strategy at all: /oauth/openid answers
+        # 500 ("Unknown authentication strategy") and the login button is hidden.
+        librechat-openid-session = {
+          key = "OPENID_SESSION_SECRET";
+          length = 64;
+        };
       };
       helm.releases.librechat = {
         chart = charts.bjw-s-labs.app-template-patched;
@@ -128,6 +134,7 @@ in {
                 {secretRef.name = "librechat-creds-key";}
                 {secretRef.name = "librechat-creds-iv";}
                 {secretRef.name = "librechat-jwt";}
+                {secretRef.name = "librechat-openid-session";}
               ];
               ports = lib.toList {
                 name = "http";
