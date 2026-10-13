@@ -1,6 +1,6 @@
-# Media family of the platform end-to-end tests (apps/e2e). A suspended CronJob holds the Job
-# template; `e2e run --family media` (alias `media-e2e`) in the devshell creates a Job from it,
-# follows the log and saves the report. It lives in `media` because the family mounts the media
+# Media family of the platform end-to-end tests (apps/e2e). The CronJob runs the offline
+# suite nightly (03:45 UTC); `e2e run --family media` (alias `media-e2e`) in the devshell creates a Job from it,
+# follows the log and saves the report. The latest report is also kept in the ConfigMap `media-e2e-last-report`. It lives in `media` because the family mounts the media
 # volumes. The image is library/e2e once pinned, else the old library/media-e2e (same CLI).
 # Test data lives only under `.e2e-<run>` folders and objects named `e2e-<run>`, and is removed
 # (and checked gone) at the end of every run. See docs/manual-steps.md.
@@ -52,6 +52,18 @@
             resources = ["cronjobs"];
             verbs = ["get"];
           }
+          # The latest report is kept in one ConfigMap (`kubectl apply`: get, patch, create).
+          {
+            apiGroups = [""];
+            resources = ["configmaps"];
+            verbs = ["create"];
+          }
+          {
+            apiGroups = [""];
+            resources = ["configmaps"];
+            resourceNames = ["${name}-last-report"];
+            verbs = ["get" "update" "patch"];
+          }
         ];
         roleBindings.${name} = {
           roleRef = {
@@ -66,8 +78,13 @@
           };
         };
         cronJobs.${name}.spec = {
-          suspend = true;
-          schedule = "0 0 1 1 *";
+          # The offline suite nightly after the cluster runner's (`--full`, the VPN tests, stays manual).
+          schedule = "45 3 * * *";
+          timeZone = "Etc/UTC";
+          concurrencyPolicy = "Forbid";
+          startingDeadlineSeconds = 3600;
+          successfulJobsHistoryLimit = 3;
+          failedJobsHistoryLimit = 3;
           jobTemplate.spec = {
             backoffLimit = 0;
             activeDeadlineSeconds = 10800;
@@ -92,6 +109,7 @@
                   args = ["run" "--family" "media"];
                   env = lib.mapAttrsToList (name: value: {inherit name value;}) {
                     E2E_RUNNER = "media";
+                    E2E_REPORT_CONFIGMAP = "media/${name}-last-report";
                     DOMAIN = domain;
                     ADMIN_EMAIL = people.my.profiles.personal.email;
                   };

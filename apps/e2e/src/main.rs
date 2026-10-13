@@ -186,6 +186,7 @@ async fn main() -> ExitCode {
                 flows.extend(sweeps(&ctx, &chosen(&used), &scope, false).await);
             }
             report::print(&ctx.run, kind, &flows);
+            report::save(&report::document(&ctx.run, kind, &flows)).await;
             failed(&flows)
         }
         _ => {

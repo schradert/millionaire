@@ -2,7 +2,9 @@
 # (identity, notify, git, storage, ...). The media family has its own runner in `media`
 # (nixidy/apps/media/media-e2e.nix) because it mounts the media volumes.
 #
-# A suspended CronJob holds the Job template; `e2e run` in the devshell creates Jobs from it.
+# The CronJob runs the suite nightly (03:15 UTC); `e2e run` in the devshell creates extra Jobs from it.
+# A failed run fails its Job, which `KubeJobFailed` pages through Alertmanager to ntfy; the
+# report of the latest run is kept in the ConfigMap `e2e-last-report` (docs/e2e.md).
 # Nothing here is the owner's account:
 #   - Keycloak client `e2e` (confidential): its service account manages users, and its direct
 #     grant mints tokens for the run-tagged test users the flows create and delete. Its secret
@@ -18,6 +20,7 @@
   }: let
     inherit (config.canivete.meta) domain people;
     name = "e2e";
+    report = "e2e-last-report";
     image = pinned.images.e2e or null;
     # Secret name -> mounted at /secrets/<name>.
     secrets = ["e2e-keycloak" "e2e-forgejo-admin"];
@@ -71,6 +74,18 @@
         # The storage and observability flows create tagged Pods, PVCs and VolumeSnapshots in this
         # namespace and nothing else: no Secrets, no other namespace, no cluster-scoped objects.
         roles.${name}.rules = [
+          # The runner keeps its latest report in one ConfigMap (`kubectl apply`: get, patch, create).
+          {
+            apiGroups = [""];
+            resources = ["configmaps"];
+            verbs = ["create"];
+          }
+          {
+            apiGroups = [""];
+            resources = ["configmaps"];
+            resourceNames = [report];
+            verbs = ["get" "update" "patch"];
+          }
           {
             apiGroups = [""];
             resources = ["pods" "persistentvolumeclaims"];
@@ -138,9 +153,34 @@
               sourceRef.storeRef = store "development";
             }) ["username" "password"];
         };
+        # Nobody notices a suite that silently stopped running: `KubeJobFailed` covers a failing
+        # run, this one a missing run (either CronJob, `media/media-e2e` included).
+        prometheusRules.${name} = {
+          metadata.labels.release = "prometheus";
+          spec.groups = lib.toList {
+            name = "e2e";
+            rules = lib.toList {
+              alert = "E2ESuiteStale";
+              expr = ''
+                time() - kube_cronjob_status_last_successful_time{namespace=~"e2e|media", cronjob=~"e2e|media-e2e"} > 3 * 86400
+              '';
+              "for" = "1h";
+              labels.severity = "warning";
+              annotations = {
+                summary = "The nightly end-to-end suite has not passed for three days";
+                description = "CronJob {{ $labels.namespace }}/{{ $labels.cronjob }} last succeeded over three days ago (suspended, failing, or not scheduled). Last report: kubectl -n {{ $labels.namespace }} get cm -l app.kubernetes.io/name=e2e-report; docs/e2e.md.";
+              };
+            };
+          };
+        };
         cronJobs.${name}.spec = {
-          suspend = true;
-          schedule = "0 0 1 1 *";
+          schedule = "15 3 * * *";
+          timeZone = "Etc/UTC";
+          # A run that overruns its day is not stacked on, and one that missed its start by an hour is skipped.
+          concurrencyPolicy = "Forbid";
+          startingDeadlineSeconds = 3600;
+          successfulJobsHistoryLimit = 3;
+          failedJobsHistoryLimit = 3;
           jobTemplate.spec = {
             backoffLimit = 0;
             activeDeadlineSeconds = 3600;
@@ -170,6 +210,7 @@
                   args = ["run"];
                   env = lib.mapAttrsToList (name: value: {inherit name value;}) {
                     E2E_RUNNER = "cluster";
+                    E2E_REPORT_CONFIGMAP = "${name}/${report}";
                     DOMAIN = domain;
                     # The tagged test Pods run this same image (`e2e __pod ...`).
                     E2E_IMAGE = with image; "${repository}:${tag}@${digest}";
