@@ -28,15 +28,6 @@
     };
     applications.alertmanager = {
       namespace = "observability";
-      # hyena's ntfy (static/hyena.nix; enable-metrics) listens on its tailnet IP.
-      resources.scrapeConfigs.hyena-ntfy.spec = {
-        jobName = "hyena-ntfy";
-        scrapeInterval = "1m";
-        staticConfigs = lib.toList {
-          targets = ["100.64.0.1:2586"];
-          labels.host = "hyena";
-        };
-      };
       resources.podMonitors.alertmanager.spec = {
         selector.matchLabels."app.kubernetes.io/name" = "alertmanager";
         podMetricsEndpoints = lib.toList {
