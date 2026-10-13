@@ -29,8 +29,10 @@ in {
       org = "org-files";
     };
     pathOf = f: "/var/syncthing/${f.hub.volume}${lib.optionalString (f.hub.dir != "") "/${f.hub.dir}"}";
-    # Folders under the volumes this module does not already own (org-files predates the table).
-    created = lib.filter (f: f.hub.dir != "") (lib.attrValues syncthing.folders);
+    # Every folder gets its directory and `.stfolder` marker from the init step: the
+    # ones at a volume root (org-files) as well, or Syncthing refuses the empty folder
+    # with "folder marker missing" until a client has synced something into it.
+    created = lib.attrValues syncthing.folders;
     # Declared state for app-bootstrap syncthing: REST objects, which it overlays on Syncthing's
     # defaults. A client's `sendonly` is `receiveonly` here: the hub never pushes changes back.
     # The hub's own ID joins each folder's devices in the bootstrap (it reads it from the API).
