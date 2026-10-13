@@ -60,7 +60,9 @@
         ];
       };
     };
-    keycloak.serviceAccountRoles.${name} = ["manage-users" "view-users" "query-users" "query-groups"];
+    # manage-users alone covers everything the harness calls (create/get/list/delete users, their
+    # groups); the view and query roles were redundant. It is still realm-wide: README todo 57.
+    keycloak.serviceAccountRoles.${name} = ["manage-users"];
 
     applications.${name} = lib.mkIf (image != null) {
       namespace = name;
