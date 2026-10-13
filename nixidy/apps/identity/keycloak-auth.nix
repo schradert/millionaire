@@ -13,6 +13,9 @@
 # lists that Keycloak lacks, and never removes anything. Service-account roles
 # (`keycloak.serviceAccountRoles.<clientId>`, realm-management roles) are added the same way,
 # and for a client listed there any other realm-management role is removed: the list is exact.
+# Fine-grained admin permissions (v2, `keycloak.groupAdmins.<clientId>`): the client's service account
+# gets the listed scopes on named subgroups of a group, so it can create, change and delete only users
+# that are members of those, whatever realm-management roles it has.
 {config, ...}: let
   inherit (config.canivete.meta) people;
 in {
@@ -34,6 +37,11 @@ in {
       lib.optionalString ((d.attributes or {}) != {}) "ensure_group_attrs ${lib.escapeShellArg d.name} ${lib.escapeShellArg (builtins.toJSON d.attributes)}\n")
     config.applications.keycloak.resources.keycloakGroups);
     serviceRoles = lib.concatStrings (lib.mapAttrsToList (client: roles: "ensure_service_roles ${client} ${lib.concatStringsSep " " roles}\n") config.keycloak.serviceAccountRoles);
+    groupAdmins = lib.concatStrings (lib.mapAttrsToList (client: a: let
+      subs = lib.concatStringsSep " " (lib.attrNames a.subGroups);
+      attrLines = lib.concatStrings (lib.mapAttrsToList (n: attrs: "ensure_subgroup ${lib.escapeShellArg a.group} ${lib.escapeShellArg n} ${lib.escapeShellArg (builtins.toJSON attrs)}\n") a.subGroups);
+    in "${attrLines}ensure_group_admin ${client} ${lib.escapeShellArg a.group} ${lib.escapeShellArg (lib.concatStringsSep " " a.scopes)} ${subs}\n")
+    config.keycloak.groupAdmins);
     exec = authenticator: requirement: priority: {
       inherit authenticator requirement priority;
       authenticatorFlow = false;
@@ -166,6 +174,64 @@ in {
         echo "service account of $client: roles $*"
       }
       ${serviceRoles}
+      group_id() {
+        kc get groups -r $R -q search="$1" -q exact=true --fields id,name --format csv --noquotes | while IFS=, read -r id n; do if [ "$n" = "$1" ]; then echo "$id"; fi; done
+      }
+      child_id() {
+        kc get "groups/$1/children" -r $R --fields id,name --format csv --noquotes | while IFS=, read -r id n; do if [ "$n" = "$2" ]; then echo "$id"; fi; done
+      }
+      # A subgroup of a top-level group, with attributes (a copy of a real group's, so apps map it the same).
+      ensure_subgroup() {
+        local parent=$1 name=$2 attrs=$3 pid sid
+        pid=$(group_id "$parent")
+        [ -n "$pid" ] || { echo "group $parent not created yet"; return 0; }
+        sid=$(child_id "$pid" "$name")
+        [ -n "$sid" ] || sid=$(kc create "groups/$pid/children" -r $R -s name="$name" -i)
+        kc update "groups/$sid" -r $R --merge -s "attributes=$attrs"
+        echo "group $parent/$name: attributes $attrs"
+      }
+      # A client policy for the client and a scope permission over the listed subgroups, replaced when they
+      # differ. Needs adminPermissionsEnabled on the realm, so the Job retries until it is on.
+      ensure_group_admin() {
+        local client=$1 parent=$2 scopes=$3 ap cid pid base pol perm want have have_res resources n id name
+        shift 3
+        ap=$(kc get clients -r $R -q clientId=admin-permissions --fields id --format csv --noquotes)
+        [ -n "$ap" ] || { echo "admin permissions not enabled yet"; exit 1; }
+        cid=$(kc get clients -r $R -q clientId="$client" -q exact=true --fields id --format csv --noquotes)
+        [ -n "$cid" ] || { echo "client $client not created yet"; exit 1; }
+        pid=$(group_id "$parent")
+        [ -n "$pid" ] || { echo "group $parent not created yet"; exit 1; }
+        resources=""
+        for n in "$@"; do
+          id=$(child_id "$pid" "$n")
+          [ -n "$id" ] || { echo "group $parent/$n not created yet"; exit 1; }
+          resources="$resources$id"$'\n'
+        done
+        resources=$(sed '/^$/d' <<<"$resources" | sort | paste -sd, -)
+        base="clients/$ap/authz/resource-server"
+        pol=$(kc get "$base/policy" -r $R -q name="$client" --fields id,name --format csv --noquotes | while IFS=, read -r id name; do if [ "$name" = "$client" ]; then echo "$id"; fi; done)
+        if [ -z "$pol" ]; then
+          kc create "$base/policy/client" -r $R -s name="$client" -s type=client -s logic=POSITIVE -s "clients=[\"$cid\"]"
+          echo "policy $client created"
+        fi
+        perm=$(kc get "$base/permission/scope" -r $R -q name="$client-$parent" --fields id,name --format csv --noquotes | while IFS=, read -r id name; do if [ "$name" = "$client-$parent" ]; then echo "$id"; fi; done)
+        want=$(tr ' ' '\n' <<<"$scopes" | sort | paste -sd, -)
+        if [ -n "$perm" ]; then
+          have=$(kc get "$base/permission/scope/$perm/scopes" -r $R --fields name --format csv --noquotes | sort | paste -sd, -)
+          have_res=$(kc get "$base/permission/scope/$perm/resources" -r $R --fields name --format csv --noquotes | sort | paste -sd, -)
+          if [ "$have" = "$want" ] && [ "$have_res" = "$resources" ]; then
+            echo "permission $client-$parent unchanged"
+            return 0
+          fi
+          kc delete "$base/permission/scope/$perm" -r $R
+        fi
+        kc create "$base/permission/scope" -r $R -s name="$client-$parent" -s resourceType=Groups \
+          -s "resources=[\"$(sed 's/,/","/g' <<<"$resources")\"]" \
+          -s "scopes=[\"$(sed 's/,/","/g' <<<"$want")\"]" \
+          -s "policies=[\"$client\"]"
+        echo "permission $client-$parent: [$want] on [$resources]"
+      }
+      ${groupAdmins}
       # Group attributes (e.g. immich_role, abs_group): the operator reports the
       # group synchronized but never applies them, so set what a keycloakGroups
       # entry declares.
@@ -204,6 +270,17 @@ in {
       capabilities.drop = ["ALL"];
     };
   in {
+    options.keycloak.groupAdmins = lib.mkOption {
+      description = "Fine-grained admin permissions by clientId: scopes on subgroups (name -> group attributes) of a top-level group";
+      type = lib.types.attrsOf (lib.types.submodule {
+        options = {
+          group = lib.mkOption {type = lib.types.str;};
+          subGroups = lib.mkOption {type = lib.types.attrsOf lib.types.attrs;};
+          scopes = lib.mkOption {type = lib.types.listOf lib.types.str;};
+        };
+      });
+      default = {};
+    };
     options.keycloak.serviceAccountRoles = lib.mkOption {
       description = "Realm-management roles for a Keycloak client's service account, by clientId";
       type = lib.types.attrsOf (lib.types.listOf lib.types.str);

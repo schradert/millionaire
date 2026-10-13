@@ -122,16 +122,19 @@ impl Kc {
         }
     }
 
-    /// Create `username` (lowercase, must carry a run marker) in `groups`.
+    /// Create `username` (lowercase, must carry a run marker) in `groups`: the subgroups of `/e2e` with
+    /// those names (same group claim, attributes and app mappings as the real ones), the only groups the
+    /// `e2e` client may manage users in (fine-grained admin permissions, nixidy/apps/e2e.nix).
     pub async fn create_user(&self, ctx: &Ctx, username: &str, groups: &[&str]) -> R<TestUser> {
         if find_marker(username).is_none() {
             return Err(Fail::new(APP, "create user", format!("{username} carries no run marker; refusing")));
         }
         let password = format!("Aa1-{}", random_hex()?);
         let email = crate::ctx::test_email(username);
+        let paths: Vec<String> = groups.iter().map(|g| format!("/e2e/{g}")).collect();
         let body = json!({
             "username": username, "email": email, "emailVerified": true, "enabled": true,
-            "firstName": "E2E", "lastName": username, "groups": groups,
+            "firstName": "E2E", "lastName": username, "groups": paths,
             "credentials": [{ "type": "password", "value": password, "temporary": false }],
         });
         let r = send(self.admin(ctx, Method::POST, "/users").await?.json(&body), APP, "create user").await?;

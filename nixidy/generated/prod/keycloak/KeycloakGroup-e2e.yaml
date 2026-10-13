@@ -1,0 +1,10 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakGroup
+metadata:
+  name: e2e
+  namespace: identity
+spec:
+  definition:
+    name: e2e
+  realmRef:
+    name: default

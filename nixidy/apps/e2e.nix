@@ -6,20 +6,23 @@
 # A failed run fails its Job, which `KubeJobFailed` pages through Alertmanager to ntfy; the
 # report of the latest run is kept in the ConfigMap `e2e-last-report` (docs/e2e.md).
 # Nothing here is the owner's account:
-#   - Keycloak client `e2e` (confidential): its service account manages users, and its direct
-#     grant mints tokens for the run-tagged test users the flows create and delete. Its secret
+#   - Keycloak client `e2e` (confidential): its service account creates and deletes users only in the
+#     `/e2e/admin` and `/e2e/family` groups (fine-grained admin permissions; it can read the others),
+#     and its direct grant mints tokens for the run-tagged test users the flows create and delete. Its secret
 #     comes from the operator's Secret in `identity` through its own `kubernetes-e2e-keycloak` store,
 #     which can read that one Secret and serves only the `e2e` namespace.
 #   - Forgejo's own `forgejo-admin` account creates and deletes run-tagged Forgejo users
 #     (Forgejo has no per-user token without a password).
 # Every object a run creates carries `e2e-<run>` and is removed (and checked gone) at the end.
 {config, ...}: {
-  nixidy = {
+  nixidy = args @ {
     lib,
     pinned,
     ...
   }: let
     inherit (config.canivete.meta) domain people;
+    realGroups = args.config.applications.keycloak.resources.keycloakGroups;
+    realAttrs = g: realGroups.${g}.spec.definition.attributes;
     name = "e2e";
     report = "e2e-last-report";
     image = pinned.images.e2e or null;
@@ -155,9 +158,25 @@
         ];
       };
     };
-    # manage-users alone covers everything the harness calls (create/get/list/delete users, their
-    # groups); the view and query roles were redundant. It is still realm-wide: README todo 57.
-    keycloak.serviceAccountRoles.${name} = ["manage-users"];
+    # view-users is the one realm-wide role left (read only): in Keycloak 26.2 a search lists only users the
+    # caller may view through the Users resource type or a role, group `view-members` does not. All writes
+    # are fine-grained: members of the /e2e subgroups below, nobody else (manage-users would bypass that).
+    keycloak.serviceAccountRoles.${name} = ["view-users"];
+    # Test users live in /e2e/<group>, copies of the real groups (same name so the groups claim reads the
+    # same, same attributes so app mappings do). Creating a user in a group needs manage-members on that
+    # group, which is why they are not the real admin/family groups.
+    applications.keycloak.resources.keycloakGroups.${name}.spec = {
+      realmRef.name = "default";
+      definition.name = name;
+    };
+    keycloak.groupAdmins.${name} = {
+      group = name;
+      subGroups = {
+        admin = realAttrs "admin";
+        family = realAttrs "family";
+      };
+      scopes = ["view" "view-members" "manage-members" "manage-membership"];
+    };
 
     # Own store instead of `kubernetes-identity` (every Secret in identity): get on the one Secret.
     applications.external-secrets.resources = {
