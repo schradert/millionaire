@@ -24,6 +24,10 @@ spec:
       port: 4318
       protocol: TCP
       targetPort: 4318
+    - name: faro
+      port: 12347
+      protocol: TCP
+      targetPort: 12347
   selector:
     app.kubernetes.io/instance: alloy
     app.kubernetes.io/name: alloy
