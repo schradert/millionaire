@@ -1,0 +1,9 @@
+{
+  "version": "6.2.1",
+  "hash": "sha256-R7U40Yl3tiEVvQ/7QMG40cQMgJ341TUJbtDcPDksTIo=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://grafana.github.io/helm-charts/",
+    "chart": "mimir-distributed"
+  }
+}

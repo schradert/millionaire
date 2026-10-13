@@ -1,0 +1,121 @@
+apiVersion: v1
+data:
+  mimir.yaml: |
+
+    activity_tracker:
+      filepath: /active-query-tracker/activity.log
+    alertmanager:
+      data_dir: /data
+      enable_api: true
+      external_url: /alertmanager
+      fallback_config_file: /configs/alertmanager_fallback_config.yaml
+    alertmanager_storage:
+      storage_prefix: alertmanager
+    blocks_storage:
+      backend: s3
+      bucket_store:
+        sync_dir: /data/tsdb-sync
+      storage_prefix: blocks
+      tsdb:
+        dir: /data/tsdb
+        head_compaction_interval: 15m
+        wal_replay_concurrency: 3
+    common:
+      storage:
+        backend: s3
+        s3:
+          access_key_id: ${AWS_ACCESS_KEY_ID}
+          bucket_lookup_type: path
+          bucket_name: mimir
+          endpoint: rook-ceph-rgw-ceph-objectstore.storage.svc.cluster.local:80
+          insecure: true
+          secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+    compactor:
+      compaction_interval: 30m
+      data_dir: /data
+      deletion_delay: 2h
+      first_level_compaction_wait_period: 25m
+      max_closing_blocks_concurrency: 2
+      max_opening_blocks_concurrency: 4
+      sharding_ring:
+        heartbeat_period: 1m
+        heartbeat_timeout: 4m
+        wait_stability_min_duration: 1m
+      symbols_flushers_concurrency: 4
+    distributor:
+      remote_timeout: null
+      ring:
+        heartbeat_period: 1m
+        heartbeat_timeout: 4m
+    frontend:
+      parallelize_shardable_queries: true
+      scheduler_address: mimir-query-scheduler-headless.observability.svc:9095
+    frontend_worker:
+      grpc_client_config:
+        max_send_msg_size: 419430400
+      scheduler_address: mimir-query-scheduler-headless.observability.svc:9095
+    ingest_storage:
+      enabled: false
+      kafka:
+        address: null
+        auto_create_topic_default_partitions: null
+        auto_create_topic_enabled: true
+        topic: null
+    ingester:
+      push_grpc_method_enabled: null
+      ring:
+        final_sleep: 0s
+        heartbeat_period: 2m
+        heartbeat_timeout: 10m
+        num_tokens: 512
+        replication_factor: 1
+        tokens_file_path: /data/tokens
+        unregister_on_shutdown: false
+    ingester_client:
+      grpc_client_config:
+        max_recv_msg_size: 104857600
+        max_send_msg_size: 104857600
+    limits:
+      compactor_blocks_retention_period: 0s
+      ingestion_burst_size: 1000000
+      ingestion_rate: 100000
+      max_cache_freshness: 10m
+      max_global_series_per_user: 3000000
+      max_query_parallelism: 240
+      max_total_query_length: 12000h
+    memberlist:
+      abort_if_cluster_join_fails: false
+      compression_enabled: false
+      join_members:
+      - dns+mimir-gossip-ring.observability.svc.cluster.local.:7946
+    multitenancy_enabled: false
+    querier:
+      max_concurrent: 8
+    query_scheduler:
+      max_outstanding_requests_per_tenant: 800
+    ruler:
+      alertmanager_url: dnssrvnoa+http://_http-metrics._tcp.mimir-alertmanager-headless.observability.svc.cluster.local./alertmanager
+      enable_api: true
+      rule_path: /data
+    ruler_storage:
+      storage_prefix: ruler
+    runtime_config:
+      file: /var/mimir/runtime.yaml
+    store_gateway:
+      sharding_ring:
+        heartbeat_period: 1m
+        heartbeat_timeout: 10m
+        replication_factor: 1
+        tokens_file_path: /data/tokens
+        unregister_on_shutdown: false
+        wait_stability_min_duration: 1m
+    usage_stats:
+      installation_mode: helm
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: mimir
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mimir
+  name: mimir-config
+  namespace: observability

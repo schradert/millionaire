@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: mimir
+  namespace: observability
+spec:
+  endpoints:
+    - interval: 30s
+      port: http-metrics
+  selector:
+    matchExpressions:
+      - key: prometheus.io/service-monitor
+        operator: NotIn
+        values:
+          - "false"
+    matchLabels:
+      app.kubernetes.io/instance: mimir
