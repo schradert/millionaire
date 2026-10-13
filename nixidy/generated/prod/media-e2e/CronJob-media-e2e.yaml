@@ -35,7 +35,7 @@ spec:
                   value: "1000"
                 - name: PYROSCOPE_SERVER_ADDRESS
                   value: http://pyroscope.observability.svc.cluster.local:4040
-              image: harbor.trdos.me/library/e2e:0.7.0@sha256:523e82dd51855a2a2885bde41b1faa607e3e6047305f71a5448a3875702434ab
+              image: harbor.trdos.me/library/e2e:0.7.1@sha256:91d62dfb6a0575954910505b9acba8fd3612b66e5a909752f9d5280d03845cef
               name: media-e2e
               resources:
                 limits:

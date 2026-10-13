@@ -6,6 +6,7 @@ metadata:
 spec:
   definition:
     accessTokenLifespan: 250
+    adminPermissionsEnabled: true
     bruteForceProtected: true
     displayName: Default
     duplicateEmailsAllowed: false

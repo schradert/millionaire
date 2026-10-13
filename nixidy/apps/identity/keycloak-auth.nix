@@ -209,12 +209,12 @@ in {
         done
         resources=$(sed '/^$/d' <<<"$resources" | sort | paste -sd, -)
         base="clients/$ap/authz/resource-server"
-        pol=$(kc get "$base/policy" -q name="$client" --fields id,name --format csv --noquotes | while IFS=, read -r id name; do if [ "$name" = "$client" ]; then echo "$id"; fi; done)
+        pol=$(kc get "$base/policy" -r $R -q name="$client" --fields id,name --format csv --noquotes | while IFS=, read -r id name; do if [ "$name" = "$client" ]; then echo "$id"; fi; done)
         if [ -z "$pol" ]; then
           kc create "$base/policy/client" -r $R -s name="$client" -s type=client -s logic=POSITIVE -s "clients=[\"$cid\"]"
           echo "policy $client created"
         fi
-        perm=$(kc get "$base/permission/scope" -q name="$client-$parent" --fields id,name --format csv --noquotes | while IFS=, read -r id name; do if [ "$name" = "$client-$parent" ]; then echo "$id"; fi; done)
+        perm=$(kc get "$base/permission/scope" -r $R -q name="$client-$parent" --fields id,name --format csv --noquotes | while IFS=, read -r id name; do if [ "$name" = "$client-$parent" ]; then echo "$id"; fi; done)
         want=$(tr ' ' '\n' <<<"$scopes" | sort | paste -sd, -)
         if [ -n "$perm" ]; then
           have=$(kc get "$base/permission/scope/$perm/scopes" -r $R --fields name --format csv --noquotes | sort | paste -sd, -)
