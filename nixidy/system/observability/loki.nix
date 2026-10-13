@@ -74,22 +74,23 @@
             };
           };
           singleBinary.persistence.enabled = true;
-          # Self-tracing to Alloy (alloy.nix); sampled to stay cheap.
+          # Self-tracing, sampled to stay cheap. OTEL_* variables produced no spans from Loki 3.7, so it uses the
+          # Jaeger client variables and sends thrift straight to Tempo's collector port (Alloy has no Jaeger receiver).
           singleBinary.extraEnv = [
             {
-              name = "OTEL_EXPORTER_OTLP_ENDPOINT";
-              value = "http://alloy.observability.svc.cluster.local:4317";
+              name = "JAEGER_ENDPOINT";
+              value = "http://tempo.observability.svc.cluster.local:14268/api/traces";
             }
             {
-              name = "OTEL_TRACES_SAMPLER";
-              value = "parentbased_traceidratio";
+              name = "JAEGER_SAMPLER_TYPE";
+              value = "probabilistic";
             }
             {
-              name = "OTEL_TRACES_SAMPLER_ARG";
+              name = "JAEGER_SAMPLER_PARAM";
               value = "0.1";
             }
             {
-              name = "OTEL_SERVICE_NAME";
+              name = "JAEGER_SERVICE_NAME";
               value = "loki";
             }
           ];
