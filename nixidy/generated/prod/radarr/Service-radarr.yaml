@@ -14,6 +14,10 @@ spec:
       port: 80
       protocol: TCP
       targetPort: 80
+    - name: metrics
+      port: 9707
+      protocol: TCP
+      targetPort: 9707
   selector:
     app.kubernetes.io/controller: radarr
     app.kubernetes.io/instance: radarr
