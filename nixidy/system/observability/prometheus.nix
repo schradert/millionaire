@@ -90,10 +90,11 @@
                   batchSendDeadline = "5s";
                 };
               };
-              # ~19k samples/s over ~430k series fills ~1-1.8 GB/day, so 60d is ~60-105 GB. The size cap sits
-              # below the volume, or a full disk crashloops WAL replay; it is the real limit if growth outpaces 1 GB/day.
-              retention = "60d";
-              retentionSize = "85GB";
+              # Only a local buffer now: every sample is also written to Mimir (mimir.nix), which keeps them
+              # without a retention cap, and Grafana queries Mimir by default. ~1.5 GB/day of blocks here, so
+              # 15d is ~22 GB; the size cap sits well below the 100Gi volume, or a full disk crashloops WAL replay.
+              retention = "15d";
+              retentionSize = "25GB";
               # alertmanager.enabled = false below (it is deployed separately), so
               # the chart emits no `alerting:` block unless pointed at it here.
               alertingEndpoints = lib.toList {
