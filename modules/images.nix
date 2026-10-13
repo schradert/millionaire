@@ -252,6 +252,7 @@
             KC_DB = "postgres";
             KC_HEALTH_ENABLED = "true";
             KC_METRICS_ENABLED = "true";
+            KC_TRACING_ENABLED = "true";
             KC_FEATURES = "hostname:v2";
           };
           buildPhase = ''
@@ -266,7 +267,8 @@
       in
         n2c.buildImage {
           name = "${registry}/library/keycloak";
-          tag = "${dist.version}-optimized";
+          # -1: tracing-enabled is a build option (the tag is new, so it is published; the pin follows)
+          tag = "${dist.version}-optimized-1";
           arch = "amd64";
           fromImage = n2c.pullImage {
             imageName = base.source.repository;

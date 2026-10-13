@@ -6,6 +6,7 @@
 //!    Registering an existing name fails, so a user created by hand with a
 //!    different password surfaces as an error instead of being overwritten.
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::Client;
@@ -22,7 +23,7 @@ pub async fn run() -> Result<()> {
     let http = Client::builder().timeout(Duration::from_secs(60)).build()?;
 
     retry("waiting for atuin", 120, || async {
-        let r = http.get(format!("{base}/")).send().await?;
+        let r = http.get(format!("{base}/")).send_t().await?;
         ok(r, "GET /").await.map(|_| ())
     })
     .await?;
@@ -30,7 +31,7 @@ pub async fn run() -> Result<()> {
     let login = http
         .post(format!("{base}/login"))
         .json(&json!({ "username": user, "password": password }))
-        .send()
+        .send_t()
         .await?;
     if login.status().is_success() {
         println!("user {user} exists and the generated password works");
@@ -41,7 +42,7 @@ pub async fn run() -> Result<()> {
     let r = http
         .post(format!("{base}/register"))
         .json(&json!({ "username": user, "email": email, "password": password }))
-        .send()
+        .send_t()
         .await?;
     ok(r, "POST /register").await?;
     Ok(())

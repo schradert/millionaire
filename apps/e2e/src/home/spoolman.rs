@@ -2,6 +2,7 @@
 //! filament and spool are created, read back, deleted and checked gone. Spoolman has no logins
 //! of its own; the route is behind oauth2-proxy, so the call carries the test admin's bearer.
 
+use crate::trace::SendTraced as _;
 use reqwest::Method;
 use serde_json::{json, Value};
 
@@ -57,7 +58,7 @@ impl Sp {
     }
 
     async fn gone(&self, ctx: &Ctx, kind: &str, id: i64) -> R<bool> {
-        let r = self.req(ctx, Method::GET, &format!("/{kind}/{id}")).send().await.map_err(|e| Fail::new(APP, "get", crate::ctx::chain(&e)))?;
+        let r = self.req(ctx, Method::GET, &format!("/{kind}/{id}")).send_t().await.map_err(|e| Fail::new(APP, "get", crate::ctx::chain(&e)))?;
         Ok(r.status().as_u16() == 404)
     }
 }

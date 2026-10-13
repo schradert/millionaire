@@ -15,6 +15,7 @@
 //! Port variables are `<APP>_PORT_NUMBER`, never `<APP>_PORT`: Kubernetes injects `<SERVICE>_PORT=tcp://ip:port`
 //! for every Service in the namespace.
 
+use crate::trace::SendTraced as _;
 use std::{env, time::Duration};
 
 use reqwest::Client;
@@ -35,12 +36,12 @@ impl Servarr {
     }
 
     pub async fn get(&self, http: &Client, path: &str) -> Result<Value> {
-        let r = http.get(self.url(path)).header("X-Api-Key", &self.key).send().await?;
+        let r = http.get(self.url(path)).header("X-Api-Key", &self.key).send_t().await?;
         Ok(ok(r, &format!("GET {path}")).await?.json().await?)
     }
 
     pub async fn post(&self, http: &Client, path: &str, body: &Value) -> Result<Value> {
-        let r = http.post(self.url(path)).header("X-Api-Key", &self.key).json(body).send().await?;
+        let r = http.post(self.url(path)).header("X-Api-Key", &self.key).json(body).send_t().await?;
         Ok(ok(r, &format!("POST {path}")).await?.json().await?)
     }
 

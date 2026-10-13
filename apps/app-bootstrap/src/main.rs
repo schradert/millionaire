@@ -23,12 +23,16 @@ mod ryot;
 mod seerr;
 mod shoko;
 mod syncthing;
+mod trace;
 
 use std::{env, process::ExitCode};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
     let app = env::args().nth(1).unwrap_or_default();
+    // Traces (trace.rs) are off unless OTEL_EXPORTER_OTLP_ENDPOINT is set.
+    trace::init("app-bootstrap");
+    let mut root = trace::span(format!("app-bootstrap {app}"));
     let res = match app.as_str() {
         "actual" => actual::run().await,
         "arr" => arr::run().await,
@@ -50,14 +54,18 @@ async fn main() -> ExitCode {
         "homarr" => homarr::run().await,
         other => Err(format!("usage: app-bootstrap <actual|arr|atuin|audiobookshelf|forgejo|immich|kavita|komga|mealie|miniflux|navidrome|openviking|ryot|seerr|shoko|syncthing|contextforge|homarr> (got {other:?})").into()),
     };
-    match res {
+    let code = match res {
         Ok(()) => {
             println!("{app} bootstrap done");
             ExitCode::SUCCESS
         }
         Err(e) => {
+            root.error(e.to_string());
             eprintln!("{app} bootstrap failed: {e}");
             ExitCode::FAILURE
         }
-    }
+    };
+    drop(root);
+    trace::flush().await;
+    code
 }

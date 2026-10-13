@@ -2,6 +2,7 @@
 //! tagged calendar and address book (never the `org` calendar org-bridge writes to), puts an
 //! event and a contact, finds them with REPORT queries, deletes them and checks they are gone.
 
+use crate::trace::SendTraced as _;
 use super::dav::{elements, unescape, Dav};
 use crate::{
     ctx::{need_secret, Ctx, Fail, Scope, R},
@@ -63,7 +64,7 @@ pub async fn dav_roundtrip(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let m = tagged(APP, &ctx.marker)?;
 
     // `.well-known` discovery: what a client starts from.
-    let wk = ctx.noredir.get(format!("{}/.well-known/caldav", url("BAIKAL_URL", "cal"))).send().await;
+    let wk = ctx.noredir.get(format!("{}/.well-known/caldav", url("BAIKAL_URL", "cal"))).send_t().await;
     if let Ok(r) = wk {
         let loc = r.headers().get("location").and_then(|v| v.to_str().ok()).unwrap_or("");
         if !r.status().is_redirection() || !loc.contains("/dav.php") {

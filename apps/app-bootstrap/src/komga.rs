@@ -10,6 +10,7 @@
 //!
 //! OIDC itself is plain Spring config on the Komga container (env vars), not API state.
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::Client;
@@ -39,7 +40,7 @@ pub async fn run() -> Result<()> {
     let http = Client::builder().timeout(Duration::from_secs(60)).build()?;
 
     let claim: Value = retry("waiting for komga", 120, || async {
-        let r = http.get(format!("{base}/api/v1/claim")).send().await?;
+        let r = http.get(format!("{base}/api/v1/claim")).send_t().await?;
         Ok(ok(r, "GET /api/v1/claim").await?.json::<Value>().await?)
     })
     .await?;
@@ -52,7 +53,7 @@ pub async fn run() -> Result<()> {
             .post(format!("{base}/api/v1/claim"))
             .header("X-Komga-Email", &email)
             .header("X-Komga-Password", &password)
-            .send()
+            .send_t()
             .await?;
         ok(r, "POST /api/v1/claim").await?;
     }
@@ -60,7 +61,7 @@ pub async fn run() -> Result<()> {
     let r = http
         .get(format!("{base}/api/v2/users/me"))
         .basic_auth(&email, Some(&password))
-        .send()
+        .send_t()
         .await?;
     let me: Value = ok(
         r,
@@ -77,7 +78,7 @@ pub async fn run() -> Result<()> {
     let r = http
         .get(format!("{base}/api/v1/libraries"))
         .basic_auth(&email, Some(&password))
-        .send()
+        .send_t()
         .await?;
     let body: Value = ok(r, "GET /api/v1/libraries").await?.json().await?;
     let existing: Vec<(String, String)> = body
@@ -96,7 +97,7 @@ pub async fn run() -> Result<()> {
             .post(format!("{base}/api/v1/libraries"))
             .basic_auth(&email, Some(&password))
             .json(&json!({ "name": name, "root": root }))
-            .send()
+            .send_t()
             .await?;
         ok(r, &format!("POST /api/v1/libraries ({name})")).await?;
     }

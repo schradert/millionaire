@@ -5,6 +5,7 @@
 //! key from `X-API-Key`). The folder's path is one standing empty directory on the hub's state
 //! volume; Syncthing never deletes a folder's directory, and the folder holds no files.
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::Method;
@@ -107,7 +108,7 @@ impl St {
 
     /// DELETE; a 404 means it was already gone.
     async fn delete(&self, ctx: &Ctx, path: &str) -> R<bool> {
-        let r = self.req(ctx, Method::DELETE, path).send().await.map_err(|e| Fail::new(APP, &format!("DELETE {path}"), crate::ctx::chain(&e)))?;
+        let r = self.req(ctx, Method::DELETE, path).send_t().await.map_err(|e| Fail::new(APP, &format!("DELETE {path}"), crate::ctx::chain(&e)))?;
         match r.status().as_u16() {
             404 => Ok(false),
             s if (200..300).contains(&s) => Ok(true),

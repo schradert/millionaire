@@ -1,6 +1,7 @@
 //! A minimal S3 client for Ceph's RADOS gateway: path-style requests signed with AWS Signature
 //! Version 4 (`sha2` and `hmac`), enough to put, get, list and delete one object.
 
+use crate::trace::SendTraced as _;
 use hmac::{Hmac, Mac};
 use reqwest::Method;
 use sha2::{Digest, Sha256};
@@ -77,7 +78,7 @@ impl S3 {
             self.region
         );
         let url = if query_string.is_empty() { format!("{}{path}", self.endpoint.trim_end_matches('/')) } else { format!("{}{path}?{query_string}", self.endpoint.trim_end_matches('/')) };
-        let r = ctx.http.request(method, url).header("x-amz-date", &date).header("x-amz-content-sha256", &hash).header("authorization", auth).body(body).send().await.at("rados", "S3 request")?;
+        let r = ctx.http.request(method, url).header("x-amz-date", &date).header("x-amz-content-sha256", &hash).header("authorization", auth).body(body).send_t().await.at("rados", "S3 request")?;
         let status = r.status().as_u16();
         Ok((status, r.text().await.at("rados", "S3 response")?))
     }

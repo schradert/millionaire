@@ -1,5 +1,6 @@
 //! The WebDAV flow and the helpers the sweep shares.
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::{Method, RequestBuilder};
@@ -67,7 +68,7 @@ pub async fn tagged(ctx: &Ctx, token: &str, scope: &crate::ctx::Scope) -> R<Vec<
 }
 
 async fn status(rb: RequestBuilder, step: &str) -> R<u16> {
-    Ok(rb.send().await.at(APP, step)?.status().as_u16())
+    Ok(rb.send_t().await.at(APP, step)?.status().as_u16())
 }
 
 pub async fn webdav(ctx: &Ctx, f: &mut Flow) -> R<()> {

@@ -10,6 +10,7 @@
 //!    but not active, delete the Kavita pod(s) once (Kubernetes API, needs RBAC
 //!    on pods) and wait for it to come back with OIDC enabled.
 
+use crate::trace::SendTraced as _;
 use std::{fs, time::Duration};
 
 use reqwest::{Certificate, Client};
@@ -99,7 +100,7 @@ async fn list_libraries(http: &Client, base: &str, token: &str) -> Result<Vec<Li
     let r = http
         .get(format!("{base}/api/Library/libraries"))
         .bearer_auth(token)
-        .send()
+        .send_t()
         .await?;
     Ok(ok(r, "GET /api/Library/libraries").await?.json().await?)
 }
@@ -119,7 +120,7 @@ async fn restart_kavita(selector: &str) -> Result<()> {
         .get(&api)
         .bearer_auth(token.trim())
         .query(&[("labelSelector", selector)])
-        .send()
+        .send_t()
         .await?;
     let pods: Value = ok(r, "list kavita pods").await?.json().await?;
     let names: Vec<&str> = pods["items"]
@@ -136,7 +137,7 @@ async fn restart_kavita(selector: &str) -> Result<()> {
         let r = kube
             .delete(format!("{api}/{name}"))
             .bearer_auth(token.trim())
-            .send()
+            .send_t()
             .await?;
         ok(r, &format!("delete pod {name}")).await?;
     }
@@ -144,7 +145,7 @@ async fn restart_kavita(selector: &str) -> Result<()> {
 }
 
 async fn oidc_enabled(http: &Client, base: &str) -> Result<bool> {
-    let r = http.get(format!("{base}/api/Settings/oidc")).send().await?;
+    let r = http.get(format!("{base}/api/Settings/oidc")).send_t().await?;
     let public: Value = ok(r, "GET /api/Settings/oidc").await?.json().await?;
     Ok(public["enabled"] == json!(true))
 }
@@ -164,14 +165,14 @@ pub async fn run() -> Result<()> {
     let http = Client::builder().timeout(Duration::from_secs(60)).build()?;
 
     retry("waiting for kavita", 120, || async {
-        let r = http.get(format!("{base}/api/health")).send().await?;
+        let r = http.get(format!("{base}/api/health")).send_t().await?;
         ok(r, "GET /api/health").await?;
         Ok(())
     })
     .await?;
 
     let admin_exists: bool = ok(
-        http.get(format!("{base}/api/Admin/exists")).send().await?,
+        http.get(format!("{base}/api/Admin/exists")).send_t().await?,
         "GET /api/Admin/exists",
     )
     .await?
@@ -184,7 +185,7 @@ pub async fn run() -> Result<()> {
         let r = http
             .post(format!("{base}/api/Account/register"))
             .json(&json!({ "username": user, "email": email, "password": password }))
-            .send()
+            .send_t()
             .await?;
         ok(r, "POST /api/Account/register").await?;
     }
@@ -192,7 +193,7 @@ pub async fn run() -> Result<()> {
     let r = http
         .post(format!("{base}/api/Account/login"))
         .json(&json!({ "username": user, "password": password }))
-        .send()
+        .send_t()
         .await?;
     let token = ok(r, "POST /api/Account/login (generated admin password)")
         .await?
@@ -234,7 +235,7 @@ pub async fn run() -> Result<()> {
                 "fileGroupTypes": groups,
                 "excludePatterns": [],
             }))
-            .send()
+            .send_t()
             .await?;
         ok(r, &format!("POST /api/Library/create ({name})")).await?;
     }
@@ -251,7 +252,7 @@ pub async fn run() -> Result<()> {
     let r = http
         .get(format!("{base}/api/Settings"))
         .bearer_auth(&token)
-        .send()
+        .send_t()
         .await?;
     let mut settings: Value = ok(r, "GET /api/Settings").await?.json().await?;
     if apply_oidc(&mut settings["oidcConfig"], &want, &library_ids) {
@@ -260,7 +261,7 @@ pub async fn run() -> Result<()> {
             .post(format!("{base}/api/Settings"))
             .bearer_auth(&token)
             .json(&settings)
-            .send()
+            .send_t()
             .await?;
         // Kavita fetches the authority's discovery document itself here, so a
         // success also proves the pod can reach and trust Keycloak.

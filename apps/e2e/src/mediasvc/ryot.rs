@@ -5,6 +5,7 @@
 //! creates a tagged collection, deletes it, and is deleted by the `e2e` admin. (Custom media
 //! cannot be deleted through the API and a user's removal leaves it behind, so none is made.)
 
+use crate::trace::SendTraced as _;
 use serde_json::{json, Value};
 
 use crate::{
@@ -38,7 +39,7 @@ impl Ry {
         if let Some(k) = key {
             rb = rb.bearer_auth(k);
         }
-        let r = rb.send().await.map_err(|e| Fail::new(APP, "graphql", crate::ctx::chain(&e)))?;
+        let r = rb.send_t().await.map_err(|e| Fail::new(APP, "graphql", crate::ctx::chain(&e)))?;
         let status = r.status();
         let body: Value = r.json().await.map_err(|e| Fail::new(APP, "graphql", format!("HTTP {status}, bad JSON: {e}")))?;
         if let Some(errs) = body["errors"].as_array().filter(|e| !e.is_empty()) {

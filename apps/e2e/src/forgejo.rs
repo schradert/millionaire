@@ -2,6 +2,7 @@
 //! account, not the owner's `tristan`) creates run-tagged local users; each user then mints a
 //! token with its own password and works with that. Only users carrying a run marker are deleted.
 
+use crate::trace::SendTraced as _;
 use reqwest::{Method, RequestBuilder};
 use serde_json::{json, Value};
 
@@ -90,7 +91,7 @@ impl Forgejo {
     }
 
     pub async fn user_exists(&self, ctx: &Ctx, name: &str) -> R<bool> {
-        let r = self.as_admin(ctx, Method::GET, &format!("/users/{name}")).send().await.at(APP, "get user")?;
+        let r = self.as_admin(ctx, Method::GET, &format!("/users/{name}")).send_t().await.at(APP, "get user")?;
         Ok(r.status().is_success())
     }
 }

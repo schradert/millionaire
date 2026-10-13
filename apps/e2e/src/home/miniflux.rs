@@ -3,6 +3,7 @@
 //! entries are the test data. The feed is served by the Job itself; Miniflux fetches it, a
 //! second entry appears after a refresh, and deleting the user removes it all.
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::Method;
@@ -67,7 +68,7 @@ pub async fn feed_roundtrip(ctx: &Ctx, f: &mut Flow) -> R<()> {
 
     let srv = Served::start("application/atom+xml; charset=utf-8", &atom(m, 1))?;
     let feed_url = format!("{}/{m}.xml", srv.base);
-    let r = mf.as_user(ctx, &user, &pw, Method::POST, "/v1/feeds").json(&json!({ "feed_url": feed_url, "category_id": cat_id })).send().await.map_err(|e| Fail::new(APP, "create feed", crate::ctx::chain(&e)))?;
+    let r = mf.as_user(ctx, &user, &pw, Method::POST, "/v1/feeds").json(&json!({ "feed_url": feed_url, "category_id": cat_id })).send_t().await.map_err(|e| Fail::new(APP, "create feed", crate::ctx::chain(&e)))?;
     let status = r.status();
     let body: Value = r.json().await.unwrap_or(Value::Null);
     if !status.is_success() {
@@ -102,7 +103,7 @@ pub async fn feed_roundtrip(ctx: &Ctx, f: &mut Flow) -> R<()> {
     f.ok(APP, "second entry appears after a refresh", format!("{} entries", titles.len()));
 
     send(mf.as_user(ctx, &user, &pw, Method::DELETE, &format!("/v1/feeds/{feed_id}")), APP, "delete feed").await?;
-    let r = mf.as_user(ctx, &user, &pw, Method::GET, &format!("/v1/feeds/{feed_id}")).send().await.map_err(|e| Fail::new(APP, "get deleted feed", crate::ctx::chain(&e)))?;
+    let r = mf.as_user(ctx, &user, &pw, Method::GET, &format!("/v1/feeds/{feed_id}")).send_t().await.map_err(|e| Fail::new(APP, "get deleted feed", crate::ctx::chain(&e)))?;
     if r.status().as_u16() != 404 {
         return Err(Fail::new(APP, "feed deleted", format!("GET answers HTTP {} after DELETE", r.status())));
     }

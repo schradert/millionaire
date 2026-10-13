@@ -13,6 +13,7 @@
 //!    stays available as break-glass. Enabling clears all sessions, so it only happens once; a
 //!    changed client secret or issuer is NOT re-applied by a rerun (do it in Settings > Authentication).
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::Client;
@@ -70,7 +71,7 @@ pub async fn run() -> Result<()> {
     let http = Client::builder().timeout(Duration::from_secs(60)).build()?;
 
     let status: Value = retry("waiting for actual", 120, || async {
-        let r = http.get(format!("{base}/account/needs-bootstrap")).send().await?;
+        let r = http.get(format!("{base}/account/needs-bootstrap")).send_t().await?;
         Ok(ok(r, "GET /account/needs-bootstrap").await?.json::<Value>().await?)
     })
     .await?;
@@ -80,7 +81,7 @@ pub async fn run() -> Result<()> {
         let r = http
             .post(format!("{base}/account/login"))
             .json(&json!({ "password": password, "loginMethod": "password" }))
-            .send()
+            .send_t()
             .await?;
         token_of(
             &ok(r, "POST /account/login (generated server password; if the server was set up by hand, set its password to the generated one)")
@@ -93,13 +94,13 @@ pub async fn run() -> Result<()> {
         let r = http
             .post(format!("{base}/account/bootstrap"))
             .json(&json!({ "password": password }))
-            .send()
+            .send_t()
             .await?;
         token_of(&ok(r, "POST /account/bootstrap").await?.json().await?)?
     };
     println!("admin session ok");
 
-    let r = http.get(format!("{base}/admin/users/")).header("x-actual-token", &token).send().await?;
+    let r = http.get(format!("{base}/admin/users/")).header("x-actual-token", &token).send_t().await?;
     let users: Value = ok(r, "GET /admin/users").await?.json().await?;
     let patch = |id: String| {
         let http = &http;
@@ -110,7 +111,7 @@ pub async fn run() -> Result<()> {
                 .patch(format!("{base}/admin/users"))
                 .header("x-actual-token", token)
                 .json(&json!({ "id": id, "userName": user, "displayName": display, "role": "ADMIN", "enabled": true }))
-                .send()
+                .send_t()
                 .await?;
             ok(r, "PATCH /admin/users").await?;
             Result::Ok(())
@@ -128,7 +129,7 @@ pub async fn run() -> Result<()> {
                 .post(format!("{base}/admin/users"))
                 .header("x-actual-token", &token)
                 .json(&json!({ "userName": user, "displayName": display, "role": "ADMIN", "enabled": true }))
-                .send()
+                .send_t()
                 .await?;
             let body: Value = ok(r, "POST /admin/users").await?.json().await?;
             let id = body["data"]["id"].as_str().ok_or("create user response has no id")?.to_string();
@@ -150,7 +151,7 @@ pub async fn run() -> Result<()> {
             "client_secret": client_secret,
             "server_hostname": hostname.trim_end_matches('/'),
         }}))
-        .send()
+        .send_t()
         .await?;
     ok(r, "POST /openid/enable").await?;
     println!("openid enabled");

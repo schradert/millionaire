@@ -3,6 +3,7 @@
 //! declared groups say, an admitted request reaching the app and a refused one the proxy's 403.
 //! The portal flow checks every tile URL and that the portal's exports list the declared tiles.
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::Client;
@@ -59,7 +60,7 @@ pub async fn get(c: &Client, url: &str, bearer: Option<&str>, timeout: Duration)
     if let Some(b) = bearer {
         rb = rb.bearer_auth(b);
     }
-    match rb.send().await {
+    match rb.send_t().await {
         Ok(r) => Answer {
             status: Some(r.status().as_u16()),
             location: r.headers().get("location").and_then(|v| v.to_str().ok()).unwrap_or_default().to_string(),

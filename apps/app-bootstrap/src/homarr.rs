@@ -14,6 +14,7 @@
 //! 5. Sync the app library from the catalog by name: create missing apps (and
 //!    place them on the board), update changed ones, never delete.
 
+use crate::trace::SendTraced as _;
 use std::{collections::BTreeMap, time::Duration};
 
 use reqwest::{header, redirect, Client, RequestBuilder, Response};
@@ -86,7 +87,7 @@ impl Homarr {
             let input = serde_json::to_string(&json!({ "json": input }))?;
             b = b.query(&[("input", input)]);
         }
-        let r = self.req(b).send().await?;
+        let r = self.req(b).send_t().await?;
         self.keep_cookies(&r);
         data(ok(r, path).await?).await
     }
@@ -96,7 +97,7 @@ impl Homarr {
             .http
             .post(format!("{}/api/trpc/{path}", self.base))
             .json(&json!({ "json": input }));
-        let r = self.req(b).send().await?;
+        let r = self.req(b).send_t().await?;
         self.keep_cookies(&r);
         data(ok(r, path).await?).await
     }
@@ -115,7 +116,7 @@ impl Homarr {
                 self.http
                     .post(format!("{}/api/onboarding/claim", self.base)),
             )
-            .send()
+            .send_t()
             .await?;
         self.keep_cookies(&r);
         // 409 = onboarding already finished: nothing to claim.
@@ -130,7 +131,7 @@ impl Homarr {
     async fn sign_in(&mut self, name: &str, password: &str) -> Result<()> {
         let r = self
             .req(self.http.get(format!("{}/api/auth/csrf", self.base)))
-            .send()
+            .send_t()
             .await?;
         self.keep_cookies(&r);
         let csrf: Value = ok(r, "GET /api/auth/csrf").await?.json().await?;
@@ -148,11 +149,11 @@ impl Homarr {
             .http
             .post(format!("{}/api/auth/callback/credentials", self.base))
             .form(&form);
-        let r = self.req(b).send().await?;
+        let r = self.req(b).send_t().await?;
         self.keep_cookies(&r);
         let r = self
             .req(self.http.get(format!("{}/api/auth/session", self.base)))
-            .send()
+            .send_t()
             .await?;
         let session: Value = ok(r, "GET /api/auth/session").await?.json().await?;
         if session["user"].is_null() {

@@ -3,6 +3,7 @@
 //! mounts the volume, places a generated file in a hidden `.e2e-<run>` folder at its root (never
 //! under `roms/`, which is not group-writable), and reads it back through the share.
 
+use crate::trace::SendTraced as _;
 use std::{fs, time::Duration};
 
 use reqwest::{header, Method, StatusCode};
@@ -82,7 +83,7 @@ async fn webdav(ctx: &Ctx, f: &mut Flow) -> R<()> {
 
     // The share is read-only: writes and deletes must fail, and the file must be untouched.
     for (m, what) in [(Method::PUT, "PUT"), (Method::DELETE, "DELETE")] {
-        let r = ctx.http.request(m, &url).body("overwritten by e2e").timeout(Duration::from_secs(30)).send().await.at(APP, what)?;
+        let r = ctx.http.request(m, &url).body("overwritten by e2e").timeout(Duration::from_secs(30)).send_t().await.at(APP, what)?;
         if r.status().is_success() {
             return Err(Fail::new(APP, what, format!("HTTP {}: the read-only share accepted it", r.status())));
         }

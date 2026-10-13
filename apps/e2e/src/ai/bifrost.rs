@@ -4,6 +4,7 @@
 //! key) is deleted. Reached in-cluster: the public route is behind oauth2-proxy, which would take the
 //! `Authorization` header (Bifrost itself has no login).
 
+use crate::trace::SendTraced as _;
 use reqwest::Method;
 use serde_json::json;
 
@@ -81,7 +82,7 @@ pub async fn chat(ctx: &Ctx, f: &mut Flow) -> R<()> {
     if !bf.tagged_providers(ctx, &Scope::Run(m.to_string())).await?.is_empty() {
         return Err(Fail::new(APP, "provider deleted", "still listed"));
     }
-    let after = bf.req(ctx, Method::POST, "/v1/chat/completions").json(&json!({ "model": format!("{m}/mock-1"), "messages": [{ "role": "user", "content": "again" }] })).send().await.map_err(|e| Fail::new(APP, "completion after delete", crate::ctx::chain(&e)))?;
+    let after = bf.req(ctx, Method::POST, "/v1/chat/completions").json(&json!({ "model": format!("{m}/mock-1"), "messages": [{ "role": "user", "content": "again" }] })).send_t().await.map_err(|e| Fail::new(APP, "completion after delete", crate::ctx::chain(&e)))?;
     if after.status().is_success() {
         return Err(Fail::new(APP, "provider deleted", "the gateway still routes to the deleted provider"));
     }

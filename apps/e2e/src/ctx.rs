@@ -1,6 +1,7 @@
 //! Shared plumbing: run id and marker, cleanup scope, errors that carry the failing app and step, HTTP helpers,
 //! secrets, files and `kubectl exec`.
 
+use crate::trace::SendTraced as _;
 use std::{
     env, fmt, fs,
     io::Write,
@@ -278,7 +279,8 @@ pub fn need_secret(app: &str, name: &str, key: &str) -> R<String> {
 
 /// Send; any non-2xx is a failure carrying a short body excerpt.
 pub async fn send(rb: RequestBuilder, app: &str, step: &str) -> R<Response> {
-    let r = rb.send().await.at(app, step)?;
+    let _span = crate::trace::span(format!("{app}: {step}"));
+    let r = rb.send_t().await.at(app, step)?;
     let status = r.status();
     if status.is_success() {
         return Ok(r);
@@ -366,7 +368,7 @@ async fn archive_fallbacks(ctx: &Ctx, url: &str) -> Vec<String> {
     let Some((item, file)) = url.strip_prefix("https://archive.org/download/").and_then(|r| r.split_once('/')) else {
         return vec![];
     };
-    let Ok(r) = ctx.http.get(format!("https://archive.org/metadata/{item}")).timeout(Duration::from_secs(30)).send().await else {
+    let Ok(r) = ctx.http.get(format!("https://archive.org/metadata/{item}")).timeout(Duration::from_secs(30)).send_t().await else {
         return vec![];
     };
     let Ok(meta) = r.json::<Value>().await else {

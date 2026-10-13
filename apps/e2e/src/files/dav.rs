@@ -2,6 +2,7 @@
 //! only offers Digest, and reqwest has none. Requests are rebuilt per attempt so a challenge
 //! (401 with a nonce) is answered by resending the same request with the computed response.
 
+use crate::trace::SendTraced as _;
 use std::sync::Mutex;
 
 use reqwest::{header, Method, Response};
@@ -127,7 +128,7 @@ impl Dav {
             if let Some(a) = self.authorization(method, path)? {
                 rb = rb.header(header::AUTHORIZATION, a);
             }
-            let r = rb.send().await.at(app, &format!("{method} {path}"))?;
+            let r = rb.send_t().await.at(app, &format!("{method} {path}"))?;
             if r.status().as_u16() == 401 && attempt == 0 {
                 let ch = r.headers().get_all(header::WWW_AUTHENTICATE).iter().filter_map(|v| v.to_str().ok()).find_map(parse_challenge);
                 if let Some(ch) = ch {

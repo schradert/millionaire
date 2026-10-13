@@ -1,5 +1,6 @@
 //! Loki's HTTP API as the tests use it: push a line under a tenant, query it back.
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::Client;
@@ -31,7 +32,7 @@ pub fn push_body(marker: &str, unix_ns: u128, line: &str) -> Value {
 /// Push one line (what a log shipper does). Used from the test Pod and from tests.
 pub async fn push(http: &Client, base: &str, tenant: &str, marker: &str, line: &str) -> R<()> {
     let ns = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).at(APP, "clock")?.as_nanos();
-    let r = http.post(format!("{base}/loki/api/v1/push")).header("X-Scope-OrgID", tenant).json(&push_body(marker, ns, line)).send().await.at(APP, "push")?;
+    let r = http.post(format!("{base}/loki/api/v1/push")).header("X-Scope-OrgID", tenant).json(&push_body(marker, ns, line)).send_t().await.at(APP, "push")?;
     if r.status().as_u16() == 204 {
         return Ok(());
     }

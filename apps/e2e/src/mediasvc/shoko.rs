@@ -4,6 +4,7 @@
 //! deleted and checked gone (a key can only be removed by its owner, before the user goes). The route is behind oauth2-proxy, so calls carry the test
 //! admin's bearer; Shoko takes its own key in the `apikey` header.
 
+use crate::trace::SendTraced as _;
 use reqwest::Method;
 use serde_json::json;
 
@@ -93,7 +94,7 @@ pub async fn user_and_filter(ctx: &Ctx, f: &mut Flow) -> R<()> {
     if me["Username"].as_str() != Some(m) || me["IsAdmin"].as_bool() != Some(false) {
         return Err(Fail::new(APP, "current user", excerpt(&me.to_string())));
     }
-    let list = sk.req(ctx, Method::GET, "/api/v3/User", Some(&ukey)).send().await.map_err(|e| Fail::new(APP, "user list as the user", chain(&e)))?;
+    let list = sk.req(ctx, Method::GET, "/api/v3/User", Some(&ukey)).send_t().await.map_err(|e| Fail::new(APP, "user list as the user", chain(&e)))?;
     if list.status().as_u16() != 403 {
         return Err(Fail::new(APP, "admin only", format!("the tagged non-admin got HTTP {} listing users, expected 403", list.status())));
     }
@@ -107,7 +108,7 @@ pub async fn user_and_filter(ctx: &Ctx, f: &mut Flow) -> R<()> {
     sk.drop_key(ctx, &ukey, m).await?;
     send(sk.req(ctx, Method::DELETE, &format!("/api/v3/Filter/{fid}"), Some(&admin)), APP, "delete filter").await?;
     send(sk.req(ctx, Method::DELETE, &format!("/api/v3/User/{uid}"), Some(&admin)), APP, "delete user").await?;
-    let gone = sk.req(ctx, Method::GET, &format!("/api/v3/Filter/{fid}"), Some(&admin)).send().await.map_err(|e| Fail::new(APP, "get deleted filter", chain(&e)))?;
+    let gone = sk.req(ctx, Method::GET, &format!("/api/v3/Filter/{fid}"), Some(&admin)).send_t().await.map_err(|e| Fail::new(APP, "get deleted filter", chain(&e)))?;
     if gone.status().as_u16() != 404 || sk.users(ctx, &admin).await?.iter().any(|(_, n)| n == m) {
         return Err(Fail::new(APP, "deleted", "the filter or the user is still there"));
     }

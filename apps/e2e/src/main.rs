@@ -40,6 +40,7 @@ mod registry;
 mod report;
 mod storage;
 mod svc;
+mod trace;
 mod web;
 
 use std::{env, process::ExitCode};
@@ -84,7 +85,9 @@ async fn sweeps(ctx: &Ctx, fams: &[&Family], scope: &Scope, dry: bool) -> Vec<Fl
                 _ => fam.finalize,
             };
             if let Some(s) = s {
+                let sp = trace::span(format!("sweep {} {}", fam.name, ["cleanup", "residue", "finalize"][pick]));
                 let mut f = s(ctx, scope, dry).await;
+                drop(sp);
                 f.family = fam.name.into();
                 out.push(f);
             }
@@ -104,6 +107,19 @@ fn print_list(fams: &[Family]) {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
+    // Traces (trace.rs) are off unless OTEL_EXPORTER_OTLP_ENDPOINT is set; the `__pod` helper is not traced.
+    let traced = env::args().nth(1).as_deref() != Some("__pod");
+    if traced {
+        trace::init("e2e");
+    }
+    let root = trace::span(format!("e2e {}", env::args().nth(1).unwrap_or_else(|| "run".into())));
+    let code = run().await;
+    drop(root);
+    trace::flush().await;
+    code
+}
+
+async fn run() -> ExitCode {
     let mut args: Vec<String> = env::args().skip(1).collect();
     if args.is_empty() {
         args = env::var("E2E_ARGS").unwrap_or_else(|_| "run".into()).split_whitespace().map(String::from).collect();
@@ -190,6 +206,7 @@ async fn main() -> ExitCode {
             let mut flows = Vec::new();
             for d in &selected {
                 flows.push(run_def(&ctx, d).await);
+                trace::flush().await;
             }
             let used: Vec<&str> = fams.iter().map(|f| f.name).filter(|n| selected.iter().any(|d| d.family == *n)).collect();
             let scope = Scope::Run(ctx.marker.clone());

@@ -18,6 +18,7 @@
 //!
 //! Secrets are never logged.
 
+use crate::trace::SendTraced as _;
 use std::{collections::BTreeSet, time::Duration};
 
 use reqwest::{Client, StatusCode};
@@ -37,7 +38,7 @@ impl Api {
             .http
             .get(format!("{}{path}", self.base))
             .bearer_auth(&self.token)
-            .send()
+            .send_t()
             .await?)
     }
 
@@ -54,7 +55,7 @@ impl Api {
             .request(method.clone(), format!("{}{path}", self.base))
             .bearer_auth(&self.token)
             .json(body)
-            .send()
+            .send_t()
             .await?;
         Ok(ok(r, &format!("{method} {path}")).await?.json().await?)
     }
@@ -112,7 +113,7 @@ pub async fn run() -> Result<()> {
         let r = http
             .post(format!("{base}/auth/login"))
             .json(&json!({ "email": email, "password": password }))
-            .send()
+            .send_t()
             .await?;
         let v: Value = ok(r, "POST /auth/login").await?.json().await?;
         v["access_token"]
