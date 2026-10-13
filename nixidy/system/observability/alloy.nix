@@ -8,6 +8,10 @@
     # Also the cluster's OTLP gateway: any Pod sends traces to http://alloy.observability.svc:4318 (or
     # :4317 for gRPC); Alloy labels them with the sender's namespace/Pod and forwards them to Tempo.
     # No NetworkPolicy rule is needed for that: `observability` is not an enforced namespace (netpol.nix).
+    # And the cluster's continuous profiler: `pyroscope.ebpf` profiles every container and the host's own daemons
+    # on the node, always on, and pushes to Pyroscope (pyroscope.nix). That needs root, the host PID namespace and
+    # the capabilities listed under securityContext; it stays in this one DaemonSet (not a second one) because
+    # sirver is at its 110-Pod limit, so an extra Pod per node would not fit there.
     applications.alloy = {
       namespace = "observability";
       helm.releases.alloy = {
@@ -43,10 +47,22 @@
           ];
           # Spans from any node reach any Alloy through the Service; prefer the local one.
           service.trafficDistribution = "PreferSameNode";
+          # pyroscope.ebpf resolves processes through the host's /proc.
+          controller.hostPID = true;
           controller.volumes.extra = [
             {
               name = "storage";
               emptyDir = {};
+            }
+            # pyroscope.ebpf's symbol cache.
+            {
+              name = "symb-cache";
+              emptyDir = {};
+            }
+            # The tracer attaches its tracepoints through the host's tracefs.
+            {
+              name = "tracefs";
+              hostPath.path = "/sys/kernel/tracing";
             }
           ];
           controller.tolerations = [
@@ -71,19 +87,35 @@
                 protocol = "TCP";
               }
             ];
+            # Root, because pyroscope.ebpf must be; everything else is dropped. The capabilities are the ones
+            # its docs list for running without `privileged`: BPF + PERFMON (load and attach the programs),
+            # SYS_PTRACE + CHECKPOINT_RESTORE + DAC_READ_SEARCH (read /proc/<pid>/ and the ELF files of any
+            # container), SYS_RESOURCE (RLIMIT_MEMLOCK for the maps), SYSLOG (verifier diagnostics).
             securityContext = {
-              runAsNonRoot = true;
-              runAsUser = 65534;
-              runAsGroup = 65534;
+              runAsNonRoot = false;
+              runAsUser = 0;
+              runAsGroup = 0;
               allowPrivilegeEscalation = false;
               readOnlyRootFilesystem = true;
-              capabilities.drop = ["ALL"];
+              capabilities = {
+                drop = ["ALL"];
+                add = ["BPF" "PERFMON" "SYS_PTRACE" "CHECKPOINT_RESTORE" "SYS_RESOURCE" "DAC_READ_SEARCH" "SYSLOG"];
+              };
               seccompProfile.type = "RuntimeDefault";
             };
             mounts.extra = [
               {
                 name = "storage";
                 mountPath = "/tmp/alloy";
+              }
+              {
+                name = "symb-cache";
+                mountPath = "/tmp/symb-cache";
+              }
+              {
+                name = "tracefs";
+                mountPath = "/sys/kernel/tracing";
+                readOnly = true;
               }
             ];
             extraEnv = [
@@ -301,6 +333,129 @@
                   }
                 }
               }
+
+              // ---- Continuous profiling (eBPF) -> Pyroscope ----------------------------------------------------
+              // Every container on this node (the Pod targets discovered above) plus the host's own daemons
+              // (kubelet, containerd, ...), sampled at 19 Hz system-wide. A profile's `service_name` is
+              // <namespace>/<workload>; the Pod, container and node are labels, so one workload's replicas merge
+              // or split in Grafana. Python's unwinder is off: the verifier of the nodes' 7.0 kernel rejects it
+              // ("BPF program is too large"), and it would stop the whole profiler from loading.
+              discovery.relabel "profiled" {
+                targets = discovery.kubernetes.pods.targets
+                rule {
+                  action        = "drop"
+                  source_labels = ["__meta_kubernetes_pod_phase"]
+                  regex         = "Succeeded|Failed"
+                }
+                rule {
+                  action        = "drop"
+                  source_labels = ["__meta_kubernetes_pod_container_init"]
+                  regex         = "true"
+                }
+                // workload: the controller without the ReplicaSet hash, the CronJob timestamp or the static Pod's
+                // node suffix; a Pod without controller is its own workload.
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_name"]
+                  target_label  = "workload"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_controller_kind", "__meta_kubernetes_pod_controller_name"]
+                  separator     = ";"
+                  regex         = "(?:DaemonSet|StatefulSet|Job);(.+)"
+                  target_label  = "workload"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_controller_kind", "__meta_kubernetes_pod_controller_name"]
+                  separator     = ";"
+                  regex         = "Job;(.+)-\\d{6,}"
+                  target_label  = "workload"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_controller_kind", "__meta_kubernetes_pod_controller_name"]
+                  separator     = ";"
+                  regex         = "ReplicaSet;(.+)-[a-z0-9]{8,10}"
+                  target_label  = "workload"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_controller_kind", "__meta_kubernetes_pod_name"]
+                  separator     = ";"
+                  regex         = "Node;(.+)-" + sys.env("NODE_NAME")
+                  target_label  = "workload"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace", "workload"]
+                  separator     = "/"
+                  target_label  = "service_name"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace"]
+                  target_label  = "namespace"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_name"]
+                  target_label  = "pod"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_container_name"]
+                  target_label  = "container"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_node_name"]
+                  target_label  = "node"
+                }
+              }
+
+              discovery.process "host" {
+                refresh_interval = "60s"
+                discover_config {
+                  cwd         = false
+                  commandline = false
+                  uid         = false
+                  username    = false
+                }
+              }
+
+              discovery.relabel "host" {
+                targets = discovery.process.host.targets
+                // Processes in a container are covered by their Pod's target.
+                rule {
+                  action        = "drop"
+                  source_labels = ["__container_id__"]
+                  regex         = ".+"
+                }
+                // Kernel threads have no executable.
+                rule {
+                  action        = "drop"
+                  source_labels = ["__meta_process_exe"]
+                  regex         = ""
+                }
+                rule {
+                  source_labels = ["__meta_process_exe"]
+                  regex         = ".*/([^/]+)"
+                  replacement   = "host/$1"
+                  target_label  = "service_name"
+                }
+                rule {
+                  target_label = "node"
+                  replacement  = sys.env("NODE_NAME")
+                }
+              }
+
+              pyroscope.ebpf "nodes" {
+                targets        = array.concat(discovery.relabel.profiled.output, discovery.relabel.host.output)
+                forward_to     = [pyroscope.write.pyroscope.receiver]
+                sample_rate    = 19
+                python_enabled = false
+                // Only needed to correlate with traces of OBI; it would want a writable /sys/fs/bpf.
+                obi_process_context_enabled = false
+              }
+
+              pyroscope.write "pyroscope" {
+                endpoint {
+                  url = "http://pyroscope.observability.svc.cluster.local:4040"
+                }
+              }
+              // ---- end of continuous profiling -----------------------------------------------------------------
             '';
           };
         };

@@ -17,7 +17,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: f4b7538ce22a67c26b88247a45a59e268e873b50d9e6b1d4cee38d94ef6e84d
+        checksum/config: 684903f4c9eca4bca30d362725441d6d5450dd44128c52ab61cd5ae1b7021fe
         kubectl.kubernetes.io/default-container: alloy
       labels:
         app.kubernetes.io/instance: alloy
@@ -75,12 +75,20 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
+              add:
+                - BPF
+                - PERFMON
+                - SYS_PTRACE
+                - CHECKPOINT_RESTORE
+                - SYS_RESOURCE
+                - DAC_READ_SEARCH
+                - SYSLOG
               drop:
                 - ALL
             readOnlyRootFilesystem: true
-            runAsGroup: 65534
-            runAsNonRoot: true
-            runAsUser: 65534
+            runAsGroup: 0
+            runAsNonRoot: false
+            runAsUser: 0
             seccompProfile:
               type: RuntimeDefault
           volumeMounts:
@@ -88,7 +96,13 @@ spec:
               name: config
             - mountPath: /tmp/alloy
               name: storage
+            - mountPath: /tmp/symb-cache
+              name: symb-cache
+            - mountPath: /sys/kernel/tracing
+              name: tracefs
+              readOnly: true
       dnsPolicy: ClusterFirst
+      hostPID: true
       serviceAccountName: alloy
       tolerations:
         - effect: NoSchedule
@@ -99,3 +113,8 @@ spec:
           name: config
         - emptyDir: {}
           name: storage
+        - emptyDir: {}
+          name: symb-cache
+        - hostPath:
+            path: /sys/kernel/tracing
+          name: tracefs
