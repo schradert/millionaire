@@ -1,7 +1,8 @@
 //! Bifrost (the LLM gateway) as an application uses it, without any real provider key: a
 //! run-tagged custom provider (OpenAI-compatible) points at a mock the Job serves, a chat
 //! completion goes through the gateway and comes back from the mock, and the provider (with its
-//! key) is deleted. The route is behind oauth2-proxy, so calls carry the test admin's bearer.
+//! key) is deleted. Reached in-cluster: the public route is behind oauth2-proxy, which would take the
+//! `Authorization` header (Bifrost itself has no login).
 
 use reqwest::Method;
 use serde_json::json;
@@ -10,7 +11,7 @@ use crate::{
     ctx::{excerpt, json as get_json, send, Ctx, Fail, Scope, R},
     feedserver::Served,
     report::Flow,
-    svc::{admin_bearer, janitor_bearer, tagged, url, Janitor},
+    svc::tagged,
 };
 
 const APP: &str = "bifrost";
@@ -18,33 +19,18 @@ const REPLY: &str = "pong from the e2e mock";
 
 struct Bf {
     base: String,
-    bearer: Option<String>,
 }
 
 impl Bf {
-    async fn connect(ctx: &Ctx) -> R<Self> {
-        Ok(Self::new(if std::env::var("BIFROST_URL").is_ok() { None } else { Some(admin_bearer(ctx).await?) }))
-    }
-
-    async fn janitor(ctx: &Ctx) -> R<(Self, Option<Janitor>)> {
-        if std::env::var("BIFROST_URL").is_ok() {
-            return Ok((Self::new(None), None));
-        }
-        let (t, j) = janitor_bearer(ctx).await?;
-        Ok((Self::new(Some(t)), Some(j)))
-    }
-
-    /// `BIFROST_URL` points straight at the Service (development); the gateway route needs a bearer.
-    fn new(bearer: Option<String>) -> Self {
-        Bf { base: url("BIFROST_URL", "bifrost"), bearer }
+    /// In-cluster, straight at the Service (`ai` ingress rule for the e2e Pod on 8000): the public
+    /// route is behind oauth2-proxy, which would put a Keycloak bearer where the gateway looks
+    /// for its own key.
+    fn new() -> Self {
+        Bf { base: crate::ctx::var("BIFROST_URL", "http://bifrost.ai.svc.cluster.local:8000").trim_end_matches('/').to_string() }
     }
 
     fn req(&self, ctx: &Ctx, m: Method, path: &str) -> reqwest::RequestBuilder {
-        let rb = ctx.http.request(m, format!("{}{path}", self.base));
-        match &self.bearer {
-            Some(b) => rb.bearer_auth(b),
-            None => rb,
-        }
+        ctx.http.request(m, format!("{}{path}", self.base))
     }
 
     async fn tagged_providers(&self, ctx: &Ctx, scope: &Scope) -> R<Vec<String>> {
@@ -64,7 +50,7 @@ pub fn completion() -> String {
 }
 
 pub async fn chat(ctx: &Ctx, f: &mut Flow) -> R<()> {
-    let bf = Bf::connect(ctx).await?;
+    let bf = Bf::new();
     let m = tagged(APP, &ctx.marker)?;
     let mock = Served::start("application/json", &completion())?;
     send(
@@ -113,22 +99,15 @@ pub async fn cleanup(ctx: &Ctx, f: &mut Flow) -> R<()> {
 
 /// Family sweep and residue: tagged providers (their keys go with them).
 pub async fn sweep(ctx: &Ctx, scope: &Scope, delete: bool) -> R<Vec<String>> {
-    let (bf, jan) = Bf::janitor(ctx).await?;
-    let res = async {
-        let found = bf.tagged_providers(ctx, scope).await?;
-        if delete {
-            for p in &found {
-                tagged(APP, p)?;
-                send(bf.req(ctx, Method::DELETE, &format!("/api/providers/{p}")), APP, "delete provider").await?;
-            }
+    let bf = Bf::new();
+    let found = bf.tagged_providers(ctx, scope).await?;
+    if delete {
+        for p in &found {
+            tagged(APP, p)?;
+            send(bf.req(ctx, Method::DELETE, &format!("/api/providers/{p}")), APP, "delete provider").await?;
         }
-        Ok(found.into_iter().map(|p| format!("bifrost provider {p}")).collect())
     }
-    .await;
-    if let Some(j) = jan {
-        j.remove(ctx).await?;
-    }
-    res
+    Ok(found.into_iter().map(|p| format!("bifrost provider {p}")).collect())
 }
 
 #[cfg(test)]

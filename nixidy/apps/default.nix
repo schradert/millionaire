@@ -149,8 +149,9 @@
     cnpg = true;
     # openclaw (ai-sandbox) reaches bifrost :8000 and contextforge :8080 (its own egress policy lists exactly these)
     extraIngress = [
-      # the e2e harness logs in to ContextForge's API (its public route is behind oauth2-proxy,
-      # which takes the Authorization header ContextForge needs): apps/e2e ai/contextforge-tool
+      # the e2e harness calls ContextForge (:8080) and Bifrost (:8000) in-cluster: their public routes
+      # are behind oauth2-proxy, which takes the Authorization header they use for their own
+      # credentials: apps/e2e ai/contextforge-tool, ai/bifrost-chat
       {
         fromEndpoints = [
           {
@@ -165,6 +166,10 @@
             ports = [
               {
                 port = "8080";
+                protocol = "TCP";
+              }
+              {
+                port = "8000";
                 protocol = "TCP";
               }
             ];

@@ -37,7 +37,6 @@ async fn passes(ctx: &Ctx, scope: &Scope, delete: bool) -> Vec<(&'static str, sv
     vec![
         ("bifrost", bifrost::sweep(ctx, scope, delete).await),
         ("contextforge", contextforge::sweep(ctx, scope, delete).await),
-        ("keycloak", svc::kc_users(ctx, scope, delete).await),
     ]
 }
 
