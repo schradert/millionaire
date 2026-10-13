@@ -20,9 +20,12 @@ mod flow;
 mod forgejo;
 mod git;
 mod identity;
+mod kube;
 mod media;
 mod notify;
+mod pod;
 mod report;
+mod storage;
 mod web;
 
 use std::{env, process::ExitCode};
@@ -90,6 +93,9 @@ async fn main() -> ExitCode {
     let mut args: Vec<String> = env::args().skip(1).collect();
     if args.is_empty() {
         args = env::var("E2E_ARGS").unwrap_or_else(|_| "run".into()).split_whitespace().map(String::from).collect();
+    }
+    if args.first().map(String::as_str) == Some("__pod") {
+        return pod::main(&args[1..]).await;
     }
     let full = flag(&args, "--full", "E2E_FULL");
     let dry = flag(&args, "--dry-run", "E2E_DRY_RUN");

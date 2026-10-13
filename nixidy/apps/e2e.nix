@@ -1,5 +1,5 @@
 # Platform end-to-end tests (apps/e2e), runner `cluster`: every family that needs only HTTP
-# (identity, notify, git, ...). The media family has its own runner in `media`
+# (identity, notify, git, storage, ...). The media family has its own runner in `media`
 # (nixidy/apps/media/media-e2e.nix) because it mounts the media volumes.
 #
 # A suspended CronJob holds the Job template; `e2e run` in the devshell creates Jobs from it.
@@ -68,6 +68,37 @@
       namespace = name;
       resources = {
         serviceAccounts.${name}.automountServiceAccountToken = false;
+        # The storage and observability flows create tagged Pods, PVCs and VolumeSnapshots in this
+        # namespace and nothing else: no Secrets, no other namespace, no cluster-scoped objects.
+        roles.${name}.rules = [
+          {
+            apiGroups = [""];
+            resources = ["pods" "persistentvolumeclaims"];
+            verbs = ["get" "list" "watch" "create" "delete"];
+          }
+          {
+            apiGroups = [""];
+            resources = ["pods/log"];
+            verbs = ["get"];
+          }
+          {
+            apiGroups = ["snapshot.storage.k8s.io"];
+            resources = ["volumesnapshots"];
+            verbs = ["get" "list" "watch" "create" "delete"];
+          }
+        ];
+        roleBindings.${name} = {
+          roleRef = {
+            apiGroup = "rbac.authorization.k8s.io";
+            kind = "Role";
+            inherit name;
+          };
+          subjects = lib.toList {
+            kind = "ServiceAccount";
+            inherit name;
+            namespace = name;
+          };
+        };
         externalSecrets.e2e-keycloak.spec = {
           target.template.data = {
             client-id = "{{ .clientId }}";
@@ -119,7 +150,8 @@
               spec = {
                 restartPolicy = "Never";
                 serviceAccountName = name;
-                automountServiceAccountToken = false;
+                # kubectl in the Job uses the token for the Role above.
+                automountServiceAccountToken = true;
                 # hyena's ntfy has no public DNS and CoreDNS can't see AdGuard: pinned to its
                 # tailnet IP like Alertmanager's (nixidy/system/observability/alertmanager.nix).
                 hostAliases = lib.toList {
@@ -139,6 +171,8 @@
                   env = lib.mapAttrsToList (name: value: {inherit name value;}) {
                     E2E_RUNNER = "cluster";
                     DOMAIN = domain;
+                    # The tagged test Pods run this same image (`e2e __pod ...`).
+                    E2E_IMAGE = with image; "${repository}:${tag}@${digest}";
                     # Read-only route probe (no token): Floccus's repo is never written.
                     FLOCCUS_REPO = "${people.me}/bookmarks";
                   };
