@@ -238,13 +238,22 @@ pub fn xml_escape(s: &str) -> String {
     s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;").replace('\'', "&apos;")
 }
 
+/// The URL to probe for a tile. KOReader's sync server has nothing at `/` (404), so its tile is
+/// probed at the path Gatus uses (`/healthcheck`, 401 without credentials).
+pub fn probe_url(t: &Tile) -> String {
+    match t.name.as_str() {
+        "kosync" => format!("{}/healthcheck", t.url.trim_end_matches('/')),
+        _ => t.url.clone(),
+    }
+}
+
 async fn probe_tiles(c: &Client, tiles: &[Tile]) -> Vec<(String, String, TileState)> {
     let mut out = Vec::new();
     let mut set = JoinSet::new();
     for t in tiles {
-        let (c, name, url) = (c.clone(), t.name.clone(), t.url.clone());
+        let (c, name, url, probe) = (c.clone(), t.name.clone(), t.url.clone(), probe_url(t));
         set.spawn(async move {
-            let v = judge_tile(&get(&c, &url, None, Duration::from_secs(20)).await);
+            let v = judge_tile(&get(&c, &probe, None, Duration::from_secs(20)).await);
             (name, url, v)
         });
         if set.len() >= 8 {
@@ -342,6 +351,13 @@ mod tests {
         assert_eq!(judge_tile(&dns), TileState::Unresolvable);
         let refused = Answer { status: None, location: String::new(), error: "connection refused".into(), timed_out: false };
         assert!(matches!(judge_tile(&refused), TileState::Bad(_)));
+    }
+
+    #[test]
+    fn tiles_without_a_root_page_are_probed_at_their_health_path() {
+        let t = |n: &str, u: &str| Tile { name: n.into(), url: u.into() };
+        assert_eq!(probe_url(&t("kosync", "https://kosync.example")), "https://kosync.example/healthcheck");
+        assert_eq!(probe_url(&t("radarr", "https://radarr.example")), "https://radarr.example");
     }
 
     #[test]
