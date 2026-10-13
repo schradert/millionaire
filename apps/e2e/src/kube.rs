@@ -261,7 +261,7 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         let log = dir.join("calls.log");
         let bin = dir.join("kubectl");
-        fs::write(&bin, format!("#!/bin/sh\necho \"$@\" >> {}\nif [ \"$3\" = get ] && [ \"$5\" = missing ]; then echo 'Error from server (NotFound): pods \"missing\" not found' >&2; exit 1; fi\necho '{{\"items\":[]}}'\n", log.display())).unwrap();
+        fs::write(&bin, format!("#!/bin/sh\nprintf '%s\\n' \"$*\" >> {}\nif [ \"$3\" = get ] && [ \"$5\" = missing ]; then echo 'Error from server (NotFound): pods \"missing\" not found' >&2; exit 1; fi\necho '{{\"items\":[]}}'\n", log.display())).unwrap();
         fs::set_permissions(&bin, fs::Permissions::from_mode(0o755)).unwrap();
         std::env::set_var("E2E_KUBECTL", &bin);
         let ctx = Ctx::new("20260101-000000-aaaa".into(), false);

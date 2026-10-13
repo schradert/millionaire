@@ -1,7 +1,8 @@
 //! More OIDC logins through Keycloak's login pages, one per app that has native OIDC: Jellyfin
 //! (its SSO plugin; a full login, and the user it creates is deleted), Home Assistant (the
 //! callback issues a one-time code, which is never redeemed, so no user is made), Sure (accounts
-//! are link-only, so an unlinked user is refused) and Immich (the authorization request and the
+//! are link-only, so an unlinked user is refused), LibreChat (allowed email domains refuse the
+//! test user) and Immich (the authorization request and the
 //! redirect back; the callback would create an admin nobody can delete, see `docs/e2e.md`).
 //! Every user is a run-tagged Keycloak test user, never the owner's account.
 
@@ -249,6 +250,57 @@ pub async fn immich(ctx: &Ctx, f: &mut Flow) -> R<()> {
         return Err(Fail::new("immich", "redirect back", format!("{back} lacks the code or the state {state}")));
     }
     f.ok("immich", "Keycloak redirects back with a code", format!("{} signed in, state matches", u.family.username));
+    Ok(())
+}
+
+// ---------- LibreChat: allowed email domains ----------
+
+/// Delete the LibreChat account of the session that just logged in (the user deletes itself).
+async fn librechat_delete_self(ctx: &Ctx, sess: &mut Session, base: &str) -> R<()> {
+    let refresh = sess.json_request(ctx, reqwest::Method::POST, &Url::parse(&format!("{base}/api/auth/refresh")).at("librechat", "url")?, None, None).await?;
+    let token = serde_json::from_str::<Value>(&refresh.body).ok().and_then(|v| v["token"].as_str().map(String::from)).at("librechat", "token of the unexpected session")?;
+    let del = sess.json_request(ctx, reqwest::Method::DELETE, &Url::parse(&format!("{base}/api/user/delete")).at("librechat", "url")?, Some(&token), None).await?;
+    if del.status / 100 != 2 {
+        return Err(Fail::new("librechat", "delete user", format!("HTTP {} {}", del.status, excerpt(&del.body))));
+    }
+    Ok(())
+}
+
+/// LibreChat's OpenID strategy is live (config, redirect to Keycloak, callback validated), and its
+/// `allowedDomains` (exact match: the homelab domain and the owner's mail domain) refuses the
+/// test user, whose email is under `e2e.<domain>`: the callback goes back to the login page with
+/// `error=auth_failed` and no session. Nothing is created. If LibreChat ever lets the user in,
+/// the flow deletes the account it made and fails.
+pub async fn librechat(ctx: &Ctx, f: &mut Flow) -> R<()> {
+    let kc = Kc::connect()?;
+    let u = kc::users(ctx, &kc).await?;
+    let base = host("chat");
+    let cfg = json(ctx.http.get(format!("{base}/api/config")), "librechat", "config").await?;
+    if cfg["openidLoginEnabled"] != json!(true) {
+        return Err(Fail::new("librechat", "OpenID enabled", format!("/api/config says openidLoginEnabled={} (the strategy needs OPENID_SESSION_SECRET)", cfg["openidLoginEnabled"])));
+    }
+    f.ok("librechat", "OpenID login enabled", "");
+    let user = &u.family;
+    let mut sess = Session::new();
+    let stop = format!("{base}/oauth/openid/callback");
+    let cb = login(ctx, &mut sess, &format!("{base}/oauth/openid"), user, &stop).await?;
+    f.ok("keycloak", "login accepted for the LibreChat client", user.username.clone());
+    let hop = sess.get(ctx, &cb).await?;
+    let refused = hop.location.as_ref().is_some_and(|l| l.path() == "/login" && web::query(l, "error").as_deref() == Some("auth_failed"));
+    if !refused {
+        let cleaned = librechat_delete_self(ctx, &mut sess, &base).await;
+        return Err(Fail::new(
+            "librechat",
+            "allowedDomains",
+            format!("expected a refusal for {} (domain not allowed), got HTTP {} {:?}; account cleanup: {cleaned:?}", user.email, hop.status, hop.location.as_ref().map(Url::as_str)),
+        ));
+    }
+    f.ok("librechat", "email domain refused", format!("{} -> /login?error=auth_failed", user.email));
+    let refresh = sess.json_request(ctx, reqwest::Method::POST, &Url::parse(&format!("{base}/api/auth/refresh")).at("librechat", "url")?, None, None).await?;
+    if serde_json::from_str::<Value>(&refresh.body).is_ok_and(|v| v["token"].is_string()) {
+        return Err(Fail::new("librechat", "no session", "a token was issued after the refusal"));
+    }
+    f.ok("librechat", "no session after the refusal", excerpt(&refresh.body));
     Ok(())
 }
 
