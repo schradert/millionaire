@@ -34,6 +34,19 @@
               fsGroup = 65534;
               fsGroupChangePolicy = "OnRootMismatch";
             };
+            # Prometheus exporter: scrapes the app's own API with its key.
+            containers.exportarr = {
+              image = pinned.images.exportarr;
+              args = ["radarr"];
+              env = {
+                PORT = "9707";
+                URL = "http://localhost:${toString port}";
+                APIKEY.valueFrom.secretKeyRef = {
+                  name = "radarr";
+                  key = "RADARR__AUTH__APIKEY";
+                };
+              };
+            };
             containers.radarr = {
               image = pinned.images.radarr;
               envFrom = [{secretRef.name = "radarr";} {configMapRef.name = "radarr";}];
@@ -42,7 +55,18 @@
               probes.startup.enabled = true;
             };
           };
-          service.radarr.ports.http.port = port;
+          service.radarr.ports = {
+            http.port = port;
+            metrics.port = 9707;
+          };
+          serviceMonitor.radarr = {
+            serviceName = "radarr";
+            endpoints = lib.toList {
+              port = "metrics";
+              path = "/metrics";
+              interval = "1m";
+            };
+          };
           persistence = {
             config = {
               type = "persistentVolumeClaim";

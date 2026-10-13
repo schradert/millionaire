@@ -34,6 +34,19 @@
               fsGroup = 65534;
               fsGroupChangePolicy = "OnRootMismatch";
             };
+            # Prometheus exporter: scrapes the app's own API with its key.
+            containers.exportarr = {
+              image = pinned.images.exportarr;
+              args = ["sonarr"];
+              env = {
+                PORT = "9707";
+                URL = "http://localhost:${toString port}";
+                APIKEY.valueFrom.secretKeyRef = {
+                  name = "sonarr";
+                  key = "SONARR__AUTH__APIKEY";
+                };
+              };
+            };
             containers.sonarr = {
               image = pinned.images.sonarr;
               envFrom = [{secretRef.name = "sonarr";} {configMapRef.name = "sonarr";}];
@@ -42,7 +55,18 @@
               probes.startup.enabled = true;
             };
           };
-          service.sonarr.ports.http.port = port;
+          service.sonarr.ports = {
+            http.port = port;
+            metrics.port = 9707;
+          };
+          serviceMonitor.sonarr = {
+            serviceName = "sonarr";
+            endpoints = lib.toList {
+              port = "metrics";
+              path = "/metrics";
+              interval = "1m";
+            };
+          };
           persistence = {
             config = {
               type = "persistentVolumeClaim";

@@ -34,6 +34,19 @@
               fsGroup = 65534;
               fsGroupChangePolicy = "OnRootMismatch";
             };
+            # Prometheus exporter: scrapes the app's own API with its key.
+            containers.exportarr = {
+              image = pinned.images.exportarr;
+              args = ["lidarr"];
+              env = {
+                PORT = "9707";
+                URL = "http://localhost:${toString port}";
+                APIKEY.valueFrom.secretKeyRef = {
+                  name = "lidarr";
+                  key = "LIDARR__AUTH__APIKEY";
+                };
+              };
+            };
             containers.lidarr = {
               image = pinned.images.lidarr;
               envFrom = [{secretRef.name = "lidarr";} {configMapRef.name = "lidarr";}];
@@ -42,7 +55,18 @@
               probes.startup.enabled = true;
             };
           };
-          service.lidarr.ports.http.port = port;
+          service.lidarr.ports = {
+            http.port = port;
+            metrics.port = 9707;
+          };
+          serviceMonitor.lidarr = {
+            serviceName = "lidarr";
+            endpoints = lib.toList {
+              port = "metrics";
+              path = "/metrics";
+              interval = "1m";
+            };
+          };
           persistence = {
             config = {
               type = "persistentVolumeClaim";
