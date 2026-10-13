@@ -7,9 +7,6 @@ spec:
   restic:
     copyMethod: Direct
     destinationPVC: siyuan
-    moverSecurityContext:
-      runAsGroup: 101
-      runAsUser: 101
     repository: volsync--siyuan--siyuan
   trigger:
     manual: "1"

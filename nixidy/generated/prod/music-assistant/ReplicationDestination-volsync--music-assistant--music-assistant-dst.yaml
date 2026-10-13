@@ -7,9 +7,6 @@ spec:
   restic:
     copyMethod: Direct
     destinationPVC: music-assistant
-    moverSecurityContext:
-      runAsGroup: 101
-      runAsUser: 101
     repository: volsync--music-assistant--music-assistant
   trigger:
     manual: "1"

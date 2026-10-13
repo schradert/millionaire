@@ -7,9 +7,6 @@ spec:
   restic:
     copyMethod: Direct
     destinationPVC: jellyfin-config
-    moverSecurityContext:
-      runAsGroup: 101
-      runAsUser: 101
     repository: volsync--jellyfin--jellyfin
   trigger:
     manual: "1"

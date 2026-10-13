@@ -7,9 +7,6 @@ spec:
   restic:
     copyMethod: Direct
     destinationPVC: multi-scrobbler
-    moverSecurityContext:
-      runAsGroup: 101
-      runAsUser: 101
     repository: volsync--multi-scrobbler--multi-scrobbler
   trigger:
     manual: "1"

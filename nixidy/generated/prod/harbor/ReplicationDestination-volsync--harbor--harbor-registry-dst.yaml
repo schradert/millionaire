@@ -7,9 +7,6 @@ spec:
   restic:
     copyMethod: Direct
     destinationPVC: harbor-registry
-    moverSecurityContext:
-      runAsGroup: 101
-      runAsUser: 101
     repository: volsync--harbor--harbor-registry
   trigger:
     manual: "1"

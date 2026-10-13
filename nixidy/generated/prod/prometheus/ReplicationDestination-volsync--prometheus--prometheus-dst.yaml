@@ -7,9 +7,6 @@ spec:
   restic:
     copyMethod: Direct
     destinationPVC: prometheus-prometheus-kube-prometheus-prometheus-db-prometheus-prometheus-kube-prometheus-prometheus-0
-    moverSecurityContext:
-      runAsGroup: 2000
-      runAsUser: 1000
     repository: volsync--prometheus--prometheus
   trigger:
     manual: "1"

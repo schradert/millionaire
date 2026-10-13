@@ -7,9 +7,6 @@ spec:
   restic:
     copyMethod: Direct
     destinationPVC: seerr
-    moverSecurityContext:
-      runAsGroup: 101
-      runAsUser: 101
     repository: volsync--seerr--seerr
   trigger:
     manual: "1"

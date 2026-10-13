@@ -7,9 +7,6 @@ spec:
   restic:
     copyMethod: Direct
     destinationPVC: bulwark
-    moverSecurityContext:
-      runAsGroup: 101
-      runAsUser: 101
     repository: volsync--bulwark--bulwark
   trigger:
     manual: "1"

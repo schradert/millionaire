@@ -6,8 +6,6 @@ metadata:
 spec:
   restic:
     copyMethod: Direct
-    moverSecurityContext:
-      fsGroup: 2000
     pruneIntervalDays: 8
     repository: volsync--prometheus--prometheus
     retain:

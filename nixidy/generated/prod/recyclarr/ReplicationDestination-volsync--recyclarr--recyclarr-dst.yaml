@@ -7,9 +7,6 @@ spec:
   restic:
     copyMethod: Direct
     destinationPVC: recyclarr
-    moverSecurityContext:
-      runAsGroup: 101
-      runAsUser: 101
     repository: volsync--recyclarr--recyclarr
   trigger:
     manual: "1"

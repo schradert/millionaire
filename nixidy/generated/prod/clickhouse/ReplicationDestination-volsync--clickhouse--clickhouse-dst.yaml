@@ -7,9 +7,6 @@ spec:
   restic:
     copyMethod: Direct
     destinationPVC: clickhouse-data-chi-clickhouse-clickhouse-0-0-0
-    moverSecurityContext:
-      runAsGroup: 101
-      runAsUser: 101
     repository: volsync--clickhouse--clickhouse
   trigger:
     manual: "1"

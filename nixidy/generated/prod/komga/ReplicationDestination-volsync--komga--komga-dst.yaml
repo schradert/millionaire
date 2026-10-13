@@ -7,9 +7,6 @@ spec:
   restic:
     copyMethod: Direct
     destinationPVC: komga
-    moverSecurityContext:
-      runAsGroup: 101
-      runAsUser: 101
     repository: volsync--komga--komga
   trigger:
     manual: "1"
