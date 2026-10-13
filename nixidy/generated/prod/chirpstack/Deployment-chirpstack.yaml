@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: c438b254c896f464c928f29c606b60222c27a4c0b6f5d8af5f82f06616d16dd4
+        checksum/configMaps: 73fbb4a887002ca1ad1dea8ed32698a67f16fc51b83c310217ccc9ae2c7fcf45
       labels:
         app.kubernetes.io/controller: chirpstack
         app.kubernetes.io/instance: chirpstack

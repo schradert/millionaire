@@ -23,6 +23,9 @@ data:
     [api]
       bind="0.0.0.0:8080"
 
+    [monitoring]
+      bind="0.0.0.0:9100"
+
     # "enabled" picks the SSO button shown beside the password form (internal |
     # openid_connect | oauth2); the password form stays for break-glass.
     [user_authentication]

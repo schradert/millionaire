@@ -25,12 +25,21 @@
               image = pinned.images.spoolman;
               env.SPOOLMAN_DB_TYPE = "sqlite";
               env.SPOOLMAN_DIR = "/data";
+              env.SPOOLMAN_METRICS_ENABLED = "TRUE";
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
               probes.startup.enabled = true;
             };
           };
           service.spoolman.ports.http.port = 8000;
+          serviceMonitor.spoolman = {
+            serviceName = "spoolman";
+            endpoints = lib.toList {
+              port = "http";
+              path = "/metrics";
+              interval = "1m";
+            };
+          };
           persistence.data = {
             type = "persistentVolumeClaim";
             accessMode = "ReadWriteOnce";
