@@ -1,0 +1,73 @@
+apiVersion: v1
+data:
+  overrides.yaml: |
+    overrides:
+      {}
+  tempo.yaml: |
+    memberlist:
+      cluster_label: "tempo.observability"
+    multitenancy_enabled: false
+    usage_report:
+      reporting_enabled: false
+    compactor:
+      compaction:
+        block_retention: 168h
+    distributor:
+      receivers:
+            jaeger:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:14250
+                thrift_binary:
+                  endpoint: 0.0.0.0:6832
+                thrift_compact:
+                  endpoint: 0.0.0.0:6831
+                thrift_http:
+                  endpoint: 0.0.0.0:14268
+            otlp:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:4317
+                http:
+                  endpoint: 0.0.0.0:4318
+    ingester:
+          {}
+    server:
+          http_listen_port: 3200
+    storage:
+          trace:
+            backend: local
+            local:
+              path: /var/tempo/traces
+            wal:
+              path: /var/tempo/wal
+    querier:
+          {}
+    query_frontend:
+          {}
+    overrides:
+          defaults:
+            metrics_generator:
+              processors:
+              - service-graphs
+              - span-metrics
+          per_tenant_override_config: /conf/overrides.yaml
+    metrics_generator:
+      processor:
+            service_graphs: {}
+            span_metrics:
+              enable_target_info: true
+      storage:
+        path: "/tmp/tempo"
+        remote_write:
+          - url: http://prometheus-kube-prometheus-prometheus.observability.svc.cluster.local:9090/api/v1/write
+      traces_storage:
+        path: "/tmp/traces"
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: tempo
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: tempo
+  name: tempo
+  namespace: observability

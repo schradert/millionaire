@@ -1,0 +1,10 @@
+{
+  "version": "1.24.4",
+  "hash": "sha256-BUGLgZE0ZmyZ6IyQHTMSXBAjWbWiYuA/lBGJGag6+Ws=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://grafana.github.io/helm-charts/",
+    "chart": "tempo"
+  },
+  "hold": "chart deprecated upstream (1.24.4 is the last release); the successor is tempo-distributed"
+}

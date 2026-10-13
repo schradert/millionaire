@@ -58,6 +58,8 @@
               probeSelectorNilUsesHelmValues = false;
               ruleSelectorNilUsesHelmValues = false;
               scrapeConfigSelectorNilUsesHelmValues = false;
+              # Tempo's metrics-generator remote-writes service-graph and span metrics (tempo.nix).
+              enableRemoteWriteReceiver = true;
               # Size cap below the volume, or a full disk crashloops WAL replay.
               retentionSize = "25GB";
               # alertmanager.enabled = false below (it is deployed separately), so

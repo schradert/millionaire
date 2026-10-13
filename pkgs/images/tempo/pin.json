@@ -1,0 +1,10 @@
+{
+  "version": "2.9.5",
+  "digest": "sha256:785fd6c81d7f26ff0973208cd7093ac6030e13946c288612ff32f02416941d3a",
+  "source": {
+    "type": "oci-tag",
+    "repository": "docker.io/grafana/tempo",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
+  },
+  "constraint": "<2.10"
+}
