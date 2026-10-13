@@ -7,7 +7,7 @@ spec:
   restic:
     copyMethod: Direct
     moverSecurityContext:
-      fsGroup: 101
+      fsGroup: 2000
     pruneIntervalDays: 8
     repository: volsync--prometheus--prometheus
     retain:
