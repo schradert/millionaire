@@ -70,9 +70,10 @@
             resources = {
               requests = {
                 cpu = "20m";
-                memory = "64Mi";
+                memory = "128Mi";
               };
-              limits.memory = "256Mi";
+              # Working set measured 60-200Mi per node (more where more Pods run).
+              limits.memory = "512Mi";
             };
             configMap.content = ''
               discovery.kubernetes "pods" {
