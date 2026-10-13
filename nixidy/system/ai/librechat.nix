@@ -120,7 +120,10 @@ in {
                 ALLOW_SOCIAL_REGISTRATION = "true";
                 OPENID_ISSUER = "https://keycloak.${domain}/realms/default";
                 OPENID_CLIENT_ID = "librechat";
-                OPENID_CALLBACK_URL = "https://${hostname}/oauth/openid/callback";
+                # A path: LibreChat prefixes DOMAIN_SERVER (a full URL here made it "Invalid URL").
+                DOMAIN_SERVER = "https://${hostname}";
+                DOMAIN_CLIENT = "https://${hostname}";
+                OPENID_CALLBACK_URL = "/oauth/openid/callback";
                 OPENID_SCOPE = "openid profile email groups";
                 # Admin role from the Keycloak `groups` claim (ID token).
                 OPENID_ADMIN_ROLE = "admin";
