@@ -1,0 +1,9 @@
+{
+  "version": "v1.20.1",
+  "digest": "sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f",
+  "source": {
+    "type": "oci-tag",
+    "repository": "docker.io/grafana/alloy"
+  },
+  "follows": "charts/alloy"
+}

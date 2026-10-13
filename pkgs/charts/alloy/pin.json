@@ -1,0 +1,9 @@
+{
+  "version": "1.13.1",
+  "hash": "sha256-KO+xuIAFpVIWdi0ya9OXwQBP4TyrLTYTfMl1TdG/sdI=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://grafana.github.io/helm-charts/",
+    "chart": "alloy"
+  }
+}
