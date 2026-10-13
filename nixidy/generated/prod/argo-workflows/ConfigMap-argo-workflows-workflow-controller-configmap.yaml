@@ -20,6 +20,12 @@ data:
       secure: false
     persistence:
       archive: true
+      archiveLabelSelector:
+        matchExpressions:
+        - key: app.kubernetes.io/name
+          operator: NotIn
+          values:
+          - e2e-test
       postgresql:
         database: argo-workflows
         host: argo-workflows-rw

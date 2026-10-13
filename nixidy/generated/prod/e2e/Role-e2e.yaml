@@ -34,6 +34,16 @@ rules:
       - create
       - delete
   - apiGroups:
+      - argoproj.io
+    resources:
+      - workflows
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - delete
+  - apiGroups:
       - external-secrets.io
     resources:
       - externalsecrets

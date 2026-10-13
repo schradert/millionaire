@@ -100,6 +100,15 @@ in {
             workflowNamespaces = ["cicd"];
             persistence = {
               archive = true;
+              # The e2e suite's tagged Workflows (apps/e2e, `kubernetes/argo-workflow`) are deleted
+              # after each run and must leave nothing behind, so they are not archived.
+              archiveLabelSelector.matchExpressions = [
+                {
+                  key = "app.kubernetes.io/name";
+                  operator = "NotIn";
+                  values = ["e2e-test"];
+                }
+              ];
               postgresql = {
                 host = "argo-workflows-rw";
                 port = 5432;

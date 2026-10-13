@@ -135,6 +135,12 @@
             resources = ["objectbucketclaims"];
             verbs = ["get" "list" "watch" "create" "delete"];
           }
+          # Tagged Workflows run as the `e2e-workflow` account below.
+          {
+            apiGroups = ["argoproj.io"];
+            resources = ["workflows"];
+            verbs = ["get" "list" "watch" "create" "delete"];
+          }
           # Tagged ExternalSecrets resolved through the `kubernetes-e2e` store.
           {
             apiGroups = ["external-secrets.io"];
@@ -157,6 +163,25 @@
             verbs = ["get" "list" "watch" "create" "delete"];
           }
         ];
+        # The account tagged Workflows run as: the executor reports each step to a WorkflowTaskResult.
+        serviceAccounts."${name}-workflow" = {};
+        roles."${name}-workflow".rules = lib.toList {
+          apiGroups = ["argoproj.io"];
+          resources = ["workflowtaskresults"];
+          verbs = ["create" "patch"];
+        };
+        roleBindings."${name}-workflow" = {
+          roleRef = {
+            apiGroup = "rbac.authorization.k8s.io";
+            kind = "Role";
+            name = "${name}-workflow";
+          };
+          subjects = lib.toList {
+            kind = "ServiceAccount";
+            name = "${name}-workflow";
+            namespace = name;
+          };
+        };
         roleBindings.${name} = {
           roleRef = {
             apiGroup = "rbac.authorization.k8s.io";
