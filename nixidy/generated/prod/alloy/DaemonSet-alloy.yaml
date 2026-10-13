@@ -17,7 +17,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 03fcf85ef48edb55a22fc4d477407772f82cf01434c53acfc618da6c32b41e7
+        checksum/config: f4b7538ce22a67c26b88247a45a59e268e873b50d9e6b1d4cee38d94ef6e84d
         kubectl.kubernetes.io/default-container: alloy
       labels:
         app.kubernetes.io/instance: alloy
