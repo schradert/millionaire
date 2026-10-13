@@ -11,6 +11,8 @@ in {
     hostname = "immich.${domain}";
     # app-bootstrap >= 0.18.0 mints tristan's API key (bootstrap below).
     apiKey = lib.versionAtLeast pinned.images.app-bootstrap-immich.tag "0.18.0";
+    # app-bootstrap >= 0.19.7 also makes the e2e harness's admin and its API key.
+    e2eAdmin = lib.versionAtLeast pinned.images.app-bootstrap-immich.tag "0.19.7";
     # Probes use numeric ports: app-template doesn't declare a named container port.
     serverProbe = lib.recursiveUpdate {
       enabled = true;
@@ -283,7 +285,13 @@ in {
             ADMIN_PASSWORD_FILE = "/secrets/admin/password";
             REQUIRE_OAUTH = "1";
           }
-          // lib.optionalAttrs apiKey {API_KEY_SECRET = "immich-tristan-api-key";};
+          // lib.optionalAttrs apiKey {API_KEY_SECRET = "immich-tristan-api-key";}
+          // lib.optionalAttrs e2eAdmin {
+            # A second admin for the e2e harness (apps/e2e identity/oidc-immich), which needs one to
+            # delete the user a test login creates; its API key goes to immich-e2e-api-key.
+            E2E_API_KEY_SECRET = "immich-e2e-api-key";
+            E2E_EMAIL = "e2e@e2e.${domain}";
+          };
         secrets.admin = "immich-admin";
         rules = lib.optionals apiKey [
           {
@@ -294,7 +302,7 @@ in {
           {
             apiGroups = [""];
             resources = ["secrets"];
-            resourceNames = ["immich-tristan-api-key"];
+            resourceNames = ["immich-tristan-api-key"] ++ lib.optional e2eAdmin "immich-e2e-api-key";
             verbs = ["get" "patch"];
           }
         ];
