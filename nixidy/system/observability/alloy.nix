@@ -127,10 +127,12 @@
             resources = {
               requests = {
                 cpu = "20m";
-                memory = "128Mi";
+                memory = "256Mi";
               };
-              # Working set measured 60-200Mi per node (more where more Pods run).
-              limits.memory = "512Mi";
+              # Working set measured 60-200Mi per node for the logs and traces pipelines; pyroscope.ebpf adds
+              # about 150Mi (chinchilla) to 440Mi (octopus: more processes, so more BPF map and symbol memory)
+              # that is not reclaimable. 512Mi OOM-killed it at start-up on octopus.
+              limits.memory = "1Gi";
             };
             configMap.content = ''
               discovery.kubernetes "pods" {
