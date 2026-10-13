@@ -26,6 +26,8 @@ spec:
               value: oauth2-proxy
             - name: OIDC_ISSUER
               value: https://keycloak.trdos.me/realms/default
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4318
             - name: SERVER_ID
               value: 05238f180ea94c7c8c5621976aec4604
             - name: UPSTREAM_TOKEN_FILE

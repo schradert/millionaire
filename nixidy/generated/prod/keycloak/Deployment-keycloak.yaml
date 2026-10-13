@@ -56,10 +56,16 @@ spec:
               value: "true"
             - name: KC_PROXY_HEADERS
               value: xforwarded
+            - name: KC_TRACING_ENABLED
+              value: "true"
+            - name: KC_TRACING_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4317
+            - name: KC_TRACING_SAMPLER_RATIO
+              value: "1.0"
           envFrom:
             - secretRef:
                 name: keycloak
-          image: harbor.trdos.me/library/keycloak:26.1.5-optimized@sha256:cffa3b4907818010375bb96785e49e09d50f29be50c67acc7b90431beba3fd98
+          image: harbor.trdos.me/library/keycloak:26.1.5-optimized-1@sha256:1345506cf728d06bae4f5a623347808349055aec49ab62bdf6a3d1fee021a5d5
           livenessProbe:
             httpGet:
               path: /health/live

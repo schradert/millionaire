@@ -367,6 +367,8 @@
                   args = ["run"];
                   env = lib.mapAttrsToList (name: value: {inherit name value;}) {
                     E2E_RUNNER = "cluster";
+                    # Traces (apps/e2e/src/trace.rs): a span per flow, phase and request, to Alloy's OTLP/HTTP port.
+                    OTEL_EXPORTER_OTLP_ENDPOINT = "http://alloy.observability.svc.cluster.local:4318";
                     E2E_REPORT_CONFIGMAP = "${name}/${report}";
                     DOMAIN = domain;
                     # The tagged test Pods run this same image (`e2e __pod ...`).

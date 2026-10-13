@@ -28,6 +28,8 @@ spec:
               value: e2e@e2e.trdos.me
             - name: IMMICH_URL
               value: http://immich-server.media.svc.cluster.local:2283
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4318
             - name: REQUIRE_OAUTH
               value: "1"
           image: harbor.trdos.me/library/app-bootstrap:0.19.7@sha256:5bd44c8c9bb419eef81b04be3f58ebb08bb8b332fd02e3318c58ed8700c7932a

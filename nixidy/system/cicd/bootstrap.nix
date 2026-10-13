@@ -93,7 +93,9 @@
                     containers = lib.toList {
                       name = "bootstrap";
                       inherit (cfg) image args;
-                      env = lib.mapAttrsToList (name: value: {inherit name value;}) cfg.env;
+                      # OTLP traces (app-bootstrap >= 0.20; older images ignore it). Not part of the spec hash
+                      # above, so adding it re-runs no hook.
+                      env = lib.mapAttrsToList (name: value: {inherit name value;}) ({OTEL_EXPORTER_OTLP_ENDPOINT = "http://alloy.observability.svc.cluster.local:4318";} // cfg.env);
                       volumeMounts = lib.mapAttrsToList (dir: _: {
                         name = dir;
                         mountPath = "/secrets/${dir}";

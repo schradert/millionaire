@@ -20,6 +20,8 @@ spec:
               value: /secrets/admin/password
             - name: FORGEJO_URL
               value: http://forgejo-http.development.svc.cluster.local:3000
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4318
             - name: REPO
               value: bookmarks
             - name: SECRET_NAME
