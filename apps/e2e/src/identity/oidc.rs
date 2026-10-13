@@ -312,7 +312,9 @@ pub async fn bulwark(ctx: &Ctx, f: &mut Flow) -> R<()> {
     }
     f.ok("bulwark", "OIDC enabled for client bulwark", "issuer is Keycloak's");
     let redirect = format!("{base}/en/auth/callback");
-    let r = json(ctx.http.post(format!("{base}/api/auth/sso/start")).json(&json!({ "redirect_uri": redirect, "locale": "en" })), "bulwark", "sso/start").await?;
+    // Bulwark checks the redirect's origin against the request's `Origin` (a browser sends it; behind the
+    // gateway the server only knows `localhost`), and refuses cross-origin POSTs.
+    let r = json(ctx.http.post(format!("{base}/api/auth/sso/start")).header("Origin", &base).json(&json!({ "redirect_uri": redirect, "locale": "en" })), "bulwark", "sso/start").await?;
     let url = r["authorize_url"].as_str().at("bulwark", "authorize_url")?.to_string();
     let parsed = Url::parse(&url).at("bulwark", "authorize_url")?;
     if !url.starts_with(&issuer()) || web::query(&parsed, "client_id").as_deref() != Some("bulwark") || web::query(&parsed, "redirect_uri").as_deref() != Some(redirect.as_str()) {
