@@ -30,7 +30,7 @@ spec:
       affinity: {}
       containers:
         - args:
-            - -m 1024
+            - -m 256
             - --extended=modern,track_sizes
             - -I 5m
             - -c 16384
@@ -58,10 +58,10 @@ spec:
             timeoutSeconds: 3
           resources:
             limits:
-              memory: 1229Mi
+              memory: 307Mi
             requests:
               cpu: 50m
-              memory: 1229Mi
+              memory: 307Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
