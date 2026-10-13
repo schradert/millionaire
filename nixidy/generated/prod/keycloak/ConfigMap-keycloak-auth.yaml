@@ -95,7 +95,7 @@ data:
     ensure_scopes toolhive default openid profile email
     ensure_scopes windmill default openid profile email groups
 
-    # Realm-management roles for a client's service account (the account exists once the
+    # Realm-management roles for a client's service account, exactly the listed set (the account exists once the
     # operator has created the client with serviceAccountsEnabled; until then the Job fails
     # and its backoffLimit retries, so the roles are never silently skipped).
     ensure_service_roles() {
@@ -106,9 +106,18 @@ data:
       for r in "$@"; do
         kc add-roles -r $R --uusername "service-account-$client" --cclientid realm-management --rolename "$r"
       done
+      for r in $(kc get-roles -r $R --uusername "service-account-$client" --cclientid realm-management --fields name --format csv --noquotes); do
+        case " $* " in
+          *" $r "*) ;;
+          *)
+            kc remove-roles -r $R --uusername "service-account-$client" --cclientid realm-management --rolename "$r"
+            echo "service account of $client: removed role $r"
+            ;;
+        esac
+      done
       echo "service account of $client: roles $*"
     }
-    ensure_service_roles e2e manage-users view-users query-users query-groups
+    ensure_service_roles e2e manage-users
 
     # Group attributes (e.g. immich_role, abs_group): the operator reports the
     # group synchronized but never applies them, so set what a keycloakGroups

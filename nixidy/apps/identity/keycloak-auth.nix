@@ -11,7 +11,8 @@
 # defaultClientScopes/optionalClientScopes when it creates a client, and
 # Keycloak ignores them on update. It adds whatever a keycloakClients entry
 # lists that Keycloak lacks, and never removes anything. Service-account roles
-# (`keycloak.serviceAccountRoles.<clientId>`, realm-management roles) are added the same way.
+# (`keycloak.serviceAccountRoles.<clientId>`, realm-management roles) are added the same way,
+# and for a client listed there any other realm-management role is removed: the list is exact.
 {config, ...}: let
   inherit (config.canivete.meta) people;
 in {
@@ -142,7 +143,7 @@ in {
         done
       }
       ${clientScopes}
-      # Realm-management roles for a client's service account (the account exists once the
+      # Realm-management roles for a client's service account, exactly the listed set (the account exists once the
       # operator has created the client with serviceAccountsEnabled; until then the Job fails
       # and its backoffLimit retries, so the roles are never silently skipped).
       ensure_service_roles() {
@@ -152,6 +153,15 @@ in {
           || { echo "service account of $client not created yet"; exit 1; }
         for r in "$@"; do
           kc add-roles -r $R --uusername "service-account-$client" --cclientid realm-management --rolename "$r"
+        done
+        for r in $(kc get-roles -r $R --uusername "service-account-$client" --cclientid realm-management --fields name --format csv --noquotes); do
+          case " $* " in
+            *" $r "*) ;;
+            *)
+              kc remove-roles -r $R --uusername "service-account-$client" --cclientid realm-management --rolename "$r"
+              echo "service account of $client: removed role $r"
+              ;;
+          esac
         done
         echo "service account of $client: roles $*"
       }
