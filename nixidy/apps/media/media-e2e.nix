@@ -13,7 +13,7 @@
     inherit (config.canivete.meta) domain people;
     name = "media-e2e";
     image = pinned.images.e2e or (pinned.images.media-e2e or null);
-    libs = ["movies" "tv" "music" "books" "audiobooks" "comics" "dvd" "downloads" "podcasts"];
+    libs = ["movies" "tv" "music" "books" "audiobooks" "comics" "dvd" "downloads" "podcasts" "games"];
     # Secret name -> mounted at /secrets/<name>.
     secrets = [
       "radarr-apikey"
