@@ -8,6 +8,12 @@
 # picks up that board's target + .cargo/config. Reports pass/fail per board and
 # exits non-zero if any board fails — suitable for a pre-push gate or CI.
 #
+# falcon's ~/Projects/millionaire must be a git checkout with the repo-root
+# layout: embedded/devenv.nix imports ../lib/pins.nix and ../pkgs/avr-hal/pin.json,
+# and devenv only evaluates paths inside the git tree. The rsync below syncs just
+# embedded/, so keep those two files (and a git repo around them) up to date on
+# falcon yourself (e.g. `git pull`).
+#
 # Usage: check [board ...]   (default: all boards)
 set -euo pipefail
 

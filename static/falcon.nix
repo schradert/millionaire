@@ -13,7 +13,10 @@
 #      right tool (espflash / probe-rs / teensy-loader-cli / ravedude).
 #
 # Assumes the embedded/ source is already at `~/Projects/millionaire/embedded`
-# on falcon — keep it in sync via rsync or git pull. (A future improvement
+# on falcon — keep it in sync via git pull. That directory must be a git
+# checkout of the repo root: embedded/devenv.nix imports ../lib/pins.nix and
+# ../pkgs/avr-hal/pin.json, which devenv can only read inside the git tree, so
+# rsyncing embedded/ alone does not work. (A future improvement
 # is to make the firmware a real Nix derivation and embed it in the
 # activation closure; for now the script does a remote cargo build.)
 #
@@ -61,7 +64,8 @@
   profiles = let
     # Where the embedded workspace lives on falcon. The activation script
     # cd's here and runs cargo via direnv. Keep in sync between local and
-    # falcon (rsync, git pull, etc.). The double-quoting at the Nix level
+    # falcon with git pull (see the header note on why rsync of
+    # embedded/ alone fails). The double-quoting at the Nix level
     # means each use-site emits a quoted shell literal, satisfying shellcheck
     # (SC2086) without needing per-call quoting.
     embeddedDir = ''"$HOME/Projects/millionaire/embedded"'';
