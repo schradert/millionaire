@@ -17,7 +17,8 @@
           sidecar.image.tag = with pinned.images.loki-sidecar; "${tag}@${digest}";
           deploymentMode = "SingleBinary";
           backend.replicas = 0;
-          gateway.replicas = 0;
+          # Serves the canary and Grafana; the chart hard-codes the canary to it.
+          gateway.replicas = 1;
           read.replicas = 0;
           singleBinary.replicas = 1;
           singleBinary.persistence.enabled = true;

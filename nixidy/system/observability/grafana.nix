@@ -123,6 +123,23 @@
           GF_SMTP_FROM_ADDRESS = "noreply@${domain}";
           GF_SMTP_FROM_NAME = "Grafana";
         };
+        # Picked up by the datasources sidecar. Loki has auth_enabled, so every query names a tenant;
+        # Alloy (alloy.nix) writes everything under the same one.
+        configMaps.grafana-datasource-loki = {
+          metadata.labels.grafana_datasource = "1";
+          data."loki.yaml" = builtins.toJSON {
+            apiVersion = 1;
+            datasources = lib.toList {
+              name = "Loki";
+              uid = "loki";
+              type = "loki";
+              access = "proxy";
+              url = "http://loki-gateway.observability.svc.cluster.local";
+              jsonData.httpHeaderName1 = "X-Scope-OrgID";
+              secureJsonData.httpHeaderValue1 = "cluster";
+            };
+          };
+        };
         externalSecrets.grafana-admin.spec = {
           secretStoreRef.name = "bitwarden";
           secretStoreRef.kind = "ClusterSecretStore";

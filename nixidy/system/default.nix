@@ -33,6 +33,7 @@
     ./network/multus.nix
     ./network/netpol.nix
     ./observability/alertmanager.nix
+    ./observability/alloy.nix
     ./observability/gatus.nix
     ./observability/grafana.nix
     ./observability/kube-state-metrics.nix
