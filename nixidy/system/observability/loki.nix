@@ -74,29 +74,8 @@
             };
           };
           singleBinary.persistence.enabled = true;
-          # Self-tracing, sampled to stay cheap. OTEL_* variables produced no spans from Loki 3.7, so it uses the
-          # Jaeger client variables and sends thrift straight to Tempo's collector port (Alloy has no Jaeger receiver).
-          singleBinary.extraEnv = [
-            {
-              name = "JAEGER_ENDPOINT";
-              value = "http://tempo.observability.svc.cluster.local:14268/api/traces";
-            }
-            {
-              name = "JAEGER_SAMPLER_TYPE";
-              value = "probabilistic";
-            }
-            {
-              name = "JAEGER_SAMPLER_PARAM";
-              value = "0.1";
-            }
-            {
-              name = "JAEGER_SERVICE_NAME";
-              value = "loki";
-            }
-          ];
           write.replicas = 0;
           loki = {
-            tracing.enabled = true;
             commonConfig.replication_factor = 1;
             storage.type = "filesystem";
             # FIXME why specify buckets when using filesystem?
