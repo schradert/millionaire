@@ -10,6 +10,8 @@
         chart = pinned.charts.descheduler;
         values = {
           replicas = 1;
+          # 3m at p95 over 7d; the 500m limit stays.
+          resources.requests.cpu = "50m";
           kind = "Deployment";
           image.tag = with pinned.images.descheduler; "${tag}@${digest}";
           deschedulerPolicyAPIVersion = "descheduler/v1alpha2";

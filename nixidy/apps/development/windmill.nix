@@ -78,7 +78,7 @@
                 replicas = 2;
                 resources.limits.memory = "2Gi";
                 resources.requests = {
-                  cpu = "500m";
+                  cpu = "100m"; # 9m at p95 over 7d
                   memory = "1Gi";
                 };
               }

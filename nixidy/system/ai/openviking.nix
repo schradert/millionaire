@@ -44,7 +44,7 @@ in {
               };
               resources = {
                 requests = {
-                  cpu = "250m";
+                  cpu = "50m"; # 41m at p95 over 7d
                   memory = "1Gi";
                 };
                 limits.memory = "4Gi";

@@ -18,6 +18,25 @@ in {
       size = 2;
       requireSafeReplicaSize = false;
     };
+    # Rook takes each CSI container list as a YAML string (JSON is YAML). CPU requests sit at the observed 7d p95
+    # plus headroom; memory is restated at the chart defaults because the list replaces them wholesale.
+    csiResources = lib.mapAttrsToList (name: c: {
+      inherit name;
+      resource = {
+        requests = lib.filterAttrs (_: v: v != null) {inherit (c) cpu memory;};
+        limits.memory = c.limit;
+      };
+    });
+    sidecar = {
+      cpu = "20m";
+      memory = "128Mi";
+      limit = "256Mi";
+    };
+    plugin = cpu: {
+      inherit cpu;
+      memory = "512Mi";
+      limit = "1Gi";
+    };
   in {
     # radosgw: S3 API (signed requests, no UI), so no tile and no oauth2-proxy.
     portal.apps.rados.enable = false;
@@ -45,6 +64,36 @@ in {
             csi.resizer.tag = with pinned.images.csi-resizer; "${tag}@${digest}";
             csi.csiAddons.tag = with pinned.images.csiaddons-sidecar; "${tag}@${digest}";
             ceph-csi-operator.controllerManager.manager.image.tag = with pinned.images.ceph-csi-operator; "${tag}@${digest}";
+            # 200m requested, 104m at p95 over 7d.
+            resources.requests.cpu = "150m";
+            csi.csiRBDPluginResource = builtins.toJSON (csiResources {
+              driver-registrar = sidecar;
+              csi-rbdplugin = plugin "50m";
+              liveness-prometheus = sidecar;
+            });
+            csi.csiCephFSPluginResource = builtins.toJSON (csiResources {
+              driver-registrar = sidecar;
+              csi-cephfsplugin = plugin "50m";
+              liveness-prometheus = sidecar;
+            });
+            csi.csiRBDProvisionerResource = builtins.toJSON (csiResources {
+              csi-provisioner = sidecar;
+              csi-resizer = sidecar;
+              csi-attacher = sidecar;
+              csi-snapshotter = sidecar;
+              # The chart sets no CPU request on this one, only memory.
+              csi-rbdplugin = plugin null;
+              csi-omap-generator = plugin "50m";
+              liveness-prometheus = sidecar;
+            });
+            csi.csiCephFSProvisionerResource = builtins.toJSON (csiResources {
+              csi-provisioner = sidecar;
+              csi-resizer = sidecar;
+              csi-attacher = sidecar;
+              csi-snapshotter = sidecar;
+              csi-cephfsplugin = plugin "50m";
+              liveness-prometheus = sidecar;
+            });
             csi.cephFSKernelMountOptions = "ms_mode=prefer-crc";
             csi.enableCephfsDriver = true;
             csi.enableCephfsSnapshotter = true;
@@ -149,6 +198,15 @@ in {
             };
             # Recovery/backfill (e.g. draining an out OSD) yields to client IO.
             cephConfig.osd.osd_mclock_profile = "high_client_ops";
+            # CPU requests at the 7d p95 plus headroom (mon ~47m, mgr ~78m, the rest idle); the chart's memory
+            # requests and limits are left alone. They merge with the chart defaults, so only CPU is restated.
+            resources = lib.mapAttrs (_: cpu: {requests.cpu = cpu;}) {
+              mon = "150m";
+              mgr = "200m";
+              mgr-sidecar = "75m";
+              logcollector = "20m";
+              crashcollector = "20m";
+            };
             cleanupPolicy.wipeDevicesFromOtherClusters = true;
             csi.readAffinity.enabled = true;
             # Prometheus only selects monitors and rules labelled release=prometheus;

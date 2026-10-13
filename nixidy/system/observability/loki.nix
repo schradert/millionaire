@@ -34,6 +34,22 @@
           gateway.replicas = 1;
           read.replicas = 0;
           singleBinary.replicas = 1;
+          # The caches idle at ~1m CPU (7d p95) but the chart requests 500m each. Setting resources replaces the
+          # chart's whole block, so the memory it derives from allocatedMemory (1.2x) is restated unchanged.
+          chunksCache.resources = {
+            requests = {
+              cpu = "50m";
+              memory = "9830Mi";
+            };
+            limits.memory = "9830Mi";
+          };
+          resultsCache.resources = {
+            requests = {
+              cpu = "50m";
+              memory = "1229Mi";
+            };
+            limits.memory = "1229Mi";
+          };
           singleBinary.persistence.enabled = true;
           write.replicas = 0;
           loki = {
