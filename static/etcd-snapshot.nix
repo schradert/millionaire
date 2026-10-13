@@ -12,6 +12,7 @@
 {
   flake,
   config,
+  lib,
   pkgs,
   ...
 }: let
@@ -39,24 +40,28 @@
     '';
   };
 in {
-  systemd.services.etcd-snapshot-offsite = {
-    serviceConfig = {
-      Type = "oneshot";
-      ExecStart = "${snapshot}/bin/etcd-snapshot-offsite";
-      TimeoutStartSec = "30min";
-      Nice = 10;
-      IOSchedulingClass = "idle";
+  # Servers only: agents have no etcd and no /etc/rancher/rke2/rke2.yaml, so
+  # kubectl falls back to localhost:8080 and the unit fails every run.
+  systemd = lib.mkIf (config.services.rke2.role == "server") {
+    services.etcd-snapshot-offsite = {
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = "${snapshot}/bin/etcd-snapshot-offsite";
+        TimeoutStartSec = "30min";
+        Nice = 10;
+        IOSchedulingClass = "idle";
+      };
     };
-  };
-  # Every 6h; the stable per-host delay spreads the three servers out so their
-  # snapshots do not hit etcd together.
-  systemd.timers.etcd-snapshot-offsite = {
-    wantedBy = ["timers.target"];
-    timerConfig = {
-      OnCalendar = "*-*-* 00/6:00:00";
-      RandomizedDelaySec = "1h";
-      FixedRandomDelay = true;
-      Persistent = true;
+    # Every 6h; the stable per-host delay spreads the three servers out so their
+    # snapshots do not hit etcd together.
+    timers.etcd-snapshot-offsite = {
+      wantedBy = ["timers.target"];
+      timerConfig = {
+        OnCalendar = "*-*-* 00/6:00:00";
+        RandomizedDelaySec = "1h";
+        FixedRandomDelay = true;
+        Persistent = true;
+      };
     };
   };
 }
