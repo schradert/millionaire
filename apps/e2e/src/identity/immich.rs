@@ -30,10 +30,14 @@ impl Admin {
         ctx.http.request(m, format!("{}/api{path}", self.base)).header("x-api-key", &self.key)
     }
 
-    /// Users whose email carries a marker in scope: (id, email).
+    /// Users whose email carries a marker in scope: (id, email). A user deleted with `force` is
+    /// removed by a queued job and may still be listed, marked `deletedAt`: that counts as gone.
     pub async fn tagged_users(&self, ctx: &Ctx, scope: &Scope) -> R<Vec<(String, String)>> {
-        let v = get_json(self.req(ctx, Method::GET, "/admin/users?withDeleted=true"), APP, "list users").await?;
-        Ok(v.as_array().into_iter().flatten().filter_map(|u| Some((u["id"].as_str()?.to_string(), u["email"].as_str()?.to_string()))).filter(|(_, e)| scope.hit(e)).collect())
+        let v = get_json(self.req(ctx, Method::GET, "/admin/users"), APP, "list users").await?;
+        Ok(v.as_array().into_iter().flatten().filter(|u| u["deletedAt"].is_null())
+            .filter_map(|u| Some((u["id"].as_str()?.to_string(), u["email"].as_str()?.to_string())))
+            .filter(|(_, e)| scope.hit(e))
+            .collect())
     }
 
     /// Delete a tagged user at once, with everything it owns.

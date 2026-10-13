@@ -23,14 +23,14 @@ spec:
                 - name: DOMAIN
                   value: trdos.me
                 - name: E2E_IMAGE
-                  value: harbor.trdos.me/library/e2e:0.4.0@sha256:982afd7a9bb8fe6dc8e6632394c577e6031191d80792dea2fc68f0041f0a054c
+                  value: harbor.trdos.me/library/e2e:0.4.1@sha256:81fe02f33c345d3eb29c7ef02e6a14f157fa48d923a02af0370a5464ac7fef77
                 - name: E2E_REPORT_CONFIGMAP
                   value: e2e/e2e-last-report
                 - name: E2E_RUNNER
                   value: cluster
                 - name: FLOCCUS_REPO
                   value: tristan/bookmarks
-              image: harbor.trdos.me/library/e2e:0.4.0@sha256:982afd7a9bb8fe6dc8e6632394c577e6031191d80792dea2fc68f0041f0a054c
+              image: harbor.trdos.me/library/e2e:0.4.1@sha256:81fe02f33c345d3eb29c7ef02e6a14f157fa48d923a02af0370a5464ac7fef77
               name: e2e
               resources:
                 limits:

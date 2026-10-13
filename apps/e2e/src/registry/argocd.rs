@@ -33,7 +33,8 @@ impl Argo {
     }
 
     fn req(&self, ctx: &Ctx, m: Method, path: &str) -> reqwest::RequestBuilder {
-        ctx.http.request(m, format!("{}/api/v1{path}", self.base)).bearer_auth(&self.token)
+        // Argo CD answers 415 to a bodyless DELETE without a JSON content type.
+        ctx.http.request(m, format!("{}/api/v1{path}", self.base)).bearer_auth(&self.token).header("Content-Type", "application/json")
     }
 
     async fn app(&self, ctx: &Ctx, name: &str) -> R<Option<Value>> {
