@@ -133,8 +133,12 @@ class NixOS:
         ssh_id = f"-o IdentitiesOnly=yes -i {identity}" if identity else ""
         na_id = f"-i {identity} --ssh-option IdentitiesOnly=yes" if identity else ""
         if jump:
-            ssh_id += f" -J {jump}"
-            na_id += f" --ssh-option ProxyJump={jump}"
+            # The jump hop must use the dev host's own key: nixos-anywhere's
+            # temporary key (and `-J`, which reuses the target's identity) is
+            # refused by the edge box. A ProxyCommand carries the identity.
+            proxy = f"ssh -o IdentitiesOnly=yes -i {identity} -W %h:%p {jump}"
+            ssh_id += f" -o 'ProxyCommand={proxy}'"
+            na_id += f" --ssh-option 'ProxyCommand={proxy}'"
         host_key = (
             f"""
                 # Keep the host's ssh identity across the reinstall: it is a sops
