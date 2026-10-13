@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kubernetes-e2e-keycloak
+  namespace: identity
+rules:
+  - apiGroups:
+      - ""
+    resourceNames:
+      - e2e
+    resources:
+      - secrets
+    verbs:
+      - get
