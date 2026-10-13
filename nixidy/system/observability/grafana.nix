@@ -59,6 +59,9 @@
           # RWO volume: a rolling update deadlocks on Multi-Attach.
           deploymentStrategy.type = "Recreate";
           annotations."reloader.stakater.com/auto" = "true";
+          # Grafana only reads provisioned datasources at startup, and the sidecar's reload call is a
+          # 401 (basic auth is off), so a changed datasource needs a restart.
+          annotations."configmap.reloader.stakater.com/reload" = "grafana-datasource-loki";
           envFromConfigMaps = [{name = "grafana";}];
           envFromSecrets = [{name = "grafana-oidc";}];
           persistence.enabled = true;
@@ -134,6 +137,7 @@
               uid = "loki";
               type = "loki";
               access = "proxy";
+              editable = false;
               url = "http://loki-gateway.observability.svc.cluster.local";
               jsonData.httpHeaderName1 = "X-Scope-OrgID";
               secureJsonData.httpHeaderValue1 = "cluster";
