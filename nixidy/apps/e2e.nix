@@ -8,7 +8,8 @@
 # Nothing here is the owner's account:
 #   - Keycloak client `e2e` (confidential): its service account manages users, and its direct
 #     grant mints tokens for the run-tagged test users the flows create and delete. Its secret
-#     comes from the operator's Secret in `identity` through the `kubernetes-identity` store.
+#     comes from the operator's Secret in `identity` through its own `kubernetes-e2e-keycloak` store,
+#     which can read that one Secret and serves only the `e2e` namespace.
 #   - Forgejo's own `forgejo-admin` account creates and deletes run-tagged Forgejo users
 #     (Forgejo has no per-user token without a password).
 # Every object a run creates carries `e2e-<run>` and is removed (and checked gone) at the end.
@@ -114,6 +115,7 @@
         data.password = "password";
       };
     };
+    storeName = "kubernetes-${name}-keycloak";
     store = ns: {
       name = "kubernetes-${ns}";
       kind = "ClusterSecretStore";
@@ -156,6 +158,51 @@
     # manage-users alone covers everything the harness calls (create/get/list/delete users, their
     # groups); the view and query roles were redundant. It is still realm-wide: README todo 57.
     keycloak.serviceAccountRoles.${name} = ["manage-users"];
+
+    # Own store instead of `kubernetes-identity` (every Secret in identity): get on the one Secret.
+    applications.external-secrets.resources = {
+      serviceAccounts.${storeName} = {};
+      clusterSecretStores.${storeName}.spec = {
+        conditions = lib.toList {namespaces = [name];};
+        provider.kubernetes = {
+          auth.serviceAccount = {
+            name = storeName;
+            namespace = "security";
+          };
+          remoteNamespace = "identity";
+          server.caProvider = {
+            type = "ConfigMap";
+            name = "kube-root-ca.crt";
+            namespace = "security";
+            key = "ca.crt";
+          };
+        };
+      };
+    };
+    applications.keycloak.resources = {
+      roles.${storeName} = {
+        metadata.namespace = "identity";
+        rules = lib.toList {
+          apiGroups = [""];
+          resources = ["secrets"];
+          resourceNames = [name];
+          verbs = ["get"];
+        };
+      };
+      roleBindings.${storeName} = {
+        metadata.namespace = "identity";
+        roleRef = {
+          kind = "Role";
+          name = storeName;
+          apiGroup = "rbac.authorization.k8s.io";
+        };
+        subjects = lib.toList {
+          kind = "ServiceAccount";
+          name = storeName;
+          namespace = "security";
+        };
+      };
+    };
 
     applications.${name} = lib.mkIf (image != null) {
       namespace = name;
@@ -272,7 +319,10 @@
                 key = name;
                 property = key.prop;
               };
-              sourceRef.storeRef = store "identity";
+              sourceRef.storeRef = {
+                name = storeName;
+                kind = "ClusterSecretStore";
+              };
             }) [
               {
                 var = "clientId";
