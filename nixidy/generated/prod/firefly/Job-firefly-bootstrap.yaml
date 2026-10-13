@@ -18,6 +18,8 @@ spec:
           env:
             - name: ADMIN_USER
               value: tristan
+            - name: E2E_USER
+              value: e2e@e2e.trdos.me
             - name: APP_ENV
               value: production
             - name: LOG_CHANNEL

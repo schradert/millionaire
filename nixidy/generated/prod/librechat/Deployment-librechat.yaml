@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 59c5ccecec82d89263873f744264bf64e9b97fd13ec5f3963819a3d0d09412d9
+        checksum/configMaps: b1d346b445a4cc6bfafa54a6718e97761bf11616a01a4ff22406ebe33e31852a
       labels:
         app.kubernetes.io/controller: librechat
         app.kubernetes.io/instance: librechat

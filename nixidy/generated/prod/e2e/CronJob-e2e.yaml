@@ -71,11 +71,23 @@ spec:
                 - mountPath: /secrets/e2e-contextforge
                   name: e2e-contextforge
                   readOnly: true
+                - mountPath: /secrets/e2e-firefly
+                  name: e2e-firefly
+                  readOnly: true
                 - mountPath: /secrets/e2e-harbor
                   name: e2e-harbor
                   readOnly: true
+                - mountPath: /secrets/e2e-immich
+                  name: e2e-immich
+                  readOnly: true
                 - mountPath: /secrets/e2e-miniflux
                   name: e2e-miniflux
+                  readOnly: true
+                - mountPath: /secrets/e2e-ryot
+                  name: e2e-ryot
+                  readOnly: true
+                - mountPath: /secrets/e2e-shoko
+                  name: e2e-shoko
                   readOnly: true
                 - mountPath: /secrets/e2e-syncthing
                   name: e2e-syncthing
@@ -130,14 +142,30 @@ spec:
               secret:
                 optional: true
                 secretName: e2e-contextforge
+            - name: e2e-firefly
+              secret:
+                optional: true
+                secretName: e2e-firefly
             - name: e2e-harbor
               secret:
                 optional: true
                 secretName: e2e-harbor
+            - name: e2e-immich
+              secret:
+                optional: true
+                secretName: e2e-immich
             - name: e2e-miniflux
               secret:
                 optional: true
                 secretName: e2e-miniflux
+            - name: e2e-ryot
+              secret:
+                optional: true
+                secretName: e2e-ryot
+            - name: e2e-shoko
+              secret:
+                optional: true
+                secretName: e2e-shoko
             - name: e2e-syncthing
               secret:
                 optional: true

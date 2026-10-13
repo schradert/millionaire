@@ -28,6 +28,7 @@ data:
       allowedDomains:
       - trdos.me
       - pm.me
+      - e2e.trdos.me
       socialLogins:
       - openid
     version: 1.2.1
