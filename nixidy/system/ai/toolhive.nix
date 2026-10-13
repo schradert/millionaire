@@ -1,7 +1,11 @@
 {config, ...}: let
   inherit (config.canivete.meta) domain;
 in {
-  nixidy = {pinned, ...}: let
+  nixidy = {
+    lib,
+    pinned,
+    ...
+  }: let
     crdChart = pinned.charts.toolhive-operator-crds;
   in {
     # Keycloak OIDC client for ToolHive-managed MCP servers
@@ -43,6 +47,13 @@ in {
             vmcpImage = with pinned.images.toolhive-vmcp; "${repository}:${tag}@${digest}";
           };
           registryAPI.image = with pinned.images.thv-registry-api; "${repository}:${tag}@${digest}";
+        };
+      };
+      resources.podMonitors.toolhive-operator.spec = {
+        selector.matchLabels."app.kubernetes.io/name" = "toolhive-operator";
+        podMetricsEndpoints = lib.toList {
+          port = "metrics";
+          interval = "1m";
         };
       };
       # TODO: author MCPServer/VirtualMCPServer/MCPExternalAuthConfig resources using

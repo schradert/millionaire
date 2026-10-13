@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: argocd
+  namespace: cicd
+spec:
+  podMetricsEndpoints:
+    - interval: 30s
+      port: metrics
+  selector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values:
+          - argocd-server
+          - argocd-repo-server
+          - argocd-applicationset-controller
+          - argocd-notifications-controller
+    matchLabels:
+      app.kubernetes.io/instance: argod

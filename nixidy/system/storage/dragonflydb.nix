@@ -31,6 +31,18 @@
           # grafanaDashboard.grafanaOperator.enabled = true;
         };
       };
+      # Every Dragonfly instance (CNPG-style, one per app namespace) serves /metrics on its admin port.
+      resources.podMonitors.dragonfly.spec = {
+        namespaceSelector.any = true;
+        selector.matchLabels = {
+          "app.kubernetes.io/name" = "dragonfly";
+          "app.kubernetes.io/part-of" = "dragonfly";
+        };
+        podMetricsEndpoints = lib.toList {
+          port = "admin";
+          interval = "1m";
+        };
+      };
       # The chart's monitor scrapes :8080, but the manager binds metrics to 127.0.0.1;
       # they are only served by kube-rbac-proxy on https :8443 (Prometheus' token is
       # authorized via its /metrics nonResourceURL rule).

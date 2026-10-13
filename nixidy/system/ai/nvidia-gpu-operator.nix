@@ -1,5 +1,9 @@
 {...}: {
-  nixidy = {pinned, ...}: let
+  nixidy = {
+    lib,
+    pinned,
+    ...
+  }: let
     chart = pinned.charts.gpu-operator;
     v = i: "${i.tag}@${i.digest}";
   in {
@@ -56,6 +60,13 @@
           # Disable GDS and GDRCopy (not needed for inference)
           gds.enabled = false;
           gdrcopy.enabled = false;
+        };
+      };
+      resources.podMonitors.node-feature-discovery.spec = {
+        selector.matchLabels."app.kubernetes.io/name" = "node-feature-discovery";
+        podMetricsEndpoints = lib.toList {
+          port = "metrics";
+          interval = "1m";
         };
       };
     };
