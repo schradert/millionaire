@@ -206,7 +206,11 @@ in {
         replicas = 1;
         # Dragonfly sizes itself to the node's cores (32 here) and refuses to
         # start without 256MiB per thread.
-        args = ["--proactor_threads" "2"];
+        #
+        # Immich's BullMQ queues run Lua scripts that touch keys they did not declare; Dragonfly
+        # refuses that by default ("script tried accessing undeclared key", every background job
+        # failed to enqueue: uploads answered 500, the version check never ran).
+        args = ["--proactor_threads" "2" "--default_lua_flags=allow-undeclared-keys"];
         resources.requests.memory = "512Mi";
         resources.limits.memory = "1Gi";
       };
