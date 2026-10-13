@@ -35,6 +35,10 @@ data:
       webhook_configs:
       - send_resolved: true
         url: https://ntfy.trdos.me/e2e-alerts?template=alertmanager
+    - name: e2e-jobs-ntfy
+      webhook_configs:
+      - send_resolved: true
+        url: https://ntfy.trdos.me/e2e?template=alertmanager&priority=2
     - name: gatus-heartbeat
       webhook_configs:
       - http_config:
@@ -66,6 +70,11 @@ data:
         - alertname = E2EAlert
         receiver: e2e-ntfy
         repeat_interval: 1h
+      - matchers:
+        - alertname = KubeJobFailed
+        - namespace =~ "e2e|media"
+        - job_name =~ "(media-)?e2e.*"
+        receiver: e2e-jobs-ntfy
       - group_interval: 1m
         group_wait: 0s
         matchers:

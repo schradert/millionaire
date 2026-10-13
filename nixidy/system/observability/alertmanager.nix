@@ -65,6 +65,12 @@
                   group_interval = "10s";
                   repeat_interval = "1h";
                 }
+                # A failed e2e Job (nightly or `e2e run`, ns e2e / media) is a test result, not an
+                # outage: low priority on its own topic, still visible. E2ESuiteStale stays on `alerts`.
+                {
+                  matchers = ["alertname = KubeJobFailed" "namespace =~ \"e2e|media\"" "job_name =~ \"(media-)?e2e.*\""];
+                  receiver = "e2e-jobs-ntfy";
+                }
                 # Watchdog always fires; its re-notification is a heartbeat for
                 # Gatus on hyena, which alerts via ntfy when it stops.
                 {
@@ -116,6 +122,15 @@
                 webhook_configs = [
                   {
                     url = "https://ntfy.${domain}/e2e-alerts?template=alertmanager";
+                    send_resolved = true;
+                  }
+                ];
+              }
+              {
+                name = "e2e-jobs-ntfy";
+                webhook_configs = [
+                  {
+                    url = "https://ntfy.${domain}/e2e?template=alertmanager&priority=2";
                     send_resolved = true;
                   }
                 ];
