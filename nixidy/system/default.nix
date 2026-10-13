@@ -39,6 +39,7 @@
     ./observability/grafana.nix
     ./observability/kube-state-metrics.nix
     ./observability/loki.nix
+    ./observability/mimir.nix
     ./observability/node-exporter.nix
     ./observability/prometheus.nix
     ./observability/smartctl-exporter.nix

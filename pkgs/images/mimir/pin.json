@@ -1,0 +1,9 @@
+{
+  "version": "3.2.1",
+  "digest": "sha256:92838f113ba54230014e79bc812e57ca90bb9ebc06e665f59e4f700098c2dd04",
+  "source": {
+    "type": "oci-tag",
+    "repository": "docker.io/grafana/mimir"
+  },
+  "follows": "charts/mimir-distributed"
+}

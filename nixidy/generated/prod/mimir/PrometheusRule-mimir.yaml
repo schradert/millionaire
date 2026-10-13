@@ -1,0 +1,32 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    release: prometheus
+  name: mimir
+  namespace: observability
+spec:
+  groups:
+    - name: mimir
+      rules:
+        - alert: MimirIngestionFailing
+          annotations:
+            summary: 'Mimir is failing to ingest samples: remote-write failures or discarded samples for 15m'
+          expr: sum(rate(prometheus_remote_storage_samples_failed_total{url=~".*mimir.*"}[10m])) > 0 or sum(rate(cortex_discarded_samples_total[10m])) > 0
+          for: 15m
+          labels:
+            severity: warning
+        - alert: MimirCompactorFailing
+          annotations:
+            summary: Mimir compactor has failed runs or has not completed one in 6h; blocks stay uncompacted and the bucket grows faster
+          expr: increase(cortex_compactor_runs_failed_total[2h]) > 0 or time() - cortex_compactor_last_successful_run_timestamp_seconds > 6 * 3600
+          for: 15m
+          labels:
+            severity: warning
+        - alert: MimirBucketGrowth
+          annotations:
+            summary: Mimir uploads more than 3 GB/day of new blocks to the bucket (retention is unlimited by design)
+          expr: sum(deriv(cortex_ingester_shipper_uploaded_bytes_total[1h])) * 86400 > 3e9
+          for: 1h
+          labels:
+            severity: info
