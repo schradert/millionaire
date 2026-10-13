@@ -4,20 +4,24 @@
 # Shared by the cluster nodes (k8s-node.nix) and the cloud-burst worker image.
 {
   nixpkgs.overlays = [
-    (_final: prev: {
-      rke2 = prev.rke2.overrideAttrs (old: {
-        env =
-          (old.env or {})
-          // {
-            GOEXPERIMENT = "";
-            GODEBUG = "fips140=only";
-            GOFIPS140 = "latest";
-          };
-        installCheckPhase = ''
-          runHook preInstallCheck
-          runHook postInstallCheck
-        '';
-      });
+    (_final: prev: let
+      fips = pkg:
+        pkg.overrideAttrs (old: {
+          env =
+            (old.env or {})
+            // {
+              GOEXPERIMENT = "";
+              GODEBUG = "fips140=only";
+              GOFIPS140 = "latest";
+            };
+          installCheckPhase = ''
+            runHook preInstallCheck
+            runHook postInstallCheck
+          '';
+        });
+    in {
+      rke2 = fips prev.rke2;
+      rke2_1_34 = fips prev.rke2_1_34;
     })
   ];
 }

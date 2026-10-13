@@ -10,6 +10,8 @@
 }: {
   imports = [./builder.nix ./tailnet.nix ./rke2-fips-overlay.nix ./etcd-watchdog.nix ./etcd-snapshot.nix] ++ (with flake.inputs.srvos.nixosModules; [roles-nix-remote-builder]);
   canivete.kubernetes.enable = true;
+  # Held at 1.34: 1.35 kubelets would outrun sirver's apiserver (skew); deferred until sirver's disk is replaced.
+  services.rke2.package = pkgs.rke2_1_34;
   # Join the cluster tailnet so cloud burst workers can reach the RKE2
   # supervisor and pod traffic routes natively across sites (no MagicDNS,
   # no accept-routes — see tailnet.nix for the routing rationale).
