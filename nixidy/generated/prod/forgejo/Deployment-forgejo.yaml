@@ -1,6 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
   labels:
     app: forgejo
     app.kubernetes.io/instance: forgejo
@@ -79,6 +81,10 @@ spec:
               name: temp
             - mountPath: /data
               name: data
+            - mountPath: /data/gitea/templates/custom/header.tmpl
+              name: faro
+              readOnly: true
+              subPath: header.tmpl
       initContainers:
         - command:
             - /usr/sbin/init_directory_structure.sh
@@ -202,6 +208,9 @@ spec:
           secret:
             defaultMode: 110
             secretName: forgejo
+        - configMap:
+            name: forgejo-faro
+          name: faro
         - name: inline-config-sources
           secret:
             secretName: forgejo-inline-config

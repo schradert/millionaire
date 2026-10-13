@@ -122,6 +122,12 @@ data:
       name: faro
       url: https://faro.trdos.me/collect
     - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: faro-sdk
+      url: https://faro.trdos.me/sdk/faro-web-sdk-2.12.1.iife.js
+    - conditions:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m

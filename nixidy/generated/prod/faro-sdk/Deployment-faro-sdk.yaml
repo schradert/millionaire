@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: faro-sdk
+    app.kubernetes.io/instance: faro-sdk
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: faro-sdk
+  name: faro-sdk
+  namespace: observability
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: faro-sdk
+      app.kubernetes.io/instance: faro-sdk
+      app.kubernetes.io/name: faro-sdk
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: bd7dcdc87e42d4b081b589e398eabe1c90191406c96791dd89fb6546bfce38a5
+      labels:
+        app.kubernetes.io/controller: faro-sdk
+        app.kubernetes.io/instance: faro-sdk
+        app.kubernetes.io/name: faro-sdk
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - image: nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 80
+            timeoutSeconds: 1
+          name: nginx
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 80
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 80
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /usr/share/nginx/html
+              name: sdk
+              readOnly: true
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: faro-sdk
+      volumes:
+        - configMap:
+            name: faro-sdk
+          name: sdk
