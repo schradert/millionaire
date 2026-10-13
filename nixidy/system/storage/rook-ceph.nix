@@ -301,14 +301,31 @@ in {
                     continue
                   fi
                   ceph osd out "$id"
-                  until ceph osd safe-to-destroy "osd.$id" >/dev/null 2>&1; do
-                    echo "osd.$id: waiting for its data to migrate"
+                  # A down OSD (one that kept the noup flag from an earlier purge,
+                  # say) never reports stats, so safe-to-destroy answers EAGAIN
+                  # forever; once every PG is active+clean its data is elsewhere
+                  # and the removal is forced. The balancer is paused meanwhile so
+                  # it does not keep adding remaps during the drain.
+                  ceph balancer off
+                  force=false
+                  while true; do
+                    if ceph osd safe-to-destroy "osd.$id" >/dev/null 2>&1; then break; fi
+                    clean=$(ceph pg stat | grep -oE "[0-9]+ active\+clean" | head -1 | cut -d" " -f1)
+                    total=$(ceph pg stat | grep -oE "^[0-9]+ pgs" | cut -d" " -f1)
+                    if [ -n "$clean" ] && [ "$clean" = "$total" ] && ceph osd dump | grep -qE "^osd.$id down out "; then
+                      echo "osd.$id: down, out, every PG active+clean: forcing the removal"
+                      force=true
+                      break
+                    fi
+                    echo "osd.$id: waiting for its data to migrate ($clean/$total PGs clean)"
                     sleep 30
                   done
                   ceph osd add-noup "osd.$id"
                   ceph osd down "$id"
                   sleep 5
-                  rook ceph osd remove --osd-ids "$id" --preserve-pvc false --force-osd-removal false || rc=$?
+                  rook ceph osd remove --osd-ids "$id" --preserve-pvc false --force-osd-removal "$force" || rc=$?
+                  ceph osd rm-noup "osd.$id" 2>/dev/null || true
+                  ceph balancer on
                 done
                 exit $rc
               '';
@@ -320,7 +337,8 @@ in {
               };
               spec = {
                 backoffLimit = 3;
-                activeDeadlineSeconds = 7200;
+                # A drain on these HDD nodes can take most of a day.
+                activeDeadlineSeconds = 86400;
                 template.spec = {
                   restartPolicy = "OnFailure";
                   serviceAccountName = "rook-ceph-purge-osd";
