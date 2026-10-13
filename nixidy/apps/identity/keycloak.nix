@@ -46,9 +46,10 @@ in {
                 KC_HEALTH_ENABLED = "true";
                 KC_METRICS_ENABLED = "true";
                 KC_TRACING_ENABLED = "true";
-                # Runtime options: spans (OTLP/gRPC) to Alloy. 10% of requests; one that arrives with a
-                # sampled traceparent (e2e) is always kept.
+                # Spans (OTLP/gRPC) to Alloy. Keycloak's default sampler (traceidratio) ignores the caller's
+                # decision, which kept 10% of the requests e2e traced; parent-based keeps those and samples the rest.
                 KC_TRACING_ENDPOINT = "http://alloy.observability.svc.cluster.local:4317";
+                KC_TRACING_SAMPLER_TYPE = "parentbased_traceidratio";
                 KC_TRACING_SAMPLER_RATIO = "0.1";
                 KC_FEATURES = "hostname:v2";
                 KC_BOOTSTRAP_ADMIN_USERNAME = "admin";
