@@ -90,6 +90,12 @@ The image is `harbor.trdos.me/library/e2e` (`image publish e2e`, then add `pkgs/
 | storage | `ceph-filesystem` | PVC `<tag>-fs` on `ceph-filesystem` (ReadWriteMany), Pods `<tag>-fs-*` | a Pod writes; a second holds the volume while a third reads | read-back equal while the other Pod still mounts it | same |
 | observability | `prometheus-pod` | tagged Pod `<tag>-obs` | kube-state-metrics, Prometheus scrape | `up` for kube-state-metrics, an Alertmanager discovered, `kube_pod_info` and `kube_pod_status_phase` for the Pod appear (up to 240 s) | Pod deleted and polled until gone; series go stale by themselves |
 | observability | `loki-roundtrip` | Pod `<tag>-log` pushes a line to stream `{app="e2e", e2e="<tag>"}` in Loki tenant `e2e` | Loki push API from inside the cluster | `query_range` returns the line with the stream labels; another tenant does not see it | Pod deleted; the line ages out with Loki's retention (no immediate delete) |
+| files | `baikal-dav` | calendar `<tag>-cal` + event, address book `<tag>-book` + contact (never the `org` calendar) | MKCALENDAR/MKCOL, PUT, CalDAV/CardDAV REPORT queries (Digest login as the DAV user) | both found by the REPORTs; `/.well-known/caldav` redirects | event and contact deleted and REPORTs empty; both collections deleted, PROPFIND lists neither |
+| files | `syncthing-folder` | device `<tag>-device` and folder `<tag>` shared with it on the hub (REST, hub API key + admin bearer through oauth2-proxy) | config read back, folder scan | folder `idle` without errors, device listed unconnected, no restart required | both deleted, absent from the config (the folder's standing empty directory `/var/syncthing/e2e-scratch` stays) |
+| files | `atuin-sync` | record tagged `<tag>` in the dedicated `e2e` account (registration is closed; app-bootstrap makes the account) | a second login pulls it | index, id and payload equal | the account's store is deleted (it holds only test records), index empty |
+| home | `miniflux-feed` | user `<tag>` (made by the break-glass admin), category and feed served by the Job | Miniflux fetches it, then a forced refresh | entry appears, a second entry after the refresh | feed deleted (404), then the user (admin) |
+| home | `spoolman-inventory` | vendor, filament and spool tagged `<tag>` (oauth2-proxy bearer) | read back, usage update | links, remaining weight | all three deleted, 404 |
+| finance | `actual-budget` | budget file `<tag>` (stand-in bytes) and a CRDT transaction through `/sync/sync` | a second sync from time zero | file listed and downloaded equal, the transaction comes back | file deleted, no longer listed (the server keeps the tiny emptied group database) |
 | media | `sso` ... `prowlarr`, `vpn-*` | see `e2e list` | Servarr, Jellyfin, Navidrome, Kavita, Komga, ... | per flow | markers on hidden folders, libraries, tags, API keys |
 
 ## Flow matrix
@@ -120,18 +126,18 @@ Every service in `docs/connections.md`. **Status:** implemented · planned · ma
 | autobrr, shoko, ryot | media | tagged filter, series, tracked item through the API → delete | planned | S (ryot: K after OIDC) |
 | owncast, jitsi | media | RTMP test stream into owncast (needs ffmpeg in the image) → HLS playlist; jitsi web and BOSH smoke | planned | - |
 | immich | files | authorization URL, Keycloak login, redirect back with the code (`identity/oidc-immich`, done). The callback creates an Immich user that only another admin can delete (Immich refuses deleting yourself and the last admin) and the only other admin is the owner's, so a full login → API key → upload a generated image → thumbnail → delete asset needs a dedicated service admin from `app-bootstrap` first | redirect implemented; full login blocked | K (login), S (service admin) |
-| baikal | files | tagged calendar event and contact over CalDAV/CardDAV → REPORT → delete | planned | S (`baikal/admin-password`) |
-| syncthing | files | tagged folder on the hub through the REST API; a test device pod syncs a file | planned | S (API key) |
+| baikal | files | tagged calendar event and contact over CalDAV/CardDAV → REPORT → delete | implemented | S (DAV user `admin`) |
+| syncthing | files | tagged device and folder on the hub through the REST API (done); a test peer that syncs a file needs the syncthing binary in the image and an ingress rule for port 22000 on `home` (not done) | folder lifecycle implemented; peer sync planned | S (API key) + K |
 | webdav (dav) | files | tagged file PUT/GET/DELETE with a bearer token through oauth2-proxy | planned | K |
 | kosync | files | tagged KOReader account → push and pull progress → delete | planned | - |
-| atuin | files | tagged account → sync one history record → delete the account | planned | - (if registration is open) else S |
+| atuin | files | registration is closed, so the `e2e` account (app-bootstrap `users`) pushes a tagged record, a second login pulls it, the store is deleted | implemented | S (`atuin-e2e`) |
 | home-assistant | home | OIDC login up to the one-time code (`identity/oidc-home-assistant`, done; redeeming the code creates a user that only a websocket admin can delete); tagged helper entity through the REST API → state change → delete | login to the code implemented; API planned | K for login, S (long-lived token) for the API |
 | homepage, homarr, dashy, android | home | every portal tile's URL answers (200 or the Keycloak redirect) | planned | K |
 | chirpstack, excalidraw, frigate, logseq, rclone, siyuan, zigbee2mqtt, zwave-js-ui | home | behind oauth2-proxy: admin bearer passes, family bearer is refused where gated; chirpstack gRPC creates and deletes a tagged device | planned | K; S for chirpstack gRPC |
-| miniflux | home | tagged category and feed (served by the Job) → refresh → entry appears → delete | planned | S (a dedicated Miniflux admin, not tristan's) |
+| miniflux | home | tagged user, category and feed (served by the Job) → refresh → entry appears → delete; needs `FETCHER_ALLOW_PRIVATE_NETWORKS=1` on Miniflux (the flow skips with that message if it is off) | implemented | S (break-glass `admin`, only to make and delete the tagged user) |
 | music-assistant | home | smoke through oauth2-proxy | planned | K |
-| mainsail, obico, spoolman | home | spoolman: tagged filament and spool through the API → delete; others smoke | planned | K |
-| actual | finance | tagged budget file through the sync server → transaction → delete | planned | S (server password) |
+| mainsail, obico, spoolman | home | spoolman: tagged vendor, filament and spool through the API → delete (done); others smoke | spoolman implemented; others planned | K |
+| actual | finance | tagged budget file and CRDT transaction through the sync server → second client pulls it → delete | implemented | S (server password) |
 | firefly | finance | tagged account and transaction (personal access token, in-cluster) → read → delete; importer opens without a token | planned | S |
 | bifrost | ai | chat completion through the gateway with a bearer token to a cheap or mock provider, tagged in the request metadata | planned | K (and the provider key already in the cluster) |
 | contextforge | ai | `/mcp` tool list with a bearer token; tagged virtual-server tool registered, called, deleted | planned | K |

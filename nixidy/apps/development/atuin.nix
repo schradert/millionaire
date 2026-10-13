@@ -14,6 +14,9 @@ in {
     # Accounts the bootstrap Job creates: name -> email. Each gets a generated
     # password, pushed to Bitwarden at atuin/<name>/password.
     users.tristan = people.my.profiles.personal.email;
+    # The e2e harness's account (apps/e2e files/atuin-sync): registration is closed, so it comes
+    # from here too. It holds only run-tagged test records.
+    users.e2e = "e2e@e2e.${domain}";
     dbUri.valueFrom.secretKeyRef = {
       name = "atuin-app";
       key = "uri";

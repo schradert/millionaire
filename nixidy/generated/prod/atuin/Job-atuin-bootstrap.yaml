@@ -19,6 +19,29 @@ spec:
             - name: ATUIN_URL
               value: http://127.0.0.1:8888
             - name: ATUIN_USER
+              value: e2e
+            - name: ATUIN_EMAIL
+              value: e2e@e2e.trdos.me
+            - name: ATUIN_PASSWORD_FILE
+              value: /secrets/e2e/password
+          image: harbor.trdos.me/library/app-bootstrap:0.19.6@sha256:e6ce713774b09d7c0aaf33951a9a03ec77e56b725cbbd011707ca1c847a06f4c
+          name: bootstrap-e2e
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /secrets/e2e
+              name: password-e2e
+              readOnly: true
+        - args:
+            - atuin
+          env:
+            - name: ATUIN_URL
+              value: http://127.0.0.1:8888
+            - name: ATUIN_USER
               value: tristan
             - name: ATUIN_EMAIL
               value: t0rdos@pm.me
@@ -73,6 +96,9 @@ spec:
       volumes:
         - emptyDir: {}
           name: config
+        - name: password-e2e
+          secret:
+            secretName: atuin-e2e
         - name: password-tristan
           secret:
             secretName: atuin-tristan

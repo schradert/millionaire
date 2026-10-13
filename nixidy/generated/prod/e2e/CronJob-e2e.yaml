@@ -53,6 +53,21 @@ spec:
                 - mountPath: /secrets/e2e-forgejo-admin
                   name: e2e-forgejo-admin
                   readOnly: true
+                - mountPath: /secrets/e2e-actual
+                  name: e2e-actual
+                  readOnly: true
+                - mountPath: /secrets/e2e-atuin
+                  name: e2e-atuin
+                  readOnly: true
+                - mountPath: /secrets/e2e-baikal
+                  name: e2e-baikal
+                  readOnly: true
+                - mountPath: /secrets/e2e-miniflux
+                  name: e2e-miniflux
+                  readOnly: true
+                - mountPath: /secrets/e2e-syncthing
+                  name: e2e-syncthing
+                  readOnly: true
           hostAliases:
             - hostnames:
                 - ntfy.trdos.me
@@ -76,6 +91,26 @@ spec:
               secret:
                 optional: true
                 secretName: e2e-forgejo-admin
+            - name: e2e-actual
+              secret:
+                optional: true
+                secretName: e2e-actual
+            - name: e2e-atuin
+              secret:
+                optional: true
+                secretName: e2e-atuin
+            - name: e2e-baikal
+              secret:
+                optional: true
+                secretName: e2e-baikal
+            - name: e2e-miniflux
+              secret:
+                optional: true
+                secretName: e2e-miniflux
+            - name: e2e-syncthing
+              secret:
+                optional: true
+                secretName: e2e-syncthing
       ttlSecondsAfterFinished: 86400
   schedule: 15 3 * * *
   startingDeadlineSeconds: 3600

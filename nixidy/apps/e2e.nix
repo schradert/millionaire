@@ -23,7 +23,49 @@
     report = "e2e-last-report";
     image = pinned.images.e2e or null;
     # Secret name -> mounted at /secrets/<name>.
-    secrets = ["e2e-keycloak" "e2e-forgejo-admin"];
+    secrets = ["e2e-keycloak" "e2e-forgejo-admin"] ++ lib.attrNames serviceSecrets;
+    # Service credentials the apps' own bootstrap already makes: secret -> store namespace, the
+    # app's Secret, and {file = key in that Secret}. Mounted at /secrets/<secret>/<file>.
+    fromApp = s: {
+      target.template.data = lib.mapAttrs (file: _: "{{ .${file} }}") s.data;
+      data = lib.mapAttrsToList (file: prop: {
+        secretKey = file;
+        remoteRef = {
+          inherit (s) key;
+          property = prop;
+        };
+        sourceRef.storeRef = store s.ns;
+      }) s.data;
+    };
+    serviceSecrets = {
+      e2e-baikal = {
+        ns = "home";
+        key = "baikal";
+        data.password = "BAIKAL_ADMIN_PASSWORD";
+      };
+      e2e-syncthing = {
+        ns = "home";
+        key = "syncthing";
+        data.apikey = "STGUIAPIKEY";
+      };
+      # Break-glass admins: the flows only create and delete run-tagged users/files with them.
+      e2e-miniflux = {
+        ns = "home";
+        key = "miniflux-admin";
+        data.password = "password";
+      };
+      e2e-actual = {
+        ns = "finance";
+        key = "actual-admin";
+        data.password = "password";
+      };
+      # The `e2e` Atuin account (atuin.nix users): registration is closed on the server.
+      e2e-atuin = {
+        ns = "development";
+        key = "atuin-e2e";
+        data.password = "password";
+      };
+    };
     store = ns: {
       name = "kubernetes-${ns}";
       kind = "ClusterSecretStore";
@@ -173,6 +215,11 @@
             };
           };
         };
+        externalSecrets.e2e-baikal.spec = fromApp serviceSecrets.e2e-baikal;
+        externalSecrets.e2e-syncthing.spec = fromApp serviceSecrets.e2e-syncthing;
+        externalSecrets.e2e-atuin.spec = fromApp serviceSecrets.e2e-atuin;
+        externalSecrets.e2e-miniflux.spec = fromApp serviceSecrets.e2e-miniflux;
+        externalSecrets.e2e-actual.spec = fromApp serviceSecrets.e2e-actual;
         cronJobs.${name}.spec = {
           schedule = "15 3 * * *";
           timeZone = "Etc/UTC";

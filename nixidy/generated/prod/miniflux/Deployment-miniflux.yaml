@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: ccda8c09e7746a3dc677704b9bcf92205ec03bf9bcf1907aeb19af95a0a2ba85
+        checksum/configMaps: 923e0b43a394cba34b1d3b8b29bf1a69533a30b54eca4f0873c2f27a465c36e4
       labels:
         app.kubernetes.io/controller: miniflux
         app.kubernetes.io/instance: miniflux
