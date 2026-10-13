@@ -5,6 +5,11 @@
 # because there's typically only one ST-Link plugged in.
 runner = "probe-rs run --chip STM32F446RETx --probe 0483:374b"
 
+[env]
+# defmt compiles out everything below `error` unless this is set; without it
+# `probe-rs run` shows no logs.
+DEFMT_LOG = "info"
+
 [build]
 target = "thumbv7em-none-eabihf"
 rustflags = ["-C", "link-arg=-Tlink.x", "-C", "link-arg=-Tdefmt.x"]
