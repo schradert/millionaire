@@ -43,6 +43,8 @@ in {
           realm = "default";
           displayName = "Default";
           enabled = true;
+          # Fine-grained admin permissions v2 (keycloak-auth.nix groupAdmins).
+          adminPermissionsEnabled = true;
           registrationAllowed = false;
           loginWithEmailAllowed = true;
           duplicateEmailsAllowed = false;
