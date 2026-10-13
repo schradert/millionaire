@@ -73,6 +73,23 @@
               scrapeConfigSelectorNilUsesHelmValues = false;
               # Tempo's metrics-generator remote-writes service-graph and span metrics (tempo.nix).
               enableRemoteWriteReceiver = true;
+              # Everything is also written to Mimir (mimir.nix), the long-term store with no retention cap.
+              # Alerting and recording rules keep evaluating here. ~19k samples/s: 2-20 shards of 2000-sample
+              # batches leave room for a Mimir restart or a slow object store without dropping samples
+              # (the WAL covers ~2h). writeRelabelConfigs would drop series before they are stored forever;
+              # none for now.
+              remoteWrite = lib.toList {
+                url = "http://mimir-distributor.observability.svc.cluster.local:8080/api/v1/push";
+                name = "mimir";
+                remoteTimeout = "30s";
+                queueConfig = {
+                  capacity = 10000;
+                  minShards = 2;
+                  maxShards = 20;
+                  maxSamplesPerSend = 2000;
+                  batchSendDeadline = "5s";
+                };
+              };
               # ~19k samples/s over ~430k series fills ~1-1.8 GB/day, so 60d is ~60-105 GB. The size cap sits
               # below the volume, or a full disk crashloops WAL replay; it is the real limit if growth outpaces 1 GB/day.
               retention = "60d";

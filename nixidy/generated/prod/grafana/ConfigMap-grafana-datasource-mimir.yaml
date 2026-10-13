@@ -1,0 +1,9 @@
+apiVersion: v1
+data:
+  mimir.yaml: '{"apiVersion":1,"datasources":[{"access":"proxy","editable":false,"isDefault":true,"jsonData":{"httpMethod":"POST","manageAlerts":false,"prometheusType":"Mimir","timeInterval":"30s"},"name":"Mimir","type":"prometheus","uid":"mimir","url":"http://mimir-query-frontend.observability.svc.cluster.local:8080/prometheus"}]}'
+kind: ConfigMap
+metadata:
+  labels:
+    grafana_datasource: "1"
+  name: grafana-datasource-mimir
+  namespace: observability

@@ -61,7 +61,7 @@
           annotations."reloader.stakater.com/auto" = "true";
           # Grafana only reads provisioned datasources at startup, and the sidecar's reload call is a
           # 401 (basic auth is off), so a changed datasource needs a restart.
-          annotations."configmap.reloader.stakater.com/reload" = "grafana-datasource-loki,grafana-datasource-tempo,grafana-datasource-prometheus,grafana-datasource-alertmanager";
+          annotations."configmap.reloader.stakater.com/reload" = "grafana-datasource-loki,grafana-datasource-tempo,grafana-datasource-prometheus,grafana-datasource-mimir,grafana-datasource-alertmanager";
           envFromConfigMaps = [{name = "grafana";}];
           envFromSecrets = [{name = "grafana-oidc";}];
           persistence.enabled = true;
@@ -223,6 +223,31 @@
             };
           };
         };
+        # Long-term metrics (mimir.nix): the default datasource, so any range works. Prometheus above holds
+        # only the recent buffer and evaluates the alerting rules; it stays selectable. Mimir runs single
+        # tenant (no header). Dashboards with a datasource variable default to this one.
+        configMaps.grafana-datasource-mimir = {
+          metadata.labels.grafana_datasource = "1";
+          data."mimir.yaml" = builtins.toJSON {
+            apiVersion = 1;
+            datasources = lib.toList {
+              name = "Mimir";
+              uid = "mimir";
+              type = "prometheus";
+              access = "proxy";
+              isDefault = true;
+              editable = false;
+              url = "http://mimir-query-frontend.observability.svc.cluster.local:8080/prometheus";
+              jsonData = {
+                httpMethod = "POST";
+                timeInterval = "30s";
+                prometheusType = "Mimir";
+                # Rules and alerts stay in Prometheus and Alertmanager; Mimir's ruler is off.
+                manageAlerts = false;
+              };
+            };
+          };
+        };
         # kube-prometheus-stack's bundled Grafana is off (prometheus.nix), so its default datasource
         # ConfigMap does not exist; the chart's dashboards only need a Prometheus datasource to be present.
         configMaps.grafana-datasource-prometheus = {
@@ -234,7 +259,6 @@
               uid = "prometheus";
               type = "prometheus";
               access = "proxy";
-              isDefault = true;
               editable = false;
               url = "http://prometheus-kube-prometheus-prometheus.observability.svc.cluster.local:9090";
               jsonData.timeInterval = "30s";
