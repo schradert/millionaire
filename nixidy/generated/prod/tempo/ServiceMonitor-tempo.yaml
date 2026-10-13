@@ -1,23 +1,13 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  labels:
-    app: tempo
-    chart: tempo-1.24.4
-    heritage: Helm
   name: tempo
   namespace: observability
 spec:
   endpoints:
-    - port: tempo-prom-metrics
-    - port: jaeger-metrics
-  namespaceSelector:
-    matchNames:
-      - observability
+    - interval: 30s
+      port: tempo-prom-metrics
   selector:
     matchLabels:
       app.kubernetes.io/instance: tempo
-      app.kubernetes.io/managed-by: Helm
       app.kubernetes.io/name: tempo
-      app.kubernetes.io/version: 2.9.5
-      helm.sh/chart: tempo-1.24.4
