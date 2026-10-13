@@ -59,6 +59,52 @@
         key = "actual-admin";
         data.password = "password";
       };
+      # Admins of the delivery tools: the flows only create and delete run-tagged projects,
+      # workspaces and Applications with them.
+      e2e-harbor = {
+        ns = "cicd";
+        key = "harbor";
+        data.password = "HARBOR_ADMIN_PASSWORD";
+      };
+      e2e-argocd = {
+        ns = "cicd";
+        key = "argocd-initial-admin-secret";
+        data.password = "password";
+      };
+      e2e-windmill = {
+        ns = "development";
+        key = "windmill-admin";
+        data.password = "password";
+      };
+      e2e-contextforge = {
+        ns = "ai";
+        key = "contextforge-admin";
+        data.password = "PLATFORM_ADMIN_PASSWORD";
+      };
+      # The `e2e` Firefly user's personal access token (firefly-bootstrap.php).
+      e2e-firefly = {
+        ns = "finance";
+        key = "firefly-passport";
+        data.token = "FIREFLY_E2E_ACCESS_TOKEN";
+      };
+      # Shoko's `admin` and Ryot's server admin token (media apps without volumes: catalog family).
+      e2e-shoko = {
+        ns = "media";
+        key = "shoko-admin";
+        data.password = "password";
+      };
+      e2e-ryot = {
+        ns = "media";
+        key = "ryot-admin-token";
+        data.token = "password";
+      };
+      # The `e2e` admin's API key in Immich (app-bootstrap immich >= 0.19.7): deletes the users
+      # a test login creates.
+      e2e-immich = {
+        ns = "media";
+        key = "immich-e2e-api-key";
+        data.apikey = "api-key";
+      };
       # The `e2e` Atuin account (atuin.nix users): registration is closed on the server.
       e2e-atuin = {
         ns = "development";
@@ -276,6 +322,14 @@
         externalSecrets.e2e-atuin.spec = fromApp serviceSecrets.e2e-atuin;
         externalSecrets.e2e-miniflux.spec = fromApp serviceSecrets.e2e-miniflux;
         externalSecrets.e2e-actual.spec = fromApp serviceSecrets.e2e-actual;
+        externalSecrets.e2e-harbor.spec = fromApp serviceSecrets.e2e-harbor;
+        externalSecrets.e2e-argocd.spec = fromApp serviceSecrets.e2e-argocd;
+        externalSecrets.e2e-windmill.spec = fromApp serviceSecrets.e2e-windmill;
+        externalSecrets.e2e-contextforge.spec = fromApp serviceSecrets.e2e-contextforge;
+        externalSecrets.e2e-firefly.spec = fromApp serviceSecrets.e2e-firefly;
+        externalSecrets.e2e-shoko.spec = fromApp serviceSecrets.e2e-shoko;
+        externalSecrets.e2e-immich.spec = fromApp serviceSecrets.e2e-immich;
+        externalSecrets.e2e-ryot.spec = fromApp serviceSecrets.e2e-ryot;
         cronJobs.${name}.spec = {
           schedule = "15 3 * * *";
           timeZone = "Etc/UTC";

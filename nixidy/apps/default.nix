@@ -105,6 +105,30 @@
     intraNamespace = true;
     cnpg = true;
     dragonfly = true;
+    # the e2e harness calls Firefly's API with its own user's token (the public route is behind
+    # oauth2-proxy, which takes the Authorization header): apps/e2e finance/firefly-ledger
+    extraIngress = [
+      {
+        fromEndpoints = [
+          {
+            matchLabels = {
+              "k8s:io.kubernetes.pod.namespace" = "e2e";
+              "app.kubernetes.io/name" = "e2e";
+            };
+          }
+        ];
+        toPorts = [
+          {
+            ports = [
+              {
+                port = "8080";
+                protocol = "TCP";
+              }
+            ];
+          }
+        ];
+      }
+    ];
   };
   nixidy.netpol.namespaces.health = {
     enforce = true;
@@ -149,6 +173,33 @@
     cnpg = true;
     # openclaw (ai-sandbox) reaches bifrost :8000 and contextforge :8080 (its own egress policy lists exactly these)
     extraIngress = [
+      # the e2e harness calls ContextForge (:8080) and Bifrost (:8000) in-cluster: their public routes
+      # are behind oauth2-proxy, which takes the Authorization header they use for their own
+      # credentials: apps/e2e ai/contextforge-tool, ai/bifrost-chat
+      {
+        fromEndpoints = [
+          {
+            matchLabels = {
+              "k8s:io.kubernetes.pod.namespace" = "e2e";
+              "app.kubernetes.io/name" = "e2e";
+            };
+          }
+        ];
+        toPorts = [
+          {
+            ports = [
+              {
+                port = "8080";
+                protocol = "TCP";
+              }
+              {
+                port = "8000";
+                protocol = "TCP";
+              }
+            ];
+          }
+        ];
+      }
       {
         fromEndpoints = [
           {

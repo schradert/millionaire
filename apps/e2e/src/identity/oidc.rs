@@ -222,13 +222,15 @@ pub async fn sure(ctx: &Ctx, f: &mut Flow) -> R<()> {
     Ok(())
 }
 
-// ---------- Immich: authorization request ----------
+// ---------- Immich: authorization request and, with the service admin, the whole login ----------
 
-/// Immich's own authorization endpoint builds the Keycloak URL (client, redirect URI, PKCE);
-/// the test user logs in and Keycloak redirects back to Immich's `/auth/login` with the code and
-/// the same state. The flow stops before Immich's `/api/oauth/callback`: that call creates the
-/// user (an admin for the `admin` group), and Immich refuses to delete your own account or the
-/// last admin, so a test user could only be removed by the owner's admin.
+/// Immich's own authorization endpoint builds the Keycloak URL (client, redirect URI, PKCE); the
+/// test user logs in and Keycloak redirects back to Immich's `/auth/login` with the code and the
+/// same state. With the service admin's key mounted (the `e2e` admin app-bootstrap makes), the
+/// flow goes on: Immich's callback creates the user, the user uploads a generated image and gets
+/// its thumbnail, deletes it, and the service admin deletes the user (Immich refuses deleting
+/// yourself and the last admin, and the only other admin is the owner's). Without the key it
+/// stops at the redirect.
 pub async fn immich(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let kc = Kc::connect()?;
     let u = kc::users(ctx, &kc).await?;
@@ -237,6 +239,46 @@ pub async fn immich(ctx: &Ctx, f: &mut Flow) -> R<()> {
     if features["oauth"] != json!(true) {
         return Err(Fail::new("immich", "OAuth enabled", format!("features say oauth={}", features["oauth"])));
     }
+    match super::immich::Admin::connect() {
+        Ok(admin) => immich_full(ctx, f, &admin, &u.family, &base).await,
+        Err(e) if e.skip => immich_redirect_only(ctx, f, &u.family, &base).await,
+        Err(e) => Err(e),
+    }
+}
+
+async fn immich_full(ctx: &Ctx, f: &mut Flow, admin: &super::immich::Admin, user: &TestUser, base: &str) -> R<()> {
+    let (sess, url) = super::immich::oauth_login(ctx, base, |url, redirect| async move {
+        let parsed = Url::parse(&url).at("immich", "authorization url")?;
+        if !url.starts_with(&issuer()) || web::query(&parsed, "client_id").as_deref() != Some("immich") || web::query(&parsed, "redirect_uri").as_deref() != Some(redirect.as_str()) {
+            return Err(Fail::new("immich", "authorization url", format!("{url} does not point at Keycloak for client immich and {redirect}")));
+        }
+        Ok(login(ctx, &mut Session::new(), &url, user, &redirect).await?.to_string())
+    })
+    .await?;
+    f.ok("immich", "OIDC callback created the user", format!("{} ({}), authorization via {}", sess.email, sess.user_id, web::query(&Url::parse(&url).at("immich", "url")?, "client_id").unwrap_or_default()));
+    // Whatever happens next, the service admin removes the user.
+    let checked: R<()> = async {
+        if !sess.email.eq_ignore_ascii_case(&user.email) {
+            return Err(Fail::new("immich", "user", format!("the session belongs to {} not {}", sess.email, user.email)));
+        }
+        let id = super::immich::asset_roundtrip(ctx, base, &sess, &ctx.marker).await?;
+        f.ok("immich", "generated image uploaded, thumbnail served, asset deleted", format!("asset {id}"));
+        Ok(())
+    }
+    .await;
+    let deleted = admin.delete_user(ctx, &sess.user_id, &user.email).await;
+    checked?;
+    deleted?;
+    let left = admin.tagged_users(ctx, &crate::ctx::Scope::Run(ctx.marker.clone())).await?;
+    if left.iter().any(|(id, _)| *id == sess.user_id) {
+        return Err(Fail::new("immich", "user deleted", "still listed after the service admin deleted it"));
+    }
+    f.ok("immich", "the service admin deleted the user", "not listed any more");
+    Ok(())
+}
+
+/// The part that needs no service admin: the redirect and the state.
+async fn immich_redirect_only(ctx: &Ctx, f: &mut Flow, user: &TestUser, base: &str) -> R<()> {
     let redirect = format!("{base}/auth/login");
     let r: Value = json(ctx.http.post(format!("{base}/api/oauth/authorize")).json(&json!({ "redirectUri": redirect })), "immich", "oauth/authorize").await?;
     let url = r["url"].as_str().at("immich", "authorization url")?.to_string();
@@ -246,11 +288,11 @@ pub async fn immich(ctx: &Ctx, f: &mut Flow) -> R<()> {
     }
     let state = web::query(&parsed, "state").at("immich", "state in the authorization url")?;
     f.ok("immich", "authorization url built", format!("client immich, PKCE {}", web::query(&parsed, "code_challenge_method").unwrap_or_else(|| "none".into())));
-    let back = login(ctx, &mut Session::new(), &url, &u.family, &redirect).await?;
+    let back = login(ctx, &mut Session::new(), &url, user, &redirect).await?;
     if web::query(&back, "state").as_deref() != Some(state.as_str()) || web::query(&back, "code").is_none() {
         return Err(Fail::new("immich", "redirect back", format!("{back} lacks the code or the state {state}")));
     }
-    f.ok("immich", "Keycloak redirects back with a code", format!("{} signed in, state matches", u.family.username));
+    f.ok("immich", "Keycloak redirects back with a code", format!("{} signed in, state matches (no service admin key: callback not called)", user.username));
     Ok(())
 }
 
@@ -288,10 +330,15 @@ pub async fn bulwark(ctx: &Ctx, f: &mut Flow) -> R<()> {
 
 // ---------- LibreChat: allowed email domains ----------
 
+/// The access token LibreChat issues to this session (its refresh endpoint answers `{token}`).
+async fn librechat_token(ctx: &Ctx, sess: &mut Session, base: &str) -> R<Option<String>> {
+    let refresh = sess.json_request(ctx, reqwest::Method::POST, &Url::parse(&format!("{base}/api/auth/refresh")).at("librechat", "url")?, None, None).await?;
+    Ok(serde_json::from_str::<Value>(&refresh.body).ok().and_then(|v| v["token"].as_str().map(String::from)))
+}
+
 /// Delete the LibreChat account of the session that just logged in (the user deletes itself).
 async fn librechat_delete_self(ctx: &Ctx, sess: &mut Session, base: &str) -> R<()> {
-    let refresh = sess.json_request(ctx, reqwest::Method::POST, &Url::parse(&format!("{base}/api/auth/refresh")).at("librechat", "url")?, None, None).await?;
-    let token = serde_json::from_str::<Value>(&refresh.body).ok().and_then(|v| v["token"].as_str().map(String::from)).at("librechat", "token of the unexpected session")?;
+    let token = librechat_token(ctx, sess, base).await?.at("librechat", "token of the session")?;
     let del = sess.json_request(ctx, reqwest::Method::DELETE, &Url::parse(&format!("{base}/api/user/delete")).at("librechat", "url")?, Some(&token), None).await?;
     if del.status / 100 != 2 {
         return Err(Fail::new("librechat", "delete user", format!("HTTP {} {}", del.status, excerpt(&del.body))));
@@ -299,11 +346,10 @@ async fn librechat_delete_self(ctx: &Ctx, sess: &mut Session, base: &str) -> R<(
     Ok(())
 }
 
-/// LibreChat's OpenID strategy is live (config, redirect to Keycloak, callback validated), and its
-/// `allowedDomains` (exact match: the homelab domain and the owner's mail domain) refuses the
-/// test user, whose email is under `e2e.<domain>`: the callback goes back to the login page with
-/// `error=auth_failed` and no session. Nothing is created. If LibreChat ever lets the user in,
-/// the flow deletes the account it made and fails.
+/// LibreChat's OpenID strategy end to end: Keycloak login, the callback creates the test user's
+/// account (its email domain `e2e.<domain>` is in `registration.allowedDomains`), the session's
+/// API shows that user, and the user deletes its own account (`DELETE /api/user/delete`), after
+/// which the session is gone. A failure after the login still deletes the account.
 pub async fn librechat(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let kc = Kc::connect()?;
     let u = kc::users(ctx, &kc).await?;
@@ -319,21 +365,32 @@ pub async fn librechat(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let cb = login(ctx, &mut sess, &format!("{base}/oauth/openid"), user, &stop).await?;
     f.ok("keycloak", "login accepted for the LibreChat client", user.username.clone());
     let hop = sess.get(ctx, &cb).await?;
-    let refused = hop.location.as_ref().is_some_and(|l| l.path() == "/login" && web::query(l, "error").as_deref() == Some("auth_failed"));
-    if !refused {
-        let cleaned = librechat_delete_self(ctx, &mut sess, &base).await;
+    if hop.location.as_ref().is_some_and(|l| l.path() == "/login" && web::query(l, "error").is_some()) {
         return Err(Fail::new(
             "librechat",
-            "allowedDomains",
-            format!("expected a refusal for {} (domain not allowed), got HTTP {} {:?}; account cleanup: {cleaned:?}", user.email, hop.status, hop.location.as_ref().map(Url::as_str)),
+            "callback",
+            format!("LibreChat refused {} ({:?}); its registration.allowedDomains must include e2e.<domain> (nixidy/system/ai/librechat.nix)", user.email, hop.location.as_ref().map(Url::as_str)),
         ));
     }
-    f.ok("librechat", "email domain refused", format!("{} -> /login?error=auth_failed", user.email));
-    let refresh = sess.json_request(ctx, reqwest::Method::POST, &Url::parse(&format!("{base}/api/auth/refresh")).at("librechat", "url")?, None, None).await?;
-    if serde_json::from_str::<Value>(&refresh.body).is_ok_and(|v| v["token"].is_string()) {
-        return Err(Fail::new("librechat", "no session", "a token was issued after the refusal"));
+    let checked: R<()> = async {
+        let token = librechat_token(ctx, &mut sess, &base).await?.at("librechat", "session after the callback")?;
+        let me = sess.json_request(ctx, reqwest::Method::GET, &Url::parse(&format!("{base}/api/user")).at("librechat", "url")?, Some(&token), None).await?;
+        let me: Value = serde_json::from_str(&me.body).map_err(|e| Fail::new("librechat", "user", format!("bad JSON ({e}): {}", excerpt(&me.body))))?;
+        if me["email"].as_str().map(str::to_ascii_lowercase) != Some(user.email.to_ascii_lowercase()) {
+            return Err(Fail::new("librechat", "user", format!("the session belongs to {} not {}", me["email"], user.email)));
+        }
+        f.ok("librechat", "OIDC signup created the account", format!("{} (role {})", user.email, me["role"].as_str().unwrap_or("?")));
+        Ok(())
     }
-    f.ok("librechat", "no session after the refusal", excerpt(&refresh.body));
+    .await;
+    // Always remove the account the login created, then report the first problem.
+    let deleted = librechat_delete_self(ctx, &mut sess, &base).await;
+    checked?;
+    deleted?;
+    if librechat_token(ctx, &mut sess, &base).await?.is_some() {
+        return Err(Fail::new("librechat", "account deleted", "a token is still issued after the user deleted itself"));
+    }
+    f.ok("librechat", "account deleted by the user", "no session afterwards");
     Ok(())
 }
 

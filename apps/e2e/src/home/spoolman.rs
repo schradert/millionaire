@@ -8,7 +8,7 @@ use serde_json::{json, Value};
 use crate::{
     ctx::{excerpt, json as get_json, send, Ctx, Fail, Scope, R},
     report::Flow,
-    svc::{admin_bearer, tagged, url},
+    svc::{admin_bearer, janitor_bearer, tagged, url, Janitor},
 };
 
 const APP: &str = "spoolman";
@@ -20,9 +20,22 @@ struct Sp {
 
 impl Sp {
     async fn connect(ctx: &Ctx) -> R<Self> {
-        // `SPOOLMAN_URL` points straight at the Service (development); the gateway route needs a bearer.
         let bearer = if std::env::var("SPOOLMAN_URL").is_ok() { None } else { Some(admin_bearer(ctx).await?) };
-        Ok(Sp { base: format!("{}/api/v1", url("SPOOLMAN_URL", "spoolman").trim_end_matches("/api/v1")), bearer })
+        Ok(Self::new(bearer))
+    }
+
+    /// For a sweep: signs in as a throwaway user, to be removed with the returned [`Janitor`].
+    async fn janitor(ctx: &Ctx) -> R<(Self, Option<Janitor>)> {
+        if std::env::var("SPOOLMAN_URL").is_ok() {
+            return Ok((Self::new(None), None));
+        }
+        let (token, j) = janitor_bearer(ctx).await?;
+        Ok((Self::new(Some(token)), Some(j)))
+    }
+
+    /// `SPOOLMAN_URL` points straight at the Service (development); the gateway route needs a bearer.
+    fn new(bearer: Option<String>) -> Self {
+        Sp { base: format!("{}/api/v1", url("SPOOLMAN_URL", "spoolman").trim_end_matches("/api/v1")), bearer }
     }
 
     fn req(&self, ctx: &Ctx, m: Method, path: &str) -> reqwest::RequestBuilder {
@@ -122,14 +135,21 @@ pub async fn cleanup(ctx: &Ctx, f: &mut Flow) -> R<()> {
 
 /// Family sweep and residue: tagged vendors, filaments and spools.
 pub async fn sweep(ctx: &Ctx, scope: &Scope, delete: bool) -> R<Vec<String>> {
-    let sp = Sp::connect(ctx).await?;
-    let found = tagged_items(ctx, &sp, scope).await?;
-    if delete {
-        for (kind, id, _) in &found {
-            send(sp.req(ctx, Method::DELETE, &format!("/{kind}/{id}")), APP, &format!("delete {kind}")).await?;
+    let (sp, jan) = Sp::janitor(ctx).await?;
+    let res = async {
+        let found = tagged_items(ctx, &sp, scope).await?;
+        if delete {
+            for (kind, id, _) in &found {
+                send(sp.req(ctx, Method::DELETE, &format!("/{kind}/{id}")), APP, &format!("delete {kind}")).await?;
+            }
         }
+        Ok(found.into_iter().map(|(k, id, n)| format!("spoolman {k} {id} {n}")).collect())
     }
-    Ok(found.into_iter().map(|(k, id, n)| format!("spoolman {k} {id} {n}")).collect())
+    .await;
+    if let Some(j) = jan {
+        j.remove(ctx).await?;
+    }
+    res
 }
 
 #[cfg(test)]

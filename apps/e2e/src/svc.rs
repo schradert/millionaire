@@ -90,6 +90,34 @@ pub async fn admin_bearer(ctx: &crate::ctx::Ctx) -> R<String> {
     kc.token_for(ctx, &u.admin).await
 }
 
+/// A throwaway admin test user for a sweep or residue pass, which must not rely on the run's
+/// shared users (a family's sweep may already have deleted those). Remove it with [`Janitor::remove`].
+pub struct Janitor {
+    kc: crate::identity::kc::Kc,
+    id: String,
+    name: String,
+}
+
+impl Janitor {
+    pub async fn remove(self, ctx: &crate::ctx::Ctx) -> R<()> {
+        self.kc.delete_user(ctx, &self.id, &self.name).await
+    }
+}
+
+/// A fresh tagged admin user and its bearer token.
+pub async fn janitor_bearer(ctx: &crate::ctx::Ctx) -> R<(String, Janitor)> {
+    let kc = crate::identity::kc::Kc::connect()?;
+    let u = kc.create_user(ctx, &format!("e2e-{}-janitor", crate::ctx::new_run_id()), &["admin", "family"]).await?;
+    let j = Janitor { id: u.id.clone(), name: u.username.clone(), kc };
+    match j.kc.token_for(ctx, &u).await {
+        Ok(t) => Ok((t, j)),
+        Err(e) => {
+            let _ = j.remove(ctx).await;
+            Err(e)
+        }
+    }
+}
+
 /// Sweep pass for the Keycloak users a flow made through [`admin_bearer`] (the identity family
 /// sweeps them too; both are idempotent, so a family that signs users in is self-sufficient).
 pub async fn kc_users(ctx: &crate::ctx::Ctx, scope: &crate::ctx::Scope, delete: bool) -> Found {
@@ -98,6 +126,9 @@ pub async fn kc_users(ctx: &crate::ctx::Ctx, scope: &crate::ctx::Scope, delete: 
     if delete {
         for (id, name) in &users {
             kc.delete_user(ctx, id, name).await?;
+        }
+        if !users.is_empty() {
+            ctx.st().users = None;
         }
     }
     Ok(users.into_iter().map(|(_, n)| format!("keycloak user {n}")).collect())

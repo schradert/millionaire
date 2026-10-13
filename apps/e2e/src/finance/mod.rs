@@ -2,6 +2,7 @@
 //! deleted and checked gone.
 
 mod actual;
+mod firefly;
 
 use crate::{
     ctx::{Ctx, Scope},
@@ -16,7 +17,7 @@ pub fn family() -> Family {
     Family {
         name: NAME,
         runner: "cluster",
-        about: "Actual tagged budget file and synced transaction through the sync server",
+        about: "Actual tagged budget file and synced transaction through the sync server; Firefly tagged account and transaction with the e2e user",
         flows,
         cleanup: Some(sweep!(cleanup)),
         residue: Some(sweep!(residue)),
@@ -25,11 +26,14 @@ pub fn family() -> Family {
 }
 
 fn flows() -> Vec<FlowDef> {
-    vec![FlowDef::new(NAME, "actual-budget", Tier::Offline, "a tagged budget file and a CRDT transaction through the sync server; a second client pulls it; file deleted", step!(actual::budget)).cleanup(step!(actual::cleanup))]
+    vec![
+        FlowDef::new(NAME, "actual-budget", Tier::Offline, "a tagged budget file and a CRDT transaction through the sync server; a second client pulls it; file deleted", step!(actual::budget)).cleanup(step!(actual::cleanup)),
+        FlowDef::new(NAME, "firefly-ledger", Tier::Offline, "the e2e user's tagged asset account and withdrawal through the API; balance and search; deleted", step!(firefly::ledger)).cleanup(step!(firefly::cleanup)),
+    ]
 }
 
 async fn passes(ctx: &Ctx, scope: &Scope, delete: bool) -> Vec<(&'static str, svc::Found)> {
-    vec![("actual", actual::sweep(ctx, scope, delete).await)]
+    vec![("actual", actual::sweep(ctx, scope, delete).await), ("firefly", firefly::sweep(ctx, scope, delete).await)]
 }
 
 async fn cleanup(ctx: &Ctx, scope: &Scope, dry: bool) -> Flow {

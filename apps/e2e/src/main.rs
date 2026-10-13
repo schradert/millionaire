@@ -15,6 +15,7 @@
 //! outside-dependent flows (VPN leak tests and downloads over the VPN).
 //! The report is a table plus one JSON document between `=== E2E REPORT JSON BEGIN/END ===`.
 
+mod ai;
 mod ctx;
 mod dav;
 mod feedserver;
@@ -24,15 +25,18 @@ mod flow;
 mod forgejo;
 mod games;
 mod git;
+mod gitserve;
 mod home;
 mod identity;
 mod kube;
 mod kubernetes;
 mod media;
+mod mediasvc;
 mod notify;
 mod observability;
 mod pod;
 mod proxy;
+mod registry;
 mod report;
 mod storage;
 mod svc;

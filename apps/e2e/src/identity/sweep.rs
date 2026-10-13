@@ -123,6 +123,7 @@ async fn passes(ctx: &Ctx, scope: &Scope, delete: bool, with_logins: bool, f: &m
             errors.push(format!("janitor delete: {}", e.msg));
         }
     }
+    pass!("immich", super::immich::sweep(ctx, scope, delete).await);
     pass!("forgejo", crate::forgejo::sweep_users(ctx, scope, delete).await);
     match &kc {
         Ok(kc) => pass!("keycloak", keycloak(ctx, kc, scope, delete).await),

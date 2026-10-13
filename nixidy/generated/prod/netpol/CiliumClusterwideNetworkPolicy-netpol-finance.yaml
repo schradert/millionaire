@@ -34,3 +34,11 @@ spec:
         - ports:
             - port: "8080"
               protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: e2e
+            k8s:io.kubernetes.pod.namespace: e2e
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
