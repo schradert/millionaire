@@ -253,6 +253,8 @@
             KC_HEALTH_ENABLED = "true";
             KC_METRICS_ENABLED = "true";
             KC_TRACING_ENABLED = "true";
+            # Build-time too: parent-based keeps the sampled traces of callers like e2e (the default ignores them).
+            KC_TRACING_SAMPLER_TYPE = "parentbased_traceidratio";
             KC_FEATURES = "hostname:v2";
           };
           buildPhase = ''
@@ -267,8 +269,8 @@
       in
         n2c.buildImage {
           name = "${registry}/library/keycloak";
-          # -1: tracing-enabled is a build option (the tag is new, so it is published; the pin follows)
-          tag = "${dist.version}-optimized-1";
+          # -N: the build options (tracing-enabled, tracing-sampler-type) are baked in; a new N is a new tag, so it is published
+          tag = "${dist.version}-optimized-2";
           arch = "amd64";
           fromImage = n2c.pullImage {
             imageName = base.source.repository;
