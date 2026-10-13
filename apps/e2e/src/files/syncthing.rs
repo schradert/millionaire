@@ -13,7 +13,7 @@ use serde_json::{json, Value};
 use crate::{
     ctx::{excerpt, json as get_json, need_secret, poll, send, Ctx, Fail, Scope, R},
     report::Flow,
-    svc::{admin_bearer, tagged, url},
+    svc::{admin_bearer, janitor_bearer, tagged, url, Janitor},
 };
 
 const APP: &str = "syncthing";
@@ -73,11 +73,23 @@ struct St {
 
 impl St {
     async fn connect(ctx: &Ctx) -> R<Self> {
+        Self::with_bearer(admin_bearer(ctx)).await
+    }
+
+    /// For a sweep: signs in as a throwaway user, to be removed with the returned [`Janitor`].
+    async fn janitor(ctx: &Ctx) -> R<(Self, Option<Janitor>)> {
+        if std::env::var("SYNCTHING_URL").is_ok() {
+            return Ok((Self::with_bearer(async { Ok(String::new()) }).await?, None));
+        }
+        let (token, j) = janitor_bearer(ctx).await?;
+        Ok((Self::with_bearer(async { Ok(token) }).await?, Some(j)))
+    }
+
+    async fn with_bearer(token: impl std::future::Future<Output = R<String>>) -> R<Self> {
         let key = need_secret(APP, "e2e-syncthing", "apikey")?;
         // `SYNCTHING_URL` points straight at the Service (development); through the gateway the
         // route is behind oauth2-proxy.
-        let direct = std::env::var("SYNCTHING_URL").is_ok();
-        let bearer = if direct { None } else { Some(admin_bearer(ctx).await?) };
+        let bearer = if std::env::var("SYNCTHING_URL").is_ok() { None } else { Some(token.await?) };
         Ok(St { base: url("SYNCTHING_URL", "sync"), key, bearer })
     }
 
@@ -189,15 +201,22 @@ async fn tagged_items(ctx: &Ctx, st: &St, scope: &Scope) -> R<Vec<String>> {
 
 /// Family sweep and residue: tagged folders and devices on the hub.
 pub async fn sweep(ctx: &Ctx, scope: &Scope, delete: bool) -> R<Vec<String>> {
-    let st = St::connect(ctx).await?;
-    let found = tagged_items(ctx, &st, scope).await?;
-    if delete {
-        for x in &found {
-            let (kind, id) = x.split_once(':').unwrap_or_default();
-            st.delete(ctx, &format!("/rest/config/{kind}s/{id}")).await?;
+    let (st, jan) = St::janitor(ctx).await?;
+    let res = async {
+        let found = tagged_items(ctx, &st, scope).await?;
+        if delete {
+            for x in &found {
+                let (kind, id) = x.split_once(':').unwrap_or_default();
+                st.delete(ctx, &format!("/rest/config/{kind}s/{id}")).await?;
+            }
         }
+        Ok(found.into_iter().map(|x| format!("syncthing {x}")).collect())
     }
-    Ok(found.into_iter().map(|x| format!("syncthing {x}")).collect())
+    .await;
+    if let Some(j) = jan {
+        j.remove(ctx).await?;
+    }
+    res
 }
 
 #[cfg(test)]
