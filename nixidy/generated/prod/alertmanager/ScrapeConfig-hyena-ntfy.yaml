@@ -1,0 +1,13 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: hyena-ntfy
+  namespace: observability
+spec:
+  jobName: hyena-ntfy
+  scrapeInterval: 1m
+  staticConfigs:
+    - labels:
+        host: hyena
+      targets:
+        - 100.64.0.1:2586

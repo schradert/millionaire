@@ -8,6 +8,22 @@
       namespace = "observability";
       # The StatefulSet's volumeClaimTemplate (10Gi) is immutable, so the volume grows through the PVC it
       # created; the claim only ever grows (ceph-block expands online). New claims still start at 10Gi.
+      # The store, the canary and the memcached exporters all name their port http-metrics;
+      # the gateway's (nginx) has no /metrics.
+      resources.podMonitors.loki.spec = {
+        selector = {
+          matchLabels."app.kubernetes.io/instance" = "loki";
+          matchExpressions = lib.toList {
+            key = "app.kubernetes.io/component";
+            operator = "In";
+            values = ["single-binary" "canary" "memcached-chunks-cache" "memcached-results-cache"];
+          };
+        };
+        podMetricsEndpoints = lib.toList {
+          port = "http-metrics";
+          interval = "1m";
+        };
+      };
       resources.persistentVolumeClaims.storage-loki-0 = {
         # The logs live here: never let a manifest edit prune the claim.
         metadata.annotations."argocd.argoproj.io/sync-options" = "Prune=false";
