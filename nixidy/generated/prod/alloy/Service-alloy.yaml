@@ -16,7 +16,16 @@ spec:
       port: 12345
       protocol: TCP
       targetPort: 12345
+    - name: otlp-grpc
+      port: 4317
+      protocol: TCP
+      targetPort: 4317
+    - name: otlp-http
+      port: 4318
+      protocol: TCP
+      targetPort: 4318
   selector:
     app.kubernetes.io/instance: alloy
     app.kubernetes.io/name: alloy
+  trafficDistribution: PreferSameNode
   type: ClusterIP

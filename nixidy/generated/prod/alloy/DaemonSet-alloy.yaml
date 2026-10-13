@@ -17,7 +17,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 30cb86e5fa65096bee3091c7283c363344dcb97e93e8a92c53d66297bcaca1a
+        checksum/config: 03fcf85ef48edb55a22fc4d477407772f82cf01434c53acfc618da6c32b41e7
         kubectl.kubernetes.io/default-container: alloy
       labels:
         app.kubernetes.io/instance: alloy
@@ -53,6 +53,12 @@ spec:
           ports:
             - containerPort: 12345
               name: http-metrics
+            - containerPort: 4317
+              name: otlp-grpc
+              protocol: TCP
+            - containerPort: 4318
+              name: otlp-http
+              protocol: TCP
           readinessProbe:
             httpGet:
               path: /-/ready
