@@ -84,6 +84,8 @@ spec:
             - mountPath: /identity
               name: identity
               readOnly: true
+            - mountPath: /var/syncthing/org
+              name: org-files
             - mountPath: /var/syncthing
               name: state
             - mountPath: /var/syncthing/docs
