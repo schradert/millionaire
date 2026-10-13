@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    release: prometheus
+  name: e2e
+  namespace: e2e
+spec:
+  groups:
+    - name: e2e
+      rules:
+        - alert: E2ESuiteStale
+          annotations:
+            description: 'CronJob {{ $labels.namespace }}/{{ $labels.cronjob }} last succeeded over three days ago (suspended, failing, or not scheduled). Last report: kubectl -n {{ $labels.namespace }} get cm -l app.kubernetes.io/name=e2e-report; docs/e2e.md.'
+            summary: The nightly end-to-end suite has not passed for three days
+          expr: |
+            time() - kube_cronjob_status_last_successful_time{namespace=~"e2e|media", cronjob=~"e2e|media-e2e"} > 3 * 86400
+          for: 1h
+          labels:
+            severity: warning

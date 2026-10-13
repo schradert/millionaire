@@ -23,3 +23,19 @@ rules:
       - cronjobs
     verbs:
       - get
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - create
+  - apiGroups:
+      - ""
+    resourceNames:
+      - media-e2e-last-report
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - update
+      - patch
