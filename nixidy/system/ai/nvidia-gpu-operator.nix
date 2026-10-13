@@ -20,6 +20,8 @@
           # The operator builds <repository>/<image>:<version>, so version
           # carries tag@digest.
           operator.version = v pinned.images.gpu-operator;
+          # 3m at p95 over 7d, against the chart's 200m; its limits stay.
+          operator.resources.requests.cpu = "50m";
           operator.initContainer.version = v pinned.images.gpu-cuda;
           validator.version = v pinned.images.gpu-validator;
           nodeStatusExporter.version = v pinned.images.gpu-validator;

@@ -45,6 +45,8 @@ in {
         chart = pinned.charts.bifrost;
         values = {
           replicaCount = 1;
+          # 1m at p95 over 7d; the chart's 2-core limit stays.
+          resources.requests.cpu = "100m";
           # Chart 1.5.0 ships appVersion 1.5.0; the old v1.3.36 tag predates its config schema
           image.tag = with pinned.images.bifrost; "${tag}@${digest}";
           service.port = 8000;
