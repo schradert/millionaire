@@ -182,14 +182,14 @@ Read-only inspection; hyena is not changed by this work.
 
 ## Cluster components not scraped
 
-kube-scheduler, kube-controller-manager and kube-proxy (rke2 binds them to localhost or Cilium replaces them), the Rook operator
+kube-scheduler, kube-controller-manager and kube-proxy (disabled in prometheus.nix), the Rook operator
 (no named metrics port), Multus, k8tz, generic-device-plugin, Hubble UI.
 
 ## Logs
 
 Every container's stdout/stderr is shipped; nothing found that logs only to files. Of 199 running containers, 24 had no line in
 24h and all of them print to stdout (they are quiet: dashy, homepage, webdav, cert-manager, Alertmanager, ...). Jibri (recordings, parked at 0
-replicas) writes under /var/log/jitsi and would need a sidecar to ship if it is ever enabled.
+replicas) is the one candidate: upstream writes its logs under /var/log/jitsi (not checked here, it is not running).
 
 nixidy/system/observability/alloy.nix, `loki.process "pods"`:
 
