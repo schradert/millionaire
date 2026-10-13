@@ -49,7 +49,7 @@ data:
 kind: ConfigMap
 metadata:
   annotations:
-    configmap.reloader.stakater.com/reload: grafana-datasource-loki
+    configmap.reloader.stakater.com/reload: grafana-datasource-loki,grafana-datasource-prometheus,grafana-datasource-alertmanager
     reloader.stakater.com/auto: "true"
   labels:
     app.kubernetes.io/instance: grafana
