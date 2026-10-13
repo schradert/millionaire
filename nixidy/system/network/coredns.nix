@@ -13,15 +13,33 @@ in {
         chart = pinned.charts.coredns;
         values = {
           service.clusterIP = "10.43.0.10";
-          # Cluster DNS is on every pod's critical path: two replicas on
-          # different nodes, and never voluntarily evict both.
-          replicaCount = 2;
-          podDisruptionBudget.minAvailable = 1;
+          # Cluster DNS is on every pod's critical path: three replicas, one per
+          # node (hard spread), never voluntarily evict more than one.
+          replicaCount = 3;
+          podDisruptionBudget.minAvailable = 2;
+          # Prefer the SSD nodes: sirver (failing root disk) and octopus have slow
+          # etcd/disks and starved lookups (nginx "110: Operation timed out").
+          # Soft, so DNS still schedules anywhere if those nodes are down.
+          affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution = [
+            {
+              weight = 100;
+              preference.matchExpressions = [
+                {
+                  key = "kubernetes.io/hostname";
+                  operator = "In";
+                  values = ["dingo" "bonobo" "chinchilla"];
+                }
+              ];
+            }
+          ];
           topologySpreadConstraints = [
             {
               maxSkew = 1;
               topologyKey = "kubernetes.io/hostname";
               whenUnsatisfiable = "DoNotSchedule";
+              # Per revision, so a rollout's surge pod spreads against its own
+              # ReplicaSet instead of being forced onto the slow nodes.
+              matchLabelKeys = ["pod-template-hash"];
               labelSelector.matchLabels = {
                 "app.kubernetes.io/instance" = "coredns";
                 "app.kubernetes.io/name" = "coredns";
