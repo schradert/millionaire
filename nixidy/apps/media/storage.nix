@@ -68,7 +68,7 @@
         media-podcasts = cephfsPVC "20Gi";
         media-downloads = cephfsPVC "50Gi";
         # Full-disc DVD backups (ISOs): the originals behind media-movies, played with menus in Kodi.
-        media-dvd = cephfsPVC "1Ti";
+        media-dvd = cephfsPVC "1536Gi";
         # ROMs, BIOS and game installers (games-webdav.nix, docs/games.md)
         media-games = cephfsPVC "250Gi";
       };
