@@ -61,7 +61,7 @@
           annotations."reloader.stakater.com/auto" = "true";
           # Grafana only reads provisioned datasources at startup, and the sidecar's reload call is a
           # 401 (basic auth is off), so a changed datasource needs a restart.
-          annotations."configmap.reloader.stakater.com/reload" = "grafana-datasource-loki";
+          annotations."configmap.reloader.stakater.com/reload" = "grafana-datasource-loki,grafana-datasource-prometheus,grafana-datasource-alertmanager";
           envFromConfigMaps = [{name = "grafana";}];
           envFromSecrets = [{name = "grafana-oidc";}];
           persistence.enabled = true;
@@ -141,6 +141,39 @@
               url = "http://loki-gateway.observability.svc.cluster.local";
               jsonData.httpHeaderName1 = "X-Scope-OrgID";
               secureJsonData.httpHeaderValue1 = "cluster";
+            };
+          };
+        };
+        # kube-prometheus-stack's bundled Grafana is off (prometheus.nix), so its default datasource
+        # ConfigMap does not exist; the chart's dashboards only need a Prometheus datasource to be present.
+        configMaps.grafana-datasource-prometheus = {
+          metadata.labels.grafana_datasource = "1";
+          data."prometheus.yaml" = builtins.toJSON {
+            apiVersion = 1;
+            datasources = lib.toList {
+              name = "Prometheus";
+              uid = "prometheus";
+              type = "prometheus";
+              access = "proxy";
+              isDefault = true;
+              editable = false;
+              url = "http://prometheus-kube-prometheus-prometheus.observability.svc.cluster.local:9090";
+              jsonData.timeInterval = "30s";
+            };
+          };
+        };
+        configMaps.grafana-datasource-alertmanager = {
+          metadata.labels.grafana_datasource = "1";
+          data."alertmanager.yaml" = builtins.toJSON {
+            apiVersion = 1;
+            datasources = lib.toList {
+              name = "Alertmanager";
+              uid = "alertmanager";
+              type = "alertmanager";
+              access = "proxy";
+              editable = false;
+              url = "http://alertmanager.observability.svc.cluster.local:9093";
+              jsonData.implementation = "prometheus";
             };
           };
         };
