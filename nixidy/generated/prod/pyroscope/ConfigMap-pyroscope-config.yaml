@@ -1,0 +1,22 @@
+apiVersion: v1
+data:
+  config.yaml: |
+    limits:
+      retention_period: 0s
+    storage:
+      backend: s3
+      s3:
+        access_key_id: ${AWS_ACCESS_KEY_ID}
+        bucket_lookup_type: path-style
+        bucket_name: pyroscope
+        endpoint: rook-ceph-rgw-ceph-objectstore.storage.svc.cluster.local:80
+        insecure: true
+        secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: pyroscope
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: pyroscope
+  name: pyroscope-config
+  namespace: observability
