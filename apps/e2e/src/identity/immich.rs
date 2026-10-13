@@ -3,6 +3,7 @@
 //! service admin (the `e2e` admin app-bootstrap makes, whose API key is mounted) deletes the
 //! user. Only another admin can: Immich refuses deleting your own account or the last admin.
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::{multipart, Method};
@@ -178,7 +179,7 @@ pub async fn asset_roundtrip(ctx: &Ctx, base: &str, s: &Session, marker: &str) -
     let r = get_json(ctx.http.post(format!("{base}/api/assets")).bearer_auth(&s.token).multipart(form), APP, "upload asset").await?;
     let id = r["id"].as_str().at(APP, "asset id")?.to_string();
     let thumb = poll(APP, "thumbnail", Duration::from_secs(120), Duration::from_secs(3), || async {
-        let t = ctx.http.get(format!("{base}/api/assets/{id}/thumbnail?size=preview")).bearer_auth(&s.token).send().await.map_err(|e| Fail::new(APP, "thumbnail", chain(&e)))?;
+        let t = ctx.http.get(format!("{base}/api/assets/{id}/thumbnail?size=preview")).bearer_auth(&s.token).send_t().await.map_err(|e| Fail::new(APP, "thumbnail", chain(&e)))?;
         if !t.status().is_success() {
             return Ok(None);
         }
@@ -195,7 +196,7 @@ pub async fn asset_roundtrip(ctx: &Ctx, base: &str, s: &Session, marker: &str) -
     send(ctx.http.delete(format!("{base}/api/assets")).bearer_auth(&s.token).json(&json!({ "ids": [id], "force": true })), APP, "delete asset").await?;
     // A forced delete is carried out by a queued job: the asset disappears within moments.
     poll(APP, "asset deleted", Duration::from_secs(60), Duration::from_secs(2), || async {
-        let gone = ctx.http.get(format!("{base}/api/assets/{id}")).bearer_auth(&s.token).send().await.at(APP, "get deleted asset")?;
+        let gone = ctx.http.get(format!("{base}/api/assets/{id}")).bearer_auth(&s.token).send_t().await.at(APP, "get deleted asset")?;
         Ok((!gone.status().is_success()).then_some(()))
     })
     .await?;

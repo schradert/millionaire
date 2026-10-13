@@ -12,6 +12,7 @@
 //!    Forgejo scopes are per category, so `write:repository` covers all of USER's repos.
 //!    The token is never logged.
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::{Client, RequestBuilder, StatusCode};
@@ -43,13 +44,13 @@ pub async fn run() -> Result<()> {
     };
 
     retry("waiting for forgejo", 120, || async {
-        let r = http.get(format!("{base}/api/healthz")).send().await?;
+        let r = http.get(format!("{base}/api/healthz")).send_t().await?;
         ok(r, "GET /api/healthz").await.map(|_| ())
     })
     .await?;
 
     let r = api(reqwest::Method::GET, &format!("/users/{user}"))
-        .send()
+        .send_t()
         .await?;
     if r.status() == StatusCode::NOT_FOUND {
         println!("creating user {user}");
@@ -58,7 +59,7 @@ pub async fn run() -> Result<()> {
                 "username": user, "email": email, "password": random_password()?,
                 "must_change_password": false,
             }))
-            .send()
+            .send_t()
             .await?;
         ok(r, "POST /admin/users").await?;
     } else {
@@ -67,7 +68,7 @@ pub async fn run() -> Result<()> {
     }
 
     let r = api(reqwest::Method::GET, &format!("/repos/{user}/{repo}"))
-        .send()
+        .send_t()
         .await?;
     if r.status() == StatusCode::NOT_FOUND {
         println!("creating repo {user}/{repo}");
@@ -76,7 +77,7 @@ pub async fn run() -> Result<()> {
                 "name": repo, "private": true, "auto_init": true, "default_branch": "main",
                 "description": "Browser bookmarks (Floccus)",
             }))
-            .send()
+            .send_t()
             .await?;
         ok(r, "POST /admin/users/{user}/repos").await?;
     } else {
@@ -89,7 +90,7 @@ pub async fn run() -> Result<()> {
         let r = http
             .get(format!("{base}/api/v1/repos/{user}/{repo}"))
             .header("Authorization", format!("token {token}"))
-            .send()
+            .send_t()
             .await?;
         if r.status().is_success() {
             let v: Value = r.json().await?;
@@ -105,7 +106,7 @@ pub async fn run() -> Result<()> {
         reqwest::Method::DELETE,
         &format!("/users/{user}/tokens/{token_name}"),
     )
-    .send()
+    .send_t()
     .await?;
     if r.status() != StatusCode::NOT_FOUND {
         ok(r, "DELETE /users/{user}/tokens").await?;
@@ -113,7 +114,7 @@ pub async fn run() -> Result<()> {
     }
     let r = api(reqwest::Method::POST, &format!("/users/{user}/tokens"))
         .json(&json!({ "name": token_name, "scopes": scopes }))
-        .send()
+        .send_t()
         .await?;
     let v: Value = ok(r, "POST /users/{user}/tokens").await?.json().await?;
     let token = v["sha1"].as_str().ok_or("token response has no sha1")?;

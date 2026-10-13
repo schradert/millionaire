@@ -1,5 +1,6 @@
 //! Keycloak admin API helper: who is the OIDC user an app should be pre-linked to.
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::Client;
@@ -34,7 +35,7 @@ pub async fn user() -> Result<KeycloakUser> {
                 ("username", admin.as_str()),
                 ("password", password.as_str()),
             ])
-            .send()
+            .send_t()
             .await?;
         let token: Value = ok(r, "keycloak admin login").await?.json().await?;
         let token = token["access_token"]
@@ -45,7 +46,7 @@ pub async fn user() -> Result<KeycloakUser> {
             .get(format!("{base}/admin/realms/{realm}/users"))
             .bearer_auth(token)
             .query(&[("username", username.as_str()), ("exact", "true")])
-            .send()
+            .send_t()
             .await?;
         let users: Value = ok(r, "keycloak user lookup").await?.json().await?;
         let u = users

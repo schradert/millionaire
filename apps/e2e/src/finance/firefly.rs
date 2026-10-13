@@ -6,6 +6,7 @@
 //! `Authorization` header Firefly needs for its own token. (Firefly soft-deletes: deleted rows
 //! stay in its database, invisible to the API.)
 
+use crate::trace::SendTraced as _;
 use reqwest::Method;
 use serde_json::{json, Value};
 
@@ -32,7 +33,7 @@ impl Ff {
     }
 
     async fn gone(&self, ctx: &Ctx, path: &str) -> R<bool> {
-        let r = self.req(ctx, Method::GET, path).send().await.map_err(|e| Fail::new(APP, "get", chain(&e)))?;
+        let r = self.req(ctx, Method::GET, path).send_t().await.map_err(|e| Fail::new(APP, "get", chain(&e)))?;
         Ok(r.status().as_u16() == 404)
     }
 

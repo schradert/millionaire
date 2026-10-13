@@ -3,6 +3,7 @@
 //! bytes, and the repository, robot and project are deleted and checked gone. The admin is only
 //! used to make and remove tagged projects.
 
+use crate::trace::SendTraced as _;
 use reqwest::Method;
 use serde_json::json;
 
@@ -119,7 +120,7 @@ pub async fn push_pull(ctx: &Ctx, f: &mut Flow) -> R<()> {
 pub async fn cleanup(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let hb = Hb::connect()?;
     let found = sweep(ctx, &Scope::Run(ctx.marker.clone()), true).await?;
-    let r = hb.api(ctx, Method::GET, &format!("/projects/{}", ctx.marker)).send().await.map_err(|e| Fail::new(APP, "get project", chain(&e)))?;
+    let r = hb.api(ctx, Method::GET, &format!("/projects/{}", ctx.marker)).send_t().await.map_err(|e| Fail::new(APP, "get project", chain(&e)))?;
     if r.status().as_u16() != 404 {
         return Err(Fail::new(APP, "project deleted", format!("GET answers HTTP {} after deleting", r.status())));
     }

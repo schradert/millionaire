@@ -7,6 +7,7 @@
 //! Bulwark (the same, stopping before the callback page that would create a mailbox).
 //! Every user is a run-tagged Keycloak test user, never the owner's account.
 
+use crate::trace::SendTraced as _;
 use reqwest::Url;
 use serde_json::{json, Value};
 
@@ -75,7 +76,7 @@ pub async fn jellyfin_login(ctx: &Ctx, user: &TestUser) -> R<JfLogin> {
 
 /// Delete a Jellyfin user with `token` (an admin's); a user that is already gone counts.
 pub async fn jellyfin_delete(ctx: &Ctx, token: &str, id: &str) -> R<()> {
-    let r = ctx.http.delete(format!("{}/Users/{id}", host("jellyfin"))).header("X-Emby-Token", token).send().await.at("jellyfin", "delete user")?;
+    let r = ctx.http.delete(format!("{}/Users/{id}", host("jellyfin"))).header("X-Emby-Token", token).send_t().await.at("jellyfin", "delete user")?;
     match r.status().as_u16() {
         200..=299 | 404 => Ok(()),
         s => Err(Fail::new("jellyfin", "delete user", format!("HTTP {s} {}", excerpt(&r.text().await.unwrap_or_default())))),
@@ -102,7 +103,7 @@ pub async fn jellyfin(ctx: &Ctx, f: &mut Flow) -> R<()> {
             return Err(Fail::new("jellyfin", "token owner", format!("/Users/Me is {}, expected {}", me["Id"], l.id)));
         }
         // Plugins are listed to administrators only (a plain user may list users).
-        let plugins = ctx.http.get(format!("{base}/Plugins")).header("X-Emby-Token", &l.token).send().await.at("jellyfin", "list plugins")?;
+        let plugins = ctx.http.get(format!("{base}/Plugins")).header("X-Emby-Token", &l.token).send_t().await.at("jellyfin", "list plugins")?;
         let want = if admin { 200 } else { 403 };
         if plugins.status().as_u16() != want {
             return Err(Fail::new("jellyfin", "admin-only endpoint", format!("{} got HTTP {} from /Plugins, expected {want}", user.username, plugins.status())));
@@ -120,7 +121,7 @@ pub async fn jellyfin_cleanup(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let base = host("jellyfin");
     for (name, id, token) in made.iter().rev() {
         jellyfin_delete(ctx, &admin_token, id).await?;
-        let r = ctx.http.get(format!("{base}/Users/Me")).header("X-Emby-Token", token).send().await.at("jellyfin", "token after delete")?;
+        let r = ctx.http.get(format!("{base}/Users/Me")).header("X-Emby-Token", token).send_t().await.at("jellyfin", "token after delete")?;
         if r.status().as_u16() != 401 {
             return Err(Fail::new("jellyfin", "delete user", format!("{name}'s token still gets HTTP {} after the delete", r.status())));
         }

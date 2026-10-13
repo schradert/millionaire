@@ -5,6 +5,7 @@
 //! checked gone. The API is reached in-cluster: the public route is behind oauth2-proxy, which
 //! takes the `Authorization` header ContextForge needs for its own login.
 
+use crate::trace::SendTraced as _;
 use reqwest::Method;
 use serde_json::{json, Value};
 
@@ -91,7 +92,7 @@ pub async fn tool(ctx: &Ctx, f: &mut Flow) -> R<()> {
 
     send(cf.req(ctx, Method::DELETE, &format!("/servers/{sid}")), APP, "delete server").await?;
     send(cf.req(ctx, Method::DELETE, &format!("/tools/{tid}")), APP, "delete tool").await?;
-    let r = cf.req(ctx, Method::GET, &format!("/tools/{tid}")).send().await.map_err(|e| Fail::new(APP, "get deleted tool", chain(&e)))?;
+    let r = cf.req(ctx, Method::GET, &format!("/tools/{tid}")).send_t().await.map_err(|e| Fail::new(APP, "get deleted tool", chain(&e)))?;
     if r.status().as_u16() != 404 {
         return Err(Fail::new(APP, "tool deleted", format!("GET answers HTTP {} after DELETE", r.status())));
     }

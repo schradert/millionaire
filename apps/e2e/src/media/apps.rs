@@ -1,5 +1,6 @@
 //! Thin clients for each app's API (in-cluster Service URLs, overridable with `<APP>_URL`).
 
+use crate::trace::SendTraced as _;
 use reqwest::{Method, RequestBuilder};
 use serde_json::{json, Value};
 
@@ -176,7 +177,7 @@ impl Qbt {
             .header("Referer", &base)
             .form(&[("username", var("QBITTORRENT_USER", "admin").as_str()), ("password", pw.as_str())])
             .timeout(std::time::Duration::from_secs(15))
-            .send()
+            .send_t()
             .await
             .map_err(|e| Fail::skip("qbittorrent", "login", format!("unreachable (scaled to 0 until VPN credentials exist?): {e}")))?;
         let sid = r

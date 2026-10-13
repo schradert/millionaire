@@ -16,6 +16,7 @@
 //!    shows (selects included: an omitted enum field such as `linktaco_link_visibility` is a
 //!    500) and only the Fever fields changed; it only runs while Fever is off.
 
+use crate::trace::SendTraced as _;
 use std::{collections::BTreeMap, time::Duration};
 
 use reqwest::{header, redirect, Client, RequestBuilder, Response, StatusCode};
@@ -55,14 +56,14 @@ impl Ui {
     }
 
     async fn get(&mut self, path: &str) -> Result<String> {
-        let r = self.with_cookies(self.http.get(format!("{}{path}", self.base))).send().await?;
+        let r = self.with_cookies(self.http.get(format!("{}{path}", self.base))).send_t().await?;
         self.keep_cookies(&r);
         Ok(ok(r, &format!("GET {path}")).await?.text().await?)
     }
 
     /// Form POST; miniflux answers a successful one with a redirect.
     async fn post(&mut self, path: &str, form: &[(&str, &str)]) -> Result<Response> {
-        let r = self.with_cookies(self.http.post(format!("{}{path}", self.base))).form(form).send().await?;
+        let r = self.with_cookies(self.http.post(format!("{}{path}", self.base))).form(form).send_t().await?;
         self.keep_cookies(&r);
         Ok(r)
     }
@@ -232,7 +233,7 @@ pub async fn run() -> Result<()> {
     let http = Client::builder().timeout(Duration::from_secs(60)).build()?;
 
     retry("waiting for miniflux", 120, || async {
-        ok(http.get(format!("{base}/healthcheck")).send().await?, "GET /healthcheck").await?;
+        ok(http.get(format!("{base}/healthcheck")).send_t().await?, "GET /healthcheck").await?;
         Ok(())
     })
     .await?;
@@ -241,14 +242,14 @@ pub async fn run() -> Result<()> {
     let r = http
         .get(format!("{base}/v1/users/{user}"))
         .basic_auth(&admin, Some(&admin_password))
-        .send()
+        .send_t()
         .await?;
     if r.status() == StatusCode::NOT_FOUND {
         let r = http
             .post(format!("{base}/v1/users"))
             .basic_auth(&admin, Some(&admin_password))
             .json(&json!({ "username": user, "password": password, "is_admin": true, "openid_connect_id": kc.sub }))
-            .send()
+            .send_t()
             .await?;
         ok(r, "POST /v1/users").await?;
         println!("created admin {user} linked to keycloak {}", kc.sub);
@@ -268,7 +269,7 @@ pub async fn run() -> Result<()> {
         if u["is_admin"] != json!(true) {
             changes.insert("is_admin".into(), json!(true));
         }
-        let me = http.get(format!("{base}/v1/me")).basic_auth(&user, Some(&password)).send().await?;
+        let me = http.get(format!("{base}/v1/me")).basic_auth(&user, Some(&password)).send_t().await?;
         if me.status() == StatusCode::UNAUTHORIZED {
             changes.insert("password".into(), json!(password));
         } else {
@@ -282,7 +283,7 @@ pub async fn run() -> Result<()> {
                 .put(format!("{base}/v1/users/{id}"))
                 .basic_auth(&admin, Some(&admin_password))
                 .json(&Value::Object(changes))
-                .send()
+                .send_t()
                 .await?;
             ok(r, "PUT /v1/users").await?;
             println!("updated {user}: {keys}");

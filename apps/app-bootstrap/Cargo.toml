@@ -1,6 +1,6 @@
 [package]
 name = "app-bootstrap"
-version = "0.19.7"
+version = "0.20.0"
 edition = "2021"
 
 [dependencies]
@@ -8,6 +8,9 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["macros", "rt", "time"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["net", "io-util"] }
 
 [profile.release]
 opt-level = "s"

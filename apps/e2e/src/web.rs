@@ -1,6 +1,7 @@
 //! A tiny browser: per-host cookies, manual redirects and HTML form posts, enough to log a test
 //! user in through Keycloak's login pages and follow the OIDC redirects back into an app.
 
+use crate::trace::SendTraced as _;
 use std::collections::{BTreeMap, HashMap};
 
 use reqwest::{header, Url};
@@ -62,7 +63,7 @@ impl Session {
             rb = rb.header(header::COOKIE, c);
         }
         let _ = ctx;
-        let r = rb.send().await.at("web", step)?;
+        let r = rb.send_t().await.at("web", step)?;
         self.store(&host, r.headers());
         let status = r.status().as_u16();
         let location = r.headers().get(header::LOCATION).and_then(|v| v.to_str().ok()).and_then(|l| url.join(l).ok());

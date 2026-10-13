@@ -4,6 +4,7 @@
 //! for the test users. Never the owner's account: every user made here is named after the run
 //! marker and only users carrying a marker are ever deleted.
 
+use crate::trace::SendTraced as _;
 use std::{
     sync::Mutex,
     time::{Duration, Instant},
@@ -102,7 +103,7 @@ impl Kc {
                 ("password", password),
                 ("scope", "openid profile email groups"),
             ])
-            .send()
+            .send_t()
             .await
             .at(APP, "password grant")?;
         let ok = r.status().is_success();
@@ -170,7 +171,7 @@ impl Kc {
     }
 
     pub async fn user_exists(&self, ctx: &Ctx, id: &str) -> R<bool> {
-        let r = self.admin(ctx, Method::GET, &format!("/users/{id}")).await?.send().await.at(APP, "get user")?;
+        let r = self.admin(ctx, Method::GET, &format!("/users/{id}")).await?.send_t().await.at(APP, "get user")?;
         Ok(r.status().is_success())
     }
 }

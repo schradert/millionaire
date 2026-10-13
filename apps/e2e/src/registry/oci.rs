@@ -2,6 +2,7 @@
 //! pull it back: SHA-256, a one-file tar layer, the config and manifest documents, and blob and
 //! manifest transfers with a bearer token (Distribution API v2, as `crane` and `skopeo` use it).
 
+use crate::trace::SendTraced as _;
 use reqwest::Method;
 use serde_json::{json, Value};
 
@@ -123,7 +124,7 @@ impl Registry {
             .get(format!("{base}/service/token"))
             .query(&[("service", "harbor-registry"), ("scope", &format!("repository:{repo}:push,pull"))])
             .basic_auth(user, Some(pass))
-            .send()
+            .send_t()
             .await
             .at(app, "registry token")?;
         let status = r.status();
@@ -141,7 +142,7 @@ impl Registry {
 
     /// Push one blob (monolithic upload).
     pub async fn push_blob(&self, ctx: &Ctx, app: &str, repo: &str, (dig, bytes): &(String, Vec<u8>)) -> R<()> {
-        let r = self.req(ctx, Method::POST, &format!("{}/v2/{repo}/blobs/uploads/", self.base)).send().await.at(app, "start upload")?;
+        let r = self.req(ctx, Method::POST, &format!("{}/v2/{repo}/blobs/uploads/", self.base)).send_t().await.at(app, "start upload")?;
         if r.status().as_u16() != 202 {
             return Err(Fail::new(app, "start upload", format!("HTTP {}: {}", r.status(), excerpt(&r.text().await.unwrap_or_default()))));
         }
@@ -149,7 +150,7 @@ impl Registry {
         // The registry may answer with its external URL: keep path and query, use our base.
         let path = loc.find("/v2/").map(|i| &loc[i..]).unwrap_or(&loc);
         let url = format!("{}{path}{}digest={dig}", self.base, if path.contains('?') { "&" } else { "?" });
-        let r = self.req(ctx, Method::PUT, &url).header("content-type", "application/octet-stream").body(bytes.clone()).send().await.at(app, "put blob")?;
+        let r = self.req(ctx, Method::PUT, &url).header("content-type", "application/octet-stream").body(bytes.clone()).send_t().await.at(app, "put blob")?;
         if r.status().as_u16() != 201 {
             return Err(Fail::new(app, "put blob", format!("HTTP {}: {}", r.status(), excerpt(&r.text().await.unwrap_or_default()))));
         }
@@ -157,7 +158,7 @@ impl Registry {
     }
 
     pub async fn push_manifest(&self, ctx: &Ctx, app: &str, repo: &str, tag: &str, manifest: &[u8]) -> R<()> {
-        let r = self.req(ctx, Method::PUT, &format!("{}/v2/{repo}/manifests/{tag}", self.base)).header("content-type", MANIFEST_TYPE).body(manifest.to_vec()).send().await.at(app, "put manifest")?;
+        let r = self.req(ctx, Method::PUT, &format!("{}/v2/{repo}/manifests/{tag}", self.base)).header("content-type", MANIFEST_TYPE).body(manifest.to_vec()).send_t().await.at(app, "put manifest")?;
         if r.status().as_u16() != 201 {
             return Err(Fail::new(app, "put manifest", format!("HTTP {}: {}", r.status(), excerpt(&r.text().await.unwrap_or_default()))));
         }
@@ -166,7 +167,7 @@ impl Registry {
 
     /// (manifest bytes, the registry's `Docker-Content-Digest`).
     pub async fn pull_manifest(&self, ctx: &Ctx, app: &str, repo: &str, tag: &str) -> R<(Vec<u8>, String)> {
-        let r = self.req(ctx, Method::GET, &format!("{}/v2/{repo}/manifests/{tag}", self.base)).header("accept", MANIFEST_TYPE).send().await.at(app, "get manifest")?;
+        let r = self.req(ctx, Method::GET, &format!("{}/v2/{repo}/manifests/{tag}", self.base)).header("accept", MANIFEST_TYPE).send_t().await.at(app, "get manifest")?;
         if !r.status().is_success() {
             return Err(Fail::new(app, "get manifest", format!("HTTP {}", r.status())));
         }
@@ -175,7 +176,7 @@ impl Registry {
     }
 
     pub async fn pull_blob(&self, ctx: &Ctx, app: &str, repo: &str, dig: &str) -> R<Vec<u8>> {
-        let r = self.req(ctx, Method::GET, &format!("{}/v2/{repo}/blobs/{dig}", self.base)).send().await.at(app, "get blob")?;
+        let r = self.req(ctx, Method::GET, &format!("{}/v2/{repo}/blobs/{dig}", self.base)).send_t().await.at(app, "get blob")?;
         if !r.status().is_success() {
             return Err(Fail::new(app, "get blob", format!("HTTP {}", r.status())));
         }
@@ -184,7 +185,7 @@ impl Registry {
 
     /// The HTTP status of a manifest GET (404 once the artifact is deleted).
     pub async fn manifest_status(&self, ctx: &Ctx, app: &str, repo: &str, tag: &str) -> R<u16> {
-        Ok(self.req(ctx, Method::GET, &format!("{}/v2/{repo}/manifests/{tag}", self.base)).header("accept", MANIFEST_TYPE).send().await.at(app, "get manifest")?.status().as_u16())
+        Ok(self.req(ctx, Method::GET, &format!("{}/v2/{repo}/manifests/{tag}", self.base)).header("accept", MANIFEST_TYPE).send_t().await.at(app, "get manifest")?.status().as_u16())
     }
 }
 

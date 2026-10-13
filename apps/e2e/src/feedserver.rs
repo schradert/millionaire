@@ -98,6 +98,7 @@ impl Drop for Served {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::trace::SendTraced as _;
 
     #[tokio::test]
     async fn serves_the_current_body() {
@@ -109,7 +110,7 @@ mod tests {
         s.set("two");
         assert_eq!(get().await, "two");
         assert_eq!(s.hits(), 2);
-        let r = reqwest::Client::new().post(&url).header("authorization", "Bearer k").body("{\"q\":1}").send().await.unwrap();
+        let r = reqwest::Client::new().post(&url).header("authorization", "Bearer k").body("{\"q\":1}").send_t().await.unwrap();
         assert_eq!(r.text().await.unwrap(), "two");
         assert!(s.last_request().starts_with("POST /x") && s.last_request().contains("Bearer k") && s.last_request().ends_with("{\"q\":1}"));
     }

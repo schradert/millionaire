@@ -11,6 +11,7 @@
 //!    login stays on (break-glass). The `username` match links Keycloak `tristan` to the root user,
 //!    and the `groups` claim keeps root as admin (root is never downgraded).
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::Client;
@@ -141,7 +142,7 @@ fn diff(current: &Value, want: &[(&'static str, Value)]) -> serde_json::Map<Stri
 async fn discover(http: &Client, issuer: &str) -> Endpoints {
     let url = format!("{issuer}/.well-known/openid-configuration");
     let res: Result<Endpoints> = async {
-        let r = http.get(&url).send().await?;
+        let r = http.get(&url).send_t().await?;
         Endpoints::from_discovery(&ok(r, "GET discovery").await?.json().await?)
     }
     .await;
@@ -155,7 +156,7 @@ async fn discover(http: &Client, issuer: &str) -> Endpoints {
 }
 
 async fn list_libraries(http: &Client, base: &str, token: &str) -> Result<Vec<(String, Vec<String>)>> {
-    let r = http.get(format!("{base}/api/libraries")).bearer_auth(token).send().await?;
+    let r = http.get(format!("{base}/api/libraries")).bearer_auth(token).send_t().await?;
     let body: Value = ok(r, "GET /api/libraries").await?.json().await?;
     Ok(body["libraries"]
         .as_array()
@@ -178,7 +179,7 @@ async fn patch_auth(http: &Client, base: &str, token: &str, body: &Value, what: 
         .patch(format!("{base}/api/auth-settings"))
         .bearer_auth(token)
         .json(body)
-        .send()
+        .send_t()
         .await?;
     ok(r, what).await?;
     Ok(())
@@ -206,7 +207,7 @@ pub async fn run() -> Result<()> {
     let http = Client::builder().timeout(Duration::from_secs(60)).build()?;
 
     let status: Value = retry("waiting for audiobookshelf", 120, || async {
-        let r = http.get(format!("{base}/status")).send().await?;
+        let r = http.get(format!("{base}/status")).send_t().await?;
         Ok(ok(r, "GET /status").await?.json::<Value>().await?)
     })
     .await?;
@@ -218,7 +219,7 @@ pub async fn run() -> Result<()> {
         let r = http
             .post(format!("{base}/init"))
             .json(&json!({ "newRoot": { "username": user, "password": password } }))
-            .send()
+            .send_t()
             .await?;
         ok(r, "POST /init").await?;
     }
@@ -226,7 +227,7 @@ pub async fn run() -> Result<()> {
     let r = http
         .post(format!("{base}/login"))
         .json(&json!({ "username": user, "password": password }))
-        .send()
+        .send_t()
         .await?;
     let login = ok(
         r,
@@ -253,13 +254,13 @@ pub async fn run() -> Result<()> {
             .post(format!("{base}/api/libraries"))
             .bearer_auth(&token)
             .json(&json!({ "name": name, "mediaType": media_type, "folders": [{ "fullPath": folder }] }))
-            .send()
+            .send_t()
             .await?;
         ok(r, &format!("POST /api/libraries ({name})")).await?;
     }
 
     let ep = discover(&http, &want.issuer).await;
-    let r = http.get(format!("{base}/api/auth-settings")).bearer_auth(&token).send().await?;
+    let r = http.get(format!("{base}/api/auth-settings")).bearer_auth(&token).send_t().await?;
     let current: Value = ok(r, "GET /api/auth-settings").await?.json().await?;
     let patch = diff(&current, &desired(&want, &ep));
     if patch.is_empty() {
@@ -276,7 +277,7 @@ pub async fn run() -> Result<()> {
     // Send every desired field: after the toggle above the diff is stale, and extra fields are no-ops.
     let body: serde_json::Map<String, Value> = desired(&want, &ep).into_iter().map(|(k, v)| (k.to_string(), v)).collect();
     patch_auth(&http, base, &token, &Value::Object(body), "PATCH /api/auth-settings").await?;
-    let r = http.get(format!("{base}/api/auth-settings")).bearer_auth(&token).send().await?;
+    let r = http.get(format!("{base}/api/auth-settings")).bearer_auth(&token).send_t().await?;
     let after: Value = ok(r, "GET /api/auth-settings (verify)").await?.json().await?;
     let left = diff(&after, &desired(&want, &ep));
     if !left.is_empty() {

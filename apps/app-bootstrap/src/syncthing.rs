@@ -20,6 +20,7 @@
 //! A field is compared only when the table sets it, so a rerun against a configured hub sends
 //! nothing, and changes made in the GUI to anything else survive.
 
+use crate::trace::SendTraced as _;
 use std::{collections::BTreeSet, time::Duration};
 
 use reqwest::{Client, Method};
@@ -39,7 +40,7 @@ impl Api {
         if let Some(b) = body {
             req = req.json(b);
         }
-        let text = ok(req.send().await?, &format!("{method} {path}")).await?.text().await?;
+        let text = ok(req.send_t().await?, &format!("{method} {path}")).await?.text().await?;
         Ok(if text.trim().is_empty() { Value::Null } else { serde_json::from_str(&text)? })
     }
 

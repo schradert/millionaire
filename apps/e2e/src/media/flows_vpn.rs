@@ -1,5 +1,6 @@
 //! VPN leak tests against the running qBittorrent pod (full suite only).
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use serde_json::Value;
@@ -29,7 +30,7 @@ async fn home_ip(ctx: &Ctx) -> R<String> {
     if let Ok(ip) = std::env::var("HOME_IP") {
         return Ok(ip);
     }
-    let t = ctx.http.get(var("E2E_IP_URL", "https://ifconfig.me/ip")).send().await.at("job", "home IP")?.text().await.at("job", "home IP")?;
+    let t = ctx.http.get(var("E2E_IP_URL", "https://ifconfig.me/ip")).send_t().await.at("job", "home IP")?.text().await.at("job", "home IP")?;
     ipv4s(&t).into_iter().next().at("job", "home IP")
 }
 
@@ -268,7 +269,7 @@ pub async fn tracker(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let mut states: Vec<(&'static str, State)> = Vec::new();
     let mut seed = xorshift(std::process::id() as u64 ^ std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos() as u64);
     for t in trackers() {
-        let probe = ctx.http.get(t.results_url(&"0".repeat(40))).timeout(Duration::from_secs(20)).send().await;
+        let probe = ctx.http.get(t.results_url(&"0".repeat(40))).timeout(Duration::from_secs(20)).send_t().await;
         match probe {
             Ok(r) if r.status().is_success() => {
                 seed = xorshift(seed);
@@ -311,7 +312,7 @@ pub async fn tracker(ctx: &Ctx, f: &mut Flow) -> R<()> {
             if matches!(seen[i], Some(State::Seen(_))) {
                 continue;
             }
-            let body = match ctx.http.get(t.results_url(hash)).timeout(Duration::from_secs(20)).send().await {
+            let body = match ctx.http.get(t.results_url(hash)).timeout(Duration::from_secs(20)).send_t().await {
                 Ok(r) => r.text().await.unwrap_or_default(),
                 Err(_) => continue,
             };
@@ -327,7 +328,7 @@ pub async fn tracker(ctx: &Ctx, f: &mut Flow) -> R<()> {
     for (t, hash) in &live {
         let _ = q.post_form(ctx, "/torrents/delete", &[("hashes", hash), ("deleteFiles", "true")]).await;
         if let Some(u) = t.clear_url(hash) {
-            let _ = ctx.http.get(u).timeout(Duration::from_secs(20)).send().await;
+            let _ = ctx.http.get(u).timeout(Duration::from_secs(20)).send_t().await;
         }
     }
     for ((t, _), s) in live.iter().zip(seen) {

@@ -12,6 +12,7 @@
 //!    If a user with that name exists but is not linked (e.g. registered by a password), the
 //!    insert fails on the unique name and the job fails clearly: GraphQL cannot link users.
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::Client;
@@ -26,7 +27,7 @@ async fn gql(http: &Client, url: &str, query: &str, variables: Value) -> Result<
     let r = http
         .post(url)
         .json(&json!({ "query": query, "variables": variables }))
-        .send()
+        .send_t()
         .await?;
     let body: Value = ok(r, "ryot graphql").await?.json().await?;
     if let Some(errors) = body["errors"].as_array().filter(|e| !e.is_empty()) {

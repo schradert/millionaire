@@ -1,6 +1,7 @@
 //! Identity flows: Keycloak test users, then the three ways an app can authenticate them
 //! (native OIDC, oauth2-proxy with a bearer token, its own token), then deletion.
 
+use crate::trace::SendTraced as _;
 use reqwest::Method;
 use serde_json::{json, Value};
 
@@ -137,7 +138,7 @@ pub async fn mealie_cleanup(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let mut errors = Vec::new();
     // Family user first, the admin (who can only delete itself) last.
     for (name, id, _) in made.iter().rev() {
-        let r = ctx.http.delete(format!("{base}/api/admin/users/{id}")).bearer_auth(&admin_token).send().await.at("mealie", "delete user")?;
+        let r = ctx.http.delete(format!("{base}/api/admin/users/{id}")).bearer_auth(&admin_token).send_t().await.at("mealie", "delete user")?;
         let status = r.status();
         let gone = status.is_success() || (status.is_client_error() && !mealie_user_exists(ctx, &base, &admin_token, id).await);
         if gone {
@@ -155,7 +156,7 @@ pub async fn mealie_cleanup(ctx: &Ctx, f: &mut Flow) -> R<()> {
 
 /// Does the admin still see this user? (Unknown counts as existing.)
 async fn mealie_user_exists(ctx: &Ctx, base: &str, token: &str, id: &str) -> bool {
-    match ctx.http.get(format!("{base}/api/admin/users/{id}")).bearer_auth(token).send().await {
+    match ctx.http.get(format!("{base}/api/admin/users/{id}")).bearer_auth(token).send_t().await {
         Ok(r) => r.status().as_u16() != 404 && r.status().as_u16() != 401,
         Err(_) => true,
     }
@@ -174,7 +175,7 @@ pub async fn proxy_bearer(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let mut next = url.clone();
     let mut reached = false;
     for _ in 0..4 {
-        let r = ctx.noredir.get(&next).send().await.at("oauth2-proxy", "no token")?;
+        let r = ctx.noredir.get(&next).send_t().await.at("oauth2-proxy", "no token")?;
         let loc = r.headers().get("location").and_then(|v| v.to_str().ok()).unwrap_or_default().to_string();
         if !r.status().is_redirection() {
             return Err(Fail::new("oauth2-proxy", "no token", format!("HTTP {} at {next}, expected a redirect to Keycloak", r.status())));
@@ -203,7 +204,7 @@ pub async fn proxy_bearer(ctx: &Ctx, f: &mut Flow) -> R<()> {
     f.ok("oauth2-proxy", "admin bearer reaches Alertmanager", format!("cluster {}", v["cluster"]["status"]));
 
     let fam = kc.token_for(ctx, &u.family).await?;
-    let r = ctx.noredir.get(&url).bearer_auth(&fam).send().await.at("oauth2-proxy", "family bearer")?;
+    let r = ctx.noredir.get(&url).bearer_auth(&fam).send_t().await.at("oauth2-proxy", "family bearer")?;
     if r.status().as_u16() != 403 {
         return Err(Fail::new("oauth2-proxy", "family bearer", format!("HTTP {}, expected 403 from the admin-group check", r.status())));
     }
@@ -222,7 +223,7 @@ pub async fn forgejo_token(ctx: &Ctx, f: &mut Flow) -> R<()> {
     ctx.st().forgejo_users.push(name.clone());
     f.ok("forgejo", "user created", name.clone());
 
-    let r = ctx.noredir.get(fj.url("/user")).send().await.at("forgejo", "anonymous /user")?;
+    let r = ctx.noredir.get(fj.url("/user")).send_t().await.at("forgejo", "anonymous /user")?;
     if r.status().as_u16() != 401 {
         return Err(Fail::new("forgejo", "anonymous /user", format!("HTTP {}, expected 401 on the direct API route", r.status())));
     }

@@ -13,6 +13,7 @@
 //!    Maloja's ListenBrainz endpoint, so the token is a Maloja API key) unless
 //!    `GET /api/listenbrainz/link` already says it is linked.
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::{Client, StatusCode};
@@ -27,7 +28,7 @@ async fn link_listenbrainz(http: &Client, base: &str, login: &Value, token: &str
     let r = http
         .get(format!("{base}/api/listenbrainz/link"))
         .header("X-ND-Authorization", &auth)
-        .send()
+        .send_t()
         .await?;
     let status: Value = ok(r, "GET /api/listenbrainz/link").await?.json().await?;
     if status["status"] == json!(true) {
@@ -38,7 +39,7 @@ async fn link_listenbrainz(http: &Client, base: &str, login: &Value, token: &str
         .put(format!("{base}/api/listenbrainz/link"))
         .header("X-ND-Authorization", &auth)
         .json(&json!({ "token": token }))
-        .send()
+        .send_t()
         .await?;
     ok(r, "PUT /api/listenbrainz/link (is the token registered as a Maloja API key?)").await?;
     println!("linked listenbrainz");
@@ -57,7 +58,7 @@ async fn login(http: &Client, base: &str, user: &str, password: &str) -> Result<
     let r = http
         .post(format!("{base}/auth/login"))
         .json(&json!({ "username": user, "password": password }))
-        .send()
+        .send_t()
         .await?;
     if r.status() == StatusCode::UNAUTHORIZED {
         return Ok(None);
@@ -73,7 +74,7 @@ pub async fn run() -> Result<()> {
     let http = Client::builder().timeout(Duration::from_secs(60)).build()?;
 
     retry("waiting for navidrome", 120, || async {
-        let r = http.get(format!("{base}/ping")).send().await?;
+        let r = http.get(format!("{base}/ping")).send_t().await?;
         ok(r, "GET /ping").await?;
         Ok(())
     })
@@ -88,7 +89,7 @@ pub async fn run() -> Result<()> {
     let r = http
         .post(format!("{base}/auth/createAdmin"))
         .json(&json!({ "username": user, "password": password }))
-        .send()
+        .send_t()
         .await?;
     if r.status() == StatusCode::FORBIDDEN {
         return Err(format!(

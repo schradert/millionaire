@@ -4,6 +4,7 @@
 //! ConfigMap. The admin account (the initial admin secret) only creates and deletes tagged
 //! Applications and the tagged repository registration.
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::Method;
@@ -38,7 +39,7 @@ impl Argo {
     }
 
     async fn app(&self, ctx: &Ctx, name: &str) -> R<Option<Value>> {
-        let r = self.req(ctx, Method::GET, &format!("/applications/{name}")).send().await.map_err(|e| Fail::new(APP, "get application", chain(&e)))?;
+        let r = self.req(ctx, Method::GET, &format!("/applications/{name}")).send_t().await.map_err(|e| Fail::new(APP, "get application", chain(&e)))?;
         match r.status().as_u16() {
             404 => Ok(None),
             // Argo CD answers 403 (not 404) for an Application that does not exist.

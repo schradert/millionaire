@@ -1,3 +1,4 @@
+use crate::trace::SendTraced as _;
 use std::{env, fs, future::Future, time::Duration};
 
 use reqwest::Response;
@@ -53,7 +54,13 @@ where
     let mut n = 0;
     loop {
         n += 1;
-        match f().await {
+        let mut span = crate::trace::span(format!("{what} (try {n}/{attempts})"));
+        let res = f().await;
+        if let Err(e) = &res {
+            span.error(e.to_string());
+        }
+        drop(span);
+        match res {
             Ok(v) => return Ok(v),
             Err(e) if n < attempts => {
                 eprintln!("{what} ({n}/{attempts}): {e}");
@@ -93,7 +100,7 @@ impl Kube {
     /// The value of `key` in the Secret `name`, or None when the Secret or the key is missing.
     pub async fn secret_value(&self, name: &str, key: &str) -> Result<Option<String>> {
         let url = format!("{}/api/v1/namespaces/{}/secrets/{name}", self.api, self.namespace);
-        let r = self.http.get(url).bearer_auth(&self.token).send().await?;
+        let r = self.http.get(url).bearer_auth(&self.token).send_t().await?;
         if r.status() == reqwest::StatusCode::NOT_FOUND {
             return Ok(None);
         }
@@ -108,7 +115,7 @@ impl Kube {
     /// Values are never logged.
     pub async fn ensure_secret(&self, name: &str, data: &[(&str, &str)]) -> Result<bool> {
         let url = format!("{}/api/v1/namespaces/{}/secrets", self.api, self.namespace);
-        let r = self.http.get(format!("{url}/{name}")).bearer_auth(&self.token).send().await?;
+        let r = self.http.get(format!("{url}/{name}")).bearer_auth(&self.token).send_t().await?;
         let body = serde_json::json!({
             "apiVersion": "v1", "kind": "Secret",
             "metadata": { "name": name },
@@ -116,7 +123,7 @@ impl Kube {
             "stringData": data.iter().copied().collect::<std::collections::BTreeMap<_, _>>(),
         });
         if r.status() == reqwest::StatusCode::NOT_FOUND {
-            let r = self.http.post(&url).bearer_auth(&self.token).json(&body).send().await?;
+            let r = self.http.post(&url).bearer_auth(&self.token).json(&body).send_t().await?;
             ok(r, "create secret").await?;
             return Ok(true);
         }
@@ -131,7 +138,7 @@ impl Kube {
             .bearer_auth(&self.token)
             .header("Content-Type", "application/merge-patch+json")
             .json(&body)
-            .send()
+            .send_t()
             .await?;
         ok(r, "patch secret").await?;
         Ok(true)

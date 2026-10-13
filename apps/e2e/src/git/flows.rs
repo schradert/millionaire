@@ -2,6 +2,7 @@
 //! commit, a second clone reads it back, the repo is deleted. The Floccus variant checks the
 //! bookmarks route and syncs an XBEL file between two clones the way the extension does.
 
+use crate::trace::SendTraced as _;
 use std::{path::Path, time::Duration};
 
 use reqwest::{header::USER_AGENT, Method};
@@ -45,7 +46,7 @@ async fn file_via_api(ctx: &Ctx, fj: &Forgejo, token: &str, u: &User, repo: &str
 
 /// The repo is gone: the API says 404 and a clone fails.
 async fn assert_gone(ctx: &Ctx, fj: &Forgejo, token: &str, u: &User, repo: &str, dir: &Path) -> R<()> {
-    let r = fj.as_token(ctx, token, Method::GET, &format!("/repos/{}/{repo}", u.name)).send().await.at(APP, "get deleted repo")?;
+    let r = fj.as_token(ctx, token, Method::GET, &format!("/repos/{}/{repo}", u.name)).send_t().await.at(APP, "get deleted repo")?;
     if r.status().as_u16() != 404 {
         return Err(Fail::new(APP, "repo deleted", format!("GET repo answers HTTP {} after DELETE", r.status())));
     }
@@ -116,7 +117,7 @@ fn xbel(titles: &[&str]) -> String {
 
 /// What a browser (Floccus) sends to start a clone: the smart-HTTP ref advertisement, no credentials.
 async fn browser_probe(ctx: &Ctx, base: &str, path: &str) -> R<reqwest::Response> {
-    ctx.noredir.get(format!("{base}/{path}/info/refs?service=git-upload-pack")).header(USER_AGENT, BROWSER_UA).send().await.at("floccus route", "probe")
+    ctx.noredir.get(format!("{base}/{path}/info/refs?service=git-upload-pack")).header(USER_AGENT, BROWSER_UA).send_t().await.at("floccus route", "probe")
 }
 
 /// Floccus's git backend, without the owner's repo: the dedicated bookmarks route lets a browser

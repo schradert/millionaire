@@ -13,6 +13,7 @@
 //! 4. Set username, full name and email on that user, then change its password.
 //!    A rerun after a crash in between picks up the remaining step.
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::Client;
@@ -28,7 +29,7 @@ async fn login(http: &Client, base: &str, user: &str, password: &str) -> Result<
     let r = http
         .post(format!("{base}/api/auth/token"))
         .form(&[("username", user), ("password", password)])
-        .send()
+        .send_t()
         .await?;
     if r.status() == reqwest::StatusCode::UNAUTHORIZED {
         return Ok(None);
@@ -64,7 +65,7 @@ pub async fn run() -> Result<()> {
     let http = Client::builder().timeout(Duration::from_secs(60)).build()?;
 
     retry("waiting for mealie", 120, || async {
-        let r = http.get(format!("{base}/api/app/about")).send().await?;
+        let r = http.get(format!("{base}/api/app/about")).send_t().await?;
         ok(r, "GET /api/app/about").await?;
         Ok(())
     })
@@ -87,7 +88,7 @@ pub async fn run() -> Result<()> {
         format!("no login works: neither {email} with the generated password nor the seeded {DEFAULT_EMAIL} defaults (the first user was created by hand: set its email to {email} and its password to the generated one)")
     })?;
 
-    let r = http.get(format!("{base}/api/users/self")).bearer_auth(&token).send().await?;
+    let r = http.get(format!("{base}/api/users/self")).bearer_auth(&token).send_t().await?;
     let me: Value = ok(r, "GET /api/users/self").await?.json().await?;
     let id = me["id"].as_str().ok_or("self has no id")?;
 
@@ -97,7 +98,7 @@ pub async fn run() -> Result<()> {
             .put(format!("{base}/api/users/{id}"))
             .bearer_auth(&token)
             .json(&profile_update(&me, &username, &full_name, &email))
-            .send()
+            .send_t()
             .await?;
         ok(
             r,
@@ -111,7 +112,7 @@ pub async fn run() -> Result<()> {
         .put(format!("{base}/api/users/password"))
         .bearer_auth(&token)
         .json(&json!({ "currentPassword": DEFAULT_PASSWORD, "newPassword": password }))
-        .send()
+        .send_t()
         .await?;
     ok(r, "PUT /api/users/password").await?;
 

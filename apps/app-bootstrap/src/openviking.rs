@@ -8,6 +8,7 @@
 //! 4. Ensure the Secret `openviking-agent-key` (key OPENVIKING_AGENT_API_KEY)
 //!    holds that key. The key is never logged.
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::Client;
@@ -29,12 +30,12 @@ pub async fn run() -> Result<()> {
     };
 
     retry("waiting for openviking", 120, || async {
-        let r = http.get(format!("{base}/health")).send().await?;
+        let r = http.get(format!("{base}/health")).send_t().await?;
         ok(r, "GET /health").await.map(|_| ())
     })
     .await?;
 
-    let accounts: Value = ok(admin(reqwest::Method::GET, "/accounts".into()).send().await?, "list accounts")
+    let accounts: Value = ok(admin(reqwest::Method::GET, "/accounts".into()).send_t().await?, "list accounts")
         .await?
         .json()
         .await?;
@@ -47,7 +48,7 @@ pub async fn run() -> Result<()> {
         println!("creating account {account}");
         let r = admin(reqwest::Method::POST, "/accounts".into())
             .json(&json!({ "account_id": account, "admin_user_id": admin_user }))
-            .send()
+            .send_t()
             .await?;
         ok(r, "create account").await?;
     }
@@ -56,7 +57,7 @@ pub async fn run() -> Result<()> {
     let list = |what: &'static str| {
         let req = admin(reqwest::Method::GET, users_path.clone());
         async move {
-            let v: Value = ok(req.send().await?, what).await?.json().await?;
+            let v: Value = ok(req.send_t().await?, what).await?.json().await?;
             Ok::<Value, Box<dyn std::error::Error>>(v)
         }
     };
@@ -75,7 +76,7 @@ pub async fn run() -> Result<()> {
         println!("registering admin user {admin_user}");
         let r = admin(reqwest::Method::POST, users_path.clone())
             .json(&json!({ "user_id": admin_user, "role": "admin" }))
-            .send()
+            .send_t()
             .await?;
         ok(r, "register admin user").await?;
     }
@@ -85,7 +86,7 @@ pub async fn run() -> Result<()> {
             println!("registering user {agent_user}");
             let r = admin(reqwest::Method::POST, users_path.clone())
                 .json(&json!({ "user_id": agent_user, "role": "user" }))
-                .send()
+                .send_t()
                 .await?;
             let v: Value = ok(r, "register user").await?.json().await?;
             match v["result"]["user_key"].as_str() {
@@ -102,7 +103,7 @@ pub async fn run() -> Result<()> {
         .header("Accept", "application/json, text/event-stream")
         .json(&json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
             "protocolVersion": "2025-03-26", "capabilities": {}, "clientInfo": { "name": "app-bootstrap", "version": "1" } } }))
-        .send()
+        .send_t()
         .await?;
     ok(r, "MCP initialize with agent key").await?;
 

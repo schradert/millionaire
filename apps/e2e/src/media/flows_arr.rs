@@ -1,6 +1,7 @@
 //! The arr chains: Radarr/Sonarr/Lidarr add, import (placed file, or a torrent through the VPN
 //! in the full suite), Jellyfin scan and playback, Seerr requests, Prowlarr search.
 
+use crate::trace::SendTraced as _;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -217,7 +218,7 @@ async fn playback(ctx: &Ctx, f: &mut Flow, jf: &Jellyfin, item: &Value) -> R<()>
     let seg = m3u8.lines().find(|l| !l.starts_with('#') && !l.trim().is_empty()).ok_or_else(|| Fail::new("jellyfin", "HLS playlist", excerpt(&m3u8)))?;
     let seg_url = if seg.starts_with("http") { seg.to_string() } else { format!("/Videos/{id}/{seg}") };
     let bytes = send(jf.req(ctx, Method::GET, &seg_url.replace(&jf.base, "")).timeout(Duration::from_secs(180)), "jellyfin", "HLS transcode segment").await?.bytes().await.at("jellyfin", "HLS segment")?;
-    let _ = jf.req(ctx, Method::DELETE, &format!("/Videos/ActiveEncodings?deviceId={sess}&playSessionId={sess}")).send().await;
+    let _ = jf.req(ctx, Method::DELETE, &format!("/Videos/ActiveEncodings?deviceId={sess}&playSessionId={sess}")).send_t().await;
     if bytes.is_empty() {
         return Err(Fail::new("jellyfin", "HLS transcode segment", "empty segment"));
     }

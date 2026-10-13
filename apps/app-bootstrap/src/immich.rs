@@ -18,6 +18,7 @@
 //!    last admin), and the only other admin is tristan. The user is created if missing with a
 //!    random password that is reset whenever a key has to be minted and never stored.
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::Client;
@@ -41,7 +42,7 @@ struct Features {
 }
 
 async fn is_initialized(http: &Client, base: &str) -> Result<bool> {
-    let r = http.get(format!("{base}/api/server/config")).send().await?;
+    let r = http.get(format!("{base}/api/server/config")).send_t().await?;
     Ok(ok(r, "GET /api/server/config")
         .await?
         .json::<ServerConfig>()
@@ -69,7 +70,7 @@ pub async fn run() -> Result<()> {
         let r = http
             .post(format!("{base}/api/auth/admin-sign-up"))
             .json(&json!({ "email": email, "name": name, "password": password }))
-            .send()
+            .send_t()
             .await?;
         if let Err(e) = ok(r, "POST /api/auth/admin-sign-up").await {
             // Lost a race with another signup: fine if the server now reports initialized.
@@ -83,13 +84,13 @@ pub async fn run() -> Result<()> {
     let r = http
         .post(format!("{base}/api/auth/login"))
         .json(&json!({ "email": email, "password": password }))
-        .send()
+        .send_t()
         .await?;
     let login: serde_json::Value = ok(r, "POST /api/auth/login (generated admin password)").await?.json().await?;
     let token = login["accessToken"].as_str().ok_or("login response has no accessToken")?;
     println!("admin login ok");
 
-    let r = http.get(format!("{base}/api/server/features")).send().await?;
+    let r = http.get(format!("{base}/api/server/features")).send_t().await?;
     let f = ok(r, "GET /api/server/features").await?.json::<Features>().await?;
     println!("features: oauth={} passwordLogin={}", f.oauth, f.password_login);
     if std::env::var("REQUIRE_OAUTH").is_ok() && !f.oauth {
@@ -99,7 +100,7 @@ pub async fn run() -> Result<()> {
         return Err("password login is disabled; it must stay on as break-glass".into());
     }
 
-    let r = http.get(format!("{base}/api/users/me")).bearer_auth(token).send().await?;
+    let r = http.get(format!("{base}/api/users/me")).bearer_auth(token).send_t().await?;
     let me: serde_json::Value = ok(r, "GET /api/users/me").await?.json().await?;
     let linked = me["oauthId"].as_str().is_some_and(|s| !s.is_empty());
     println!("admin isAdmin={} oidc-linked={linked}", me["isAdmin"]);
@@ -125,14 +126,14 @@ fn user_id(users: &serde_json::Value, email: &str) -> Option<String> {
 async fn e2e_admin(http: &Client, base: &str, admin_token: &str, secret_name: &str, email: &str) -> Result<()> {
     let kube = Kube::new()?;
     if let Some(key) = kube.secret_value(secret_name, "api-key").await? {
-        let r = http.get(format!("{base}/api/users/me")).header("x-api-key", &key).send().await?;
+        let r = http.get(format!("{base}/api/users/me")).header("x-api-key", &key).send_t().await?;
         if r.status().is_success() {
             println!("e2e admin: stored key works, unchanged");
             return Ok(());
         }
         println!("e2e admin: stored key rejected (HTTP {}), minting a new one", r.status());
     }
-    let r = http.get(format!("{base}/api/admin/users")).bearer_auth(admin_token).send().await?;
+    let r = http.get(format!("{base}/api/admin/users")).bearer_auth(admin_token).send_t().await?;
     let users: serde_json::Value = ok(r, "GET /api/admin/users").await?.json().await?;
     let password = random_password()?;
     let id = match user_id(&users, email) {
@@ -141,7 +142,7 @@ async fn e2e_admin(http: &Client, base: &str, admin_token: &str, secret_name: &s
                 .put(format!("{base}/api/admin/users/{id}"))
                 .bearer_auth(admin_token)
                 .json(&json!({ "password": password, "isAdmin": true }))
-                .send()
+                .send_t()
                 .await?;
             ok(r, "PUT /api/admin/users/{id}").await?;
             id
@@ -152,13 +153,13 @@ async fn e2e_admin(http: &Client, base: &str, admin_token: &str, secret_name: &s
                 .post(format!("{base}/api/admin/users"))
                 .bearer_auth(admin_token)
                 .json(&json!({ "email": email, "name": "e2e", "password": password, "isAdmin": true, "shouldChangePassword": false, "notify": false }))
-                .send()
+                .send_t()
                 .await?;
             let created: serde_json::Value = ok(r, "POST /api/admin/users").await?.json().await?;
             created["id"].as_str().ok_or("create user response has no id")?.to_string()
         }
     };
-    let r = http.post(format!("{base}/api/auth/login")).json(&json!({ "email": email, "password": password })).send().await?;
+    let r = http.post(format!("{base}/api/auth/login")).json(&json!({ "email": email, "password": password })).send_t().await?;
     let login: serde_json::Value = ok(r, "POST /api/auth/login (e2e admin)").await?.json().await?;
     let token = login["accessToken"].as_str().ok_or("e2e admin login has no accessToken")?;
     println!("e2e admin {id} login ok");
@@ -169,7 +170,7 @@ async fn api_key(http: &Client, base: &str, token: &str, secret_name: &str, key_
     let key_name = key_name.to_string();
     let kube = Kube::new()?;
     if let Some(key) = kube.secret_value(secret_name, "api-key").await? {
-        let r = http.get(format!("{base}/api/api-keys/me")).header("x-api-key", &key).send().await?;
+        let r = http.get(format!("{base}/api/api-keys/me")).header("x-api-key", &key).send_t().await?;
         if r.status().is_success() {
             println!("api key {key_name}: stored key works, unchanged");
             return Ok(());
@@ -177,19 +178,19 @@ async fn api_key(http: &Client, base: &str, token: &str, secret_name: &str, key_
         println!("api key {key_name}: stored key rejected (HTTP {}), minting a new one", r.status());
     }
 
-    let r = http.get(format!("{base}/api/api-keys")).bearer_auth(token).send().await?;
+    let r = http.get(format!("{base}/api/api-keys")).bearer_auth(token).send_t().await?;
     let keys: serde_json::Value = ok(r, "GET /api/api-keys").await?.json().await?;
     for k in keys.as_array().into_iter().flatten().filter(|k| k["name"] == key_name.as_str()) {
         let id = k["id"].as_str().ok_or("api key has no id")?;
         println!("deleting stale api key {key_name} ({id})");
-        let r = http.delete(format!("{base}/api/api-keys/{id}")).bearer_auth(token).send().await?;
+        let r = http.delete(format!("{base}/api/api-keys/{id}")).bearer_auth(token).send_t().await?;
         ok(r, "DELETE /api/api-keys").await?;
     }
     let r = http
         .post(format!("{base}/api/api-keys"))
         .bearer_auth(token)
         .json(&json!({ "name": key_name, "permissions": ["all"] }))
-        .send()
+        .send_t()
         .await?;
     let created: serde_json::Value = ok(r, "POST /api/api-keys").await?.json().await?;
     let key = created["secret"].as_str().ok_or("api key response has no secret")?;

@@ -3,6 +3,7 @@
 //! workspace are deleted. Workspace ids are global and the admin only ever creates or deletes
 //! ones carrying a run marker.
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::Method;
@@ -62,7 +63,7 @@ pub async fn run_script(ctx: &Ctx, f: &mut Flow) -> R<()> {
 
     // A script is runnable a moment after it is saved: retry while Windmill says "not found".
     let id = poll(APP, "run script", Duration::from_secs(30), Duration::from_secs(1), || async {
-        let r = wm.req(ctx, Method::POST, &format!("/w/{m}/jobs/run/p/{PATH}")).json(&json!({ "name": m })).send().await.map_err(|e| Fail::new(APP, "run script", chain(&e)))?;
+        let r = wm.req(ctx, Method::POST, &format!("/w/{m}/jobs/run/p/{PATH}")).json(&json!({ "name": m })).send_t().await.map_err(|e| Fail::new(APP, "run script", chain(&e)))?;
         match r.status().as_u16() {
             404 => Ok(None),
             s if (200..300).contains(&s) => Ok(Some(r.text().await.at(APP, "job id")?.trim().trim_matches('"').to_string())),
@@ -71,7 +72,7 @@ pub async fn run_script(ctx: &Ctx, f: &mut Flow) -> R<()> {
     })
     .await?;
     let result = poll(APP, "job result", Duration::from_secs(120), Duration::from_secs(2), || async {
-        let r = wm.req(ctx, Method::GET, &format!("/w/{m}/jobs_u/completed/get_result/{id}")).send().await.map_err(|e| Fail::new(APP, "get result", chain(&e)))?;
+        let r = wm.req(ctx, Method::GET, &format!("/w/{m}/jobs_u/completed/get_result/{id}")).send_t().await.map_err(|e| Fail::new(APP, "get result", chain(&e)))?;
         if r.status().as_u16() == 404 {
             return Ok(None);
         }
@@ -87,7 +88,7 @@ pub async fn run_script(ctx: &Ctx, f: &mut Flow) -> R<()> {
     f.ok(APP, "job ran and returned the result", format!("{result}"));
 
     send(wm.req(ctx, Method::POST, &format!("/w/{m}/scripts/delete/p/{PATH}")), APP, "delete script").await?;
-    let r = wm.req(ctx, Method::GET, &format!("/w/{m}/scripts/get/p/{PATH}")).send().await.at(APP, "get deleted script")?;
+    let r = wm.req(ctx, Method::GET, &format!("/w/{m}/scripts/get/p/{PATH}")).send_t().await.at(APP, "get deleted script")?;
     if r.status().as_u16() != 404 && !r.text().await.unwrap_or_default().contains("deleted\":true") {
         return Err(Fail::new(APP, "script deleted", "the script is still readable after deleting it"));
     }

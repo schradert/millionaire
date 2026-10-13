@@ -9,6 +9,7 @@
 //! 3. `POST /api/auth` as `ADMIN_USER` with the generated password. A server that was set up by
 //!    hand with other credentials fails here, clearly, instead of being touched.
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::Client;
@@ -18,7 +19,7 @@ use tokio::time::sleep;
 use crate::common::{ok, retry, secret, var, Result};
 
 async fn state(http: &Client, base: &str) -> Result<String> {
-    let r = http.get(format!("{base}/api/v3/Init/Status")).send().await?;
+    let r = http.get(format!("{base}/api/v3/Init/Status")).send_t().await?;
     let s: Value = ok(r, "GET /api/v3/Init/Status").await?.json().await?;
     if let Some(msg) = s["StartupMessage"].as_str().filter(|m| s["State"] == "Failed" && !m.is_empty()) {
         return Err(format!("shoko startup failed: {msg}").into());
@@ -39,10 +40,10 @@ pub async fn run() -> Result<()> {
         let r = http
             .post(format!("{base}/api/v3/Init/DefaultUser"))
             .json(&json!({ "Username": user, "Password": password }))
-            .send()
+            .send_t()
             .await?;
         ok(r, "POST /api/v3/Init/DefaultUser").await?;
-        let r = http.get(format!("{base}/api/v3/Init/StartServer")).send().await?;
+        let r = http.get(format!("{base}/api/v3/Init/StartServer")).send_t().await?;
         ok(r, "GET /api/v3/Init/StartServer").await?;
     }
     // Database setup can take a while on first start.
@@ -60,7 +61,7 @@ pub async fn run() -> Result<()> {
     let r = http
         .post(format!("{base}/api/auth"))
         .json(&json!({ "user": user, "pass": password, "device": "app-bootstrap" }))
-        .send()
+        .send_t()
         .await?;
     ok(
         r,

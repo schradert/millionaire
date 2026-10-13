@@ -114,20 +114,31 @@ pub async fn run_def(ctx: &Ctx, d: &FlowDef) -> Flow {
     let mut f = Flow::new(d.name);
     f.family = d.family.into();
     println!("[{}] start", d.name);
+    let mut span = crate::trace::span(format!("flow {}", d.id()));
+    span.attr("e2e.family", d.family);
+    span.attr("e2e.flow", d.name);
+    span.attr("e2e.run", &ctx.run);
     let mut res: R<()> = Ok(());
     for (phase, step) in [("setup", d.setup), ("act", Some(d.act)), ("assert", d.assert)] {
         if let (Ok(()), Some(step)) = (&res, step) {
             f.phase = phase;
+            let _phase = crate::trace::span(format!("{} {phase}", d.name));
             res = step(ctx, &mut f).await;
         }
     }
     let skipped = matches!(&res, Err(e) if e.skip);
     if let (Some(clean), false) = (d.cleanup, skipped) {
         f.phase = "cleanup";
+        let _phase = crate::trace::span(format!("{} cleanup", d.name));
         match (clean(ctx, &mut f).await, &res) {
             (Ok(()), _) => {}
             (Err(e), Ok(())) => res = Err(Fail { step: format!("cleanup: {}", e.step), skip: false, ..e }),
             (Err(e), Err(_)) => f.ok(&e.app, "cleanup also failed", e.msg),
+        }
+    }
+    if let Err(e) = &res {
+        if !e.skip {
+            span.error(format!("{}: {}", e.step, e.msg));
         }
     }
     f.finish(res);

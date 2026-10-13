@@ -21,6 +21,7 @@
 //!    `RADARR_PROFILE`/`SONARR_PROFILE` (else the lowest id) and `POST /settings/radarr|sonarr`
 //!    as the default server. Servers already listed are left alone.
 
+use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::{Client, Response};
@@ -62,7 +63,7 @@ pub async fn run() -> Result<()> {
     let http = Client::builder().timeout(Duration::from_secs(120)).build()?;
 
     let public: Value = retry("waiting for seerr", 120, || async {
-        let r = http.get(format!("{base}/api/v1/settings/public")).send().await?;
+        let r = http.get(format!("{base}/api/v1/settings/public")).send_t().await?;
         Ok(ok(r, "GET /api/v1/settings/public").await?.json::<Value>().await?)
     })
     .await?;
@@ -85,7 +86,7 @@ pub async fn run() -> Result<()> {
             body["urlBase"] = json!("");
         }
         let http = &http;
-        async move { Ok::<_, Box<dyn std::error::Error>>(http.post(format!("{base}/api/v1/auth/jellyfin")).json(&body).send().await?) }
+        async move { Ok::<_, Box<dyn std::error::Error>>(http.post(format!("{base}/api/v1/auth/jellyfin")).json(&body).send_t().await?) }
     };
     // A fresh server takes the address; a linked one rejects it ("already configured").
     let with_server = !initialized && public["mediaServerType"].as_i64() == Some(NOT_CONFIGURED);
@@ -109,7 +110,7 @@ pub async fn run() -> Result<()> {
     let get = |path: String| {
         let (http, cookie) = (&http, cookie.clone());
         async move {
-            let r = http.get(format!("{base}{path}")).header("Cookie", cookie).send().await?;
+            let r = http.get(format!("{base}{path}")).header("Cookie", cookie).send_t().await?;
             Ok::<Value, Box<dyn std::error::Error>>(ok(r, &format!("GET {path}")).await?.json().await?)
         }
     };
@@ -138,14 +139,14 @@ pub async fn run() -> Result<()> {
         .post(format!("{base}/api/v1/settings/jellyfin/sync"))
         .header("Cookie", &cookie)
         .json(&json!({ "start": true }))
-        .send()
+        .send_t()
         .await?;
     ok(r, "POST /api/v1/settings/jellyfin/sync").await?;
 
     let r = http
         .post(format!("{base}/api/v1/settings/initialize"))
         .header("Cookie", &cookie)
-        .send()
+        .send_t()
         .await?;
     ok(r, "POST /api/v1/settings/initialize").await?;
     println!("seerr initialised");
@@ -167,7 +168,7 @@ async fn wire_arr(http: &Client, base: &str, cookie: &str) -> Result<()> {
         let r = http
             .get(format!("{base}/api/v1/settings/{kind}"))
             .header("Cookie", cookie)
-            .send()
+            .send_t()
             .await?;
         let known: Value = ok(r, &format!("GET /api/v1/settings/{kind}")).await?.json().await?;
         if known.as_array().into_iter().flatten().any(|k| k["hostname"] == json!(host)) {
@@ -221,7 +222,7 @@ async fn wire_arr(http: &Client, base: &str, cookie: &str) -> Result<()> {
             .post(format!("{base}/api/v1/settings/{kind}"))
             .header("Cookie", cookie)
             .json(&body)
-            .send()
+            .send_t()
             .await?;
         ok(r, &format!("POST /api/v1/settings/{kind}")).await?;
         println!("seerr: added {kind} {host} (profile {pname}, root {root})");

@@ -1,6 +1,7 @@
 //! Flows that need neither qBittorrent nor VPN credentials: SSO, Kodi WebDAV, books, music,
 //! recyclarr, maintainerr, bazarr.
 
+use crate::trace::SendTraced as _;
 use std::{fs, time::Duration};
 
 use reqwest::{header, Method, StatusCode};
@@ -82,7 +83,7 @@ pub async fn sso(ctx: &Ctx, f: &mut Flow) -> R<()> {
     for (app, path) in native {
         let host = format!("{app}.{d}");
         let res = async {
-            let r = ctx.noredir.get(format!("https://{host}{path}")).send().await.map_err(|e| e.to_string())?;
+            let r = ctx.noredir.get(format!("https://{host}{path}")).send_t().await.map_err(|e| e.to_string())?;
             let loc = r.headers().get(header::LOCATION).and_then(|v| v.to_str().ok()).unwrap_or("").to_string();
             if !r.status().is_redirection() {
                 return Err(format!("HTTP {} (no redirect)", r.status()));
@@ -101,7 +102,7 @@ pub async fn sso(ctx: &Ctx, f: &mut Flow) -> R<()> {
         let res = async {
             let mut url = format!("https://{host}/");
             for _ in 0..4 {
-                let r = ctx.noredir.get(&url).send().await.map_err(|e| e.to_string())?;
+                let r = ctx.noredir.get(&url).send_t().await.map_err(|e| e.to_string())?;
                 if !r.status().is_redirection() {
                     return Err(format!("HTTP {} at {url}, not a redirect to Keycloak", r.status()));
                 }
@@ -137,7 +138,7 @@ pub async fn kodi(ctx: &Ctx, f: &mut Flow) -> R<()> {
     f.ok("fs", "place test ISO", format!("{} bytes (generated)", iso.len()));
 
     let url = format!("https://dvd.{}/.{}/{name}", domain(), ctx.marker);
-    let r = ctx.http.get(&url).send().await.at("dvd-webdav", "unauthenticated GET")?;
+    let r = ctx.http.get(&url).send_t().await.at("dvd-webdav", "unauthenticated GET")?;
     if r.status() != StatusCode::UNAUTHORIZED {
         return Err(Fail::new("dvd-webdav", "unauthenticated GET", format!("HTTP {}, expected 401", r.status())));
     }
@@ -423,7 +424,7 @@ pub async fn maintainerr(ctx: &Ctx, f: &mut Flow) -> R<()> {
     // usually unknown to it. Then anchor the (inactive, Maintainerr-only) group on a real movies
     // library instead; the rule is still evaluated against the test movie only.
     let mut body = body;
-    let r = ctx.http.post(format!("{base}/api/rules")).json(&body).send().await.at("maintainerr", "create test rule group")?;
+    let r = ctx.http.post(format!("{base}/api/rules")).json(&body).send_t().await.at("maintainerr", "create test rule group")?;
     let status = r.status();
     let text = r.text().await.unwrap_or_default();
     if !(status.is_success() || status == reqwest::StatusCode::BAD_REQUEST && text.contains("does not exist")) {
