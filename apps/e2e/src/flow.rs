@@ -114,7 +114,7 @@ pub async fn run_def(ctx: &Ctx, d: &FlowDef) -> Flow {
     let mut f = Flow::new(d.name);
     f.family = d.family.into();
     println!("[{}] start", d.name);
-    let mut span = crate::trace::span(format!("flow {}", d.id()));
+    let mut span = crate::trace::root_span(format!("flow {}", d.id()));
     span.attr("e2e.family", d.family);
     span.attr("e2e.flow", d.name);
     span.attr("e2e.run", &ctx.run);
