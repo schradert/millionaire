@@ -10,10 +10,18 @@ metadata:
   namespace: media
 spec:
   ports:
+    - name: api-metrics
+      port: 8081
+      protocol: TCP
+      targetPort: 8081
     - name: http
       port: 2283
       protocol: TCP
       targetPort: 2283
+    - name: worker-metrics
+      port: 8082
+      protocol: TCP
+      targetPort: 8082
   selector:
     app.kubernetes.io/controller: immich-server
     app.kubernetes.io/instance: immich-server

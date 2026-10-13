@@ -95,6 +95,27 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
+      initContainers:
+        - command:
+            - sh
+            - -c
+            - f=/config/config/system.xml; [ -f $f ] && sed -i 's|<EnableMetrics>false</EnableMetrics>|<EnableMetrics>true</EnableMetrics>|' $f || true
+          image: ghcr.io/jellyfin/jellyfin:10.11.11@sha256:45f648c382a0c8b552582fcea40e95cb17c5d475473a891cba0eb7523fb92112
+          name: metrics
+          volumeMounts:
+            - mountPath: /config/metadata
+              name: cache
+            - mountPath: /config
+              name: config
+            - mountPath: /cache
+              name: tmpfs
+              subPath: cache
+            - mountPath: /config/log
+              name: tmpfs
+              subPath: log
+            - mountPath: /tmp
+              name: tmpfs
+              subPath: tmp
       serviceAccountName: jellyfin
       volumes:
         - name: cache

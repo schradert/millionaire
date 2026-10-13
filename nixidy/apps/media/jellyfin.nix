@@ -42,6 +42,16 @@
         values = {
           controllers.jellyfin = {
             annotations."reloader.stakater.com/auto" = "true";
+            # /metrics is off until system.xml says EnableMetrics (no env or flag for it).
+            # Skipped on first boot, when Jellyfin has not written the file yet.
+            initContainers.metrics = {
+              image = pinned.images.jellyfin;
+              command = [
+                "sh"
+                "-c"
+                "f=/config/config/system.xml; [ -f $f ] && sed -i 's|<EnableMetrics>false</EnableMetrics>|<EnableMetrics>true</EnableMetrics>|' $f || true"
+              ];
+            };
             containers.jellyfin = {
               image = pinned.images.jellyfin;
               probes.liveness.enabled = true;
@@ -50,6 +60,14 @@
             };
           };
           service.jellyfin.ports.http.port = 8096;
+          serviceMonitor.jellyfin = {
+            serviceName = "jellyfin";
+            endpoints = lib.toList {
+              port = "http";
+              path = "/metrics";
+              interval = "1m";
+            };
+          };
           persistence = {
             config = {
               type = "persistentVolumeClaim";

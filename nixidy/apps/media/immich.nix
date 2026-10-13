@@ -131,9 +131,29 @@ in {
               probes.startup = serverProbe {spec.failureThreshold = 30;};
             };
           };
-          service.immich-server.ports.http = {
-            primary = true;
-            port = 2283;
+          service.immich-server.ports = {
+            http = {
+              primary = true;
+              port = 2283;
+            };
+            # IMMICH_TELEMETRY_INCLUDE below: API and job workers each serve /metrics.
+            api-metrics.port = 8081;
+            worker-metrics.port = 8082;
+          };
+          serviceMonitor.immich-server = {
+            serviceName = "immich-server";
+            endpoints = [
+              {
+                port = "api-metrics";
+                path = "/metrics";
+                interval = "1m";
+              }
+              {
+                port = "worker-metrics";
+                path = "/metrics";
+                interval = "1m";
+              }
+            ];
           };
           # immich.json (oauth + break-glass password login) rendered by ESO so the
           # client secret never lands in a ConfigMap.
@@ -153,6 +173,7 @@ in {
           };
           configMaps.immich-server.data = {
             IMMICH_CONFIG_FILE = "/config/immich.json";
+            IMMICH_TELEMETRY_INCLUDE = "all";
             DB_HOSTNAME = "immich-rw.media.svc.cluster.local";
             DB_USERNAME = "immich";
             DB_PASSWORD_FILE = "/secrets/db_password.txt";

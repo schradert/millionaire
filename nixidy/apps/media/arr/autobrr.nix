@@ -107,7 +107,18 @@ in {
               probes.startup.enabled = true;
             };
           };
-          service.autobrr.ports.http.port = 7474;
+          service.autobrr.ports = {
+            http.port = 7474;
+            metrics.port = 9074;
+          };
+          serviceMonitor.autobrr = {
+            serviceName = "autobrr";
+            endpoints = lib.toList {
+              port = "metrics";
+              path = "/metrics";
+              interval = "1m";
+            };
+          };
           persistence.config = {
             type = "persistentVolumeClaim";
             accessMode = "ReadWriteOnce";
@@ -146,6 +157,9 @@ in {
             AUTOBRR__CHECK_FOR_UPDATES = "false";
             AUTOBRR__HOST = "0.0.0.0";
             AUTOBRR__LOG_LEVEL = "INFO";
+            AUTOBRR__METRICS_ENABLED = "true";
+            AUTOBRR__METRICS_HOST = "0.0.0.0";
+            AUTOBRR__METRICS_PORT = "9074";
             AUTOBRR__SESSION_SECRET_FILE = "/secrets/session_secret.txt";
             AUTOBRR__DATABASE_TYPE = "postgres";
             AUTOBRR__POSTGRES_USER = "autobrr";

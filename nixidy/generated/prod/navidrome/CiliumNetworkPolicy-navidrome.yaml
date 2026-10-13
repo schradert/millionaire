@@ -19,6 +19,9 @@ spec:
             batch.kubernetes.io/job-name: navidrome-bootstrap
         - matchLabels:
             app.kubernetes.io/name: media-e2e
+        - matchLabels:
+            app.kubernetes.io/name: prometheus
+            k8s:io.kubernetes.pod.namespace: observability
       toPorts:
         - ports:
             - port: "4533"
