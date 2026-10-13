@@ -3,11 +3,14 @@
 # RKE2 + canivete wiring, cluster tailnet, build-pool membership, clock, resolver
 # and attic cache. Disk layout is separate (modules/disko.nix).
 {
+  config,
   flake,
   lib,
   pkgs,
   ...
-}: {
+}: let
+  containerdDir = "/var/lib/rancher/rke2/agent/containerd";
+in {
   imports = [./builder.nix ./tailnet.nix ./rke2-fips-overlay.nix ./etcd-watchdog.nix ./etcd-snapshot.nix] ++ (with flake.inputs.srvos.nixosModules; [roles-nix-remote-builder]);
   canivete.kubernetes.enable = true;
   # Join the cluster tailnet so cloud burst workers can reach the RKE2
@@ -39,7 +42,28 @@
   # The upstream unit sets TimeoutStartSec=0, which let rke2-server sit "activating"
   # for months (Type=notify never signalled ready). Bound it so systemd kills the
   # hung start; Restart=always (upstream) then retries it.
-  systemd.services.rke2-server.serviceConfig.TimeoutStartSec = lib.mkForce "15min";
+  systemd.services = lib.mkMerge [
+    {rke2-server.serviceConfig.TimeoutStartSec = lib.mkForce "15min";}
+    # Keep rke2 behind the containerd dataset mount below (a dynamic key cannot sit
+    # beside the static one in a single attrset, hence mkMerge).
+    {"rke2-${config.services.rke2.role}".unitConfig.RequiresMountsFor = containerdDir;}
+  ];
+  # Image layers and snapshots are disposable and re-pullable, so they get their own
+  # dataset instead of inheriting root/safe's copies=2 and sync=standard. overlayfs
+  # copy-up links each file into place, and ZFS makes that link wait for a txg sync,
+  # so an entrypoint that chowns its layer takes hours on the HDD nodes (README todo 55).
+  # Existing nodes need the one-shot migration in docs/node-standard.md before the
+  # switch that adds this mount; fresh installs get the dataset from disko.
+  disko.devices.zpool.root.datasets."local/containerd" = {
+    type = "zfs_fs";
+    options = {
+      mountpoint = "legacy";
+      sync = "disabled";
+      copies = "1";
+      "com.sun:auto-snapshot" = "false";
+    };
+    mountpoint = containerdDir;
+  };
   # Ceph mons need <50ms skew; timesyncd (SNTP, 34min polls, random pool servers) drifted ~70ms.
   # chrony disciplines the clock; enabling it disables timesyncd.
   services.chrony = {
