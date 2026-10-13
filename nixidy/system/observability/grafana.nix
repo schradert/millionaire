@@ -72,6 +72,19 @@
             dashboards.enabled = true;
             dashboards.searchNamespace = "ALL";
             datasources.enabled = true;
+            # Grafana provisions datasources once, at startup, and a plain sidecar container races it (a
+            # start before its first sync had none). A native sidecar (restartPolicy Always) starts first
+            # and the startup probe holds Grafana back until its initial sync wrote the files.
+            datasources.initDatasources = true;
+            datasources.restartPolicy = "Always";
+            datasources.startupProbe = {
+              httpGet = {
+                path = "/healthz";
+                port = 8082;
+              };
+              periodSeconds = 2;
+              failureThreshold = 60;
+            };
             datasources.searchNamespace = "ALL";
           };
         };
