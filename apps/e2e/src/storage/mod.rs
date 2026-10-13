@@ -3,6 +3,8 @@
 //! Everything lives in namespace `e2e` and is named after the run marker.
 
 mod flows;
+mod rados;
+mod s3;
 mod sweep;
 
 use crate::{
@@ -16,7 +18,7 @@ pub fn family() -> Family {
     Family {
         name: NAME,
         runner: "cluster",
-        about: "ceph-block and ceph-filesystem volumes: write, read back from another Pod, snapshot and restore, delete",
+        about: "ceph-block and ceph-filesystem volumes (write, read back from another Pod, snapshot and restore) and an object bucket (put, get, delete); all deleted",
         flows,
         cleanup: Some(sweep!(sweep::cleanup)),
         residue: Some(sweep!(sweep::residue)),
@@ -28,5 +30,6 @@ fn flows() -> Vec<FlowDef> {
     vec![
         FlowDef::new(NAME, "ceph-block", Tier::Offline, "RBD volume written by one Pod and read by another; a snapshot restores the old content", step!(flows::block)).cleanup(step!(flows::block_cleanup)),
         FlowDef::new(NAME, "ceph-filesystem", Tier::Offline, "CephFS volume (ReadWriteMany) read by a Pod while another still mounts it", step!(flows::filesystem)).cleanup(step!(flows::filesystem_cleanup)),
+        FlowDef::new(NAME, "rados", Tier::Offline, "ObjectBucketClaim provisions a bucket; put, list, get and delete an object with the generated credentials", step!(rados::object)).cleanup(step!(rados::cleanup)),
     ]
 }

@@ -27,6 +27,7 @@ mod git;
 mod home;
 mod identity;
 mod kube;
+mod kubernetes;
 mod media;
 mod notify;
 mod observability;

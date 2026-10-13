@@ -113,20 +113,33 @@
       namespace = name;
       resources = {
         serviceAccounts.${name}.automountServiceAccountToken = false;
-        # The storage and observability flows create tagged Pods, PVCs and VolumeSnapshots in this
-        # namespace and nothing else: no Secrets, no other namespace, no cluster-scoped objects.
+        # The flows create tagged Pods, PVCs, VolumeSnapshots, ConfigMaps, Secrets and ExternalSecrets in
+        # this namespace and nothing else; the one cluster-scoped grant is a read of ClusterSecretStores.
         roles.${name}.rules = [
-          # The runner keeps its latest report in one ConfigMap (`kubectl apply`: get, patch, create).
+          # ConfigMaps and Secrets: the `kubernetes` flows create tagged ones and read them back. The
+          # runner also keeps its latest report in one ConfigMap (`kubectl apply`: get, patch, create).
           {
             apiGroups = [""];
-            resources = ["configmaps"];
-            verbs = ["create"];
+            resources = ["configmaps" "secrets"];
+            verbs = ["get" "list" "create" "delete"];
           }
           {
             apiGroups = [""];
             resources = ["configmaps"];
             resourceNames = [report];
-            verbs = ["get" "update" "patch"];
+            verbs = ["update" "patch"];
+          }
+          # Tagged ObjectBucketClaims (Rook makes the bucket; its Secret and ConfigMap are read above).
+          {
+            apiGroups = ["objectbucket.io"];
+            resources = ["objectbucketclaims"];
+            verbs = ["get" "list" "watch" "create" "delete"];
+          }
+          # Tagged ExternalSecrets resolved through the `kubernetes-e2e` store.
+          {
+            apiGroups = ["external-secrets.io"];
+            resources = ["externalsecrets"];
+            verbs = ["get" "list" "watch" "create" "delete"];
           }
           {
             apiGroups = [""];
@@ -148,6 +161,24 @@
           roleRef = {
             apiGroup = "rbac.authorization.k8s.io";
             kind = "Role";
+            inherit name;
+          };
+          subjects = lib.toList {
+            kind = "ServiceAccount";
+            inherit name;
+            namespace = name;
+          };
+        };
+        # Read-only: the `kubernetes` flow checks that the Bitwarden ClusterSecretStore is Ready.
+        clusterRoles.${name}.rules = lib.toList {
+          apiGroups = ["external-secrets.io"];
+          resources = ["clustersecretstores"];
+          verbs = ["get" "list"];
+        };
+        clusterRoleBindings.${name} = {
+          roleRef = {
+            apiGroup = "rbac.authorization.k8s.io";
+            kind = "ClusterRole";
             inherit name;
           };
           subjects = lib.toList {
