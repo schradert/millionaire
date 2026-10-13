@@ -46,6 +46,8 @@ A family belongs to one runner, set in the registry (`apps/e2e/src/flow.rs`); a 
 
 The `cluster` runner reaches apps through the internal gateway by hostname (`https://<app>.trdos.me`), the same path a client uses, so no network policy changes are needed: enforced namespaces already admit the gateway. Where a probe must be in-cluster (Alertmanager's API) the namespace has no default-deny policy (`observability`, `identity`); a future in-cluster probe into an enforced namespace needs an `extraIngress` rule on that namespace in `nixidy/apps/default.nix` naming the pod label `app.kubernetes.io/name: e2e` (media-e2e's rules in `qbittorrent.nix`, `navidrome.nix`, `maintainerr.nix` are the pattern). ntfy has no public DNS: the Job pins `ntfy.trdos.me` with `hostAliases` like Alertmanager does.
 
+The `proxy` family reads the expected groups of every oauth2-proxy route and the portal's tiles from `/config/catalog` (`proxy.json`, `portal.json`), the ConfigMap `e2e-catalog` that `nixidy/apps/e2e-catalog.nix` renders from the same declarations the cluster is built from, so a route's expected groups are never written down twice. It lists only apps that do not create an account from the proxy's identity headers on a GET.
+
 The image is `harbor.trdos.me/library/e2e` (`image publish e2e`, then add `pkgs/images/e2e/pin.json` in the shape of `pkgs/images/media-e2e/pin.json`). Until that pin exists the `cluster` runner is not rendered and the media runner keeps the old `library/media-e2e` pin.
 
 ## Authentication
@@ -96,6 +98,8 @@ The image is `harbor.trdos.me/library/e2e` (`image publish e2e`, then add `pkgs/
 | home | `miniflux-feed` | user `<tag>` (made by the break-glass admin), category and feed served by the Job | Miniflux fetches it, then a forced refresh | entry appears, a second entry after the refresh | feed deleted (404), then the user (admin) |
 | home | `spoolman-inventory` | vendor, filament and spool tagged `<tag>` (oauth2-proxy bearer) | read back, usage update | links, remaining weight | all three deleted, 404 |
 | finance | `actual-budget` | budget file `<tag>` (stand-in bytes) and a CRDT transaction through `/sync/sync` | a second sync from time zero | file listed and downloaded equal, the transaction comes back | file deleted, no longer listed (the server keeps the tiny emptied group database) |
+| proxy | `proxy-<app>` for chirpstack, excalidraw, frigate, logseq, rclone, siyuan, zigbee2mqtt, zwave-js-ui, music-assistant, mainsail, obico, promptfoo, argo-rollouts | none (the two Keycloak users) | `GET /` through the internal gateway | no token: redirect to Keycloak; each user admitted or refused (proxy 403) as the route's declared groups say; the app answers (an app that is down is a `skip` naming the 502/504) | the Keycloak users (sweep) |
+| proxy | `portal-tiles` | none | every tile URL; dashy's exports with the admin bearer | tiles answer; exports equal the declared catalog | nothing |
 | media | `sso` ... `prowlarr`, `vpn-*` | see `e2e list` | Servarr, Jellyfin, Navidrome, Kavita, Komga, ... | per flow | markers on hidden folders, libraries, tags, API keys |
 
 ## Flow matrix
@@ -132,23 +136,23 @@ Every service in `docs/connections.md`. **Status:** implemented · planned · ma
 | kosync | files | tagged KOReader account → push and pull progress → delete | planned | - |
 | atuin | files | registration is closed, so the `e2e` account (app-bootstrap `users`) pushes a tagged record, a second login pulls it, the store is deleted | implemented | S (`atuin-e2e`) |
 | home-assistant | home | OIDC login up to the one-time code (`identity/oidc-home-assistant`, done; redeeming the code creates a user that only a websocket admin can delete); tagged helper entity through the REST API → state change → delete | login to the code implemented; API planned | K for login, S (long-lived token) for the API |
-| homepage, homarr, dashy, android | home | every portal tile's URL answers (200 or the Keycloak redirect) | planned | K |
-| chirpstack, excalidraw, frigate, logseq, rclone, siyuan, zigbee2mqtt, zwave-js-ui | home | behind oauth2-proxy: admin bearer passes, family bearer is refused where gated; chirpstack gRPC creates and deletes a tagged device | planned | K; S for chirpstack gRPC |
+| homepage, homarr, dashy, android | proxy | every tile of the declared catalog answers (200, a redirect, 401 or 403; hosts that do not resolve from the cluster are listed, not failed), and dashy's `catalog.json` and `bookmarks.html` (behind oauth2-proxy, read with the admin bearer) list exactly the declared tiles (`proxy/portal-tiles`) | implemented | K |
+| chirpstack, excalidraw, frigate, logseq, rclone, siyuan, zigbee2mqtt, zwave-js-ui | proxy | behind oauth2-proxy: no token redirects to Keycloak, a user in a declared group is admitted, one outside it gets 403 (`proxy/proxy-<app>`, groups read from the cluster's own declaration); chirpstack gRPC creates and deletes a tagged device | proxy probes implemented; gRPC planned | K; S for chirpstack gRPC |
 | miniflux | home | tagged user, category and feed (served by the Job) → refresh → entry appears → delete; needs `FETCHER_ALLOW_PRIVATE_NETWORKS=1` on Miniflux (the flow skips with that message if it is off) | implemented | S (break-glass `admin`, only to make and delete the tagged user) |
-| music-assistant | home | smoke through oauth2-proxy | planned | K |
-| mainsail, obico, spoolman | home | spoolman: tagged vendor, filament and spool through the API → delete (done); others smoke | spoolman implemented; others planned | K |
+| music-assistant | proxy | smoke through oauth2-proxy (`proxy/proxy-music-assistant`) | implemented | K |
+| mainsail, obico, spoolman | proxy / home | mainsail and obico smoke through oauth2-proxy (`proxy/proxy-mainsail`, `proxy/proxy-obico`); spoolman: tagged vendor, filament and spool through the API → delete (`home/spoolman-inventory`) | K |
 | actual | finance | tagged budget file and CRDT transaction through the sync server → second client pulls it → delete | implemented | S (server password) |
 | firefly | finance | tagged account and transaction (personal access token, in-cluster) → read → delete; importer opens without a token | planned | S |
 | bifrost | ai | chat completion through the gateway with a bearer token to a cheap or mock provider, tagged in the request metadata | planned | K (and the provider key already in the cluster) |
 | contextforge | ai | `/mcp` tool list with a bearer token; tagged virtual-server tool registered, called, deleted | planned | K |
 | librechat | ai | OIDC login (`identity/oidc-librechat`: login reaches LibreChat, whose exact-match `allowedDomains` refuse the `@e2e.<domain>` test email; fixed in #638 and #639, `/oauth/openid` was 500). A positive login needs a test user with an allowed email domain and a deleted account afterwards (`DELETE /api/user/delete` as the user); tagged conversation → delete | refusal implemented; full login planned | K |
-| promptfoo | ai | smoke through oauth2-proxy | planned | K |
+| promptfoo | proxy | smoke through oauth2-proxy (`proxy/proxy-promptfoo`) | implemented | K |
 | Kubernetes MCP | ai | read-only tool call (list namespaces) | planned | SA |
 | prometheus | observability | a tagged Pod's series appear (`observability/prometheus-pod`, done); tagged PrometheusRule firing → Alertmanager → `e2e-alerts` (the full alert chain; needs a Role for PrometheusRules); query `up` with a bearer token | Pod series implemented; alert chain planned | SA, K |
 | grafana, gatus, status (hyena) | observability | tagged dashboard through the API; Gatus external-endpoint push and status page; Loki: a tagged Pod pushes a line, `query_range` returns it (`observability/loki-roundtrip`, done). Alloy (one per node) ships every Pod's logs to Loki tenant `cluster`, which Grafana's Loki datasource (through `loki-gateway`) queries; the roundtrip's own tenant `e2e` stays separate. A flow that proves a Pod's stdout arrives (`{namespace="e2e", pod="<tag>-log"}` under tenant `cluster`) is not written yet | Loki push and query implemented; the rest planned | K / S (service-account token) |
 | harbor | registry | project `<tag>`, robot, push a generated image, pull it back → delete repository, robot, project | planned | S (Harbor admin) |
 | argocd | registry | tagged Application from a test Forgejo repo into `e2e` → sync, healthy → delete (cascade) | planned | K (argocd accepts the Keycloak token) or S |
-| argo-workflows, argo-rollouts | registry | tagged Workflow submitted and succeeded → deleted; Rollout smoke | planned | K |
+| argo-workflows, argo-rollouts | registry / proxy | tagged Workflow submitted and succeeded → deleted; Rollout dashboard smoke through oauth2-proxy (`proxy/proxy-argo-rollouts`) | rollouts smoke implemented; workflows planned | K |
 | windmill, sveltekit-demo | registry | windmill: tagged script run through the API → result → delete; sveltekit-demo smoke | planned | S (workspace token) / - |
 | Kubernetes API | storage | tagged ConfigMap and Secret in `e2e` through the ServiceAccount → read → delete (the Role has no Secret access yet) | planned | SA |
 | rook-ceph (ceph-block, cephfs) | storage | tagged PVC mounted by a Pod → write, read back from another Pod, RBD snapshot and restore → delete (`storage/ceph-block`, `storage/ceph-filesystem`). A released PV is not checked: PVs are cluster-scoped and the Role is not | implemented | SA |

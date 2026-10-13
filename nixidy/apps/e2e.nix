@@ -243,7 +243,7 @@
                 # tailnet IP like Alertmanager's (nixidy/system/observability/alertmanager.nix).
                 hostAliases = lib.toList {
                   ip = "100.64.0.1";
-                  hostnames = ["ntfy.${domain}"];
+                  hostnames = ["ntfy.${domain}" "status.${domain}"];
                 };
                 securityContext = {
                   runAsNonRoot = true;
@@ -282,6 +282,11 @@
                         name = "tmp";
                         mountPath = "/tmp";
                       }
+                      {
+                        name = "catalog";
+                        mountPath = "/config/catalog";
+                        readOnly = true;
+                      }
                     ]
                     ++ map (s: {
                       name = s;
@@ -295,6 +300,10 @@
                     {
                       name = "tmp";
                       emptyDir = {};
+                    }
+                    {
+                      name = "catalog";
+                      configMap.name = "e2e-catalog";
                     }
                   ]
                   ++ map (s: {

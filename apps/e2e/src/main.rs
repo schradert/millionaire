@@ -29,6 +29,7 @@ mod media;
 mod notify;
 mod observability;
 mod pod;
+mod proxy;
 mod report;
 mod storage;
 mod svc;
