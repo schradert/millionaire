@@ -232,7 +232,13 @@ pub enum Login {
 /// in one page or two) as `user`, from `start` (an app's login URL) until the redirect back
 /// under `stop`.
 pub async fn keycloak_login(ctx: &Ctx, sess: &mut Session, start: &str, user: &str, pw: &str, stop: &str) -> R<Login> {
-    let mut end = sess.open(ctx, start, stop).await?;
+    let end = sess.open(ctx, start, stop).await?;
+    keycloak_login_at(ctx, sess, end, user, pw, stop).await
+}
+
+/// [`keycloak_login`] from a redirect chain the caller already started (an app that begins its
+/// OIDC flow with a POST, such as Sure's CSRF-protected button).
+pub async fn keycloak_login_at(ctx: &Ctx, sess: &mut Session, mut end: End, user: &str, pw: &str, stop: &str) -> R<Login> {
     let mut posted = false;
     for _ in 0..6 {
         let page = match end {
