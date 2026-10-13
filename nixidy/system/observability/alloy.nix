@@ -123,6 +123,13 @@
                 name = "NODE_NAME";
                 valueFrom.fieldRef.fieldPath = "spec.nodeName";
               }
+              # pyroscope.ebpf parses the .eh_frame of every executable and library it meets: gigabytes of
+              # short-lived garbage for a few MB live (heap profile on sirver: 2.6 GB allocated, 14 MB in use),
+              # which the default GC target let grow past the container limit. Collect before that.
+              {
+                name = "GOMEMLIMIT";
+                value = "512MiB";
+              }
             ];
             resources = {
               requests = {
@@ -130,8 +137,8 @@
                 memory = "256Mi";
               };
               # Working set measured 60-200Mi per node for the logs and traces pipelines; pyroscope.ebpf adds
-              # about 150Mi (chinchilla) to 440Mi (octopus: more processes, so more BPF map and symbol memory)
-              # that is not reclaimable. 512Mi OOM-killed it at start-up on octopus.
+              # BPF maps (about 150-200Mi of kernel memory, counted here) and the Go heap, capped by GOMEMLIMIT.
+              # 512Mi OOM-killed it at start-up on octopus.
               limits.memory = "1Gi";
             };
             configMap.content = ''
