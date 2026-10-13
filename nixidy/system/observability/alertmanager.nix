@@ -28,6 +28,13 @@
     };
     applications.alertmanager = {
       namespace = "observability";
+      resources.podMonitors.alertmanager.spec = {
+        selector.matchLabels."app.kubernetes.io/name" = "alertmanager";
+        podMetricsEndpoints = lib.toList {
+          port = "http";
+          interval = "1m";
+        };
+      };
       helm.releases.alertmanager = {
         chart = pinned.charts.alertmanager;
         values = {

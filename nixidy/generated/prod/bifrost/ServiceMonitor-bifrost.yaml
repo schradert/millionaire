@@ -1,0 +1,14 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: bifrost
+  namespace: ai
+spec:
+  endpoints:
+    - interval: 1m
+      path: /metrics
+      port: http
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: bifrost
+      app.kubernetes.io/name: bifrost

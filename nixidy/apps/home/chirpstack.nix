@@ -101,7 +101,18 @@ in {
               probes.startup = probe;
             };
           };
-          service.chirpstack.ports.http.port = 8080;
+          service.chirpstack.ports = {
+            http.port = 8080;
+            metrics.port = 9100;
+          };
+          serviceMonitor.chirpstack = {
+            serviceName = "chirpstack";
+            endpoints = lib.toList {
+              port = "metrics";
+              path = "/metrics";
+              interval = "1m";
+            };
+          };
           # Chirpstack expands $VAR references in its TOML at startup, so secrets
           # are injected via envFrom above.
           configMaps.chirpstack.data."chirpstack.toml" = ''
@@ -126,6 +137,9 @@ in {
 
             [api]
               bind="0.0.0.0:8080"
+
+            [monitoring]
+              bind="0.0.0.0:9100"
 
             # "enabled" picks the SSO button shown beside the password form (internal |
             # openid_connect | oauth2); the password form stays for break-glass.

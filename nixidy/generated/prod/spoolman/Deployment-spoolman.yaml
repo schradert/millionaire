@@ -34,6 +34,8 @@ spec:
               value: sqlite
             - name: SPOOLMAN_DIR
               value: /data
+            - name: SPOOLMAN_METRICS_ENABLED
+              value: "TRUE"
           image: ghcr.io/donkie/spoolman:0.27.0@sha256:7aba565eff774c6dda212d4204de8fa30bf68d513127ef875cc7ef3197a4664e
           livenessProbe:
             failureThreshold: 3

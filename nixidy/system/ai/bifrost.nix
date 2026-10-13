@@ -58,6 +58,8 @@ in {
             gemini.keys = lib.toList (providerKey "gemini" "GOOGLE_API_KEY");
           };
           podAnnotations."reloader.stakater.com/auto" = "true";
+          # Serves Prometheus /metrics on the API port.
+          bifrost.plugins.telemetry.enabled = true;
           envFrom = lib.toList {
             secretRef = {
               name = "bifrost";
@@ -70,6 +72,17 @@ in {
       # The ReadWriteOnce data PVC can't be shared by old and new pods during a rollout.
       # SSA can't drop the API-defaulted rollingUpdate block when switching to Recreate
       # (rendering `rollingUpdate = null` omits it), so sync this Deployment with replace.
+      resources.serviceMonitors.bifrost.spec = {
+        selector.matchLabels = {
+          "app.kubernetes.io/instance" = "bifrost";
+          "app.kubernetes.io/name" = "bifrost";
+        };
+        endpoints = lib.toList {
+          port = "http";
+          path = "/metrics";
+          interval = "1m";
+        };
+      };
       resources.deployments.bifrost = {
         metadata.annotations."argocd.argoproj.io/sync-options" = "Replace=true";
         spec.strategy.type = "Recreate";

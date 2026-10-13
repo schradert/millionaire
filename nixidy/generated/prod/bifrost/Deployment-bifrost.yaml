@@ -20,7 +20,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8037914e711d7931ae8bee7b13a9fb285d9e03ceb10e4142ad302303e35c5a6a
+        checksum/config: 6d0674455f790d45b9d5b5ae94dd43166e124b7aade95a7b15b718da9f8be641
         reloader.stakater.com/auto: "true"
       labels:
         app.kubernetes.io/instance: bifrost

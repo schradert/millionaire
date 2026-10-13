@@ -126,6 +126,7 @@ in {
                 image = pinned.images.oauth2-proxy;
                 args = [
                   "--http-address=0.0.0.0:4180"
+                  "--metrics-address=0.0.0.0:44180"
                   "--provider=keycloak-oidc"
                   "--oidc-issuer-url=https://keycloak.${domain}/realms/default"
                   "--client-id=oauth2-proxy"
@@ -150,10 +151,16 @@ in {
                   "--skip-jwt-bearer-tokens=true"
                 ];
                 envFrom = [{secretRef.name = "oauth2-proxy";}];
-                ports = lib.toList {
-                  name = "http";
-                  containerPort = 4180;
-                };
+                ports = [
+                  {
+                    name = "http";
+                    containerPort = 4180;
+                  }
+                  {
+                    name = "metrics";
+                    containerPort = 44180;
+                  }
+                ];
                 probes.liveness = {
                   enabled = true;
                   custom = true;
@@ -179,7 +186,18 @@ in {
                 probes.startup.enabled = true;
               };
             };
-            service.oauth2-proxy.ports.http.port = 4180;
+            service.oauth2-proxy.ports = {
+              http.port = 4180;
+              metrics.port = 44180;
+            };
+            serviceMonitor.oauth2-proxy = {
+              serviceName = "oauth2-proxy";
+              endpoints = lib.toList {
+                port = "metrics";
+                path = "/metrics";
+                interval = "1m";
+              };
+            };
             configMaps.routes.data."default.conf" = nginxConf;
             persistence.routes = {
               type = "configMap";
