@@ -1,0 +1,122 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/instance: tempo
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: tempo
+  name: tempo
+  namespace: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: tempo
+      app.kubernetes.io/name: tempo
+  serviceName: tempo-headless
+  template:
+    metadata:
+      annotations:
+        checksum/config: a4666cb58b0cd9089a7da6b12816199a2fd909a69c73555df206f5baf0ea56fb
+      labels:
+        app.kubernetes.io/instance: tempo
+        app.kubernetes.io/name: tempo
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - args:
+            - -config.file=/conf/tempo.yaml
+            - -mem-ballast-size-mbs=1024
+          image: docker.io/grafana/tempo:2.9.5@sha256:785fd6c81d7f26ff0973208cd7093ac6030e13946c288612ff32f02416941d3a
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /ready
+              port: 3200
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+          name: tempo
+          ports:
+            - containerPort: 3200
+              name: prom-metrics
+            - containerPort: 6831
+              name: jaeger-thrift-c
+              protocol: UDP
+            - containerPort: 6832
+              name: jaeger-thrift-b
+              protocol: UDP
+            - containerPort: 14268
+              name: jaeger-thrift-h
+            - containerPort: 14250
+              name: jaeger-grpc
+            - containerPort: 9411
+              name: zipkin
+            - containerPort: 55680
+              name: otlp-legacy
+            - containerPort: 4317
+              name: otlp-grpc
+            - containerPort: 55681
+              name: otlp-httplegacy
+            - containerPort: 4318
+              name: otlp-http
+            - containerPort: 55678
+              name: opencensus
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /ready
+              port: 3200
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              cpu: 50m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /conf
+              name: tempo-conf
+            - mountPath: /var/tempo
+              name: storage
+            - mountPath: /tmp
+              name: tmp
+      securityContext:
+        fsGroup: 10001
+        runAsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+      serviceAccountName: tempo
+      volumes:
+        - configMap:
+            name: tempo
+          name: tempo-conf
+        - emptyDir: {}
+          name: tmp
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: storage
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 20Gi
+        storageClassName: ceph-block

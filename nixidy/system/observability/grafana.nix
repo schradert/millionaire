@@ -61,7 +61,7 @@
           annotations."reloader.stakater.com/auto" = "true";
           # Grafana only reads provisioned datasources at startup, and the sidecar's reload call is a
           # 401 (basic auth is off), so a changed datasource needs a restart.
-          annotations."configmap.reloader.stakater.com/reload" = "grafana-datasource-loki,grafana-datasource-prometheus,grafana-datasource-alertmanager";
+          annotations."configmap.reloader.stakater.com/reload" = "grafana-datasource-loki,grafana-datasource-tempo,grafana-datasource-prometheus,grafana-datasource-alertmanager";
           envFromConfigMaps = [{name = "grafana";}];
           envFromSecrets = [{name = "grafana-oidc";}];
           persistence.enabled = true;
@@ -154,6 +154,67 @@
               url = "http://loki-gateway.observability.svc.cluster.local";
               jsonData.httpHeaderName1 = "X-Scope-OrgID";
               secureJsonData.httpHeaderValue1 = "cluster";
+              # A log line carrying a trace id (trace_id=, traceID":, ...) links to the trace in Tempo.
+              # Provisioning expands $VAR, so a literal ${...} is written $${...}.
+              jsonData.derivedFields = lib.toList {
+                name = "TraceID";
+                matcherType = "regex";
+                matcherRegex = "[tT]race_?[iI][dD]\\W+([0-9a-f]{32})";
+                url = "$\${__value.raw}";
+                datasourceUid = "tempo";
+                urlDisplayLabel = "Trace";
+              };
+            };
+          };
+        };
+        # Traces <-> logs: a span links to the Loki lines that mention its trace id (the datasource above
+        # carries the `cluster` tenant header, so the link needs none of its own) and to its service's
+        # span metrics, which Tempo's metrics-generator writes to Prometheus.
+        configMaps.grafana-datasource-tempo = {
+          metadata.labels.grafana_datasource = "1";
+          data."tempo.yaml" = builtins.toJSON {
+            apiVersion = 1;
+            datasources = lib.toList {
+              name = "Tempo";
+              uid = "tempo";
+              type = "tempo";
+              access = "proxy";
+              editable = false;
+              url = "http://tempo.observability.svc.cluster.local:3200";
+              jsonData = {
+                nodeGraph.enabled = true;
+                serviceMap.datasourceUid = "prometheus";
+                tracesToLogsV2 = {
+                  datasourceUid = "loki";
+                  spanStartTimeShift = "-5m";
+                  spanEndTimeShift = "5m";
+                  customQuery = true;
+                  query = ''{namespace=~".+"} |= "$''${__trace.traceId}"'';
+                };
+                tracesToMetrics = {
+                  datasourceUid = "prometheus";
+                  spanStartTimeShift = "-5m";
+                  spanEndTimeShift = "5m";
+                  tags = lib.toList {
+                    key = "service.name";
+                    value = "service";
+                  };
+                  queries = [
+                    {
+                      name = "Request rate";
+                      query = "sum(rate(traces_spanmetrics_calls_total{$$__tags}[5m]))";
+                    }
+                    {
+                      name = "Error rate";
+                      query = "sum(rate(traces_spanmetrics_calls_total{$$__tags, status_code=\"STATUS_CODE_ERROR\"}[5m]))";
+                    }
+                    {
+                      name = "p95 latency";
+                      query = "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{$$__tags}[5m])) by (le))";
+                    }
+                  ];
+                };
+              };
             };
           };
         };

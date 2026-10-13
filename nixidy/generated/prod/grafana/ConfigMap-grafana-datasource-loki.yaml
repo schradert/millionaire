@@ -1,6 +1,6 @@
 apiVersion: v1
 data:
-  loki.yaml: '{"apiVersion":1,"datasources":[{"access":"proxy","editable":false,"jsonData":{"httpHeaderName1":"X-Scope-OrgID"},"name":"Loki","secureJsonData":{"httpHeaderValue1":"cluster"},"type":"loki","uid":"loki","url":"http://loki-gateway.observability.svc.cluster.local"}]}'
+  loki.yaml: '{"apiVersion":1,"datasources":[{"access":"proxy","editable":false,"jsonData":{"derivedFields":[{"datasourceUid":"tempo","matcherRegex":"[tT]race_?[iI][dD]\\W+([0-9a-f]{32})","matcherType":"regex","name":"TraceID","url":"$${__value.raw}","urlDisplayLabel":"Trace"}],"httpHeaderName1":"X-Scope-OrgID"},"name":"Loki","secureJsonData":{"httpHeaderValue1":"cluster"},"type":"loki","uid":"loki","url":"http://loki-gateway.observability.svc.cluster.local"}]}'
 kind: ConfigMap
 metadata:
   labels:
