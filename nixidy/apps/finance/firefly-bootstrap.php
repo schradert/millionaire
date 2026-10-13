@@ -50,15 +50,28 @@ $user = (new FireflyIII\Support\Authentication\RemoteUserProvider())->retrieveBy
 echo "user $username is #{$user->id}\n";
 
 $keysOk = !empty($have['PASSPORT_PRIVATE_KEY']) && !empty($have['PASSPORT_PUBLIC_KEY']);
-if (!empty($have['FIREFLY_III_ACCESS_TOKEN']) && $keysOk) {
-    $jti = json_decode(base64_decode(strtr(explode('.', $have['FIREFLY_III_ACCESS_TOKEN'])[1] ?? '', '-_', '+/')), true)['jti'] ?? '';
-    $row = Illuminate\Support\Facades\DB::table('oauth_access_tokens')->where('id', $jti)->where('revoked', false)->first();
-    if ($row && strtotime($row->expires_at) > time() + 30 * 86400) {
-        echo "token $jti still valid, nothing to do\n";
-        exit(0);
+// A token is kept while it is signed with the stored keys, not revoked and valid for 30 more days.
+$stillValid = function (?string $jwt) use ($keysOk): bool {
+    if (empty($jwt) || !$keysOk) {
+        return false;
     }
-    echo "token missing, revoked or expiring: minting a new one\n";
+    $jti = json_decode(base64_decode(strtr(explode('.', $jwt)[1] ?? '', '-_', '+/')), true)['jti'] ?? '';
+    $row = Illuminate\Support\Facades\DB::table('oauth_access_tokens')->where('id', $jti)->where('revoked', false)->first();
+    return $row && strtotime($row->expires_at) > time() + 30 * 86400;
+};
+
+// A second user for the end-to-end tests (apps/e2e finance/firefly-ledger): it only ever holds
+// run-tagged test data, so the harness never touches the owner's ledger.
+$e2e = (new FireflyIII\Support\Authentication\RemoteUserProvider())->retrieveById(getenv('E2E_USER') ?: 'e2e');
+echo "user e2e is #{$e2e->id}\n";
+
+$importerOk = $stillValid($have['FIREFLY_III_ACCESS_TOKEN'] ?? null);
+$e2eOk = $stillValid($have['FIREFLY_E2E_ACCESS_TOKEN'] ?? null);
+if ($importerOk && $e2eOk) {
+    echo "tokens still valid, nothing to do\n";
+    exit(0);
 }
+echo "a token is missing, revoked or expiring: minting\n";
 
 if ($keysOk) {
     [$priv, $pub] = [$have['PASSPORT_PRIVATE_KEY'], $have['PASSPORT_PUBLIC_KEY']];
@@ -73,12 +86,15 @@ if (0 === Illuminate\Support\Facades\DB::table('oauth_personal_access_clients')-
     app(Laravel\Passport\ClientRepository::class)->createPersonalAccessClient(null, 'Firefly III Personal Access Client', 'http://localhost');
     echo "created the personal access client\n";
 }
-$token = $user->createToken('data-importer')->accessToken;
-
-$data = ['PASSPORT_PRIVATE_KEY' => $priv, 'PASSPORT_PUBLIC_KEY' => $pub, 'FIREFLY_III_ACCESS_TOKEN' => $token];
+$data = [
+    'PASSPORT_PRIVATE_KEY' => $priv,
+    'PASSPORT_PUBLIC_KEY' => $pub,
+    'FIREFLY_III_ACCESS_TOKEN' => $importerOk ? $have['FIREFLY_III_ACCESS_TOKEN'] : $user->createToken('data-importer')->accessToken,
+    'FIREFLY_E2E_ACCESS_TOKEN' => $e2eOk ? $have['FIREFLY_E2E_ACCESS_TOKEN'] : $e2e->createToken('e2e')->accessToken,
+];
 if (404 === $status) {
     kube('POST', $base, ['apiVersion' => 'v1', 'kind' => 'Secret', 'metadata' => ['name' => $name], 'type' => 'Opaque', 'stringData' => $data]);
 } else {
     kube('PATCH', $base . '/' . $name, ['stringData' => $data], 'application/merge-patch+json');
 }
-echo "stored keys and token in secret $name\n";
+echo "stored keys and tokens in secret $name\n";

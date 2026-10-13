@@ -4,7 +4,7 @@
 
 mod argocd;
 mod harbor;
-mod oci;
+pub mod oci;
 mod windmill;
 
 use crate::{

@@ -237,6 +237,11 @@
                   value = config.canivete.meta.people.me;
                 }
                 {
+                  # The e2e harness's own user (apps/e2e finance/firefly-ledger).
+                  name = "E2E_USER";
+                  value = "e2e@e2e.${domain}";
+                }
+                {
                   name = "APP_ENV";
                   value = "production";
                 }

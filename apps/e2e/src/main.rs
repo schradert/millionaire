@@ -31,6 +31,7 @@ mod identity;
 mod kube;
 mod kubernetes;
 mod media;
+mod mediasvc;
 mod notify;
 mod observability;
 mod pod;
