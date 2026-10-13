@@ -47,11 +47,7 @@
     };
     applications.grafana = {
       namespace = "observability";
-      volsync.pvcs.grafana = {
-        title = "grafana";
-        uid = 472;
-        gid = 472;
-      };
+      volsync.pvcs.grafana.title = "grafana";
       helm.releases.grafana = {
         chart = pinned.charts.grafana;
         values = {
@@ -149,8 +145,6 @@
             sourceRef.storeRef.kind = "ClusterSecretStore";
           };
         };
-        # FIXME get these permissions right
-        replicationSources.volsync--grafana--grafana-src.spec.restic.moverSecurityContext.fsGroup = 472;
       };
     };
   };

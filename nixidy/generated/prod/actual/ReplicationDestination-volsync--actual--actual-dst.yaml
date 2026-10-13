@@ -7,9 +7,6 @@ spec:
   restic:
     copyMethod: Direct
     destinationPVC: actual
-    moverSecurityContext:
-      runAsGroup: 101
-      runAsUser: 101
     repository: volsync--actual--actual
   trigger:
     manual: "1"

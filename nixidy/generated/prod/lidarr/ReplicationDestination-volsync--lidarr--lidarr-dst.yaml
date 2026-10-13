@@ -7,9 +7,6 @@ spec:
   restic:
     copyMethod: Direct
     destinationPVC: lidarr
-    moverSecurityContext:
-      runAsGroup: 101
-      runAsUser: 101
     repository: volsync--lidarr--lidarr
   trigger:
     manual: "1"

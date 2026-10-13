@@ -6,8 +6,6 @@ metadata:
 spec:
   restic:
     copyMethod: Direct
-    moverSecurityContext:
-      fsGroup: 101
     pruneIntervalDays: 8
     repository: volsync--obico--obico
     retain:

@@ -3,6 +3,7 @@
 in {
   nixidy = {
     can,
+    config,
     lib,
     pinned,
     ...
@@ -25,6 +26,14 @@ in {
           });
       };
     };
+    # Movers mount the live PVC (copyMethod Direct). Unprivileged, a mover needs an fsGroup that kubelet then applies
+    # as a recursive chown of the workload's volume (re-owning it away from the app's own gid on every backup).
+    # Privileged movers run as root with no fsGroup: nothing is chowned, any ownership is readable, and restores
+    # keep the ownership recorded in the snapshot. VolSync grants that per namespace, so annotate each one that
+    # holds a backed-up PVC.
+    applications.namespaces.resources.namespaces = lib.genAttrs (lib.unique (lib.filter (ns: ns != null) (
+      lib.mapAttrsToList (_: app: app.namespace) (lib.filterAttrs (_: app: app.volsync.pvcs != null && app.volsync.pvcs != {}) config.applications)
+    ))) (_: {metadata.annotations."volsync.backube/privileged-movers" = "true";});
     # Attaches VolSync replication mechanisms to target PVCs and back up to Backblaze B2
     nixidy.applicationImports = [
       ({
@@ -40,8 +49,6 @@ in {
               path = can.list.str "Delimited location to inject dataSourceRef for ReplicationDestination" {
                 default = ["persistentVolumeClaims" config.title];
               };
-              uid = can.int "UID for podSecurityContext" {default = 101;};
-              gid = can.int "GID for podSecurityContext" {default = 101;};
               inject = can.enable "Inject dataSourceRef into a PVC" {};
               restore = can.enable "ReplicationDestination that restores the latest snapshot into the PVC" {default = true;};
               cacheAccessModes = can.list.str "Mover cache access modes (RWX sources need ReadWriteOnce on ceph-block)" {default = [];};
@@ -58,7 +65,7 @@ in {
         };
         config = lib.mkIf config.volsync.enable {
           resources = lib.mkMerge (lib.flip lib.mapAttrsToList config.volsync.pvcs (pvcName: pvc: let
-            inherit (pvc) title inject path uid gid cacheAccessModes restore schedule retain;
+            inherit (pvc) title inject path cacheAccessModes restore schedule retain;
             cache = lib.optionalAttrs (cacheAccessModes != []) {inherit cacheAccessModes;};
             region = "us-west-004";
             repository = "volsync--${name}--${pvcName}";
@@ -106,7 +113,6 @@ in {
                   restic =
                     cache
                     // {
-                      moverSecurityContext.fsGroup = gid;
                       copyMethod = "Direct";
                       pruneIntervalDays = 8;
                       inherit repository;
@@ -120,8 +126,6 @@ in {
                     restic =
                       cache
                       // {
-                        moverSecurityContext.runAsGroup = gid;
-                        moverSecurityContext.runAsUser = uid;
                         copyMethod = "Direct";
                         destinationPVC = title;
                         inherit repository;

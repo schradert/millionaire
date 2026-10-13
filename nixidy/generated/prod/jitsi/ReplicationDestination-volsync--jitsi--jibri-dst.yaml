@@ -7,9 +7,6 @@ spec:
   restic:
     copyMethod: Direct
     destinationPVC: jitsi-jitsi-meet-jibri
-    moverSecurityContext:
-      runAsGroup: 101
-      runAsUser: 101
     repository: volsync--jitsi--jibri
   trigger:
     manual: "1"

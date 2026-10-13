@@ -33,11 +33,6 @@
       # TODO what happens with multiple deployments???
       volsync.pvcs.prometheus = {
         title = "prometheus-prometheus-kube-prometheus-prometheus-db-prometheus-prometheus-kube-prometheus-prometheus-0";
-        # The mover mounts the live PVC (copyMethod Direct) and kubelet applies its
-        # fsGroup to the whole volume: it must match the Prometheus pod (1000:2000)
-        # or every 04:00 backup takes the data directory away from Prometheus.
-        uid = 1000;
-        gid = 2000;
         path = ["prometheuses" "prometheus-kube-prometheus-prometheus" "spec" "storage" "volumeClaimTemplate"];
       };
       helm.releases.prometheus = {

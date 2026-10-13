@@ -7,9 +7,6 @@ spec:
   restic:
     copyMethod: Direct
     destinationPVC: radarr
-    moverSecurityContext:
-      runAsGroup: 101
-      runAsUser: 101
     repository: volsync--radarr--radarr
   trigger:
     manual: "1"

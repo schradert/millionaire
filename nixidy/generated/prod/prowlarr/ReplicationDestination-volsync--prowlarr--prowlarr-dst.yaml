@@ -7,9 +7,6 @@ spec:
   restic:
     copyMethod: Direct
     destinationPVC: prowlarr
-    moverSecurityContext:
-      runAsGroup: 101
-      runAsUser: 101
     repository: volsync--prowlarr--prowlarr
   trigger:
     manual: "1"

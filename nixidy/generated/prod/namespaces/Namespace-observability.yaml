@@ -3,4 +3,5 @@ kind: Namespace
 metadata:
   annotations:
     argocd.argoproj.io/sync-options: Prune=confirm
+    volsync.backube/privileged-movers: "true"
   name: observability

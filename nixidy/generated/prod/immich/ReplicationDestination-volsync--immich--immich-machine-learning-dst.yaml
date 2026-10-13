@@ -7,9 +7,6 @@ spec:
   restic:
     copyMethod: Direct
     destinationPVC: immich-machine-learning
-    moverSecurityContext:
-      runAsGroup: 101
-      runAsUser: 101
     repository: volsync--immich--immich-machine-learning
   trigger:
     manual: "1"

@@ -8,8 +8,6 @@ spec:
     cacheAccessModes:
       - ReadWriteOnce
     copyMethod: Direct
-    moverSecurityContext:
-      fsGroup: 101
     pruneIntervalDays: 8
     repository: volsync--media-storage--media-dvd
     retain:
