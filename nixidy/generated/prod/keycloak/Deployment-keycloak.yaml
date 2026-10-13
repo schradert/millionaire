@@ -61,7 +61,7 @@ spec:
             - name: KC_TRACING_ENDPOINT
               value: http://alloy.observability.svc.cluster.local:4317
             - name: KC_TRACING_SAMPLER_RATIO
-              value: "1.0"
+              value: "0.1"
           envFrom:
             - secretRef:
                 name: keycloak

@@ -46,9 +46,10 @@ in {
                 KC_HEALTH_ENABLED = "true";
                 KC_METRICS_ENABLED = "true";
                 KC_TRACING_ENABLED = "true";
-                # Runtime options: spans (OTLP/gRPC) to Alloy, all of them (the traffic is small).
+                # Runtime options: spans (OTLP/gRPC) to Alloy. 10% of requests; one that arrives with a
+                # sampled traceparent (e2e) is always kept.
                 KC_TRACING_ENDPOINT = "http://alloy.observability.svc.cluster.local:4317";
-                KC_TRACING_SAMPLER_RATIO = "1.0";
+                KC_TRACING_SAMPLER_RATIO = "0.1";
                 KC_FEATURES = "hostname:v2";
                 KC_BOOTSTRAP_ADMIN_USERNAME = "admin";
               };
