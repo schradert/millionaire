@@ -174,6 +174,13 @@ async fn jellyfin_import(ctx: &Ctx, f: &mut Flow, suffix: &str, kind: &str, path
 /// Direct stream (range GET) and an HLS transcode segment.
 async fn playback(ctx: &Ctx, f: &mut Flow, jf: &Jellyfin, item: &Value) -> R<()> {
     let id = item["Id"].as_str().at("jellyfin", "item id")?;
+    // Jellyfin lists a new item before ffprobe has run on it; a transcode asked for in that window fails
+    // ("Invalid segment length (3000) or runtime ticks (0)", HTTP 500). Wait until it knows the runtime.
+    poll("jellyfin", "item has a runtime", Duration::from_secs(180), Duration::from_secs(3), || async {
+        let r = jf.get(ctx, &format!("/Items?Ids={id}&Fields=RunTimeTicks")).await?;
+        Ok(r["Items"][0]["RunTimeTicks"].as_i64().filter(|t| *t > 0))
+    })
+    .await?;
     let info = json(jf.req(ctx, Method::POST, &format!("/Items/{id}/PlaybackInfo?UserId={}", jf.user)).json(&json!({})), "jellyfin", "PlaybackInfo").await?;
     let src = info["MediaSources"][0]["Id"].as_str().at("jellyfin", "media source")?.to_string();
     let r = send(jf.req(ctx, Method::GET, &format!("/Videos/{id}/stream?static=true&mediaSourceId={src}")).header(header::RANGE, "bytes=0-65535"), "jellyfin", "direct stream").await?;

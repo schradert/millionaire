@@ -191,7 +191,12 @@ pub async fn proxy_bearer(ctx: &Ctx, f: &mut Flow) -> R<()> {
     f.ok("oauth2-proxy", "no token redirects to Keycloak", "");
 
     let admin = kc.token_for(ctx, &u.admin).await?;
-    let v = json(ctx.noredir.get(&url).bearer_auth(&admin), "oauth2-proxy", "admin bearer").await?;
+    // One retry: under load (the media suite runs beside this one) the first bearer request can exceed the client timeout.
+    let mut v = json(ctx.noredir.get(&url).bearer_auth(&admin), "oauth2-proxy", "admin bearer").await;
+    if v.is_err() {
+        v = json(ctx.noredir.get(&url).bearer_auth(&admin).timeout(std::time::Duration::from_secs(60)), "oauth2-proxy", "admin bearer (retry)").await;
+    }
+    let v = v?;
     if v["cluster"]["status"].as_str() != Some("ready") {
         return Err(Fail::new("alertmanager", "status behind proxy", format!("unexpected body {}", excerpt(&v.to_string()))));
     }
