@@ -25,8 +25,8 @@ spec:
             severity: warning
         - alert: MimirBucketGrowth
           annotations:
-            summary: Mimir uploads more than 3 GB/day of new blocks to the bucket (retention is unlimited by design)
-          expr: sum(increase(thanos_objstore_bucket_operation_transferred_bytes_sum{component="ingester",operation="upload"}[6h])) * 4 > 3e9
+            summary: The object store data pool (mostly Mimir blocks) grows by more than 3 GB/day; retention is unlimited by design
+          expr: sum(deriv((ceph_pool_stored * on (pool_id) group_left (name) ceph_pool_metadata{name=~".*rgw.buckets.data"})[6h:15m])) * 86400 > 3e9
           for: 1h
           labels:
             severity: info

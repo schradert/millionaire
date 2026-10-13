@@ -8,9 +8,11 @@
     rgw = "rook-ceph-rgw-ceph-objectstore.storage.svc.cluster.local:80";
     # One small instance of every role the classic (Kafka-less) layout needs. The chart has no
     # single-binary mode, so replicas = 1, no zone-aware replication and no caches is the smallest layout.
+    # Requests from a day of measured use (working set 30-100 MiB for everything but the ingester, which holds
+    # ~460k series in ~1.8 GiB); limits leave room for compaction and long-range queries.
     small = {
-      cpu = "50m";
-      memory = "256Mi";
+      cpu = "20m";
+      memory = "128Mi";
     };
   in {
     # Long-term metrics. Prometheus remote-writes here (prometheus.nix) and keeps only a short local buffer;
@@ -47,10 +49,12 @@
           relabelings = [
             {
               sourceLabels = ["__meta_kubernetes_namespace" "__meta_kubernetes_service_label_app_kubernetes_io_component"];
+              action = "replace";
               separator = "/";
               targetLabel = "job";
             }
             {
+              action = "replace";
               targetLabel = "cluster";
               replacement = "millionaire";
             }
@@ -78,13 +82,13 @@
               annotations.summary = "Mimir compactor has failed runs or has not completed one in 6h; blocks stay uncompacted and the bucket grows faster";
             }
             {
-              # Informational: with retention off the bucket only grows; this is the early look at the rate.
-              # Ingesters upload a block every 2h, so the rate is taken over 6h (x4 = bytes/day).
+              # Informational: with retention off the bucket only grows. Mimir's bucket is the main tenant of the
+              # object store's data pool, and Ceph exports no per-bucket size, so this is the pool's growth.
               alert = "MimirBucketGrowth";
-              expr = ''sum(increase(thanos_objstore_bucket_operation_transferred_bytes_sum{component="ingester",operation="upload"}[6h])) * 4 > 3e9'';
+              expr = ''sum(deriv((ceph_pool_stored * on (pool_id) group_left (name) ceph_pool_metadata{name=~".*rgw.buckets.data"})[6h:15m])) * 86400 > 3e9'';
               "for" = "1h";
               labels.severity = "info";
-              annotations.summary = "Mimir uploads more than 3 GB/day of new blocks to the bucket (retention is unlimited by design)";
+              annotations.summary = "The object store data pool (mostly Mimir blocks) grows by more than 3 GB/day; retention is unlimited by design";
             }
           ];
         };
@@ -113,13 +117,19 @@
           # Credentials of the bucket (OBC above) as environment, expanded in the config.
           global.extraEnvFrom = [{secretRef.name = "mimir";}];
           distributor.resources = {
-            requests = small;
+            requests = {
+              cpu = "100m";
+              memory = "192Mi";
+            };
             limits.memory = "1Gi";
           };
           querier = {
             replicas = 1;
             resources = {
-              requests = small;
+              requests = {
+                cpu = "20m";
+                memory = "256Mi";
+              };
               limits.memory = "2Gi";
             };
           };
@@ -143,10 +153,10 @@
             };
             resources = {
               requests = {
-                cpu = "100m";
-                memory = "1Gi";
+                cpu = "200m";
+                memory = "2Gi";
               };
-              limits.memory = "3Gi";
+              limits.memory = "4Gi";
             };
           };
           store_gateway = {
@@ -156,7 +166,10 @@
               size = "10Gi";
             };
             resources = {
-              requests = small;
+              requests = {
+                cpu = "20m";
+                memory = "256Mi";
+              };
               limits.memory = "2Gi";
             };
           };
@@ -166,7 +179,10 @@
               size = "20Gi";
             };
             resources = {
-              requests = small;
+              requests = {
+                cpu = "50m";
+                memory = "512Mi";
+              };
               limits.memory = "2Gi";
             };
           };
