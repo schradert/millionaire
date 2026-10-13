@@ -121,6 +121,67 @@ pub async fn external_secret(ctx: &Ctx, f: &mut Flow) -> R<()> {
     Ok(())
 }
 
+/// A Workflow of one container that runs `git --version` (the runner's image has git and kubectl
+/// on its PATH, so the emissary executor needs no registry lookup), as the `e2e-workflow`
+/// ServiceAccount. Logs are not archived and the Pods go when it finishes.
+pub fn workflow(name: &str, image: &str) -> Value {
+    json!({
+        "apiVersion": "argoproj.io/v1alpha1", "kind": "Workflow", "metadata": kube::meta(name),
+        "spec": {
+            "serviceAccountName": "e2e-workflow",
+            "entrypoint": "main",
+            "archiveLogs": false,
+            "activeDeadlineSeconds": 300,
+            "podGC": { "strategy": "OnWorkflowCompletion" },
+            "securityContext": { "runAsNonRoot": true, "runAsUser": 65534, "runAsGroup": 65534, "seccompProfile": { "type": "RuntimeDefault" } },
+            "templates": [{
+                "name": "main",
+                "container": {
+                    "image": image, "command": ["git"], "args": ["--version"],
+                    "resources": { "requests": { "cpu": "10m", "memory": "16Mi" }, "limits": { "memory": "128Mi" } },
+                    "securityContext": { "allowPrivilegeEscalation": false, "capabilities": { "drop": ["ALL"] } },
+                },
+            }],
+        },
+    })
+}
+
+/// A tagged Workflow is submitted, runs to `Succeeded`, and is deleted with its Pods. The
+/// controller's archive selector skips `app.kubernetes.io/name=e2e-test` (`argo-workflows.nix`),
+/// so nothing is left in the archive either.
+pub async fn argo_workflow(ctx: &Ctx, f: &mut Flow) -> R<()> {
+    const APP: &str = "argo-workflows";
+    let image = kube::image()?;
+    let name = n(ctx, "wf");
+    kube::create(ctx, &workflow(&name, &image)).await?;
+    f.ok(APP, "Workflow submitted", name.clone());
+    let phase = poll(APP, "Workflow finishes", Duration::from_secs(240), Duration::from_secs(3), || async {
+        let w = kube::get("workflow", &name).await?.at(APP, "workflow vanished")?;
+        Ok(match w["status"]["phase"].as_str() {
+            Some(p @ ("Succeeded" | "Failed" | "Error")) => Some((p.to_string(), w["status"]["message"].as_str().unwrap_or_default().to_string())),
+            _ => None,
+        })
+    })
+    .await?;
+    if phase.0 != "Succeeded" {
+        return Err(Fail::new(APP, "Workflow result", format!("{}: {}", phase.0, phase.1)));
+    }
+    f.ok(APP, "Workflow Succeeded", "its container ran to exit 0");
+    Ok(())
+}
+
+pub async fn argo_workflow_cleanup(ctx: &Ctx, f: &mut Flow) -> R<()> {
+    let name = n(ctx, "wf");
+    kube::delete(&[("workflow".into(), name.clone())]).await?;
+    poll("argo-workflows", "Pods are removed with the Workflow", Duration::from_secs(120), Duration::from_secs(3), || async {
+        let out = kube::kubectl(&["get", "pods", "-l", &format!("workflows.argoproj.io/workflow={name}"), "-o", "name"]).await?;
+        Ok(out.is_empty().then_some(()))
+    })
+    .await?;
+    f.ok("argo-workflows", "deleted and verified gone", format!("{name} and its Pods"));
+    Ok(())
+}
+
 /// Does the object's `Ready` condition say True?
 pub fn ready(o: &Value) -> bool {
     o["status"]["conditions"].as_array().into_iter().flatten().any(|c| c["type"] == "Ready" && c["status"] == "True")
@@ -172,6 +233,17 @@ mod tests {
         assert_eq!(p["spec"]["containers"][0]["args"], json!(["__pod", "check", "/d", "text"]));
         assert_eq!(p["spec"]["automountServiceAccountToken"], false);
         assert_eq!(p["spec"]["containers"][0]["securityContext"]["readOnlyRootFilesystem"], true);
+    }
+
+    #[test]
+    fn workflow_is_tagged_restricted_and_runs_as_the_workflow_account() {
+        let w = workflow(&format!("{M}-wf"), "img:1");
+        assert_eq!(w["metadata"]["labels"]["app.kubernetes.io/name"], "e2e-test");
+        assert_eq!(w["spec"]["serviceAccountName"], "e2e-workflow");
+        assert_eq!(w["spec"]["archiveLogs"], false);
+        assert_eq!(w["spec"]["podGC"]["strategy"], "OnWorkflowCompletion");
+        assert_eq!(w["spec"]["securityContext"]["runAsNonRoot"], true);
+        assert_eq!(w["spec"]["templates"][0]["container"]["command"], json!(["git"]));
     }
 
     #[test]

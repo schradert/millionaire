@@ -16,7 +16,7 @@ pub fn family() -> Family {
     Family {
         name: NAME,
         runner: "cluster",
-        about: "Keycloak test users; OIDC logins (Mealie, Jellyfin, Home Assistant, Sure, LibreChat, Immich), oauth2-proxy bearer, Forgejo token; user deletion",
+        about: "Keycloak test users; OIDC logins (Mealie, Jellyfin, Home Assistant, Sure, LibreChat, Immich, Bulwark), oauth2-proxy bearer, Forgejo token; user deletion",
         flows,
         cleanup: Some(sweep!(sweep::cleanup)),
         residue: Some(sweep!(sweep::residue)),
@@ -35,6 +35,7 @@ fn flows() -> Vec<FlowDef> {
         d("oidc-sure", "native OIDC, link-only: Keycloak authenticates the user, Sure refuses to create an account", step!(oidc::sure)).setup(step!(flows::ensure_users)),
         d("oidc-librechat", "native OIDC: Keycloak login works, LibreChat's allowed email domains refuse the test user", step!(oidc::librechat)).setup(step!(flows::ensure_users)),
         d("oidc-immich", "native OIDC: Immich's authorization URL, Keycloak login, redirect back with the code", step!(oidc::immich)).setup(step!(flows::ensure_users)),
+        d("oidc-bulwark", "native OIDC: Bulwark's start route, Keycloak login, redirect back with the code", step!(oidc::bulwark)).setup(step!(flows::ensure_users)),
         d("proxy-bearer", "oauth2-proxy: no token redirects, admin bearer passes, family bearer gets 403", step!(flows::proxy_bearer)).setup(step!(flows::ensure_users)),
         d("forgejo-token", "Forgejo user mints a token; the direct /api route accepts it", step!(flows::forgejo_token)).cleanup(step!(crate::forgejo::cleanup_users)),
         d("user-lifecycle", "a user logs in, is deleted, and can no longer log in", step!(flows::lifecycle)).cleanup(step!(flows::lifecycle_cleanup)),

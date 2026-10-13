@@ -2,8 +2,9 @@
 //! (its SSO plugin; a full login, and the user it creates is deleted), Home Assistant (the
 //! callback issues a one-time code, which is never redeemed, so no user is made), Sure (accounts
 //! are link-only, so an unlinked user is refused), LibreChat (allowed email domains refuse the
-//! test user) and Immich (the authorization request and the
-//! redirect back; the callback would create an admin nobody can delete, see `docs/e2e.md`).
+//! test user), Immich (the authorization request and the
+//! redirect back; the callback would create an admin nobody can delete, see `docs/e2e.md`) and
+//! Bulwark (the same, stopping before the callback page that would create a mailbox).
 //! Every user is a run-tagged Keycloak test user, never the owner's account.
 
 use reqwest::Url;
@@ -250,6 +251,38 @@ pub async fn immich(ctx: &Ctx, f: &mut Flow) -> R<()> {
         return Err(Fail::new("immich", "redirect back", format!("{back} lacks the code or the state {state}")));
     }
     f.ok("immich", "Keycloak redirects back with a code", format!("{} signed in, state matches", u.family.username));
+    Ok(())
+}
+
+// ---------- Bulwark (webmail): PKCE through the server's start route ----------
+
+/// Bulwark's own start route builds the authorization URL (`POST /api/auth/sso/start`, redirect
+/// `/<locale>/auth/callback`); Keycloak accepts the client, the test user signs in, and the
+/// redirect back carries the code and the same state. The flow stops before the callback page:
+/// redeeming the code logs in to Stalwart, which would create the user's mailbox.
+pub async fn bulwark(ctx: &Ctx, f: &mut Flow) -> R<()> {
+    let kc = Kc::connect()?;
+    let u = kc::users(ctx, &kc).await?;
+    let base = host("webmail");
+    let cfg = json(ctx.http.get(format!("{base}/api/config")), "bulwark", "config").await?;
+    if cfg["oauthEnabled"] != json!(true) || cfg["oauthClientId"] != json!("bulwark") || cfg["oauthIssuerUrl"] != json!(issuer()) {
+        return Err(Fail::new("bulwark", "OAuth config", format!("/api/config says oauthEnabled={}, client {}, issuer {}", cfg["oauthEnabled"], cfg["oauthClientId"], cfg["oauthIssuerUrl"])));
+    }
+    f.ok("bulwark", "OIDC enabled for client bulwark", "issuer is Keycloak's");
+    let redirect = format!("{base}/en/auth/callback");
+    let r = json(ctx.http.post(format!("{base}/api/auth/sso/start")).json(&json!({ "redirect_uri": redirect, "locale": "en" })), "bulwark", "sso/start").await?;
+    let url = r["authorize_url"].as_str().at("bulwark", "authorize_url")?.to_string();
+    let parsed = Url::parse(&url).at("bulwark", "authorize_url")?;
+    if !url.starts_with(&issuer()) || web::query(&parsed, "client_id").as_deref() != Some("bulwark") || web::query(&parsed, "redirect_uri").as_deref() != Some(redirect.as_str()) {
+        return Err(Fail::new("bulwark", "authorize_url", format!("{url} does not point at Keycloak for client bulwark and {redirect}")));
+    }
+    let state = web::query(&parsed, "state").at("bulwark", "state in the authorization url")?;
+    f.ok("bulwark", "authorization url built", format!("PKCE {}", web::query(&parsed, "code_challenge_method").unwrap_or_else(|| "none".into())));
+    let back = login(ctx, &mut Session::new(), &url, &u.family, &redirect).await?;
+    if web::query(&back, "state").as_deref() != Some(state.as_str()) || web::query(&back, "code").is_none() {
+        return Err(Fail::new("bulwark", "redirect back", format!("{back} lacks the code or the state {state}")));
+    }
+    f.ok("bulwark", "Keycloak redirects back with a code", format!("{} signed in, state matches", u.family.username));
     Ok(())
 }
 
