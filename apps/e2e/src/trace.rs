@@ -4,8 +4,9 @@
 //! (the full URL) is set; `OTEL_SERVICE_NAME` overrides the service name and `OTEL_SDK_DISABLED=true`
 //! turns it off.
 //!
-//! One process is one trace. A span's parent is the innermost span still open when it starts, which
-//! is exact for the sequential flows here. [`SendTraced::send_t`] replaces `RequestBuilder::send`:
+//! A span's parent is the innermost span still open when it starts, which is exact for the sequential
+//! flows here; it joins that span's trace. [`root_span`] starts a trace of its own (one per flow, so no
+//! trace grows with the whole run: Tempo holds a trace in memory until it goes idle). [`SendTraced::send_t`] replaces `RequestBuilder::send`:
 //! it records a client span per request and sends its `traceparent`, so the services' own spans
 //! (Keycloak, the gateway, ...) join the trace.
 
@@ -35,6 +36,14 @@ pub fn span(name: impl Into<String>) -> Span {
     }
 }
 
+/// A span that starts a new trace (no parent), however many spans are open.
+pub fn root_span(name: impl Into<String>) -> Span {
+    match GLOBAL.get().and_then(Option::as_ref) {
+        Some(t) => t.root_span(name),
+        None => Span::inert(),
+    }
+}
+
 /// Send the finished spans.
 pub async fn flush() {
     if let Some(t) = GLOBAL.get().and_then(Option::as_ref) {
@@ -48,15 +57,14 @@ pub struct Tracer(Arc<Inner>);
 struct Inner {
     url: String,
     service: String,
-    trace_id: [u8; 16],
     state: Mutex<State>,
     http: reqwest::Client,
 }
 
 struct State {
     seed: u64,
-    /// Ids of the spans that have started and not ended, outermost first.
-    open: Vec<[u8; 8]>,
+    /// (span id, trace id) of the spans that have started and not ended, outermost first.
+    open: Vec<([u8; 8], [u8; 16])>,
     done: Vec<Value>,
 }
 
@@ -96,25 +104,39 @@ impl Tracer {
         if std::fs::File::open("/dev/urandom").and_then(|mut f| f.read_exact(&mut buf)).is_ok() {
             seed ^= u64::from_le_bytes(buf);
         }
-        let mut trace_id = [0u8; 16];
-        trace_id[..8].copy_from_slice(&splitmix(&mut seed).to_be_bytes());
-        trace_id[8..].copy_from_slice(&splitmix(&mut seed).to_be_bytes());
         Tracer(Arc::new(Inner {
             url,
             service,
-            trace_id,
             state: Mutex::new(State { seed, open: Vec::new(), done: Vec::new() }),
             http: reqwest::Client::builder().timeout(Duration::from_secs(10)).build().expect("http client"),
         }))
     }
 
-    /// Start a span under the innermost open one.
+    /// Start a span under the innermost open one, in its trace.
     pub fn span(&self, name: impl Into<String>) -> Span {
+        self.start(name.into(), false)
+    }
+
+    /// Start a span in a new trace.
+    pub fn root_span(&self, name: impl Into<String>) -> Span {
+        self.start(name.into(), true)
+    }
+
+    fn start(&self, name: String, root: bool) -> Span {
         let mut st = self.0.state.lock().unwrap();
         let id = splitmix(&mut st.seed).to_be_bytes();
-        let parent = st.open.last().copied();
-        st.open.push(id);
-        Span { tracer: Some(self.clone()), id, parent, name: name.into(), start: unix_nanos(), kind: 1, attrs: Vec::new(), error: None }
+        let enclosing = if root { None } else { st.open.last().copied() };
+        let (parent, trace) = match enclosing {
+            Some((p, t)) => (Some(p), t),
+            None => {
+                let mut t = [0u8; 16];
+                t[..8].copy_from_slice(&splitmix(&mut st.seed).to_be_bytes());
+                t[8..].copy_from_slice(&splitmix(&mut st.seed).to_be_bytes());
+                (None, t)
+            }
+        };
+        st.open.push((id, trace));
+        Span { tracer: Some(self.clone()), id, trace, parent, name, start: unix_nanos(), kind: 1, attrs: Vec::new(), error: None }
     }
 
     /// Send what has finished; failures are reported once per attempt and otherwise ignored.
@@ -138,6 +160,7 @@ impl Tracer {
 pub struct Span {
     tracer: Option<Tracer>,
     id: [u8; 8],
+    trace: [u8; 16],
     parent: Option<[u8; 8]>,
     name: String,
     start: u64,
@@ -148,7 +171,7 @@ pub struct Span {
 
 impl Span {
     fn inert() -> Span {
-        Span { tracer: None, id: [0; 8], parent: None, name: String::new(), start: 0, kind: 1, attrs: Vec::new(), error: None }
+        Span { tracer: None, id: [0; 8], trace: [0; 16], parent: None, name: String::new(), start: 0, kind: 1, attrs: Vec::new(), error: None }
     }
 
     pub fn attr(&mut self, key: &str, value: impl AsRef<str>) {
@@ -177,7 +200,7 @@ impl Span {
 
     /// W3C `traceparent` naming this span as the parent.
     pub fn traceparent(&self) -> Option<String> {
-        self.tracer.as_ref().map(|t| format!("00-{}-{}-01", hex(&t.0.trace_id), hex(&self.id)))
+        self.tracer.as_ref().map(|_| format!("00-{}-{}-01", hex(&self.trace), hex(&self.id)))
     }
 }
 
@@ -185,7 +208,7 @@ impl Drop for Span {
     fn drop(&mut self) {
         let Some(t) = &self.tracer else { return };
         let mut v = json!({
-            "traceId": hex(&t.0.trace_id),
+            "traceId": hex(&self.trace),
             "spanId": hex(&self.id),
             "name": self.name,
             "kind": self.kind,
@@ -200,7 +223,7 @@ impl Drop for Span {
             v["status"] = json!({"code": 2, "message": msg});
         }
         let mut st = t.0.state.lock().unwrap();
-        st.open.retain(|i| *i != self.id);
+        st.open.retain(|(i, _)| *i != self.id);
         st.done.push(v);
     }
 }
@@ -293,6 +316,13 @@ mod tests {
         drop(c);
         let d = t.span("d");
         assert_eq!(d.parent, Some(b.id));
+        assert_eq!(d.trace, a.trace);
+        let r = t.root_span("r");
+        assert_eq!(r.parent, None);
+        assert_ne!(r.trace, a.trace);
+        // spans started under a root join its trace
+        let under = t.span("under");
+        assert_eq!((under.parent, under.trace), (Some(r.id), r.trace));
         let tp = d.traceparent().unwrap();
         assert!(tp.starts_with("00-") && tp.ends_with("-01") && tp.len() == 55, "{tp}");
     }

@@ -85,7 +85,7 @@ async fn sweeps(ctx: &Ctx, fams: &[&Family], scope: &Scope, dry: bool) -> Vec<Fl
                 _ => fam.finalize,
             };
             if let Some(s) = s {
-                let sp = trace::span(format!("sweep {} {}", fam.name, ["cleanup", "residue", "finalize"][pick]));
+                let sp = trace::root_span(format!("sweep {} {}", fam.name, ["cleanup", "residue", "finalize"][pick]));
                 let mut f = s(ctx, scope, dry).await;
                 drop(sp);
                 f.family = fam.name.into();
