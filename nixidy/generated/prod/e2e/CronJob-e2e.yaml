@@ -23,7 +23,7 @@ spec:
                 - name: DOMAIN
                   value: trdos.me
                 - name: E2E_IMAGE
-                  value: harbor.trdos.me/library/e2e:0.6.0@sha256:96cde60ddb3a4345bf038f1eeedd54e08b18798826b1f178beb91ae5f951c14a
+                  value: harbor.trdos.me/library/e2e:0.6.1@sha256:2542fc870033ab3cbfa8231454ee0ca29fa7e50afa2617ef710b75c3d394894a
                 - name: E2E_REPORT_CONFIGMAP
                   value: e2e/e2e-last-report
                 - name: E2E_RUNNER
@@ -32,7 +32,7 @@ spec:
                   value: tristan/bookmarks
                 - name: OTEL_EXPORTER_OTLP_ENDPOINT
                   value: http://alloy.observability.svc.cluster.local:4318
-              image: harbor.trdos.me/library/e2e:0.6.0@sha256:96cde60ddb3a4345bf038f1eeedd54e08b18798826b1f178beb91ae5f951c14a
+              image: harbor.trdos.me/library/e2e:0.6.1@sha256:2542fc870033ab3cbfa8231454ee0ca29fa7e50afa2617ef710b75c3d394894a
               name: e2e
               resources:
                 limits:
