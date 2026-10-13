@@ -44,6 +44,65 @@ data:
         tenant_id = "cluster"
       }
     }
+
+    otelcol.receiver.otlp "default" {
+      grpc {
+        endpoint = "0.0.0.0:4317"
+      }
+      http {
+        endpoint = "0.0.0.0:4318"
+      }
+      output {
+        traces = [otelcol.processor.k8sattributes.default.input]
+      }
+    }
+
+    // The sender is found by the span's k8s.pod.ip attribute, else by the connection's source address
+    // (Cilium keeps Pod IPs for in-cluster traffic).
+    otelcol.processor.k8sattributes "default" {
+      auth_type = "serviceAccount"
+      pod_association {
+        source {
+          from = "resource_attribute"
+          name = "k8s.pod.ip"
+        }
+      }
+      pod_association {
+        source {
+          from = "connection"
+        }
+      }
+      extract {
+        metadata = [
+          "k8s.namespace.name",
+          "k8s.pod.name",
+          "k8s.node.name",
+          "k8s.deployment.name",
+          "k8s.statefulset.name",
+          "k8s.daemonset.name",
+          "k8s.job.name",
+          "k8s.cronjob.name",
+        ]
+      }
+      output {
+        traces = [otelcol.processor.batch.default.input]
+      }
+    }
+
+    otelcol.processor.batch "default" {
+      output {
+        traces = [otelcol.exporter.otlp.tempo.input]
+      }
+    }
+
+    otelcol.exporter.otlp "tempo" {
+      client {
+        endpoint = "tempo.observability.svc.cluster.local:4317"
+        tls {
+          insecure = true
+        }
+      }
+    }
 kind: ConfigMap
 metadata:
   labels:
