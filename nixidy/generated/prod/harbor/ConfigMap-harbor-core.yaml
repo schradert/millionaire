@@ -33,6 +33,15 @@ data:
   REGISTRY_URL: http://harbor-registry:5000
   REPLICATION_ADAPTER_WHITELIST: ali-acr,aws-ecr,azure-acr,docker-hub,docker-registry,github-ghcr,google-gcr,harbor,huawei-SWR,jfrog-artifactory,tencent-tcr,volcengine-cr
   TOKEN_SERVICE_URL: http://harbor-core:80/service/token
+  TRACE_ENABLED: "true"
+  TRACE_NAMESPACE: ""
+  TRACE_OTEL_COMPRESSION: "false"
+  TRACE_OTEL_ENDPOINT: alloy.observability.svc.cluster.local:4318
+  TRACE_OTEL_INSECURE: "true"
+  TRACE_OTEL_TIMEOUT: "10"
+  TRACE_OTEL_URL_PATH: /v1/traces
+  TRACE_SAMPLE_RATE: "0.5"
+  TRACE_SERVICE_NAME: harbor-core
   TRIVY_ADAPTER_URL: http://harbor-trivy:8080
   WITH_TRIVY: "true"
   _REDIS_URL_CORE: redis://harbor-dragonfly.cicd.svc.cluster.local:6379/0?idle_timeout_seconds=30

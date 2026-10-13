@@ -56,6 +56,8 @@ spec:
                   fieldPath: metadata.name
             - name: LEADER_ELECTION_DISABLE
               value: "true"
+            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4317
           image: quay.io/argoproj/workflow-controller:v4.1.5@sha256:328307c9436f40883b2e9ada14ca4082f062159818a1ca9a4e88577d5dbba257
           imagePullPolicy: Always
           livenessProbe:

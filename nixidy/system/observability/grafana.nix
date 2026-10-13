@@ -134,6 +134,11 @@
           GF_NEWS_NEWS_FEED_ENABLED = "false";
           GF_SECURITY_COOKIE_SAMESITE = "grafana";
           GF_SERVER_ROOT_URL = "https://${hostname}";
+          # Traces to Alloy (alloy.nix): 10% of requests, W3C propagation.
+          GF_TRACING_OPENTELEMETRY_OTLP_ADDRESS = "alloy.observability.svc.cluster.local:4317";
+          GF_TRACING_OPENTELEMETRY_OTLP_PROPAGATION = "w3c";
+          GF_TRACING_OPENTELEMETRY_SAMPLER_TYPE = "probabilistic";
+          GF_TRACING_OPENTELEMETRY_SAMPLER_PARAM = "0.1";
           GF_SMTP_ENABLED = "true";
           GF_SMTP_HOST = "stalwart.mail.svc.cluster.local:25";
           GF_SMTP_FROM_ADDRESS = "noreply@${domain}";

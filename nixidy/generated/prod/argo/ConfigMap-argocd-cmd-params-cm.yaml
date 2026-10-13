@@ -11,6 +11,8 @@ data:
   dexserver.log.level: info
   notificationscontroller.log.format: text
   notificationscontroller.log.level: info
+  otlp.address: alloy.observability.svc.cluster.local:4317
+  otlp.insecure: "true"
   redis.server: argod-argocd-redis:6379
   repo.server: argod-argocd-repo-server:8081
   reposerver.log.format: text

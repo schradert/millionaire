@@ -51,8 +51,28 @@
             limits.memory = "1229Mi";
           };
           singleBinary.persistence.enabled = true;
+          # Self-tracing to Alloy (alloy.nix); sampled to stay cheap.
+          singleBinary.extraEnv = [
+            {
+              name = "OTEL_EXPORTER_OTLP_ENDPOINT";
+              value = "http://alloy.observability.svc.cluster.local:4317";
+            }
+            {
+              name = "OTEL_TRACES_SAMPLER";
+              value = "parentbased_traceidratio";
+            }
+            {
+              name = "OTEL_TRACES_SAMPLER_ARG";
+              value = "0.1";
+            }
+            {
+              name = "OTEL_SERVICE_NAME";
+              value = "loki";
+            }
+          ];
           write.replicas = 0;
           loki = {
+            tracing.enabled = true;
             commonConfig.replication_factor = 1;
             storage.type = "filesystem";
             # FIXME why specify buckets when using filesystem?
