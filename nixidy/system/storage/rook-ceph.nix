@@ -265,7 +265,11 @@ in {
         # Hooks are not live resources, so a change to retiredOsds alone is no
         # diff and would never sync (see nixidy/system/cicd/bootstrap.nix). This
         # tracked ConfigMap makes it one.
-        configMaps.rook-ceph-retired-osds.data.retired = builtins.toJSON retiredOsds;
+        configMaps.rook-ceph-retired-osds.data = {
+          retired = builtins.toJSON retiredOsds;
+          # Bump to rerun the hooks after a change to their scripts or images.
+          revision = "2";
+        };
         # OSDs retired in git: every sync runs this hook, which takes each id
         # through out → safe-to-destroy → down (noup so the daemon stays down)
         # → `rook ceph osd remove` (deletes the Deployment, purges the OSD and
@@ -410,9 +414,13 @@ in {
               rc=0
               for dev in ${lib.concatMapStringsSep " " (o: o.device) disks}; do
                 if [ ! -e "$dev" ]; then echo "$dev: not present on $(hostname), skipping"; continue; fi
-                if ! label=$(ceph-bluestore-tool show-label --dev "$dev" 2>/dev/null); then
-                  echo "$dev: no bluestore label, nothing to zap"
+                # blkid sees the signature even while the disk is open; show-label does not.
+                if [ "$(blkid -o value -s TYPE "$dev" 2>/dev/null)" != "ceph_bluestore" ]; then
+                  echo "$dev: no bluestore signature, nothing to zap"
                   continue
+                fi
+                if ! label=$(ceph-bluestore-tool show-label --dev "$dev" 2>&1); then
+                  echo "$dev: cannot read the bluestore label (in use?): $label"; rc=1; continue
                 fi
                 fsid=$(echo "$label" | sed -n 's/.*"ceph_fsid": "\([^"]*\)".*/\1/p' | head -1)
                 id=$(echo "$label" | sed -n 's/.*"whoami": "\([^"]*\)".*/\1/p' | head -1)
@@ -440,7 +448,9 @@ in {
                   hostPID = true;
                   containers = lib.toList {
                     name = "zap";
-                    image = with pinned.images.rook-ceph; "${repository}:${tag}@${digest}";
+                    # The ceph image: ceph-volume, ceph-bluestore-tool and blkid (the
+                    # rook image has none of them, which read as "no label").
+                    image = with pinned.images.ceph; "${repository}:${tag}@${digest}";
                     command = ["/bin/sh" "-c" script];
                     securityContext.privileged = true;
                     env = let

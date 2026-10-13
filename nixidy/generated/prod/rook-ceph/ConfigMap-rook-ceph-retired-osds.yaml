@@ -1,6 +1,7 @@
 apiVersion: v1
 data:
   retired: '[{"device":"/dev/disk/by-id/scsi-35000c50067fb404b","id":7,"node":"sirver"}]'
+  revision: "2"
 kind: ConfigMap
 metadata:
   name: rook-ceph-retired-osds
