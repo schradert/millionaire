@@ -140,6 +140,7 @@ default on, nixidy/system/storage/postgres.nix), so every database is scraped; t
 | prometheus-klipper-exporter | ServiceMonitor (/probe, printer offline) |  |
 | promptfoo | none | no metrics endpoint |
 | prowlarr | ServiceMonitor (exportarr sidecar) + CNPG |  |
+| pyroscope | PodMonitor (http2 :4040) + PyroscopeBucketGrowth, PyroscopeDown alerts |  |
 | qbittorrent | none | scaled to 0 (no VPN credentials). When enabled it needs an exporter sidecar and gluetun's FIREWALL_INPUT_PORTS opened for it; WebUI auth is off on localhost so no secret is needed |
 | radarr | ServiceMonitor (exportarr sidecar) + CNPG |  |
 | rclone | none | `--rc-enable-metrics` is not set (rclone rc is the only place it serves them) |

@@ -1,0 +1,17 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    app.kubernetes.io/component: all
+    app.kubernetes.io/instance: pyroscope
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: pyroscope
+  name: pyroscope
+  namespace: observability
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: all
+      app.kubernetes.io/instance: pyroscope
+      app.kubernetes.io/name: pyroscope

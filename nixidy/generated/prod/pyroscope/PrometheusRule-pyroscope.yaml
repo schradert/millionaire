@@ -1,0 +1,25 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    release: prometheus
+  name: pyroscope
+  namespace: observability
+spec:
+  groups:
+    - name: pyroscope
+      rules:
+        - alert: PyroscopeBucketGrowth
+          annotations:
+            summary: Pyroscope uploads more than 5 GB/day of profile data to the bucket (retention is unlimited by design)
+          expr: sum(increase(objstore_bucket_operation_transferred_bytes_sum{operation="upload", namespace="observability", pod=~"pyroscope-.*"}[1d])) > 5e9
+          for: 1h
+          labels:
+            severity: info
+        - alert: PyroscopeDown
+          annotations:
+            summary: Pyroscope has not been scraped for 15m; profiles from Alloy and the SDKs are being dropped
+          expr: absent(up{namespace="observability", pod=~"pyroscope-.*"} == 1)
+          for: 15m
+          labels:
+            severity: warning

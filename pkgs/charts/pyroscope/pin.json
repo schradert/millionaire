@@ -1,0 +1,9 @@
+{
+  "version": "2.3.1",
+  "hash": "sha256-W0WtYhrTI+U6mnNT6dHZBT4i1Xx4eYZcoXTFqakQ0HQ=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://grafana.github.io/helm-charts/",
+    "chart": "pyroscope"
+  }
+}

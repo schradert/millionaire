@@ -61,7 +61,7 @@
           annotations."reloader.stakater.com/auto" = "true";
           # Grafana only reads provisioned datasources at startup, and the sidecar's reload call is a
           # 401 (basic auth is off), so a changed datasource needs a restart.
-          annotations."configmap.reloader.stakater.com/reload" = "grafana-datasource-loki,grafana-datasource-tempo,grafana-datasource-prometheus,grafana-datasource-mimir,grafana-datasource-alertmanager";
+          annotations."configmap.reloader.stakater.com/reload" = "grafana-datasource-loki,grafana-datasource-tempo,grafana-datasource-prometheus,grafana-datasource-mimir,grafana-datasource-pyroscope,grafana-datasource-alertmanager";
           envFromConfigMaps = [{name = "grafana";}];
           envFromSecrets = [{name = "grafana-oidc";}];
           persistence.enabled = true;
@@ -196,6 +196,18 @@
                   customQuery = true;
                   query = ''{namespace=~".+"} |= "$''${__trace.traceId}"'';
                 };
+                # A span links to its service's CPU profile for the span's time range (pyroscope.nix). The SDK
+                # profilers of our own services tag profiles service_name = the span's service.name.
+                tracesToProfiles = {
+                  datasourceUid = "pyroscope";
+                  spanStartTimeShift = "-5m";
+                  spanEndTimeShift = "5m";
+                  profileTypeId = "process_cpu:cpu:nanoseconds:cpu:nanoseconds";
+                  tags = lib.toList {
+                    key = "service.name";
+                    value = "service_name";
+                  };
+                };
                 tracesToMetrics = {
                   datasourceUid = "prometheus";
                   spanStartTimeShift = "-5m";
@@ -245,6 +257,23 @@
                 # Rules and alerts stay in Prometheus and Alertmanager; Mimir's ruler is off.
                 manageAlerts = false;
               };
+            };
+          };
+        };
+        # Continuous profiling (pyroscope.nix): eBPF profiles of every node's workloads (service_name =
+        # namespace/workload, alloy.nix) and the SDK profiles of our own services.
+        configMaps.grafana-datasource-pyroscope = {
+          metadata.labels.grafana_datasource = "1";
+          data."pyroscope.yaml" = builtins.toJSON {
+            apiVersion = 1;
+            datasources = lib.toList {
+              name = "Pyroscope";
+              uid = "pyroscope";
+              type = "grafana-pyroscope-datasource";
+              access = "proxy";
+              editable = false;
+              url = "http://pyroscope.observability.svc.cluster.local:4040";
+              jsonData.minStep = "15s";
             };
           };
         };

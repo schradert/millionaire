@@ -42,6 +42,7 @@
     ./observability/mimir.nix
     ./observability/node-exporter.nix
     ./observability/prometheus.nix
+    ./observability/pyroscope.nix
     ./observability/smartctl-exporter.nix
     ./observability/tempo.nix
     ./portal.nix

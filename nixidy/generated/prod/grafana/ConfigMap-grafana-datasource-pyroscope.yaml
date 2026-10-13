@@ -1,0 +1,9 @@
+apiVersion: v1
+data:
+  pyroscope.yaml: '{"apiVersion":1,"datasources":[{"access":"proxy","editable":false,"jsonData":{"minStep":"15s"},"name":"Pyroscope","type":"grafana-pyroscope-datasource","uid":"pyroscope","url":"http://pyroscope.observability.svc.cluster.local:4040"}]}'
+kind: ConfigMap
+metadata:
+  labels:
+    grafana_datasource: "1"
+  name: grafana-datasource-pyroscope
+  namespace: observability
