@@ -43,6 +43,18 @@
         endpoints = lib.toList {
           port = "http-metrics";
           interval = "30s";
+          # The mixin dashboards (dashboards/mimir-*.json) select job="<namespace>/<component>" and a cluster label.
+          relabelings = [
+            {
+              sourceLabels = ["__meta_kubernetes_namespace" "__meta_kubernetes_service_label_app_kubernetes_io_component"];
+              separator = "/";
+              targetLabel = "job";
+            }
+            {
+              targetLabel = "cluster";
+              replacement = "millionaire";
+            }
+          ];
         };
       };
       resources.prometheusRules.mimir = {
