@@ -4,6 +4,8 @@ metadata:
   name: e2e
   namespace: e2e
 spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
       activeDeadlineSeconds: 3600
@@ -21,12 +23,14 @@ spec:
                 - name: DOMAIN
                   value: trdos.me
                 - name: E2E_IMAGE
-                  value: harbor.trdos.me/library/e2e:0.3.7@sha256:afc1ac2cc3d099013801890a963f327cb351cbcd8a1bf586fd78ff0ae2cb9050
+                  value: harbor.trdos.me/library/e2e:0.3.8@sha256:9fbbdfe23e6205d2133fac1542b5116507fc4580410adf968da0fef54e675f39
+                - name: E2E_REPORT_CONFIGMAP
+                  value: e2e/e2e-last-report
                 - name: E2E_RUNNER
                   value: cluster
                 - name: FLOCCUS_REPO
                   value: tristan/bookmarks
-              image: harbor.trdos.me/library/e2e:0.3.7@sha256:afc1ac2cc3d099013801890a963f327cb351cbcd8a1bf586fd78ff0ae2cb9050
+              image: harbor.trdos.me/library/e2e:0.3.8@sha256:9fbbdfe23e6205d2133fac1542b5116507fc4580410adf968da0fef54e675f39
               name: e2e
               resources:
                 limits:
@@ -73,5 +77,7 @@ spec:
                 optional: true
                 secretName: e2e-forgejo-admin
       ttlSecondsAfterFinished: 86400
-  schedule: 0 0 1 1 *
-  suspend: true
+  schedule: 15 3 * * *
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  timeZone: Etc/UTC

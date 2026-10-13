@@ -14,7 +14,7 @@ e2e list                         # families and flows (runs the crate locally)
 media-e2e <args>                 # alias: e2e <cmd> --family media <args>
 ```
 
-Run them from the devshell. Each runner is a Job created from a suspended CronJob, whose log is followed and saved to `$TMPDIR/e2e/<run>/<runner>.{log,json}`; off-LAN set `KUBECTL` as in `docs/manual-steps.md` step 9. Exit status is non-zero if any flow, sweep or residue check failed.
+Run them from the devshell. Each runner is a Job created from its CronJob (which also runs nightly, see below), whose log is followed and saved to `$TMPDIR/e2e/<run>/<runner>.{log,json}`; off-LAN set `KUBECTL` as in `docs/manual-steps.md` step 9. Exit status is non-zero if any flow, sweep or residue check failed.
 
 ## How a run works
 
@@ -23,6 +23,18 @@ Run them from the devshell. Each runner is a Job created from a suspended CronJo
 3. After the flows, each family involved runs its sweep (deletes everything in scope carrying a marker), then its residue check (asks every app for anything carrying the marker; any survivor fails the run), then its finalizer.
 4. The report is a table plus one JSON document between `=== E2E REPORT JSON BEGIN/END ===` (`family`, `flow`, `status`, `ms`, `error {app, step, message}`, `steps` with their phase).
 
+## Scheduled runs and the last result
+
+Both CronJobs run by themselves, `concurrencyPolicy: Forbid`, three finished Jobs of each kind kept (and every Job deleted a day after it finishes):
+
+| CronJob | When (UTC) | What |
+|---|---|---|
+| `e2e/e2e` | `15 3 * * *` | every `cluster` family, default tier |
+| `media/media-e2e` | `45 3 * * *` | the `media` family, default tier (not `--full`: the VPN tests stay manual) |
+
+- **A failed run pages.** Any failed flow, sweep or residue check exits non-zero, which fails the Job (`backoffLimit: 0`); the stock `KubeJobFailed` rule (`kube_job_failed > 0` for 15 minutes, severity `warning`) goes through Alertmanager's default route to ntfy. A run that is missing (CronJob suspended, never scheduled, always failing) trips `E2ESuiteStale` (`nixidy/apps/e2e.nix`, nothing succeeded for three days). The alert clears when the failed Job is deleted, a day after it finished or with `kubectl delete job`.
+- **Last result.** `kubectl -n e2e get jobs` (and `-n media`) lists the runs with their outcome; `kubectl -n e2e logs job/<name>` is the full log with the table. The latest report of each runner, whatever started it, is also kept in a ConfigMap that outlives the Jobs: `kubectl -n e2e get cm e2e-last-report -o jsonpath='{.data.result} {.data.run} {.data.finished}'` for the verdict, `-o jsonpath='{.data.report\.json}' | jq` for the report (`kubectl -n media get cm media-e2e-last-report` for media). It is replaced by the next run, so a partial manual run (`--family`) also replaces a nightly one; a run killed by its deadline writes nothing (the Job shows it).
+
 ## Runners
 
 A family belongs to one runner, set in the registry (`apps/e2e/src/flow.rs`); a Job with `E2E_RUNNER` set runs only its own families, and the devshell script starts the Jobs the requested families need.
@@ -30,7 +42,7 @@ A family belongs to one runner, set in the registry (`apps/e2e/src/flow.rs`); a 
 | Runner | CronJob | Families | Why |
 |---|---|---|---|
 | `media` | `media/media-e2e` (`nixidy/apps/media/media-e2e.nix`) | `media` | mounts the media volumes and the arr/Jellyfin secrets; execs into qBittorrent for the VPN tests |
-| `cluster` | `e2e/e2e` (`nixidy/apps/e2e.nix`) | everything else | HTTP, plus `kubectl` in namespace `e2e` through the `e2e` ServiceAccount (a Role for pods, pod logs, PVCs and VolumeSnapshots there; no Secrets, no other namespace, nothing cluster-scoped); no volumes |
+| `cluster` | `e2e/e2e` (`nixidy/apps/e2e.nix`) | everything else | HTTP, plus `kubectl` in namespace `e2e` through the `e2e` ServiceAccount (a Role for pods, pod logs, PVCs and VolumeSnapshots there, and its own report ConfigMap; no Secrets, no other namespace, nothing cluster-scoped); no volumes |
 
 The `cluster` runner reaches apps through the internal gateway by hostname (`https://<app>.trdos.me`), the same path a client uses, so no network policy changes are needed: enforced namespaces already admit the gateway. Where a probe must be in-cluster (Alertmanager's API) the namespace has no default-deny policy (`observability`, `identity`); a future in-cluster probe into an enforced namespace needs an `extraIngress` rule on that namespace in `nixidy/apps/default.nix` naming the pod label `app.kubernetes.io/name: e2e` (media-e2e's rules in `qbittorrent.nix`, `navidrome.nix`, `maintainerr.nix` are the pattern). ntfy has no public DNS: the Job pins `ntfy.trdos.me` with `hostAliases` like Alertmanager does.
 
