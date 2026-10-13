@@ -372,6 +372,8 @@
                     OTEL_EXPORTER_OTLP_ENDPOINT = "http://alloy.observability.svc.cluster.local:4318";
                     # CPU profiles (apps/e2e/src/profile.rs, e2e >= 0.7), tagged family/flow/phase.
                     PYROSCOPE_SERVER_ADDRESS = "http://pyroscope.observability.svc.cluster.local:4040";
+                    # A short run burns little CPU: 1 kHz (CPU-time sampling, free while idle) gives it samples.
+                    PYROSCOPE_SAMPLE_RATE = "1000";
                     E2E_REPORT_CONFIGMAP = "${name}/${report}";
                     DOMAIN = domain;
                     # The tagged test Pods run this same image (`e2e __pod ...`).

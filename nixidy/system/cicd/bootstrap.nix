@@ -98,6 +98,8 @@
                       env = lib.mapAttrsToList (name: value: {inherit name value;}) ({
                           OTEL_EXPORTER_OTLP_ENDPOINT = "http://alloy.observability.svc.cluster.local:4318";
                           PYROSCOPE_SERVER_ADDRESS = "http://pyroscope.observability.svc.cluster.local:4040";
+                          # A bootstrap burns milliseconds of CPU: 1 kHz (CPU-time sampling, free while idle) gives it samples.
+                          PYROSCOPE_SAMPLE_RATE = "1000";
                         }
                         // cfg.env);
                       volumeMounts =
