@@ -12,6 +12,8 @@ extend-exclude = ["static/facter/", "old/", "docs/games-inventory.md"]
 UPnP = "UPnP"
 
 [default.extend-words]
+# rsync -aHAX (archive + hardlinks, ACLs, xattrs), not "HEX"
+HAX = "HAX"
 # nixos-facter (hardware detection tool), not a typo of "factor"/"faster"
 facter = "facter"
 # Eclipse Mosquitto (MQTT broker), not the insect

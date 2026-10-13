@@ -27,14 +27,16 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 case "${1:-}" in
 seed)
   zfs list -H "$DS" >/dev/null 2>&1 || {
-    used=$(du -sx --block-size=1 "$DIR" | cut -f1)
+    # live snapshots vanish mid-walk; du still prints the total
+    used=$({ du -sx --block-size=1 "$DIR" 2>/dev/null || true; } | tail -1 | cut -f1)
     avail=$(zfs list -Hpo avail "$POOL")
     [ "$avail" -gt $((used * 12 / 10)) ] || die "pool $POOL has $avail free, $DIR is $used"
     zfs create -o mountpoint=legacy -o sync=disabled -o copies=1 -o com.sun:auto-snapshot=false "$DS"
   }
   mkdir -p "$TMP"
   mountpoint -q "$TMP" || mount -t zfs "$DS" "$TMP"
-  "${RSYNC[@]}" "$DIR"/ "$TMP"/
+  # 24 = source files vanished (containerd is live); cutover's rsync catches them up
+  "${RSYNC[@]}" "$DIR"/ "$TMP"/ || [ $? = 24 ]
   ;;
 cutover)
   mountpoint -q "$DIR" && die "$DIR is already a mountpoint"
