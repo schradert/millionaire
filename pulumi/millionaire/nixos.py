@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pathlib
+import os
 import shlex
 import typing
 
@@ -132,6 +133,15 @@ class NixOS:
 
         ssh_id = f"-o IdentitiesOnly=yes -i {identity}" if identity else ""
         na_id = f"-i {identity} --ssh-option IdentitiesOnly=yes" if identity else ""
+        # NIXOS_ANYWHERE_VIA=host:port: reach the target's sshd through a local
+        # tunnel (e.g. `ssh -N -L 2250:<target>:22 -J <edge> <node>`) instead of
+        # a jump. nixos-anywhere forces IdentitiesOnly for its temporary key, so
+        # a ProxyJump hop can never authenticate; a tunnel needs no hop at all.
+        via = os.environ.get("NIXOS_ANYWHERE_VIA")
+        if via:
+            via_host, via_port = via.rsplit(":", 1)
+            ssh_id += f" -p {via_port}"
+            na_id += f" --ssh-port {via_port}"
         if jump:
             # Through a jump, nixos-anywhere's ssh-copy-id offers only its
             # temporary key to the hop unless IdentitiesOnly is off, so leave it
@@ -166,7 +176,7 @@ class NixOS:
                 ulimit -n 1048576
 
                 # nixos-anywhere reconnects as root@<host> once kexec has booted the installer
-                TARGET={shlex.quote(resolved_target)}
+                TARGET={shlex.quote(f"{resolved_target.split('@')[0]}@{via_host}" if via else resolved_target)}
                 POST_KEXEC="root@${{TARGET##*@}}"
 
                 EXTRA_DIR=$(mktemp -d)
