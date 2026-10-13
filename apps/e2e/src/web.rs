@@ -75,6 +75,18 @@ impl Session {
         self.send(ctx, rb, url, &format!("GET {}", url.path())).await
     }
 
+    /// A JSON request with this session's cookies (optionally a bearer token); no redirect followed.
+    pub async fn json_request(&mut self, ctx: &Ctx, m: reqwest::Method, url: &Url, bearer: Option<&str>, body: Option<&serde_json::Value>) -> R<Hop> {
+        let mut rb = ctx.noredir.request(m, url.clone());
+        if let Some(t) = bearer {
+            rb = rb.bearer_auth(t);
+        }
+        if let Some(b) = body {
+            rb = rb.json(b);
+        }
+        self.send(ctx, rb, url, &format!("json {}", url.path())).await
+    }
+
     pub async fn post_form(&mut self, ctx: &Ctx, url: &Url, fields: &[(String, String)]) -> R<Hop> {
         let rb = ctx.noredir.post(url.clone()).form(fields);
         self.send(ctx, rb, url, &format!("POST {}", url.path())).await
