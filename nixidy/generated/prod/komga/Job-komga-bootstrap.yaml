@@ -24,7 +24,11 @@ spec:
               value: http://komga.media.svc.cluster.local:25600
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: http://alloy.observability.svc.cluster.local:4318
-          image: harbor.trdos.me/library/app-bootstrap:0.19.6@sha256:e6ce713774b09d7c0aaf33951a9a03ec77e56b725cbbd011707ca1c847a06f4c
+            - name: PYROSCOPE_SAMPLE_RATE
+              value: "1000"
+            - name: PYROSCOPE_SERVER_ADDRESS
+              value: http://pyroscope.observability.svc.cluster.local:4040
+          image: harbor.trdos.me/library/app-bootstrap:0.21.0@sha256:c9c03ae43d7502edf415eff12c7e2b8c8206d0b3ff5b80e9c08d6142a6e9bb53
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
@@ -33,6 +37,8 @@ spec:
                 - ALL
             readOnlyRootFilesystem: true
           volumeMounts:
+            - mountPath: /tmp
+              name: tmp
             - mountPath: /secrets/admin
               name: admin
               readOnly: true
@@ -44,6 +50,8 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       volumes:
+        - emptyDir: {}
+          name: tmp
         - name: admin
           secret:
             secretName: komga-admin
