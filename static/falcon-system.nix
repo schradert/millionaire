@@ -38,7 +38,6 @@ in {
   disko.devices.disk.root.device = "/dev/disk/by-id/nvme-PC801_NVMe_SK_hynix_1TB__SIABN06591CB93G1B";
   # The live install is the flat root/{root,home,tmp} layout. Unset this at the
   # deliberate reinstall onto the standard layout (docs/node-standard.md).
-  disko.legacyLayout = true;
   desktopNode.lanLink.Driver = "e1000e"; # onboard NIC; the r8152 USB dongle keeps its name
 
   # The `data` pool (3.6T Toshiba disk, 1.47T of DVD rips) is deliberately NOT
