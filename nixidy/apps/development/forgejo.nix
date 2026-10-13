@@ -172,6 +172,7 @@ in {
               };
 
               federation.ENABLED = true;
+              metrics.ENABLED = true;
               packages.ENABLED = true;
               actions.ENABLED = true;
               session.PROVIDER = "db";
@@ -190,6 +191,18 @@ in {
       };
 
       resources = {
+        # The chart's own ServiceMonitor is gated on cluster capabilities, which helm template lacks.
+        serviceMonitors.forgejo.spec = {
+          selector.matchLabels = {
+            "app.kubernetes.io/name" = "forgejo";
+            "app.kubernetes.io/component" = "http";
+          };
+          endpoints = lib.toList {
+            port = "http";
+            path = "/metrics";
+            interval = "1m";
+          };
+        };
         httpRoutes.forgejo.spec = {
           hostnames = [hostname];
           parentRefs = lib.toList {

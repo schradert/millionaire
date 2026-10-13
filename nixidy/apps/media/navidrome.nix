@@ -82,6 +82,12 @@ in {
               }
               {matchLabels."batch.kubernetes.io/job-name" = "navidrome-bootstrap";}
               {matchLabels."app.kubernetes.io/name" = "media-e2e";}
+              {
+                matchLabels = {
+                  "k8s:io.kubernetes.pod.namespace" = "observability";
+                  "app.kubernetes.io/name" = "prometheus";
+                };
+              }
             ];
             toPorts = lib.toList {
               ports = lib.toList {
@@ -106,6 +112,14 @@ in {
             };
           };
           service.navidrome.ports.http.port = port;
+          serviceMonitor.navidrome = {
+            serviceName = "navidrome";
+            endpoints = lib.toList {
+              port = "http";
+              path = "/metrics";
+              interval = "1m";
+            };
+          };
           persistence = {
             data = {
               type = "persistentVolumeClaim";
@@ -134,6 +148,7 @@ in {
             ND_PORT = builtins.toString port;
             ND_BASEURL = "https://${hostname}";
             ND_LOGLEVEL = "info";
+            ND_PROMETHEUS_ENABLED = "true";
             ND_SCANSCHEDULE = "@every 1h";
             ND_SCANNER_GROUPALBUMRELEASES = "true";
             ND_ENABLESHARING = "true";

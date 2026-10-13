@@ -101,6 +101,23 @@ in {
       };
 
       resources = {
+        # /metrics takes the GUI API key (STGUIAPIKEY, the same Secret the pod reads).
+        serviceMonitors.syncthing.spec = {
+          selector.matchLabels = {
+            "app.kubernetes.io/instance" = "syncthing";
+            "app.kubernetes.io/name" = "syncthing";
+            "app.kubernetes.io/service" = "syncthing";
+          };
+          endpoints = lib.toList {
+            port = "http";
+            path = "/metrics";
+            interval = "1m";
+            authorization.credentials = {
+              name = "syncthing";
+              key = "STGUIAPIKEY";
+            };
+          };
+        };
         issuers.syncthing-identity.spec.selfSigned = {};
         certificates.syncthing-identity.spec = {
           secretName = "syncthing-identity";

@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 71fa535693c5595c5e686cc4cdbb23b88a36904ef027a06539c4c9f17f5e5539
+        checksum/configMaps: 7450fb63fbce0f8082d70e95d15ed47fbf21358ae31a1a973957a36ee742adc8
       labels:
         app.kubernetes.io/controller: autobrr
         app.kubernetes.io/instance: autobrr

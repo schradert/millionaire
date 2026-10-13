@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: syncthing
+  namespace: home
+spec:
+  endpoints:
+    - authorization:
+        credentials:
+          key: STGUIAPIKEY
+          name: syncthing
+      interval: 1m
+      path: /metrics
+      port: http
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: syncthing
+      app.kubernetes.io/name: syncthing
+      app.kubernetes.io/service: syncthing
