@@ -1,5 +1,7 @@
 # Game inventory (every disk, every system)
 
+<!-- markdownlint-disable MD060 -->
+
 Taken 2026-10-11 by read-only inspection of Deck (`systeamadeck`, 192.168.50.155), falcon (192.168.50.215), morgenmuffel (.249), axolotl (.250), plus the repo worktree; `[observed]` = seen on the host, `[assumed]` = emulator/launcher default not seen on disk, `[planned]` = designed in `data-archive-design.md` but not implemented.
 
 Abbreviations: **SN-D** = Deck safety-net restic repo `s3:https://s3.us-west-004.backblazeb2.com/trdos-me--volsync/systeamadeck-safety-net-2026-10-11` (snapshots `user` cc2d0f37, `root` 407dc24a, `roms` still running when last checked 20:29 PDT, id not yet known); **SN-F** = falcon restic repo `.../falcon-safety-net-2026-10-11` (snapshots `user` f339afeb, `root` 371578e9); **SYNC** = planned Syncthing `sync-saves` folders (not implemented); falcon repo credentials are in Bitwarden (`backblaze/bucket/*`, `restic/falcon-safety-net/password`); the Deck repo credentials are in the session scratchpad `systeamadeck-safety-net.env` (a Bitwarden entry for the Deck repo was not checked).
@@ -431,7 +433,7 @@ Nothing to reinstall (no games). Android emulator apps come from `android.sets.h
 
 1. **`media-games` PVC is empty**: WebDAV `PROPFIND /` on `games-webdav` (via port-forward, 2026-10-11) shows only the root collection, and `/roms/`, `/bios/`, `/installers/` return 404 (PVC age 34 h, 250 Gi). So no cluster copy exists of any ROM, BIOS, installer or `cemu-keys.txt`; `pkgs/{roms,bios,game-installers,cemu-keys}` pins point at URLs that do not serve yet.
 2. **ROM/BIOS sources**: myrient is dead, no replacement URL is recorded; the Deck nix store (87 GB) and the SN-D `roms` snapshot (in progress at 20:29) are the only copies. Pin hashes are NAR hashes of unpacked zips, so the zips must be rebuilt per `docs/games.md`; byte equality of on-disk files with the pinned hash was not verified.
-3. `PS2/Ookami (USA)` is declared in `static/systeamadeck.nix` but has no pin hash and no file on disk.
+3. `PS2/Ookami (USA)` is wanted but has no file anywhere (no pin hash, not on the Deck, not in the PVC); its declaration is removed from `static/systeamadeck.nix` (it failed evaluation with `library = true`). Re-add `"Ookami (USA)"` to `PS2.titles` and a pin once a copy is uploaded.
 4. Deck shortcut titled `Persona 5` actually launches `PS1/Persona (USA).cue` in DuckStation; the real `PS3/Persona 5 (USA).iso` (21.3 GiB) has no shortcut (RPCS3 and xemu shortcuts exist but both data dirs are absent, so neither was ever run [inferred]).
 5. PS1: Deck uses standalone DuckStation (3 memcards observed); the repo wires PS1 to the SwanStation libretro core, so existing `.mcd` saves will not be found after redeploy and no SYNC folder covers `~/.local/share/duckstation`.
 6. **Deck SN-D does not include `~/Games/Heroic/Prefixes`** (Shadow of Mordor `GameData.sav`, Witcher EE `.TheWitcherSave` live there) nor Heroic game dirs; falcon SN-F does include the prefix.

@@ -14,3 +14,5 @@ nixidy/generated/prod/nvidia-gpu-operator/ClusterPolicy-cluster-policy.yaml rend
 nixidy/generated/prod/nvidia-gpu-operator/ClusterPolicy-cluster-policy.yaml rendered:vgpu-manager vgpuManager disabled; NVIDIA ships no public image (repository/version unset)
 nixidy/generated/prod/nvidia-gpu-operator/ClusterPolicy-cluster-policy.yaml rendered:nvcr.io/nvidia/cloud-native/kata-gpu-artifacts:ubuntu22.04-535.54.03 kataManager disabled; artifact URL, not a pulled image
 nixidy/generated/prod/nvidia-gpu-operator/ClusterPolicy-cluster-policy.yaml rendered:nvcr.io/nvidia/cloud-native/kata-gpu-artifacts:ubuntu22.04-535.86.10-snp kataManager disabled; artifact URL, not a pulled image
+docs/displaylink.md sri prose: the hash in nixpkgs' package, quoted as the example of what a pin replaces
+docs/games.md sri prose: the placeholder hash to copy the real `got:` hash from

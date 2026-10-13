@@ -109,6 +109,7 @@
       ...
     }: {
       programs.steam.external = {
+        library = true;
         chiaki.enable = true;
         kingsisle.enable = true;
         tlopo.enable = true;
@@ -197,7 +198,6 @@
             "Shin Megami Tensei - Persona 4 (USA)"
             "Shin Megami Tensei - Digital Devil Saga (USA)"
             "Shin Megami Tensei - Digital Devil Saga 2 (USA)"
-            "Ookami (USA)"
           ];
           PS3.titles = [
             "Persona 5 (USA)"
