@@ -222,13 +222,15 @@ pub async fn sure(ctx: &Ctx, f: &mut Flow) -> R<()> {
     Ok(())
 }
 
-// ---------- Immich: authorization request ----------
+// ---------- Immich: authorization request and, with the service admin, the whole login ----------
 
-/// Immich's own authorization endpoint builds the Keycloak URL (client, redirect URI, PKCE);
-/// the test user logs in and Keycloak redirects back to Immich's `/auth/login` with the code and
-/// the same state. The flow stops before Immich's `/api/oauth/callback`: that call creates the
-/// user (an admin for the `admin` group), and Immich refuses to delete your own account or the
-/// last admin, so a test user could only be removed by the owner's admin.
+/// Immich's own authorization endpoint builds the Keycloak URL (client, redirect URI, PKCE); the
+/// test user logs in and Keycloak redirects back to Immich's `/auth/login` with the code and the
+/// same state. With the service admin's key mounted (the `e2e` admin app-bootstrap makes), the
+/// flow goes on: Immich's callback creates the user, the user uploads a generated image and gets
+/// its thumbnail, deletes it, and the service admin deletes the user (Immich refuses deleting
+/// yourself and the last admin, and the only other admin is the owner's). Without the key it
+/// stops at the redirect.
 pub async fn immich(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let kc = Kc::connect()?;
     let u = kc::users(ctx, &kc).await?;
@@ -237,6 +239,46 @@ pub async fn immich(ctx: &Ctx, f: &mut Flow) -> R<()> {
     if features["oauth"] != json!(true) {
         return Err(Fail::new("immich", "OAuth enabled", format!("features say oauth={}", features["oauth"])));
     }
+    match super::immich::Admin::connect() {
+        Ok(admin) => immich_full(ctx, f, &admin, &u.family, &base).await,
+        Err(e) if e.skip => immich_redirect_only(ctx, f, &u.family, &base).await,
+        Err(e) => Err(e),
+    }
+}
+
+async fn immich_full(ctx: &Ctx, f: &mut Flow, admin: &super::immich::Admin, user: &TestUser, base: &str) -> R<()> {
+    let (sess, url) = super::immich::oauth_login(ctx, base, |url, redirect| async move {
+        let parsed = Url::parse(&url).at("immich", "authorization url")?;
+        if !url.starts_with(&issuer()) || web::query(&parsed, "client_id").as_deref() != Some("immich") || web::query(&parsed, "redirect_uri").as_deref() != Some(redirect.as_str()) {
+            return Err(Fail::new("immich", "authorization url", format!("{url} does not point at Keycloak for client immich and {redirect}")));
+        }
+        Ok(login(ctx, &mut Session::new(), &url, user, &redirect).await?.to_string())
+    })
+    .await?;
+    f.ok("immich", "OIDC callback created the user", format!("{} ({}), authorization via {}", sess.email, sess.user_id, web::query(&Url::parse(&url).at("immich", "url")?, "client_id").unwrap_or_default()));
+    // Whatever happens next, the service admin removes the user.
+    let checked: R<()> = async {
+        if !sess.email.eq_ignore_ascii_case(&user.email) {
+            return Err(Fail::new("immich", "user", format!("the session belongs to {} not {}", sess.email, user.email)));
+        }
+        let id = super::immich::asset_roundtrip(ctx, base, &sess, &ctx.marker).await?;
+        f.ok("immich", "generated image uploaded, thumbnail served, asset deleted", format!("asset {id}"));
+        Ok(())
+    }
+    .await;
+    let deleted = admin.delete_user(ctx, &sess.user_id, &user.email).await;
+    checked?;
+    deleted?;
+    let left = admin.tagged_users(ctx, &crate::ctx::Scope::Run(ctx.marker.clone())).await?;
+    if left.iter().any(|(id, _)| *id == sess.user_id) {
+        return Err(Fail::new("immich", "user deleted", "still listed after the service admin deleted it"));
+    }
+    f.ok("immich", "the service admin deleted the user", "not listed any more");
+    Ok(())
+}
+
+/// The part that needs no service admin: the redirect and the state.
+async fn immich_redirect_only(ctx: &Ctx, f: &mut Flow, user: &TestUser, base: &str) -> R<()> {
     let redirect = format!("{base}/auth/login");
     let r: Value = json(ctx.http.post(format!("{base}/api/oauth/authorize")).json(&json!({ "redirectUri": redirect })), "immich", "oauth/authorize").await?;
     let url = r["url"].as_str().at("immich", "authorization url")?.to_string();
@@ -246,11 +288,11 @@ pub async fn immich(ctx: &Ctx, f: &mut Flow) -> R<()> {
     }
     let state = web::query(&parsed, "state").at("immich", "state in the authorization url")?;
     f.ok("immich", "authorization url built", format!("client immich, PKCE {}", web::query(&parsed, "code_challenge_method").unwrap_or_else(|| "none".into())));
-    let back = login(ctx, &mut Session::new(), &url, &u.family, &redirect).await?;
+    let back = login(ctx, &mut Session::new(), &url, user, &redirect).await?;
     if web::query(&back, "state").as_deref() != Some(state.as_str()) || web::query(&back, "code").is_none() {
         return Err(Fail::new("immich", "redirect back", format!("{back} lacks the code or the state {state}")));
     }
-    f.ok("immich", "Keycloak redirects back with a code", format!("{} signed in, state matches", u.family.username));
+    f.ok("immich", "Keycloak redirects back with a code", format!("{} signed in, state matches (no service admin key: callback not called)", user.username));
     Ok(())
 }
 

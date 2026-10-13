@@ -1,6 +1,7 @@
 //! Identity: Keycloak test users and the ways apps authenticate them.
 
 mod flows;
+mod immich;
 pub mod kc;
 mod oidc;
 mod sweep;

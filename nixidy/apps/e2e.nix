@@ -98,6 +98,13 @@
         key = "ryot-admin-token";
         data.token = "password";
       };
+      # The `e2e` admin's API key in Immich (app-bootstrap immich >= 0.19.7): deletes the users
+      # a test login creates.
+      e2e-immich = {
+        ns = "media";
+        key = "immich-e2e-api-key";
+        data.apikey = "api-key";
+      };
       # The `e2e` Atuin account (atuin.nix users): registration is closed on the server.
       e2e-atuin = {
         ns = "development";
@@ -321,6 +328,7 @@
         externalSecrets.e2e-contextforge.spec = fromApp serviceSecrets.e2e-contextforge;
         externalSecrets.e2e-firefly.spec = fromApp serviceSecrets.e2e-firefly;
         externalSecrets.e2e-shoko.spec = fromApp serviceSecrets.e2e-shoko;
+        externalSecrets.e2e-immich.spec = fromApp serviceSecrets.e2e-immich;
         externalSecrets.e2e-ryot.spec = fromApp serviceSecrets.e2e-ryot;
         cronJobs.${name}.spec = {
           schedule = "15 3 * * *";
