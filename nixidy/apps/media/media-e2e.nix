@@ -81,7 +81,8 @@
                   runAsNonRoot = true;
                   runAsUser = 65534;
                   runAsGroup = 65534;
-                  # The media volumes are setgid root:101 or root:65534, group-writable.
+                  # The media volumes are setgid root:101 or root:65534, group-writable. books, audiobooks,
+                  # comics, dvd and podcasts are still root:101 (the old VolSync mover chown), so 101 stays.
                   supplementalGroups = [101];
                   seccompProfile.type = "RuntimeDefault";
                 };

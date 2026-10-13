@@ -52,10 +52,6 @@
             runAsGroup = 1000;
             fsGroup = 1000;
             fsGroupChangePolicy = "OnRootMismatch";
-            # The data volume is root:101 setgid and fsGroup isn't applied to it, so node
-            # couldn't create SQLite's journal next to maintainerr.sqlite: every write failed
-            # (found by media-e2e: "Failed to create collection").
-            supplementalGroups = [101];
           };
           controllers.maintainerr.containers.maintainerr = {
             # 3.x added Jellyfin/Emby support (2.x is Plex-only). Not backward
