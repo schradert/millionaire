@@ -1,6 +1,7 @@
 {
   imports = [
     ./e2e.nix
+    ./e2e-catalog.nix
     ./development/atuin.nix
     ./development/sveltekit-demo.nix
     ./development/forgejo.nix

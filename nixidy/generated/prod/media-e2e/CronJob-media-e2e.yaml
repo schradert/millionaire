@@ -29,7 +29,7 @@ spec:
                   value: media/media-e2e-last-report
                 - name: E2E_RUNNER
                   value: media
-              image: harbor.trdos.me/library/e2e:0.3.9@sha256:20efd4bd45009f22353403d647f95c5e80908b81162a1a54fbd20bfee3c8a9e2
+              image: harbor.trdos.me/library/e2e:0.3.12@sha256:e2db65995223625c59a7c8b2257576e562085126cbb90f1354124c2e32e744a9
               name: media-e2e
               resources:
                 limits:
