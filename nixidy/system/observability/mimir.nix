@@ -82,13 +82,15 @@
               annotations.summary = "Mimir compactor has failed runs or has not completed one in 6h; blocks stay uncompacted and the bucket grows faster";
             }
             {
-              # Informational: with retention off the bucket only grows. Mimir's bucket is the main tenant of the
-              # object store's data pool, and Ceph exports no per-bucket size, so this is the pool's growth.
+              # Informational: with retention off the bucket only grows. Ceph exports no per-bucket size and the
+              # object store's data pool is shared, so the rate is read off the ingester: it keeps the last 13h of
+              # shipped blocks on disk (the default -blocks-storage.tsdb.retention-period), i.e. 13/24 of a day.
+              # Reads low during the first 13h; compaction later shrinks the bucket's share slightly.
               alert = "MimirBucketGrowth";
-              expr = ''sum(deriv((ceph_pool_stored * on (pool_id) group_left (name) ceph_pool_metadata{name=~".*rgw.buckets.data"})[6h:15m])) * 86400 > 3e9'';
+              expr = ''max(cortex_ingester_tsdb_storage_blocks_bytes) * 24 / 13 > 3e9'';
               "for" = "1h";
               labels.severity = "info";
-              annotations.summary = "The object store data pool (mostly Mimir blocks) grows by more than 3 GB/day; retention is unlimited by design";
+              annotations.summary = "Mimir stores more than 3 GB/day of new blocks in the bucket; retention is unlimited by design";
             }
           ];
         };
