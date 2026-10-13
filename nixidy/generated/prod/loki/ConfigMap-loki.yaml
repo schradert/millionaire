@@ -109,7 +109,7 @@ data:
           server_address: ""
       use_thanos_objstore: false
     tracing:
-      enabled: true
+      enabled: false
 kind: ConfigMap
 metadata:
   labels:
