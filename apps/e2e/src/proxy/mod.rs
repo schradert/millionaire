@@ -11,6 +11,8 @@ mod catalog;
 mod flows;
 mod sweep;
 
+pub use flows::{issuer, sign_in_redirect, users};
+
 use crate::{
     flow::{Family, FlowDef, Tier},
     step, sweep,

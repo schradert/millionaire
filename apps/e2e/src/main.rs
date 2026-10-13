@@ -16,11 +16,13 @@
 //! The report is a table plus one JSON document between `=== E2E REPORT JSON BEGIN/END ===`.
 
 mod ctx;
+mod dav;
 mod feedserver;
 mod files;
 mod finance;
 mod flow;
 mod forgejo;
+mod games;
 mod git;
 mod home;
 mod identity;

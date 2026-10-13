@@ -64,6 +64,8 @@ spec:
                   name: media-downloads
                 - mountPath: /media/podcasts
                   name: media-podcasts
+                - mountPath: /media/games
+                  name: media-games
                 - mountPath: /secrets/radarr-apikey
                   name: radarr-apikey
                   readOnly: true
@@ -143,6 +145,9 @@ spec:
             - name: media-podcasts
               persistentVolumeClaim:
                 claimName: media-podcasts
+            - name: media-games
+              persistentVolumeClaim:
+                claimName: media-games
             - name: radarr-apikey
               secret:
                 optional: true
