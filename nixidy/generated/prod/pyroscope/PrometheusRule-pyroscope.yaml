@@ -11,8 +11,8 @@ spec:
       rules:
         - alert: PyroscopeBucketGrowth
           annotations:
-            summary: Pyroscope writes more than 3 GB/day of profile segments to the bucket (retention is unlimited by design)
-          expr: sum(increase(pyroscope_segment_writer_segment_size_bytes_sum[1d])) > 3e9
+            summary: Pyroscope writes more than 30 GB/day of profile segments (about twice the usual); the bucket keeps everything (retention is unlimited by design)
+          expr: sum(increase(pyroscope_segment_writer_segment_size_bytes_sum[1d])) > 30e9
           for: 1h
           labels:
             severity: info

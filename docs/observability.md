@@ -7,6 +7,11 @@ Profiles: Alloy's `pyroscope.ebpf` (alloy.nix) samples every container and the h
 Pyroscope (pyroscope.nix; profiles kept forever in a Ceph bucket). `service_name` is `<namespace>/<workload>` (`kube-system/cilium`) or
 `host/<exe>` (`host/kubelet`); labels `pod`, `container`, `node`. Grafana: the Pyroscope datasource, or Explore > Profiles. Python's
 unwinder is off (the 7.0 kernel's verifier rejects it); Python processes show native frames only.
+Measured cost (5 nodes, 19 Hz, 105 min steady state): Alloy 2-10% of a core per node (sirver 9.9%, octopus 7.8%, dingo 3.4%, bonobo 2.0%,
+chinchilla 1.9%; 1-4% before) and 220-590 MiB working set (sirver highest; 67-240 MiB before), so the Alloy DaemonSet is 256Mi/1Gi with
+GOMEMLIMIT=512MiB. Pyroscope: ~0.13 core, ~250 MiB. Storage: about 15 GB/day of segments written, ~2 GB/day kept after compaction
+(bucket 359 MB after 2.7 h); there is no retention, so that is ~0.7 TB/year. Levers: a lower `sample_rate`, a longer `collect_interval`,
+excluding workloads in alloy.nix, or `limits.retention_period` in pyroscope.nix.
 
 ## Browser telemetry (Grafana Faro)
 
