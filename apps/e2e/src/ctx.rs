@@ -88,6 +88,9 @@ pub struct State {
     pub users: Option<crate::identity::kc::Users>,
     /// Mealie login of each test user, for app-side cleanup: (username, mealie user id, token).
     pub mealie: Vec<(String, String, String)>,
+    /// Jellyfin login of each test user made through the SSO plugin, for app-side cleanup:
+    /// (username, Jellyfin user id, access token).
+    pub jellyfin_sso: Vec<(String, String, String)>,
     pub forgejo_users: Vec<String>,
     /// Repos a flow made, until it deletes them: (owner, repo, owner's token).
     pub forgejo_repos: Vec<(String, String, String)>,

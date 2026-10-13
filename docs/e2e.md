@@ -62,6 +62,10 @@ The image is `harbor.trdos.me/library/e2e` (`image publish e2e`, then add `pkgs/
 |---|---|---|---|---|---|
 | identity | `keycloak-user` | test users (admin+family, family) | password grant | token issuer, subject, `groups`, audience `oauth2-proxy`; wrong password refused | sweep |
 | identity | `oidc-mealie` | both users' Mealie accounts (OIDC signup) | Keycloak login pages, Mealie callback | email linked, admin only from the `admin` group | the admin token deletes the family user, then the admin (a refused delete is checked against the user list; the sweep's janitor login is the fallback) |
+| identity | `oidc-jellyfin` | both users' Jellyfin accounts (SSO plugin, first login) | Keycloak login pages, `/sso/OID/redirect`, `/sso/OID/Auth` | name equals the username, administrator only from the `admin` group, token works, `/Plugins` admin-only | the admin token deletes the family user, then itself; both tokens must then get 401 (the sweep's janitor login is the fallback) |
+| identity | `oidc-home-assistant` | none (the one-time code is never redeemed) | Keycloak login pages, `/auth/oidc/callback` | redirect to `/auth/oidc/finish` with a code, shown on the page; the login page lists `auth_oidc` | nothing to delete |
+| identity | `oidc-sure` | none | Keycloak login pages, `/auth/oidc/callback` | Keycloak accepts the Sure client; Sure (`AUTH_JIT_MODE=link_only`) refuses the unlinked user, creates no account, leaves no session | nothing to delete |
+| identity | `oidc-immich` | none | Immich's `/api/oauth/authorize`, Keycloak login pages | URL names client `immich` and the redirect, PKCE; Keycloak redirects back with the code and the same state | nothing to delete (the callback is not called, see the matrix) |
 | identity | `proxy-bearer` | (users) | Alertmanager behind oauth2-proxy | no token: redirect to Keycloak; admin bearer: 200; family bearer: 403 | sweep |
 | identity | `forgejo-token` | Forgejo user, token | direct `/api` route | anonymous 401, token resolves to the user | admin deletes the user |
 | identity | `user-lifecycle` | throwaway user | token grant, login pages | works, then after deletion no token and the login page refuses | the flow itself |
@@ -80,7 +84,7 @@ Every service in `docs/connections.md`. **Status:** implemented · planned · ma
 | keycloak | identity | test user → token and login pages → claims, wrong password → user deleted, login refused | implemented | K (client `e2e`) |
 | headscale | identity | tagged user and pre-auth key → register an ephemeral node → node visible, ping the hub → node, key, user deleted | planned | S (headscale API key) |
 | mealie | identity | OIDC signup (done); then a tagged recipe through the API → read back, search → delete | login implemented; data planned | K |
-| sure | identity | OIDC login as the test user (no link-account page) → tagged account → delete | planned | K for login, S for the API |
+| sure | identity | OIDC login as the test user: Sure is `link_only`, so the unlinked user is refused and no account is made (done); a tagged account through the API → delete | refusal implemented; data planned | K for login, S for the API |
 | bulwark (webmail) | identity | OIDC login page as the test user; mail send/receive is under notify | planned | K |
 | passkey enrollment, TOTP prompts | identity | needs a WebAuthn authenticator; TOTP could be computed in the test | manual (passkey), planned (TOTP) | - |
 | ntfy | notify | tagged topic → publish, live and cached receive | implemented | - |
@@ -88,7 +92,7 @@ Every service in `docs/connections.md`. **Status:** implemented · planned · ma
 | Stalwart mail (via bulwark, keycloak, forgejo) | notify | tagged mailbox → SMTP send from the e2e namespace → JMAP read → delete (needs `extraIngress` for port 25 on `mail`) | planned | S (Stalwart admin) |
 | forgejo | git | tagged user and repo → push, clone → API, delete | implemented | S (`forgejo-admin`) |
 | Bookmarks (Floccus, dashy `bookmarks.html`) | git | XBEL repo sync between two clones (done); the real route is probed read-only | implemented | S (`forgejo-admin`) |
-| jellyfin | media | library import and playback (`movie-chain`, `sonarr-chain`); OIDC login as the test user | implemented; OIDC login planned | S (admin) / K |
+| jellyfin | media | library import and playback (`movie-chain`, `sonarr-chain`); OIDC login as the test user (`identity/oidc-jellyfin`: SSO plugin, role from groups, users deleted) | implemented | S (admin) / K |
 | navidrome, maloja, multi-scrobbler | media | track → scan → scrobble to Maloja (`music`, `lidarr`) | implemented | S |
 | audiobookshelf, kavita, komga | media | EPUB or audiobook into a test library → OPDS or API read → library deleted (`books-*`, `audiobookshelf`) | implemented | S |
 | sonarr, radarr, lidarr, prowlarr, seerr, maintainerr | media | tagged series, movie, artist, request, rule group → import → delete (`*-chain`, `seerr`, `lidarr`, `prowlarr`, `maintainerr`) | implemented | S (API keys) |
@@ -98,13 +102,13 @@ Every service in `docs/connections.md`. **Status:** implemented · planned · ma
 | games-webdav | media | tagged ROM file PUT/GET/DELETE | planned | S |
 | autobrr, shoko, ryot | media | tagged filter, series, tracked item through the API → delete | planned | S (ryot: K after OIDC) |
 | owncast, jitsi | media | RTMP test stream into owncast (needs ffmpeg in the image) → HLS playlist; jitsi web and BOSH smoke | planned | - |
-| immich | files | OIDC login as the test user → API key → upload a generated image → thumbnail → delete asset and key | planned | K |
+| immich | files | authorization URL, Keycloak login, redirect back with the code (`identity/oidc-immich`, done). The callback creates an Immich user that only another admin can delete (Immich refuses deleting yourself and the last admin) and the only other admin is the owner's, so a full login → API key → upload a generated image → thumbnail → delete asset needs a dedicated service admin from `app-bootstrap` first | redirect implemented; full login blocked | K (login), S (service admin) |
 | baikal | files | tagged calendar event and contact over CalDAV/CardDAV → REPORT → delete | planned | S (`baikal/admin-password`) |
 | syncthing | files | tagged folder on the hub through the REST API; a test device pod syncs a file | planned | S (API key) |
 | webdav (dav) | files | tagged file PUT/GET/DELETE with a bearer token through oauth2-proxy | planned | K |
 | kosync | files | tagged KOReader account → push and pull progress → delete | planned | - |
 | atuin | files | tagged account → sync one history record → delete the account | planned | - (if registration is open) else S |
-| home-assistant | home | OIDC login; tagged helper entity through the REST API → state change → delete | planned | K for login, S (long-lived token) for the API |
+| home-assistant | home | OIDC login up to the one-time code (`identity/oidc-home-assistant`, done; redeeming the code creates a user that only a websocket admin can delete); tagged helper entity through the REST API → state change → delete | login to the code implemented; API planned | K for login, S (long-lived token) for the API |
 | homepage, homarr, dashy, android | home | every portal tile's URL answers (200 or the Keycloak redirect) | planned | K |
 | chirpstack, excalidraw, frigate, logseq, rclone, siyuan, zigbee2mqtt, zwave-js-ui | home | behind oauth2-proxy: admin bearer passes, family bearer is refused where gated; chirpstack gRPC creates and deletes a tagged device | planned | K; S for chirpstack gRPC |
 | miniflux | home | tagged category and feed (served by the Job) → refresh → entry appears → delete | planned | S (a dedicated Miniflux admin, not tristan's) |
@@ -114,7 +118,7 @@ Every service in `docs/connections.md`. **Status:** implemented · planned · ma
 | firefly | finance | tagged account and transaction (personal access token, in-cluster) → read → delete; importer opens without a token | planned | S |
 | bifrost | ai | chat completion through the gateway with a bearer token to a cheap or mock provider, tagged in the request metadata | planned | K (and the provider key already in the cluster) |
 | contextforge | ai | `/mcp` tool list with a bearer token; tagged virtual-server tool registered, called, deleted | planned | K |
-| librechat | ai | OIDC login; tagged conversation → delete | planned | K |
+| librechat | ai | OIDC login; tagged conversation → delete. Blocked today: `/oauth/openid` answers 500 and the pod log says `Unknown authentication strategy "openid"`; the likely cause (not verified) is the missing `OPENID_SESSION_SECRET` env | planned, blocked | K |
 | promptfoo | ai | smoke through oauth2-proxy | planned | K |
 | Kubernetes MCP | ai | read-only tool call (list namespaces) | planned | SA |
 | prometheus | observability | tagged PrometheusRule firing → Alertmanager → `e2e-alerts` (the full alert chain); query `up` with a bearer token | planned | SA, K |
@@ -131,7 +135,7 @@ Every service in `docs/connections.md`. **Status:** implemented · planned · ma
 
 ## Which families need what
 
-- **Only the e2e Keycloak user (K):** `identity` (done), the bearer and group-check probes of every oauth2-proxy app (`home` tiles, `ai` smoke, `files/webdav`, `registry` Argo), OIDC logins (Mealie done; Sure, Immich, LibreChat, Home Assistant, Jellyfin, Bulwark), `bifrost`, `contextforge`, `spoolman`.
+- **Only the e2e Keycloak user (K):** `identity` (done), the bearer and group-check probes of every oauth2-proxy app (`home` tiles, `ai` smoke, `files/webdav`, `registry` Argo), OIDC logins (Mealie, Jellyfin, Home Assistant, Sure and Immich done as far as each app allows deleting what a login creates; LibreChat and Bulwark planned), `bifrost`, `contextforge`, `spoolman`.
 - **Need a service credential (S, app-bootstrap style):** `git` (`forgejo-admin`, mounted), `media` (arr API keys, Jellyfin, Kavita, Komga, Audiobookshelf, Navidrome, Maloja, qBittorrent passwords, all mounted in the media runner), and for the planned flows Baikal, Miniflux, Actual, Firefly, Syncthing, Harbor, headscale, Stalwart, Windmill, Home Assistant, chirpstack. Each is an existing Kubernetes Secret or Bitwarden item to be mounted through an ExternalSecret in the `e2e` namespace, as `e2e-forgejo-admin` is.
 - **Only a ServiceAccount (SA):** `storage` and `observability` flows that create tagged Kubernetes objects. They need a Role in `e2e` (or a tagged-object-only ClusterRole), added with the flow.
 

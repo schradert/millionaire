@@ -1,46 +1,70 @@
-//! Delete (and verify gone) every identity object carrying a run marker: Mealie users made by
-//! an OIDC login, Forgejo users, Keycloak users. Mealie only lets an admin list or delete
-//! users, so the sweep signs a fresh, tagged `janitor` user in through Keycloak first and
-//! always deletes it again.
+//! Delete (and verify gone) every identity object carrying a run marker: Mealie and Jellyfin
+//! users made by an OIDC login, Forgejo users, Keycloak users. Mealie and Jellyfin only let an
+//! admin list or delete users, so the sweep signs a fresh, tagged `janitor` user in through
+//! Keycloak first and always deletes it again.
 
 use reqwest::Method;
 use serde_json::Value;
 
 use super::{
     flows::{host, mealie_login},
-    kc::Kc,
+    kc::{Kc, TestUser},
+    oidc::{jellyfin_delete, jellyfin_login, JfLogin},
 };
 use crate::{
     ctx::{json, new_run_id, send, Ctx, Fail, Scope, R},
     report::Flow,
 };
 
+/// The sweep's admin login: a fresh, tagged Keycloak user in the `admin` group that signs in to
+/// the apps whose users only an admin can list and delete. It is removed again at the end.
+async fn janitor(ctx: &Ctx, kc: &Kc) -> R<TestUser> {
+    kc.create_user(ctx, &format!("e2e-{}-janitor", new_run_id()), &["admin", "family"]).await
+}
+
 /// Tagged Mealie users in scope, deleted when `delete`.
-async fn mealie(ctx: &Ctx, kc: &Kc, scope: &Scope, delete: bool) -> R<Vec<String>> {
-    let janitor = kc.create_user(ctx, &format!("e2e-{}-janitor", new_run_id()), &["admin", "family"]).await?;
-    let res = async {
-        let me = mealie_login(ctx, &janitor).await?;
-        let base = host("mealie");
-        let list: Value = json(ctx.http.get(format!("{base}/api/admin/users?perPage=1000")).bearer_auth(&me.token), "mealie", "list users").await?;
-        let mut found = Vec::new();
-        for u in list["items"].as_array().into_iter().flatten() {
-            let (id, email) = (u["id"].as_str().unwrap_or_default(), u["email"].as_str().unwrap_or_default());
-            if id == me.id || !(scope.hit(email) || scope.hit_v(&u["username"])) {
-                continue;
-            }
-            found.push(format!("mealie user {email}"));
-            if delete {
-                send(ctx.http.request(Method::DELETE, format!("{base}/api/admin/users/{id}")).bearer_auth(&me.token), "mealie", "delete user").await?;
-            }
+async fn mealie(ctx: &Ctx, scope: &Scope, delete: bool, janitor: &TestUser) -> R<Vec<String>> {
+    let me = mealie_login(ctx, janitor).await?;
+    let base = host("mealie");
+    let list: Value = json(ctx.http.get(format!("{base}/api/admin/users?perPage=1000")).bearer_auth(&me.token), "mealie", "list users").await?;
+    let mut found = Vec::new();
+    for u in list["items"].as_array().into_iter().flatten() {
+        let (id, email) = (u["id"].as_str().unwrap_or_default(), u["email"].as_str().unwrap_or_default());
+        if id == me.id || !(scope.hit(email) || scope.hit_v(&u["username"])) {
+            continue;
         }
-        // The janitor's own Mealie user goes last, with its own token.
-        send(ctx.http.delete(format!("{base}/api/admin/users/{}", me.id)).bearer_auth(&me.token), "mealie", "delete janitor").await?;
-        Ok(found)
+        found.push(format!("mealie user {email}"));
+        if delete {
+            send(ctx.http.request(Method::DELETE, format!("{base}/api/admin/users/{id}")).bearer_auth(&me.token), "mealie", "delete user").await?;
+        }
     }
-    .await;
-    let gone = kc.delete_user(ctx, &janitor.id, &janitor.username).await;
-    let found = res?;
-    gone?;
+    // The janitor's own Mealie user goes last, with its own token.
+    send(ctx.http.delete(format!("{base}/api/admin/users/{}", me.id)).bearer_auth(&me.token), "mealie", "delete janitor").await?;
+    Ok(found)
+}
+
+/// Tagged Jellyfin users in scope (made by the SSO plugin on first login), deleted when `delete`.
+async fn jellyfin(ctx: &Ctx, scope: &Scope, delete: bool, janitor: &TestUser) -> R<Vec<String>> {
+    let me = jellyfin_login(ctx, janitor).await?;
+    let found = tagged_jellyfin_users(ctx, &me, scope, delete).await;
+    // The janitor's own Jellyfin user goes last, with its own token (the real admin remains).
+    jellyfin_delete(ctx, &me.token, &me.id).await?;
+    found
+}
+
+async fn tagged_jellyfin_users(ctx: &Ctx, me: &JfLogin, scope: &Scope, delete: bool) -> R<Vec<String>> {
+    let list = json(ctx.http.get(format!("{}/Users", host("jellyfin"))).header("X-Emby-Token", &me.token), "jellyfin", "list users").await?;
+    let mut found = Vec::new();
+    for u in list.as_array().into_iter().flatten() {
+        let (id, name) = (u["Id"].as_str().unwrap_or_default(), u["Name"].as_str().unwrap_or_default());
+        if id == me.id || !scope.hit(name) {
+            continue;
+        }
+        found.push(format!("jellyfin user {name}"));
+        if delete {
+            jellyfin_delete(ctx, &me.token, id).await?;
+        }
+    }
     Ok(found)
 }
 
@@ -55,7 +79,7 @@ async fn keycloak(ctx: &Ctx, kc: &Kc, scope: &Scope, delete: bool) -> R<Vec<Stri
 }
 
 /// Run each app's pass; (what was found, errors, skipped).
-async fn passes(ctx: &Ctx, scope: &Scope, delete: bool, with_mealie: bool, f: &mut Flow) -> (Vec<String>, Vec<String>) {
+async fn passes(ctx: &Ctx, scope: &Scope, delete: bool, with_logins: bool, f: &mut Flow) -> (Vec<String>, Vec<String>) {
     let (mut found, mut errors, mut skipped) = (Vec::new(), Vec::new(), Vec::new());
     let kc = Kc::connect();
     macro_rules! pass {
@@ -71,10 +95,33 @@ async fn passes(ctx: &Ctx, scope: &Scope, delete: bool, with_mealie: bool, f: &m
         };
     }
     // Apps first, Keycloak last: the janitor and the users it logs in as must still exist.
-    match &kc {
-        Ok(kc) if with_mealie => pass!("mealie", mealie(ctx, kc, scope, delete).await),
-        Ok(_) => f.ok("mealie", "sweep", "dry run: needs a janitor login, not done"),
-        Err(e) => skipped.push(format!("mealie: {}", e.msg)),
+    let who = match &kc {
+        Ok(kc) if with_logins => match janitor(ctx, kc).await {
+            Ok(j) => Some(j),
+            Err(e) => {
+                errors.push(format!("janitor: {}", e.msg));
+                None
+            }
+        },
+        _ => None,
+    };
+    match (&kc, &who) {
+        (Ok(_), Some(j)) => {
+            pass!("mealie", mealie(ctx, scope, delete, j).await);
+            pass!("jellyfin", jellyfin(ctx, scope, delete, j).await);
+        }
+        (Ok(_), None) if !with_logins => {
+            for app in ["mealie", "jellyfin"] {
+                f.ok(app, "sweep", "dry run: needs a janitor login, not done");
+            }
+        }
+        (Ok(_), None) => {}
+        (Err(e), _) => skipped.push(format!("mealie, jellyfin: {}", e.msg)),
+    }
+    if let (Ok(kc), Some(j)) = (&kc, &who) {
+        if let Err(e) = kc.delete_user(ctx, &j.id, &j.username).await {
+            errors.push(format!("janitor delete: {}", e.msg));
+        }
     }
     pass!("forgejo", crate::forgejo::sweep_users(ctx, scope, delete).await);
     match &kc {

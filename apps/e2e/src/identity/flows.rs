@@ -16,7 +16,7 @@ pub fn host(app: &str) -> String {
     format!("https://{app}.{}", domain())
 }
 
-fn issuer() -> String {
+pub fn issuer() -> String {
     format!("{}/realms/{}", kc::base(), kc::REALM)
 }
 
