@@ -6,6 +6,17 @@
   }: {
     applications.loki = {
       namespace = "observability";
+      # The StatefulSet's volumeClaimTemplate (10Gi) is immutable, so the volume grows through the PVC it
+      # created; the claim only ever grows (ceph-block expands online). New claims still start at 10Gi.
+      resources.persistentVolumeClaims.storage-loki-0 = {
+        # The logs live here: never let a manifest edit prune the claim.
+        metadata.annotations."argocd.argoproj.io/sync-options" = "Prune=false";
+        spec = {
+          accessModes = ["ReadWriteOnce"];
+          storageClassName = "ceph-block";
+          resources.requests.storage = "50Gi";
+        };
+      };
       helm.releases.loki = {
         chart = pinned.charts.loki;
         values = {
@@ -36,6 +47,9 @@
               delete_request_store = "filesystem";
               retention_enabled = true;
             };
+            # Alloy ships ~2.2 GB/day raw. 14d is ~31 GB before compression, inside the 50Gi volume even
+            # uncompressed. The compactor above does the deleting; the default would keep 31 days.
+            limits_config.retention_period = "336h";
             schemaConfig.configs = lib.toList {
               from = "2024-04-01";
               object_store = "filesystem";
