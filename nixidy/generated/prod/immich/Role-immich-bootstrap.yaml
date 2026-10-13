@@ -14,6 +14,7 @@ rules:
       - ""
     resourceNames:
       - immich-tristan-api-key
+      - immich-e2e-api-key
     resources:
       - secrets
     verbs:

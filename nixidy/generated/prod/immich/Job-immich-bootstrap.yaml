@@ -22,11 +22,15 @@ spec:
               value: /secrets/admin/password
             - name: API_KEY_SECRET
               value: immich-tristan-api-key
+            - name: E2E_API_KEY_SECRET
+              value: immich-e2e-api-key
+            - name: E2E_EMAIL
+              value: e2e@e2e.trdos.me
             - name: IMMICH_URL
               value: http://immich-server.media.svc.cluster.local:2283
             - name: REQUIRE_OAUTH
               value: "1"
-          image: harbor.trdos.me/library/app-bootstrap:0.19.6@sha256:e6ce713774b09d7c0aaf33951a9a03ec77e56b725cbbd011707ca1c847a06f4c
+          image: harbor.trdos.me/library/app-bootstrap:0.19.7@sha256:5bd44c8c9bb419eef81b04be3f58ebb08bb8b332fd02e3318c58ed8700c7932a
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
