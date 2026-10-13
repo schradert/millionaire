@@ -41,7 +41,7 @@ A family belongs to one runner, set in the registry (`apps/e2e/src/flow.rs`); a 
 
 | Runner | CronJob | Families | Why |
 |---|---|---|---|
-| `media` | `media/media-e2e` (`nixidy/apps/media/media-e2e.nix`) | `media` | mounts the media volumes and the arr/Jellyfin secrets; execs into qBittorrent for the VPN tests |
+| `media` | `media/media-e2e` (`nixidy/apps/media/media-e2e.nix`) | `media`, `games` | mounts the media volumes and the arr/Jellyfin secrets; execs into qBittorrent for the VPN tests |
 | `cluster` | `e2e/e2e` (`nixidy/apps/e2e.nix`) | everything else | HTTP, plus `kubectl` in namespace `e2e` through the `e2e` ServiceAccount (a Role for pods, pod logs, PVCs and VolumeSnapshots there, and its own report ConfigMap; no Secrets, no other namespace, nothing cluster-scoped); no volumes |
 
 The `cluster` runner reaches apps through the internal gateway by hostname (`https://<app>.trdos.me`), the same path a client uses, so no network policy changes are needed: enforced namespaces already admit the gateway. Where a probe must be in-cluster (Alertmanager's API) the namespace has no default-deny policy (`observability`, `identity`); a future in-cluster probe into an enforced namespace needs an `extraIngress` rule on that namespace in `nixidy/apps/default.nix` naming the pod label `app.kubernetes.io/name: e2e` (media-e2e's rules in `qbittorrent.nix`, `navidrome.nix`, `maintainerr.nix` are the pattern). ntfy has no public DNS: the Job pins `ntfy.trdos.me` with `hostAliases` like Alertmanager does.

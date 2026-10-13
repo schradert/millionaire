@@ -297,8 +297,8 @@ in {
           *)      echo "Usage: sync <secret|app> <namespace/name>"; exit 1 ;;
         esac
       '';
-      # Platform e2e tests (apps/e2e) as Jobs from suspended CronJobs, one per runner:
-      #   media    media/media-e2e   the media family (mounts the media volumes)
+      # Platform e2e tests (apps/e2e) as Jobs from the CronJobs (which also run nightly), one per runner:
+      #   media    media/media-e2e   the media and games families (mount the media volumes)
       #   cluster  e2e/e2e           every other family (HTTP only)
       #   e2e                          default tier of every runner (no qBittorrent/VPN needed)
       #   e2e run --family identity    only that family (comma list); --flow <name,...> narrows further
@@ -330,8 +330,9 @@ in {
           runners=(media)
           $k -n e2e get cronjob e2e >/dev/null 2>&1 && runners+=(cluster)
         else
-          case ",$fam," in *,media,*) runners+=(media) ;; esac
-          if [ -n "$(printf '%s' "$fam" | tr ',' '\n' | grep -vx media || true)" ]; then runners+=(cluster); fi
+          # `games` runs on the media runner too (it mounts the games volume).
+          case ",$fam," in *,media,*|*,games,*) runners+=(media) ;; esac
+          if [ -n "$(printf '%s' "$fam" | tr ',' '\n' | grep -vxE 'media|games' || true)" ]; then runners+=(cluster); fi
         fi
         home_ip=''${HOME_IP:-}
         if [ -z "$home_ip" ] && [ -n "''${E2E_HOME_IP_HOST:-}" ]; then
