@@ -16,9 +16,13 @@
 //! The report is a table plus one JSON document between `=== E2E REPORT JSON BEGIN/END ===`.
 
 mod ctx;
+mod feedserver;
+mod files;
+mod finance;
 mod flow;
 mod forgejo;
 mod git;
+mod home;
 mod identity;
 mod kube;
 mod media;
@@ -27,6 +31,7 @@ mod observability;
 mod pod;
 mod report;
 mod storage;
+mod svc;
 mod web;
 
 use std::{env, process::ExitCode};

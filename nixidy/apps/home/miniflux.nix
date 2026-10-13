@@ -153,6 +153,10 @@ in {
               if bootstrapped
               then "0"
               else "1";
+            # The e2e harness (apps/e2e home/miniflux-feed) serves a test feed from its Job Pod
+            # (a cluster address); Miniflux refuses private addresses by default. Accounts are
+            # the owner's alone (OIDC signup is off), so the SSRF exposure is the owner's.
+            FETCHER_ALLOW_PRIVATE_NETWORKS = "1";
             METRICS_COLLECTOR = "1";
             # Pod network (Cilium pool), for the ServiceMonitor scrape.
             METRICS_ALLOWED_NETWORKS = "10.0.0.0/8";
