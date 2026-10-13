@@ -36,7 +36,8 @@ pub async fn prometheus(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let name = n(ctx, "obs");
     kube::start_pod(ctx, &name, &image, &["__pod", "sleep", "300"], &[]).await?;
     f.ok("kubernetes", "tagged Pod running", name.clone());
-    let q = format!("kube_pod_info{{namespace=\"{}\",pod=\"{name}\"}}", kube::NS);
+    // The first scrape after scheduling can lack the Pod IP; wait for the series that has node and IP.
+    let q = format!("kube_pod_info{{namespace=\"{}\",pod=\"{name}\",node!=\"\",pod_ip!=\"\"}}", kube::NS);
     let s = prom::wait_series(ctx, &q).await?;
     let m = &s[0].0;
     if label(m, "node").is_empty() || label(m, "pod_ip").is_empty() {
