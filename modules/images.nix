@@ -26,7 +26,7 @@
       sveltekit-demo = let
         app = linuxPkgs.stdenvNoCC.mkDerivation {
           pname = "sveltekit-demo";
-          version = "0.1.0";
+          version = "0.2.0";
           src = ../apps/sveltekit-demo;
           nativeBuildInputs = [bun2nix.hook linuxPkgs.nodejs_22];
           bunDeps = bun2nix.fetchBunDeps {
@@ -50,7 +50,7 @@
       in
         n2c.buildImage {
           name = "${registry}/library/sveltekit-demo";
-          tag = "latest";
+          tag = app.version;
           config = {
             Cmd = ["${linuxPkgs.nodejs_22}/bin/node" "/app/build"];
             WorkingDir = "/app";

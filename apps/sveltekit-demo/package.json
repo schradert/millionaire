@@ -1,6 +1,6 @@
 {
   "name": "sveltekit-demo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "vite dev",
@@ -14,5 +14,9 @@
     "svelte": "^5.56.4",
     "vite": "^6.4.3"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@grafana/faro-web-sdk": "^2.12.1",
+    "@grafana/faro-web-tracing": "^2.12.1"
+  }
 }
