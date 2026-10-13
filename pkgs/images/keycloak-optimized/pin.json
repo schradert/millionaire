@@ -1,6 +1,6 @@
 {
-  "version": "26.1.5-optimized-2",
-  "digest": "sha256:2deba9e3e6be975f431a6b1dd351c6bece9cdb93764ce2660b5f8ea5af7ba33f",
+  "version": "26.2.5-optimized-2",
+  "digest": "sha256:daad07a3346b59866646b7b39e43a02ef8928ba505e0b9796a46d71715673568",
   "source": {
     "type": "oci-tag",
     "repository": "harbor.trdos.me/library/keycloak",

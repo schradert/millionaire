@@ -1,13 +1,13 @@
 {
-  "version": "26.1.5",
-  "digest": "sha256:be6a86215213145bfb4fb3e2b3ab982a806d00262655abdcf3ffa6a38d241c7c",
+  "version": "26.2.5",
+  "digest": "sha256:4883630ef9db14031cde3e60700c9a9a8eaf1b5c24db1589d6a2d43de38ba2a9",
   "hashes": {
-    "nix2container": "sha256-6cQe12VnycmrKvFPZlTpvxh4INRroDXA3oS8lyqc45M="
+    "nix2container": "sha256-ozS+NVRE0fZDhYyelbARoyYeGbWhgtjIenAhsWtbkhU="
   },
   "source": {
     "type": "oci-tag",
     "repository": "quay.io/keycloak/keycloak",
     "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
   },
-  "constraint": "<26.2"
+  "constraint": "<26.3"
 }
