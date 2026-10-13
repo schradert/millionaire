@@ -54,6 +54,14 @@
             shm.useHost = true;
           };
           jvb.publicIPs = ["192.168.50.254"];
+          # Exporter sidecar over the bridge's colibri stats, plus the chart's ServiceMonitor.
+          jvb.metrics = {
+            enabled = true;
+            image = with pinned.images.jitsi-meet-exporter; {
+              inherit repository;
+              tag = "${tag}@${digest}";
+            };
+          };
           # The chart sets externalTrafficPolicy on a ClusterIP Service, which the API rejects.
           jvb.service.externalTrafficPolicy = null;
           prosody.enabled = true;
@@ -107,6 +115,20 @@
         };
       };
       resources = {
+        # The chart's ServiceMonitor also selects on helm.sh/chart and app.kubernetes.io/version, labels
+        # nixidy strips from the rendered Service, so it would match nothing.
+        serviceMonitors.jitsi-jitsi-meet-jvb.spec = {
+          selector.matchLabels = lib.mkForce {
+            "app.kubernetes.io/component" = "jvb";
+            "app.kubernetes.io/instance" = "jitsi";
+            "app.kubernetes.io/name" = "jitsi-meet";
+          };
+          endpoints = lib.mkForce (lib.toList {
+            port = "tcp-metrics";
+            path = "/metrics";
+            interval = "1m";
+          });
+        };
         # jigasi (SIP) and jibri (recording) are deferred: parked at 0 replicas, config kept.
         deployments.jitsi-jitsi-meet-jigasi.spec.replicas = lib.mkForce 0;
         deployments.jitsi-jitsi-meet-jibri.spec.replicas = lib.mkForce 0;

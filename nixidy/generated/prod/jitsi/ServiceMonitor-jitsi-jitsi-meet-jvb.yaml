@@ -1,0 +1,24 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app.kubernetes.io/component: jvb
+    app.kubernetes.io/instance: jitsi
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: jitsi-meet
+    release: prometheus-operator
+  name: jitsi-jitsi-meet-jvb
+  namespace: media
+spec:
+  endpoints:
+    - interval: 1m
+      path: /metrics
+      port: tcp-metrics
+  namespaceSelector:
+    matchNames:
+      - media
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: jvb
+      app.kubernetes.io/instance: jitsi
+      app.kubernetes.io/name: jitsi-meet

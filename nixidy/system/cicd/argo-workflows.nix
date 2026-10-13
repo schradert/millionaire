@@ -151,6 +151,14 @@ in {
         };
       };
       resources = {
+        # serviceMonitor.enabled renders nothing here (capability-gated); the controller's pod names its port.
+        podMonitors.argo-workflows-controller.spec = {
+          selector.matchLabels."app.kubernetes.io/name" = "argo-workflows-workflow-controller";
+          podMetricsEndpoints = lib.toList {
+            port = "metrics";
+            interval = "1m";
+          };
+        };
         httpRoutes.argo-workflows.spec = {
           hostnames = [hostname];
           parentRefs = lib.toList {

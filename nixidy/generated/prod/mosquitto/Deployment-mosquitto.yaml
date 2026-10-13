@@ -31,6 +31,13 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
+        - env:
+            - name: BIND_ADDRESS
+              value: 0.0.0.0
+            - name: BROKER_ENDPOINT
+              value: tcp://127.0.0.1:1883
+          image: sapcc/mosquitto-exporter:0.8.0@sha256:241570341cd144c27ca0952255a2726a4964b7397bfed93a98707b32eb06858c
+          name: exporter
         - image: eclipse-mosquitto:2.0@sha256:199ea8ef2e35ec2b1b37e59cfd1dbae538ed4dfa4a2251a121a52215a6248a21
           livenessProbe:
             tcpSocket:

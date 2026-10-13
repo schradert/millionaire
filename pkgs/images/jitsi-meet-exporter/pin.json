@@ -1,0 +1,8 @@
+{
+  "version": "1.4.2",
+  "digest": "sha256:30fff1244515284b9c40c86c315283cd5a65ac24e17f70d320e08c5a3d0a6c06",
+  "source": {
+    "type": "oci-tag",
+    "repository": "systemli/prometheus-jitsi-meet-exporter"
+  }
+}

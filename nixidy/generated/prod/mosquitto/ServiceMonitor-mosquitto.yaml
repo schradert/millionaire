@@ -1,0 +1,23 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app.kubernetes.io/instance: mosquitto
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mosquitto
+  name: mosquitto
+  namespace: home
+spec:
+  endpoints:
+    - interval: 1m
+      path: /metrics
+      port: metrics
+  jobLabel: app.kubernetes.io/name
+  namespaceSelector:
+    matchNames:
+      - home
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: mosquitto
+      app.kubernetes.io/name: mosquitto
+      app.kubernetes.io/service: mosquitto

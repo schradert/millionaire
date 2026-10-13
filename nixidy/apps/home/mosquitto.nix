@@ -5,6 +5,7 @@
 {...}: {
   nixidy = {
     charts,
+    lib,
     pinned,
     ...
   }: let
@@ -22,6 +23,14 @@
         values = {
           controllers.mosquitto = {
             annotations."reloader.stakater.com/auto" = "true";
+            # $SYS statistics (clients, messages, bytes) as Prometheus metrics; the broker allows anonymous.
+            containers.exporter = {
+              image = pinned.images.mosquitto-exporter;
+              env = {
+                BROKER_ENDPOINT = "tcp://127.0.0.1:1883";
+                BIND_ADDRESS = "0.0.0.0";
+              };
+            };
             containers.mosquitto = {
               image = pinned.images.mosquitto;
               probes.liveness = probe;
@@ -29,7 +38,18 @@
               probes.startup = probe;
             };
           };
-          service.mosquitto.ports.mqtt.port = 1883;
+          service.mosquitto.ports = {
+            mqtt.port = 1883;
+            metrics.port = 9234;
+          };
+          serviceMonitor.mosquitto = {
+            serviceName = "mosquitto";
+            endpoints = lib.toList {
+              port = "metrics";
+              path = "/metrics";
+              interval = "1m";
+            };
+          };
           configMaps.mosquitto.data."mosquitto.conf" = ''
             listener 1883
             allow_anonymous true

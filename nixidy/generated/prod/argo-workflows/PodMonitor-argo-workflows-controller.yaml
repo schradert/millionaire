@@ -1,0 +1,12 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: argo-workflows-controller
+  namespace: cicd
+spec:
+  podMetricsEndpoints:
+    - interval: 1m
+      port: metrics
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argo-workflows-workflow-controller
