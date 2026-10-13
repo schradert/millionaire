@@ -33,7 +33,7 @@ fn flows() -> Vec<FlowDef> {
         d("oidc-jellyfin", "native OIDC: both users sign in to Jellyfin through the SSO plugin; their users are deleted", step!(oidc::jellyfin)).setup(step!(flows::ensure_users)).cleanup(step!(oidc::jellyfin_cleanup)),
         d("oidc-home-assistant", "native OIDC: Keycloak login ends at Home Assistant's finish page with a one-time code", step!(oidc::home_assistant)).setup(step!(flows::ensure_users)),
         d("oidc-sure", "native OIDC, link-only: Keycloak authenticates the user, Sure refuses to create an account", step!(oidc::sure)).setup(step!(flows::ensure_users)),
-        d("oidc-librechat", "native OIDC: Keycloak login works, LibreChat's allowed email domains refuse the test user", step!(oidc::librechat)).setup(step!(flows::ensure_users)),
+        d("oidc-librechat", "native OIDC: Keycloak login creates the test user's LibreChat account, which the user then deletes", step!(oidc::librechat)).setup(step!(flows::ensure_users)),
         d("oidc-immich", "native OIDC: Immich's authorization URL, Keycloak login, redirect back with the code", step!(oidc::immich)).setup(step!(flows::ensure_users)),
         d("oidc-bulwark", "native OIDC: Bulwark's start route, Keycloak login, redirect back with the code", step!(oidc::bulwark)).setup(step!(flows::ensure_users)),
         d("proxy-bearer", "oauth2-proxy: no token redirects, admin bearer passes, family bearer gets 403", step!(flows::proxy_bearer)).setup(step!(flows::ensure_users)),

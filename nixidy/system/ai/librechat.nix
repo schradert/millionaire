@@ -1,7 +1,9 @@
 {config, ...}: let
   inherit (config.canivete.meta) domain people;
   # allowedDomains is an exact match on the email domain (isEmailDomainAllowed), so tristan's
-  # personal email domain must be allowed alongside the homelab domain.
+  # personal email domain must be allowed alongside the homelab domain. The e2e harness's test
+  # users (apps/e2e identity/oidc-librechat) have emails under e2e.<domain>: only the Keycloak
+  # admin API can create such a user, so this lets in nobody who is not already trusted there.
   emailDomain = builtins.elemAt (builtins.split "@" people.my.profiles.personal.email) 2;
   hostname = "chat.${domain}";
 in {
@@ -20,7 +22,7 @@ in {
       cache = true;
       registration = {
         socialLogins = ["openid"];
-        allowedDomains = lib.unique [domain emailDomain];
+        allowedDomains = lib.unique [domain emailDomain "e2e.${domain}"];
       };
       endpoints = {
         custom = [
