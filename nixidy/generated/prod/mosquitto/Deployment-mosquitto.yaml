@@ -33,7 +33,7 @@ spec:
       containers:
         - env:
             - name: BIND_ADDRESS
-              value: 0.0.0.0
+              value: 0.0.0.0:9234
             - name: BROKER_ENDPOINT
               value: tcp://127.0.0.1:1883
           image: sapcc/mosquitto-exporter:0.8.0@sha256:241570341cd144c27ca0952255a2726a4964b7397bfed93a98707b32eb06858c

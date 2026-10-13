@@ -28,7 +28,7 @@
               image = pinned.images.mosquitto-exporter;
               env = {
                 BROKER_ENDPOINT = "tcp://127.0.0.1:1883";
-                BIND_ADDRESS = "0.0.0.0";
+                BIND_ADDRESS = "0.0.0.0:9234";
               };
             };
             containers.mosquitto = {
