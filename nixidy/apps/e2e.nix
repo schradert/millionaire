@@ -28,14 +28,16 @@
     # app's Secret, and {file = key in that Secret}. Mounted at /secrets/<secret>/<file>.
     fromApp = s: {
       target.template.data = lib.mapAttrs (file: _: "{{ .${file} }}") s.data;
-      data = lib.mapAttrsToList (file: prop: {
-        secretKey = file;
-        remoteRef = {
-          inherit (s) key;
-          property = prop;
-        };
-        sourceRef.storeRef = store s.ns;
-      }) s.data;
+      data =
+        lib.mapAttrsToList (file: prop: {
+          secretKey = file;
+          remoteRef = {
+            inherit (s) key;
+            property = prop;
+          };
+          sourceRef.storeRef = store s.ns;
+        })
+        s.data;
     };
     serviceSecrets = {
       e2e-baikal = {
@@ -287,15 +289,14 @@
             username = "{{ .username }}";
             password = "{{ .password }}";
           };
-          data =
-            map (key: {
-              secretKey = key;
-              remoteRef = {
-                key = "forgejo-admin";
-                property = key;
-              };
-              sourceRef.storeRef = store "development";
-            }) ["username" "password"];
+          data = map (key: {
+            secretKey = key;
+            remoteRef = {
+              key = "forgejo-admin";
+              property = key;
+            };
+            sourceRef.storeRef = store "development";
+          }) ["username" "password"];
         };
         # Nobody notices a suite that silently stopped running: `KubeJobFailed` covers a failing
         # run, this one a missing run (either CronJob, `media/media-e2e` included).
@@ -369,6 +370,8 @@
                     E2E_RUNNER = "cluster";
                     # Traces (apps/e2e/src/trace.rs): a span per flow, phase and request, to Alloy's OTLP/HTTP port.
                     OTEL_EXPORTER_OTLP_ENDPOINT = "http://alloy.observability.svc.cluster.local:4318";
+                    # CPU profiles (apps/e2e/src/profile.rs, e2e >= 0.7), tagged family/flow/phase.
+                    PYROSCOPE_SERVER_ADDRESS = "http://pyroscope.observability.svc.cluster.local:4040";
                     E2E_REPORT_CONFIGMAP = "${name}/${report}";
                     DOMAIN = domain;
                     # The tagged test Pods run this same image (`e2e __pod ...`).

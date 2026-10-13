@@ -110,6 +110,8 @@
                   env = lib.mapAttrsToList (name: value: {inherit name value;}) {
                     E2E_RUNNER = "media";
                     OTEL_EXPORTER_OTLP_ENDPOINT = "http://alloy.observability.svc.cluster.local:4318";
+                    # CPU profiles (apps/e2e/src/profile.rs, e2e >= 0.7), tagged family/flow/phase.
+                    PYROSCOPE_SERVER_ADDRESS = "http://pyroscope.observability.svc.cluster.local:4040";
                     E2E_REPORT_CONFIGMAP = "media/${name}-last-report";
                     DOMAIN = domain;
                     ADMIN_EMAIL = people.my.profiles.personal.email;

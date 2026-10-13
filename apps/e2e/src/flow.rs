@@ -118,11 +118,13 @@ pub async fn run_def(ctx: &Ctx, d: &FlowDef) -> Flow {
     span.attr("e2e.family", d.family);
     span.attr("e2e.flow", d.name);
     span.attr("e2e.run", &ctx.run);
+    let _prof = crate::profile::scope(&[("family", d.family), ("flow", d.name)]);
     let mut res: R<()> = Ok(());
     for (phase, step) in [("setup", d.setup), ("act", Some(d.act)), ("assert", d.assert)] {
         if let (Ok(()), Some(step)) = (&res, step) {
             f.phase = phase;
             let _phase = crate::trace::span(format!("{} {phase}", d.name));
+            let _prof_phase = crate::profile::scope(&[("phase", phase)]);
             res = step(ctx, &mut f).await;
         }
     }
@@ -130,6 +132,7 @@ pub async fn run_def(ctx: &Ctx, d: &FlowDef) -> Flow {
     if let (Some(clean), false) = (d.cleanup, skipped) {
         f.phase = "cleanup";
         let _phase = crate::trace::span(format!("{} cleanup", d.name));
+        let _prof_phase = crate::profile::scope(&[("phase", "cleanup")]);
         match (clean(ctx, &mut f).await, &res) {
             (Ok(()), _) => {}
             (Err(e), Ok(())) => res = Err(Fail { step: format!("cleanup: {}", e.step), skip: false, ..e }),
