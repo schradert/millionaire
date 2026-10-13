@@ -132,6 +132,17 @@
             credentials.existingSecret = "harbor-credentials";
           };
           trivy.enabled = true;
+          # Traces to Alloy's OTLP/HTTP receiver (observability/alloy.nix).
+          trace = {
+            enabled = true;
+            provider = "otel";
+            sample_rate = 0.5;
+            otel = {
+              endpoint = "alloy.observability.svc.cluster.local:4318";
+              url_path = "/v1/traces";
+              insecure = true;
+            };
+          };
           metrics.enabled = true;
           metrics.serviceMonitor.enabled = true;
         };

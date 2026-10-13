@@ -21,7 +21,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/cmd-params: dd2f29174915dc15f83e1cb57e42e44f7048b89c0aa381fbc3e13e892d31054d
+        checksum/cmd-params: 6f31fb72699b34371183f991a9d1ee72fcbec24d0432710b9fb1870058d5c3d6
       labels:
         app.kubernetes.io/component: notifications-controller
         app.kubernetes.io/instance: argod

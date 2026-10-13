@@ -24,7 +24,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8225337108d81bc23db7441c8c9f5824ae2a05bac595a2a5e077d18fba598bec
+        checksum/config: 0a77766cd43262bc76388637b7d02eba036bcf1d7fd8a94f0ddbe14544b1d447
         kubectl.kubernetes.io/default-container: loki
         storage/size: 10Gi
       labels:
@@ -47,6 +47,15 @@ spec:
         - args:
             - -config.file=/etc/loki/config/config.yaml
             - -target=all
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4317
+            - name: OTEL_TRACES_SAMPLER
+              value: parentbased_traceidratio
+            - name: OTEL_TRACES_SAMPLER_ARG
+              value: "0.1"
+            - name: OTEL_SERVICE_NAME
+              value: loki
           image: docker.io/grafana/loki@sha256:1107dd5274e0ada47e42472b7a7e71f3b2a2fe878878108f3e2f9e51528f0193
           imagePullPolicy: IfNotPresent
           name: loki

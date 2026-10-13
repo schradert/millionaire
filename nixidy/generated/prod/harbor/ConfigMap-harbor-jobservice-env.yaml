@@ -14,6 +14,15 @@ data:
   REGISTRY_HTTP_CLIENT_TIMEOUT: "30"
   REGISTRY_URL: http://harbor-registry:5000
   TOKEN_SERVICE_URL: http://harbor-core:80/service/token
+  TRACE_ENABLED: "true"
+  TRACE_NAMESPACE: ""
+  TRACE_OTEL_COMPRESSION: "false"
+  TRACE_OTEL_ENDPOINT: alloy.observability.svc.cluster.local:4318
+  TRACE_OTEL_INSECURE: "true"
+  TRACE_OTEL_TIMEOUT: "10"
+  TRACE_OTEL_URL_PATH: /v1/traces
+  TRACE_SAMPLE_RATE: "0.5"
+  TRACE_SERVICE_NAME: harbor-jobservice
 kind: ConfigMap
 metadata:
   labels:

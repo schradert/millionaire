@@ -83,6 +83,12 @@ in {
           # (The chart's own ServiceMonitor is gated on cluster capabilities, which
           # helm template lacks; see resources.serviceMonitors.argocd-controller.)
           controller.metrics.enabled = true;
+          # Traces: the server, repo-server and application-controller export spans to Alloy (alloy.nix).
+          # The chart's cmd-params checksum on each Pod template restarts them on change.
+          configs.params = {
+            "otlp.address" = "alloy.observability.svc.cluster.local:4317";
+            "otlp.insecure" = "true";
+          };
           server.extraArgs = ["--insecure"];
           # Keycloak SSO; the local admin stays enabled as break-glass
           # (argocd-initial-admin-secret, pushed to Bitwarden below).

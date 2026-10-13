@@ -94,6 +94,12 @@ in {
             };
           };
           controller = {
+            # Beta tracing in the controller (a span per workflow and reconcile) to Alloy. The traces-only
+            # variable: Alloy's OTLP receiver has no metrics pipeline.
+            extraEnv = lib.toList {
+              name = "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT";
+              value = "http://alloy.observability.svc.cluster.local:4317";
+            };
             # RBAC-only: scopes the chart's per-namespace workflow Role (and
             # avoids a duplicate Role render against the release namespace);
             # the controller still watches cluster-wide.
