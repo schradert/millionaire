@@ -49,7 +49,6 @@ in {
                 # Spans (OTLP/gRPC) to Alloy. Keycloak's default sampler (traceidratio) ignores the caller's
                 # decision, which kept 10% of the requests e2e traced; parent-based keeps those and samples the rest.
                 KC_TRACING_ENDPOINT = "http://alloy.observability.svc.cluster.local:4317";
-                KC_TRACING_SAMPLER_TYPE = "parentbased_traceidratio";
                 KC_TRACING_SAMPLER_RATIO = "0.1";
                 KC_FEATURES = "hostname:v2";
                 KC_BOOTSTRAP_ADMIN_USERNAME = "admin";
