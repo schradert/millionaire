@@ -59,17 +59,29 @@ spec:
                 - mountPath: /secrets/e2e-actual
                   name: e2e-actual
                   readOnly: true
+                - mountPath: /secrets/e2e-argocd
+                  name: e2e-argocd
+                  readOnly: true
                 - mountPath: /secrets/e2e-atuin
                   name: e2e-atuin
                   readOnly: true
                 - mountPath: /secrets/e2e-baikal
                   name: e2e-baikal
                   readOnly: true
+                - mountPath: /secrets/e2e-contextforge
+                  name: e2e-contextforge
+                  readOnly: true
+                - mountPath: /secrets/e2e-harbor
+                  name: e2e-harbor
+                  readOnly: true
                 - mountPath: /secrets/e2e-miniflux
                   name: e2e-miniflux
                   readOnly: true
                 - mountPath: /secrets/e2e-syncthing
                   name: e2e-syncthing
+                  readOnly: true
+                - mountPath: /secrets/e2e-windmill
+                  name: e2e-windmill
                   readOnly: true
           hostAliases:
             - hostnames:
@@ -102,6 +114,10 @@ spec:
               secret:
                 optional: true
                 secretName: e2e-actual
+            - name: e2e-argocd
+              secret:
+                optional: true
+                secretName: e2e-argocd
             - name: e2e-atuin
               secret:
                 optional: true
@@ -110,6 +126,14 @@ spec:
               secret:
                 optional: true
                 secretName: e2e-baikal
+            - name: e2e-contextforge
+              secret:
+                optional: true
+                secretName: e2e-contextforge
+            - name: e2e-harbor
+              secret:
+                optional: true
+                secretName: e2e-harbor
             - name: e2e-miniflux
               secret:
                 optional: true
@@ -118,6 +142,10 @@ spec:
               secret:
                 optional: true
                 secretName: e2e-syncthing
+            - name: e2e-windmill
+              secret:
+                optional: true
+                secretName: e2e-windmill
       ttlSecondsAfterFinished: 86400
   schedule: 15 3 * * *
   startingDeadlineSeconds: 3600

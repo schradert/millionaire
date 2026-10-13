@@ -149,6 +149,28 @@
     cnpg = true;
     # openclaw (ai-sandbox) reaches bifrost :8000 and contextforge :8080 (its own egress policy lists exactly these)
     extraIngress = [
+      # the e2e harness logs in to ContextForge's API (its public route is behind oauth2-proxy,
+      # which takes the Authorization header ContextForge needs): apps/e2e ai/contextforge-tool
+      {
+        fromEndpoints = [
+          {
+            matchLabels = {
+              "k8s:io.kubernetes.pod.namespace" = "e2e";
+              "app.kubernetes.io/name" = "e2e";
+            };
+          }
+        ];
+        toPorts = [
+          {
+            ports = [
+              {
+                port = "8080";
+                protocol = "TCP";
+              }
+            ];
+          }
+        ];
+      }
       {
         fromEndpoints = [
           {

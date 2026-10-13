@@ -15,6 +15,7 @@
 //! outside-dependent flows (VPN leak tests and downloads over the VPN).
 //! The report is a table plus one JSON document between `=== E2E REPORT JSON BEGIN/END ===`.
 
+mod ai;
 mod ctx;
 mod dav;
 mod feedserver;
