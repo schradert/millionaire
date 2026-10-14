@@ -59,6 +59,9 @@ in {
     };
 
     canivete.kubernetes.yaml.node-label = ["node.trdos.me/class=desktop"];
+    # Soft: ordinary pods prefer the headless nodes and land here only when those are full.
+    # DaemonSets and pods that fit nowhere else (GPU) still schedule. Applied at registration.
+    canivete.kubernetes.yaml.node-taint = ["node.trdos.me/class=desktop:PreferNoSchedule"];
 
     hardware.nvidia-container-toolkit.enable = gpu;
     # rke2 adds the `nvidia` containerd runtime when it finds nvidia-container-runtime on its PATH;
