@@ -67,7 +67,6 @@
   nixidy = {
     lib,
     pinned,
-    pkgs,
     ...
   }: {
     # Register the NetworkAttachmentDefinition CRD with nixidy's schema so NADs
