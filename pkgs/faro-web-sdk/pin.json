@@ -1,0 +1,8 @@
+{
+  "version": "2.12.1",
+  "hash": "sha256-tBhhEHedK7LaHpoQDdmcvDjMZ4KXRC5QpCMyFKni5Zw=",
+  "source": {
+    "type": "url-template",
+    "url": "https://registry.npmjs.org/@grafana/faro-web-sdk/-/faro-web-sdk-{version}.tgz"
+  }
+}

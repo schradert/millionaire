@@ -10,7 +10,7 @@
   deviceID = types.strMatching "[A-Z2-7]{7}(-[A-Z2-7]{7}){7}";
 in {
   options.syncthing = {
-    devices = can.attrs.submodule "devices by name; one is accepted only through the ID recorded here. `hub` is the cluster hub" ({name, ...}: {
+    devices = can.attrs.submodule "devices by name; one is accepted only through the ID recorded here. `hub` is the cluster hub" ({...}: {
       options = {
         id = mkOption {
           type = types.nullOr deviceID;

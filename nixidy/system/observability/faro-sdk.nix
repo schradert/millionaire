@@ -1,7 +1,7 @@
 # Self-hosted Grafana Faro web SDK, for apps that take a custom script but are not built here (Forgejo,
 # Homepage, Grafana's own frontend uses its bundled copy and needs none). Served at
 # https://faro.trdos.me/sdk/<file> by a static nginx, no oauth2-proxy: the pages that load it are behind SSO, the
-# bundle itself is public code. The version is pinned by the npm tarball's integrity hash and in the file name,
+# bundle itself is public code. The version is pinned in pkgs/faro-web-sdk/pin.json and in the file name,
 # so an upgrade is a new URL. Every embedding app registers itself in `faro.apps` (alloy.nix) and builds its
 # script with `config.faro.snippet "<app name>"`.
 {config, ...}: let
@@ -10,18 +10,14 @@
 in {
   nixidy = {
     charts,
-    config,
     lib,
     pinned,
     pkgs,
     ...
   }: let
-    version = "2.12.1";
+    inherit (pinned.faro-web-sdk.pin) version;
     file = "faro-web-sdk-${version}.iife.js";
-    tarball = pkgs.fetchurl {
-      url = "https://registry.npmjs.org/@grafana/faro-web-sdk/-/faro-web-sdk-${version}.tgz";
-      hash = "sha512-JnpZy/ztfkP3UZ3AW0DzUxVgMRTBvYz+m0oZuVi+KRpGTYz0GGF0umi0S0pAemnaUbQBo6umGdCm5CL6n8BAWQ==";
-    };
+    tarball = pinned.faro-web-sdk;
     # The npm package's IIFE bundle (global GrafanaFaroWebSdk), minus the source map reference (not shipped).
     bundle = pkgs.runCommand file {} ''
       tar -xzOf ${tarball} package/dist/bundle/faro-web-sdk.iife.js | sed '/^\/\/# sourceMappingURL=/d' > $out

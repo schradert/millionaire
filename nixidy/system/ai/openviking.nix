@@ -1,5 +1,4 @@
-{config, ...}: let
-  inherit (config.canivete.meta) domain;
+{...}: let
   port = 1933;
   # Bifrost is the only LLM provider: OpenAI-compatible, models addressed as <provider>/<model>.
   # Inference needs no key (enforce_governance_header = false); the SDKs just need a non-empty one.

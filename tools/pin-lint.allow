@@ -16,3 +16,5 @@ nixidy/generated/prod/nvidia-gpu-operator/ClusterPolicy-cluster-policy.yaml rend
 nixidy/generated/prod/nvidia-gpu-operator/ClusterPolicy-cluster-policy.yaml rendered:nvcr.io/nvidia/cloud-native/kata-gpu-artifacts:ubuntu22.04-535.86.10-snp kataManager disabled; artifact URL, not a pulled image
 docs/displaylink.md sri prose: the hash in nixpkgs' package, quoted as the example of what a pin replaces
 docs/games.md sri prose: the placeholder hash to copy the real `got:` hash from
+apps/e2e/src/registry/oci.rs hex sha256 test vectors (digest helper), not pins
+apps/e2e/src/storage/s3.rs hex SigV4/sha256 test vectors (AWS docs examples), not pins
