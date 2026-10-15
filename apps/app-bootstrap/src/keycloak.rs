@@ -65,10 +65,22 @@ struct Admin {
 }
 
 async fn admin() -> Result<Admin> {
+    admin_as(false).await
+}
+
+/// `public`: every request (the login included, so the token's issuer matches) says it arrived over
+/// https on 443, as the browser's does, so links Keycloak puts in emails point at its public address
+/// (KC_HOSTNAME has no scheme or port; it takes them from the request).
+async fn admin_as(public: bool) -> Result<Admin> {
     let base = var("KEYCLOAK_URL", "http://keycloak.identity.svc.cluster.local:8080").trim_end_matches('/').to_string();
     let user = var("KEYCLOAK_USER", "admin");
     let password = secret("KEYCLOAK_PASSWORD")?;
-    let http = Client::builder().timeout(Duration::from_secs(30)).build()?;
+    let mut headers = reqwest::header::HeaderMap::new();
+    if public {
+        headers.insert("X-Forwarded-Proto", "https".parse()?);
+        headers.insert("X-Forwarded-Port", "443".parse()?);
+    }
+    let http = Client::builder().timeout(Duration::from_secs(30)).default_headers(headers).build()?;
     let token = retry("keycloak admin login", 24, || async {
         let r = http
             .post(format!("{base}/realms/master/protocol/openid-connect/token"))
@@ -122,7 +134,7 @@ fn needs_invite(sent: &[String], id: &str, credentials: &Value) -> bool {
 /// `keycloak-invites` (the ledger: one key per invited user id, so a lost email is resent by deleting
 /// its key). Declaring a user in Nix is the invitation; this Job, run on a schedule, sends it once.
 pub async fn invite() -> Result<()> {
-    let a = admin().await?;
+    let a = admin_as(true).await?;
     let group = var("INVITE_GROUP", "family");
     let actions: Vec<String> =
         var("INVITE_ACTIONS", "UPDATE_PASSWORD,VERIFY_EMAIL").split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
