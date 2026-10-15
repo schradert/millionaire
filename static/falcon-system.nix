@@ -27,6 +27,7 @@ in {
     nvidia.enable = true;
     workstation.enable = true;
   };
+  workstationKeys.enable = true;
   apiKeys.enable = true; # falcon is a recipient of personal.yaml (.sops.yaml)
   # Installed by the old dotfiles repo
   system.stateVersion = "25.11";

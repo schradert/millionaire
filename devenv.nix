@@ -442,6 +442,14 @@ in {
         echo "Password reset email sent to $email"
       '';
 
+      # Bare `deploy` would `nix flake check` every host first; skip it unless asked (`deploy-raw` is the plain tool)
+      scripts.deploy.exec = ''
+        case " $* " in
+          *" --skip-checks "*) exec ${pkgs.deploy-rs}/bin/deploy "$@" ;;
+          *) exec ${pkgs.deploy-rs}/bin/deploy --skip-checks "$@" ;;
+        esac
+      '';
+
       # A Syncthing device ID is the hash of the device's TLS certificate, so a device's identity is
       # declared like any config: the key pair is generated once here, encrypted to the host
       # (.sops.yaml: secrets/sops/syncthing-<host>.yaml) and installed by modules/syncthing.nix; the ID is
@@ -561,7 +569,7 @@ in {
         (writeShellScriptBin "b2" ''exec b2v4 "$@"'')
         (pulumi.withPackages (ps: [ps.pulumi-python]))
         argocd
-        deploy-rs
+        (writeShellScriptBin "deploy-raw" ''exec ${deploy-rs}/bin/deploy "$@"'') # unwrapped deploy-rs, flake checks included
         cilium-cli
         hcloud
         hcloud-upload-image
