@@ -10,8 +10,9 @@ use crate::{
     report::Flow,
 };
 
-/// Health sources that only say "no indexers" (the user picks indexers), per app.
-const INDEXER_ONLY: [&str; 4] = ["IndexerRssCheck", "IndexerSearchCheck", "IndexerCheck", "IndexerAllRssCheck"];
+/// Health sources that are not wiring problems: "no indexers" (the user picks indexers), and "an update is
+/// available" (images are pinned and bumped by the update bot, never self-updated).
+const NOT_PROBLEMS: [&str; 5] = ["IndexerRssCheck", "IndexerSearchCheck", "IndexerCheck", "IndexerAllRssCheck", "UpdateCheck"];
 
 /// Health entries that are not about missing indexers.
 fn real_problems(health: &Value) -> Vec<String> {
@@ -19,7 +20,7 @@ fn real_problems(health: &Value) -> Vec<String> {
         .as_array()
         .into_iter()
         .flatten()
-        .filter(|h| !INDEXER_ONLY.contains(&h["source"].as_str().unwrap_or("")))
+        .filter(|h| !NOT_PROBLEMS.contains(&h["source"].as_str().unwrap_or("")))
         .map(|h| format!("{} {}: {}", h["type"].as_str().unwrap_or("?"), h["source"].as_str().unwrap_or("?"), h["message"].as_str().unwrap_or("")))
         .collect()
 }
@@ -262,6 +263,7 @@ mod tests {
         let h = json!([
             { "type": "error", "source": "IndexerRssCheck", "message": "none" },
             { "type": "warning", "source": "IndexerSearchCheck", "message": "none" },
+            { "type": "notice", "source": "UpdateCheck", "message": "New update is available: v4.0.20.3014" },
             { "type": "error", "source": "RemotePathMappingCheck", "message": "bad path" }
         ]);
         assert_eq!(real_problems(&h), ["error RemotePathMappingCheck: bad path"]);
