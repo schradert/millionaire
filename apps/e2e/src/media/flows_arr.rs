@@ -87,9 +87,26 @@ pub async fn torrent_files(ctx: &Ctx, f: &mut Flow, url: &str, keep: &dyn Fn(&st
         Ok(fl.as_array().filter(|a| !a.is_empty()).cloned())
     })
     .await?;
-    let (keep, skip): (Vec<&Value>, Vec<&Value>) = files.iter().partition(|x| x["name"].as_str().is_some_and(&keep));
+    let (keep, rest): (Vec<&Value>, Vec<&Value>) = files.iter().partition(|x| x["name"].as_str().is_some_and(&keep));
     if keep.is_empty() {
         return Err(Fail::new("qbittorrent", "select files", "none of the wanted files is in the torrent"));
+    }
+    // A piece shared with a deselected file may never complete from the web seeds (live: one
+    // piece short at 98-99% for 20+ minutes), so also download the small files that share
+    // pieces with the wanted ones, and those that share with them in turn.
+    let max_extra = var("E2E_TORRENT_NEIGHBOR_MAX", "157286400").parse::<i64>().unwrap_or(157_286_400);
+    let range = |v: &Value| (v["piece_range"][0].as_i64().unwrap_or(-1), v["piece_range"][1].as_i64().unwrap_or(-1));
+    let mut sel: Vec<(i64, i64)> = keep.iter().map(|v| range(v)).collect();
+    let (mut extra, mut skip): (Vec<&Value>, Vec<&Value>) = (vec![], rest);
+    loop {
+        let hit = skip.iter().position(|v| {
+            let (a, b) = range(v);
+            v["size"].as_i64().unwrap_or(i64::MAX) <= max_extra && sel.iter().any(|&(c, d)| a <= d && c <= b)
+        });
+        let Some(i) = hit else { break };
+        let v = skip.remove(i);
+        sel.push(range(v));
+        extra.push(v);
     }
     let idx = |v: &Value| v["index"].as_i64().map(|i| i.to_string());
     let skip_ids: Vec<String> = skip.iter().filter_map(|v| idx(v)).collect();
@@ -100,7 +117,7 @@ pub async fn torrent_files(ctx: &Ctx, f: &mut Flow, url: &str, keep: &dyn Fn(&st
         q.post_form(ctx, "/torrents/resume", &[("hashes", &hash)]).await?;
     }
     let names: Vec<&str> = keep.iter().filter_map(|v| v["name"].as_str()).collect();
-    f.ok("qbittorrent", "torrent added", format!("{hash}, downloading {} of {} files", names.len(), files.len()));
+    f.ok("qbittorrent", "torrent added", format!("{hash}, downloading {} (+{} boundary neighbours) of {} files", names.len(), extra.len(), files.len()));
     let start = std::time::Instant::now();
     poll("qbittorrent", "download completes", Duration::from_secs(var("E2E_TORRENT_TIMEOUT", "2700").parse().unwrap_or(2700)), Duration::from_secs(10), || async {
         let t = q.get(ctx, &format!("/torrents/info?hashes={hash}")).await?;
