@@ -5,6 +5,7 @@
 #   restic   restic check --read-data-subset on every VolSync repository
 #   volume   restore one rotating volume into a NEW scratch PVC, compare it with the snapshot, delete it
 #   database restore one rotating CNPG database into a NEW scratch cluster, count tables and rows, delete it
+#   dump     restore the newest in-app dump of a database without CNPG barman (Immich) into a NEW scratch cluster, count tables and rows, delete it
 #   etcd     newest etcd snapshot in B2 is younger than ETCD_MAX_AGE_HOURS
 #
 # Only scratch resources in $NS are created, all labelled, and all deleted on exit (including failures).
@@ -33,6 +34,7 @@ ETCD_MAX_AGE_HOURS=${ETCD_MAX_AGE_HOURS:-12}
 CHECK_MAX_SUBSET_MIB=${CHECK_MAX_SUBSET_MIB:-2048}
 WAIT_RESTORE=${WAIT_RESTORE:-1800}
 WAIT_DB=${WAIT_DB:-1500}
+DUMP_MAX_AGE_HOURS=${DUMP_MAX_AGE_HOURS:-60}
 RUN=$(date -u +%Y%m%d%H%M%S)
 PART_OF=app.kubernetes.io/part-of=backup-verify
 FAILED=()
@@ -332,6 +334,84 @@ YAML
   [ "$bad" -eq 0 ] && pass "database restore $ns/$src from B2 (base backup + WAL):$line"
 }
 
+# ---- 3b. scratch restore of in-app dumps (databases without CNPG barman) --------------------------
+# DUMP_SOURCES: whitespace separated `namespace/cluster|restic-repository|dump path regex` entries, e.g.
+#   media/immich|volsync--immich--immich-server|^/backups/.*\.sql\.gz$
+# The newest matching file in the latest snapshot of the repository is streamed with `restic dump` into a NEW
+# scratch cluster (same image, preload libraries, bootstrap database and owner as the live one), gunzipped and
+# loaded with psql inside the scratch pod. The live cluster is only read as a Kubernetes object.
+check_dump_one() { # entry
+  local ns src repo re entry=$1 json image storage libs uid gid db owner name pod ls path mtime age tables rows prev prev_tables rc out bad=0
+  IFS='|' read -r ns repo re <<< "$entry"
+  src=${ns#*/}
+  ns=${ns%/*}
+  json=$(kubectl -n "$ns" get cluster "$src" -o json 2>/dev/null) || { fail "dump $ns/$src: cluster not found"; return; }
+  image=$(jq -r .spec.imageName <<< "$json")
+  storage=$(jq -r .spec.storage.size <<< "$json")
+  libs=$(jq -c '.spec.postgresql.shared_preload_libraries // []' <<< "$json")
+  uid=$(jq -r '.spec.postgresUID // 26' <<< "$json")
+  gid=$(jq -r '.spec.postgresGID // 26' <<< "$json")
+  db=$(jq -r '.spec.bootstrap.initdb.database // "app"' <<< "$json")
+  owner=$(jq -r '.spec.bootstrap.initdb.owner // "app"' <<< "$json")
+  restic_env "$repo"
+  ls=$(restic ls latest --json 2>/dev/null </dev/null | jq -c --arg re "$re" 'select(.type == "file") | select(.path | test($re)) | [.path, .mtime, .size]' | sort | tail -n 1)
+  if [ -z "$ls" ]; then fail "dump $ns/$src: no file matching $re in the latest snapshot of $repo"; return; fi
+  path=$(jq -r '.[0]' <<< "$ls")
+  mtime=$(jq -r '.[1]' <<< "$ls")
+  age=$(( ($(date +%s) - $(date -d "$mtime" +%s)) / 3600 ))
+  if [ "$age" -gt "$DUMP_MAX_AGE_HOURS" ]; then fail "dump $ns/$src: newest dump in B2 ($path) is ${age}h old (limit ${DUMP_MAX_AGE_HOURS}h)"; return; fi
+  name="bv-$RUN-dump"
+  log "dump restore: $ns/$src from $repo:$path (${age}h old) into scratch cluster $name (image $image, $storage)"
+  kn apply -f - >/dev/null <<YAML || { fail "dump $src: cannot create scratch cluster"; return; }
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata: {name: $name, labels: {app.kubernetes.io/part-of: backup-verify, backup-verify-run: "$RUN"}}
+spec:
+  instances: 1
+  imageName: $image
+  postgresUID: $uid
+  postgresGID: $gid
+  storage: {size: $storage, storageClass: ceph-block}
+  postgresql: {shared_preload_libraries: $libs}
+  bootstrap: {initdb: {database: $db, owner: $owner}}
+YAML
+  if ! wait_for "$WAIT_DB" "cluster $name healthy" cluster_healthy "$name"; then
+    fail "dump $ns/$src: scratch cluster never became healthy ($(kn get cluster "$name" -o jsonpath='{.status.phase}' 2>/dev/null))"
+    return
+  fi
+  pod="$name-1"
+  # The search_path rewrite is the one Immich documents for restoring its dumps. pipefail makes a failing
+  # restic dump or psql fail the pipeline.
+  out=$(restic dump latest "$path" 2>/tmp/dump.err </dev/null |
+    kn exec -i "$pod" -c postgres -- bash -c "gunzip | sed \"s/SELECT pg_catalog.set_config('search_path', '', false);/SELECT pg_catalog.set_config('search_path', 'public, pg_catalog', true);/g\" | psql -U postgres -d $db -v ON_ERROR_STOP=1 -q -o /dev/null" 2>&1)
+  rc=$?
+  if [ "$rc" -ne 0 ]; then
+    fail "dump $ns/$src: loading $path failed (exit $rc): $(echo "$out" "$(tail -n 2 /tmp/dump.err)" | tail -n 3 | tr '\n' ' ' | cut -c1-400)"
+    return
+  fi
+  tables=$(psql_scratch "$pod" "$db" "select count(*) from pg_tables where schemaname not in ('pg_catalog','information_schema')")
+  rows=$(psql_scratch "$pod" "$db" "select coalesce(sum((xpath('/row/c/text()', query_to_xml(format('select count(*) as c from %I.%I', schemaname, tablename), false, true, '')))[1]::text::bigint), 0) from pg_tables where schemaname not in ('pg_catalog','information_schema')")
+  if ! [ "${tables:-0}" -gt 0 ] 2>/dev/null || ! [ "${rows:-0}" -gt 0 ] 2>/dev/null; then
+    fail "dump $ns/$src: restored database $db has ${tables:-?} tables and ${rows:-?} rows"
+    return
+  fi
+  prev=$(kn get configmap backup-verify-state -o jsonpath="{.data.dump-$ns-$src-$db}" 2>/dev/null)
+  prev_tables=${prev%% *}
+  if [ -n "$prev_tables" ] && [ "$tables" -lt "$prev_tables" ]; then bad=1; fail "dump $ns/$src/$db: $tables tables, previous verification had $prev_tables"; fi
+  kn patch configmap backup-verify-state --type=merge -p "{\"data\":{\"dump-$ns-$src-$db\":\"$tables $rows\"}}" >/dev/null 2>&1 ||
+    kn create configmap backup-verify-state --from-literal="dump-$ns-$src-$db=$tables $rows" >/dev/null 2>&1
+  [ "$bad" -eq 0 ] && pass "dump restore $ns/$src from B2 ($path, ${age}h old): database $db has $tables tables, $rows rows"
+}
+
+check_dump() {
+  local entry
+  if [ -z "${DUMP_SOURCES:-}" ]; then fail "dump: DUMP_SOURCES is empty"; return; fi
+  for entry in $DUMP_SOURCES; do
+    check_dump_one "$entry"
+    cleanup "$PART_OF" || fail "cleanup after dump restore of ${entry%%|*} left scratch resources"
+  done
+}
+
 # ---- 4. newest etcd snapshot in B2 ----------------------------------------------------------------
 check_etcd() {
   local xml newest age
@@ -355,6 +435,7 @@ for step in ${STEPS:-etcd restic volume database}; do
     restic) check_restic ;;
     volume) check_volume ;;
     database) check_database ;;
+    dump) check_dump ;;
   esac
   # scratch resources of a finished step are deleted before the next starts
   cleanup "$PART_OF" || fail "cleanup after $step left scratch resources"
