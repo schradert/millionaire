@@ -32,17 +32,21 @@ spec:
               value: "1000"
             - name: PYROSCOPE_SERVER_ADDRESS
               value: http://pyroscope.observability.svc.cluster.local:4040
+            - name: RADARR_4K_PROFILE
+              value: '[SQP] SQP-1 WEB (2160p)'
             - name: RADARR_API_KEY_FILE
               value: /secrets/radarr/apikey
             - name: RADARR_PROFILE
-              value: '[SQP] SQP-1 WEB (2160p)'
+              value: HD-1080p
             - name: SEERR_URL
               value: http://seerr.media.svc.cluster.local:5055
+            - name: SONARR_4K_PROFILE
+              value: WEB-2160p
             - name: SONARR_API_KEY_FILE
               value: /secrets/sonarr/apikey
             - name: SONARR_PROFILE
               value: WEB-1080p
-          image: harbor.trdos.me/library/app-bootstrap:0.22.1@sha256:efcaab3b2ee14c6d12e21e323ee0c59948842dd9bf75a6f2de5f07ec590cde6f
+          image: harbor.trdos.me/library/app-bootstrap:0.22.2@sha256:328a87b67f85d5b42bff086b51d497c64d729dde4c1aca4cc5b3c2e8a6a7c113
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
