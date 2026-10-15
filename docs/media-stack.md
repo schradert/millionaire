@@ -61,7 +61,7 @@ Ryot has a music type, but no integration reads Navidrome, Maloja or ListenBrain
 | Integrations | none | Jellyfin sink (+ Jellyfin Webhook destination, PlaybackStart/Stop of movies and episodes for tristan); Audiobookshelf yank; Komga yank; Radarr and Sonarr push from the collection "Request" |
 | Imports | none | Audiobookshelf (succeeded); Trakt by public profile behind the `trakt` flag |
 | Out to Trakt | none | Jellyfin Trakt plugin behind `traktPlugin` (device link in Jellyfin, docs/manual-steps.md 13) |
-| Letterboxd | none | not possible to write (no public API); see docs/manual-steps.md 13 |
+| Letterboxd | none | no public write API: a daily robot uploads new Trakt plays through the import page, off by default (`letterboxd-sync`, docs/scrobbling.md, docs/manual-steps.md 13) |
 
 How the bootstrap acts as tristan: impersonation links are a Ryot Pro feature, and OIDC users cannot sign in with a password. So `app-bootstrap ryot` inserts a one-use access-link row in Ryot's database and redeems it with `processAccessLink`. It logs out and deletes the row afterwards (`apps/app-bootstrap/src/ryot_wire.rs`). Integrations Ryot supports that are not wired: Plex, Emby and Kodi (not in the stack); YouTube Music, Jellyfin Push and the browser extension (Pro only); and the Generic JSON sink (a future Letterboxd-RSS job).
 

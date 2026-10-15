@@ -133,6 +133,8 @@ in {
       name = "Seerr";
       settings = apk "^seerr-v";
     };
+    # Music only (Last.fm, ListenBrainz, Libre.fm). No maintained Android app scrobbles video apps
+    # to Trakt; see docs/scrobbling.md.
     pano-scrobbler = gh "kawaiiDango/pScrobbler" "com.arn.scrobble" {name = "Pano Scrobbler";};
     gitnex = fdroid "org.mian.gitnex" {name = "GitNex (Forgejo)";};
     open-alert-viewer = fdroid "studio.okcode.open_alert_viewer" {name = "Open Alert Viewer (Alertmanager)";}; # basic auth only

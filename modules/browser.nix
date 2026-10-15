@@ -1,5 +1,6 @@
-# Brave with the Bitwarden and Floccus extensions (installed from the Chrome Web
-# Store via External Extensions; Floccus setup: docs/connections.md). macOS
+# Brave with the Bitwarden, Floccus and Universal Trakt Scrobbler extensions (installed from
+# the Chrome Web Store via External Extensions; Floccus setup: docs/connections.md; Trakt
+# scrobbling and its limits: docs/scrobbling.md). macOS
 # installs Brave from the cask (modules/default.nix). Unported: Zen (no
 # home-manager module).
 {
@@ -18,6 +19,7 @@
       extensions = [
         {id = "nngceckbapebfimnlniiiahkandclblb";} # Bitwarden
         {id = "fnaicdffflnofjppbagibeoednhnbjhg";} # Floccus
+        {id = "mbhadeogepkjdjeikcckdkjdjhhkhlid";} # Universal Trakt Scrobbler (Netflix, Max, Prime Video, ...)
       ];
     };
   };

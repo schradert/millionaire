@@ -81,6 +81,7 @@
     # ./media/obs-studio.nix
     ./media/owncast.nix
     ./media/ryot.nix
+    ./media/letterboxd-sync.nix
     ./media/shoko.nix
     # Disabled: no per-user sign-in without a Jellyfin password, see docs/media-stack.md.
     # ./media/streamystats.nix

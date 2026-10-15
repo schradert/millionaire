@@ -181,7 +181,23 @@ Jellyfin plays out to Trakt:
 1. Flip `traktPlugin = true` in `nixidy/apps/media/jellyfin.nix`. Render, commit and sync. The Jellyfin bootstrap installs the Trakt plugin.
 2. In Jellyfin, go to Dashboard → Plugins → Trakt, pick your user and click **Authorize Device**. Enter the code at <https://trakt.tv/activate>. This device-code login is per Jellyfin user and is the one step that can't be automated: the plugin only accepts tokens issued to its own client ID. The token stays in Jellyfin's config volume, which VolSync backs up.
 
-Letterboxd: there is no public write API, and Ryot (v10.5) has no Letterboxd importer. What works today:
+Streaming services into Trakt (details and per-service coverage: docs/scrobbling.md):
+
+1. Brave installs Universal Trakt Scrobbler on the next `darwin-rebuild`. Click its icon, log in to Trakt, and in its options turn on **Scrobble** for Netflix, Max, Prime Video and Disney+.
+2. For Netflix, Max and Prime Video: log in to the service in Brave, then in the extension's Sync page run one history sync (this is what picks up plays from the Android TV). Then turn on **Auto sync** for each and set the interval to 1 day. Do it per profile you want on Trakt.
+3. Disney+ has no sync in the extension, so Android TV plays are not captured. Decide whether Trakt VIP's Streaming Scrobbler (in the Trakt app, links the account) is worth it for that.
+
+Letterboxd sync robot (optional, read the risk section of docs/scrobbling.md first: Letterboxd's terms may prohibit automated access):
+
+1. Make sure `ryot/trakt/client-id` exists (the Ryot step above) and the Trakt profile is public.
+2. Store your Letterboxd login in Bitwarden as `letterboxd/username` and `letterboxd/password`. Export your Letterboxd data first (Settings, Data, Export) as a backup.
+3. The image is built by the in-cluster publish workflow after merge. When `harbor.trdos.me/library/letterboxd-sync:0.1.0` exists, add `pkgs/images/letterboxd-sync/pin.json` (the shape of `pkgs/images/seerr-sso/pin.json`, repository `harbor.trdos.me/library/letterboxd-sync`, the digest the workflow printed).
+4. In `nixidy/apps/media/letterboxd-sync.nix` set `enable = true` and `traktUsername`. Render, commit and sync. Leave `confirmImport = false`.
+5. Run it once: `kubectl -n media create job --from=cronjob/letterboxd-sync lbx-first`. The first run only records a baseline (set `startAt` to backfill from a date). Watch ntfy `media` and the job logs.
+6. After a new Trakt play, run it again. In trial mode it uploads, then ntfy shows the page's own summary text. If the summary looks right, set `confirmImport = true`, render, commit and sync. If it fails at the import page, the screenshots are in `/state/debug/` on the `letterboxd-sync` PVC; the selectors in `apps/letterboxd-sync/src/browser.rs` may need adjusting to Letterboxd's current markup.
+7. If a run reports an unconfirmed batch, check the Letterboxd diary, then set `pendingAction` in `nixidy/apps/media/letterboxd-sync.nix` to `"ack"` (the films are there) or `"discard"` (they are not), render, commit, sync and run the job once. Set it back to `""` afterwards.
+
+Letterboxd: there is no public write API, and Ryot (v10.5) has no Letterboxd importer. Without the robot above:
 
 - Letterboxd into Ryot, once: export at Letterboxd → Settings → Data → Export. If Trakt's own importer accepts that CSV, import it into Trakt and let the Trakt import above carry it into Ryot. That Trakt feature is unverified.
 - Ryot or Jellyfin out to Letterboxd: upload a CSV by hand at <https://letterboxd.com/import/>. Letterboxd matches rows by `tmdbID`, and Ryot's JSON export holds TMDB ids.
