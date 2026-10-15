@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    release: prometheus
+  name: ceph-clients
+  namespace: storage
+spec:
+  groups:
+    - name: ceph-clients
+      rules:
+        - alert: CephClientsBlocklisted
+          annotations:
+            description: 'The blocklist grew by {{ $value }}: the MDS evicted CephFS clients (or a client was fenced). Mounts on the affected nodes may fail with EACCES until their pods restart; compare `ls` on each CephFS mount, or `dmesg | grep blocklisted` on the nodes.'
+            summary: Ceph blocklisted clients
+          expr: increase(ceph_cluster_osd_blocklist_count[15m]) > 0
+          labels:
+            severity: warning

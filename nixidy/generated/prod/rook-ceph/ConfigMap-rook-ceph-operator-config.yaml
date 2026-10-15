@@ -2,7 +2,7 @@ apiVersion: v1
 data:
   CSI_CEPHFS_ATTACH_REQUIRED: "true"
   CSI_CEPHFS_FSGROUPPOLICY: File
-  CSI_CEPHFS_KERNEL_MOUNT_OPTIONS: ms_mode=prefer-crc
+  CSI_CEPHFS_KERNEL_MOUNT_OPTIONS: ms_mode=prefer-crc,recover_session=clean
   CSI_CEPHFS_PLUGIN_RESOURCE: '[{"name":"csi-cephfsplugin","resource":{"limits":{"memory":"1Gi"},"requests":{"cpu":"50m","memory":"512Mi"}}},{"name":"driver-registrar","resource":{"limits":{"memory":"256Mi"},"requests":{"cpu":"20m","memory":"128Mi"}}},{"name":"liveness-prometheus","resource":{"limits":{"memory":"256Mi"},"requests":{"cpu":"20m","memory":"128Mi"}}}]'
   CSI_CEPHFS_PLUGIN_VOLUME: |-
     - hostPath:
