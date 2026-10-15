@@ -15,6 +15,7 @@
   # existing install is the flat layout; unset at the reinstall (docs/node-standard.md)
   profiles.client.enable = true;
   profiles.workstation.enable = true;
+  workstationKeys.enable = true;
   apiKeys.enable = true; # axolotl is a recipient of personal.yaml (.sops.yaml)
   # Existing install (checked 2026-10-10): NixOS 25.11, pool root/{root,home,tmp}, 1G ESP
   system.stateVersion = "25.11";

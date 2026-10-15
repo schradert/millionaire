@@ -19,6 +19,8 @@
       home.packages = [pkgs.devenv];
       home.sessionVariables.DIRENV_WARN_TIMEOUT = "10s";
       programs.direnv.enable = true;
+      # the repo's .envrc files are ours: no manual `direnv allow` per checkout/worktree
+      programs.direnv.config.whitelist.prefix = ["${config.home.homeDirectory}/Projects/millionaire"];
       programs.elvish.initExtra = "eval (${lib.getExe config.programs.direnv.package} hook elvish)";
       programs.xonsh.packages = ps: [ps.xonsh.xontribs.xonsh-direnv];
       programs.xonsh.initExtra = "xontrib load direnv";

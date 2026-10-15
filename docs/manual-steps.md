@@ -153,6 +153,10 @@ The hub's folders and the clients come from the table in `modules/syncthing.nix`
 
 Unblocks: Documents, sensitive documents, notes and game saves on every host, and the saves from the Deck and falcon kept on the cluster before either is reinstalled.
 
+## 12. Age key on a new Mac
+
+The Macs are the root of trust: they decrypt `secrets/sops/*.yaml` with tristan's age key, so it cannot come from sops. Put it at `~/Library/Application Support/sops/age/keys.txt` (copy from an existing Mac, or `sops decrypt --extract '["age"]["tristan"]' secrets/sops/personal.yaml` on any workstation) and `~/.ssh/personal` from `ssh/personal` the same way. NixOS workstations get both from `modules/workstation-keys.nix`.
+
 ## 8. Later
 
 - Rotate secrets (README todo 17).
