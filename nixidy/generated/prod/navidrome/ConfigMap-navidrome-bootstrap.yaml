@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
-  image: harbor.trdos.me/library/app-bootstrap:0.22.1@sha256:efcaab3b2ee14c6d12e21e323ee0c59948842dd9bf75a6f2de5f07ec590cde6f
-  spec: 93f9826db36667b913691f35c093f768d3d392aec642d3815a655529379829e3
+  image: harbor.trdos.me/library/app-bootstrap:0.39.0@sha256:ac16ef9f70bc43ac22ab22f04b940c2e4ddf4008884a799a781cb141d17cf09f
+  spec: 81a7f4be122eb2221f1fc566e457c5cea868b603870cd5d6860853d56bea5c0b
 kind: ConfigMap
 metadata:
   name: navidrome-bootstrap

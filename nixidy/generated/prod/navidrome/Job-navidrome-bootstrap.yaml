@@ -20,8 +20,6 @@ spec:
               value: /secrets/admin/password
             - name: ADMIN_USER
               value: tristan
-            - name: LISTENBRAINZ_TOKEN_FILE
-              value: /secrets/maloja/token
             - name: NAVIDROME_URL
               value: http://navidrome.media.svc.cluster.local:4533
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -30,7 +28,9 @@ spec:
               value: "1000"
             - name: PYROSCOPE_SERVER_ADDRESS
               value: http://pyroscope.observability.svc.cluster.local:4040
-          image: harbor.trdos.me/library/app-bootstrap:0.22.1@sha256:efcaab3b2ee14c6d12e21e323ee0c59948842dd9bf75a6f2de5f07ec590cde6f
+            - name: SCROBBLE_USERS
+              value: tristan=/secrets/lz-tristan/token,e2e=/secrets/lz-e2e/token
+          image: harbor.trdos.me/library/app-bootstrap:0.39.0@sha256:ac16ef9f70bc43ac22ab22f04b940c2e4ddf4008884a799a781cb141d17cf09f
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
@@ -44,8 +44,11 @@ spec:
             - mountPath: /secrets/admin
               name: admin
               readOnly: true
-            - mountPath: /secrets/maloja
-              name: maloja
+            - mountPath: /secrets/lz-e2e
+              name: lz-e2e
+              readOnly: true
+            - mountPath: /secrets/lz-tristan
+              name: lz-tristan
               readOnly: true
       restartPolicy: OnFailure
       securityContext:
@@ -60,6 +63,9 @@ spec:
         - name: admin
           secret:
             secretName: navidrome-admin
-        - name: maloja
+        - name: lz-e2e
           secret:
-            secretName: navidrome-maloja
+            secretName: scrobble-lz-e2e
+        - name: lz-tristan
+          secret:
+            secretName: scrobble-lz-tristan

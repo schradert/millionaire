@@ -71,10 +71,9 @@
             annotations."reloader.stakater.com/auto" = "true";
             # Registers each user's generated scrobble key (Secret scrobble-maloja-<user>, what
             # multi-scrobbler presents) as a Maloja API key in that user's data directory before
-            # start, plus the owner's Navidrome key (Secret navidrome-maloja). Maloja keeps keys in
-            # <data dir>/apikeys.yml (flat `identifier: key` lines, doreah KeyStore; the image's
-            # python has no yaml); other entries are left alone. The old `multi-scrobbler`
-            # identifier is dropped.
+            # start. Maloja keeps keys in <data dir>/apikeys.yml (flat `identifier: key` lines, doreah
+            # KeyStore; the image's python has no yaml); other entries are left alone. The old
+            # `multi-scrobbler` and `navidrome` identifiers (one shared key each) are dropped.
             initContainers.apikeys = {
               image = pinned.images.maloja;
               command = [
@@ -82,7 +81,7 @@
                 "-c"
                 ''
                   import os
-                  for d, keys in [${lib.concatMapStringsSep ", " (u: ''(${builtins.toJSON (scrobble.dataDir u)}, {"scrobbler": "${keyVar u}"${lib.optionalString (scrobble.isMe u) '', "navidrome": "NAVIDROME_KEY"''}})'') scrobble.users}]:
+                  for d, keys in [${lib.concatMapStringsSep ", " (u: ''(${builtins.toJSON (scrobble.dataDir u)}, {"scrobbler": "${keyVar u}"}})'') scrobble.users}]:
                       os.makedirs(d, exist_ok=True)
                       f = d + "/apikeys.yml"
                       try:
@@ -93,25 +92,18 @@
                           want = name + ": " + os.environ[var]
                           if want not in lines:
                               lines = [l for l in lines if not l.startswith(name + ":")] + [want]
-                      lines = [l for l in lines if not l.startswith("multi-scrobbler:")]
+                      lines = [l for l in lines if not l.startswith(("multi-scrobbler:", "navidrome:"))]
                       open(f, "w").write("\n".join(lines) + "\n")
                 ''
               ];
-              env =
-                lib.listToAttrs (map (u:
-                  lib.nameValuePair (keyVar u) {
-                    valueFrom.secretKeyRef = {
-                      name = scrobble.malojaSecret u;
-                      key = "token";
-                    };
-                  })
-                scrobble.users)
-                // {
-                  NAVIDROME_KEY.valueFrom.secretKeyRef = {
-                    name = "navidrome-maloja";
+              env = lib.listToAttrs (map (u:
+                lib.nameValuePair (keyVar u) {
+                  valueFrom.secretKeyRef = {
+                    name = scrobble.malojaSecret u;
                     key = "token";
                   };
-                };
+                })
+              scrobble.users);
             };
             containers =
               {
