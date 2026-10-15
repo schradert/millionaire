@@ -34,7 +34,7 @@ spec:
               value: "30"
             - name: SPORTARR_TEAMS
               value: '[{"name":"Wrexham","sport":"Soccer"}]'
-          image: harbor.trdos.me/library/app-bootstrap:0.29.0@sha256:ffb0cc7e0188a481764d461b63aa282baab4bd7ce62cb76c0140a60fdbe98ce7
+          image: harbor.trdos.me/library/app-bootstrap:0.34.0@sha256:bd27d282771ae98b7eb8aac18f5c29b4117b2ee5e49549aaa045a8781f5572c9
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
