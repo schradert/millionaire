@@ -23,6 +23,8 @@ spec:
               env:
                 - name: ADMIN_EMAIL
                   value: t0rdos@pm.me
+                - name: AUTOBRR_USER
+                  value: tristan
                 - name: DOMAIN
                   value: trdos.me
                 - name: E2E_REPORT_CONFIGMAP
@@ -110,6 +112,9 @@ spec:
                   readOnly: true
                 - mountPath: /secrets/qbittorrent-admin
                   name: qbittorrent-admin
+                  readOnly: true
+                - mountPath: /secrets/autobrr-admin
+                  name: autobrr-admin
                   readOnly: true
           restartPolicy: Never
           securityContext:
@@ -206,6 +211,10 @@ spec:
               secret:
                 optional: true
                 secretName: qbittorrent-admin
+            - name: autobrr-admin
+              secret:
+                optional: true
+                secretName: autobrr-admin
       ttlSecondsAfterFinished: 86400
   schedule: 45 3 * * *
   startingDeadlineSeconds: 3600

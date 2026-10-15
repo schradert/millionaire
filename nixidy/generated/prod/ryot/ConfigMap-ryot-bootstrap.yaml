@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
-  image: harbor.trdos.me/library/app-bootstrap:0.21.0@sha256:c9c03ae43d7502edf415eff12c7e2b8c8206d0b3ff5b80e9c08d6142a6e9bb53
-  spec: 9b5e00beb6aab2f90696cd601785bfee7bb29738019c3a9bc1ccd73cd5d3af47
+  image: harbor.trdos.me/library/app-bootstrap:0.22.0@sha256:54821207ee6084468b141d0241860900a0b8aa1d465cfde4769e529626aee9ac
+  spec: 94a6f5247148656ff9ba0edba42d0eaf80a6c069b6154ea652f7b01d03c5dbf9
 kind: ConfigMap
 metadata:
   name: ryot-bootstrap

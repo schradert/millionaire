@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
-  image: harbor.trdos.me/library/app-bootstrap:0.21.0@sha256:c9c03ae43d7502edf415eff12c7e2b8c8206d0b3ff5b80e9c08d6142a6e9bb53
-  spec: 8dd72ef75d72299898e0cd5ee78e0189a8d2aa11113da7785b314f8232b2c5d2
+  image: harbor.trdos.me/library/app-bootstrap:0.22.0@sha256:54821207ee6084468b141d0241860900a0b8aa1d465cfde4769e529626aee9ac
+  spec: 9207864e8f3c328760c2e3c60e6aaea5e0cd5067b1732f02e9af0c1d18864757
 kind: ConfigMap
 metadata:
   name: mealie-bootstrap

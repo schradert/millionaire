@@ -1,0 +1,61 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: bazarr-bootstrap
+  namespace: media
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - bazarr
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4318
+            - name: PYROSCOPE_SAMPLE_RATE
+              value: "1000"
+            - name: PYROSCOPE_SERVER_ADDRESS
+              value: http://pyroscope.observability.svc.cluster.local:4040
+            - name: RADARR_API_KEY_FILE
+              value: /secrets/radarr/apikey
+            - name: SONARR_API_KEY_FILE
+              value: /secrets/sonarr/apikey
+          image: harbor.trdos.me/library/app-bootstrap:0.22.0@sha256:54821207ee6084468b141d0241860900a0b8aa1d465cfde4769e529626aee9ac
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /secrets/radarr
+              name: radarr
+              readOnly: true
+            - mountPath: /secrets/sonarr
+              name: sonarr
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - emptyDir: {}
+          name: tmp
+        - name: radarr
+          secret:
+            secretName: radarr-apikey
+        - name: sonarr
+          secret:
+            secretName: sonarr-apikey
