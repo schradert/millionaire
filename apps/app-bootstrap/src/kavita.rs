@@ -23,10 +23,7 @@ const SA_DIR: &str = "/var/run/secrets/kubernetes.io/serviceaccount";
 
 /// (name, folder, LibraryType, FileTypeGroups). LibraryType: Comic=1, Book=2.
 /// FileTypeGroup: Archive=1, Epub=2, Pdf=3, Images=4.
-const LIBRARIES: &[(&str, &str, u8, &[u8])] = &[
-    ("Books", "/media/books", 2, &[2, 3]),
-    ("Comics", "/media/comics", 1, &[1, 3, 4]),
-];
+const LIBRARIES: &[(&str, &str, u8, &[u8])] = &[("Books", "/media/books", 2, &[2, 3]), ("Comics", "/media/comics", 1, &[1, 3, 4])];
 
 /// Roles given to accounts provisioned through OIDC (never Admin).
 const DEFAULT_ROLES: &[&str] = &["Login", "Download", "Bookmark"];
@@ -50,14 +47,8 @@ struct Oidc {
     provider_name: String,
 }
 
-fn missing<'a>(
-    existing: &[String],
-    wanted: &'a [(&'a str, &'a str, u8, &'a [u8])],
-) -> Vec<&'a (&'a str, &'a str, u8, &'a [u8])> {
-    wanted
-        .iter()
-        .filter(|(name, ..)| !existing.iter().any(|e| e.eq_ignore_ascii_case(name)))
-        .collect()
+fn missing<'a>(existing: &[String], wanted: &'a [(&'a str, &'a str, u8, &'a [u8])]) -> Vec<&'a (&'a str, &'a str, u8, &'a [u8])> {
+    wanted.iter().filter(|(name, ..)| !existing.iter().any(|e| e.eq_ignore_ascii_case(name))).collect()
 }
 
 /// Kavita returns the stored OIDC secret as `*` repeated to its length.
@@ -97,11 +88,7 @@ fn apply_oidc(current: &mut Value, want: &Oidc, library_ids: &[i64]) -> bool {
 }
 
 async fn list_libraries(http: &Client, base: &str, token: &str) -> Result<Vec<Library>> {
-    let r = http
-        .get(format!("{base}/api/Library/libraries"))
-        .bearer_auth(token)
-        .send_t()
-        .await?;
+    let r = http.get(format!("{base}/api/Library/libraries")).bearer_auth(token).send_t().await?;
     Ok(ok(r, "GET /api/Library/libraries").await?.json().await?)
 }
 
@@ -112,33 +99,16 @@ async fn restart_kavita(selector: &str) -> Result<()> {
     let api = format!("https://{host}:{port}/api/v1/namespaces/{}/pods", var("NAMESPACE", "media"));
     let token = fs::read_to_string(format!("{SA_DIR}/token"))?;
     let ca = Certificate::from_pem(&fs::read(format!("{SA_DIR}/ca.crt"))?)?;
-    let kube = Client::builder()
-        .add_root_certificate(ca)
-        .timeout(Duration::from_secs(30))
-        .build()?;
-    let r = kube
-        .get(&api)
-        .bearer_auth(token.trim())
-        .query(&[("labelSelector", selector)])
-        .send_t()
-        .await?;
+    let kube = Client::builder().add_root_certificate(ca).timeout(Duration::from_secs(30)).build()?;
+    let r = kube.get(&api).bearer_auth(token.trim()).query(&[("labelSelector", selector)]).send_t().await?;
     let pods: Value = ok(r, "list kavita pods").await?.json().await?;
-    let names: Vec<&str> = pods["items"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|p| p["metadata"]["name"].as_str())
-        .collect();
+    let names: Vec<&str> = pods["items"].as_array().into_iter().flatten().filter_map(|p| p["metadata"]["name"].as_str()).collect();
     if names.is_empty() {
         return Err(format!("no pods match {selector}").into());
     }
     for name in names {
         println!("deleting pod {name} so kavita registers oidc at startup");
-        let r = kube
-            .delete(format!("{api}/{name}"))
-            .bearer_auth(token.trim())
-            .send_t()
-            .await?;
+        let r = kube.delete(format!("{api}/{name}")).bearer_auth(token.trim()).send_t().await?;
         ok(r, &format!("delete pod {name}")).await?;
     }
     Ok(())
@@ -171,35 +141,17 @@ pub async fn run() -> Result<()> {
     })
     .await?;
 
-    let admin_exists: bool = ok(
-        http.get(format!("{base}/api/Admin/exists")).send_t().await?,
-        "GET /api/Admin/exists",
-    )
-    .await?
-    .json()
-    .await?;
+    let admin_exists: bool = ok(http.get(format!("{base}/api/Admin/exists")).send_t().await?, "GET /api/Admin/exists").await?.json().await?;
     if admin_exists {
         println!("admin already exists, skipping registration");
     } else {
         println!("registering first admin {user}");
-        let r = http
-            .post(format!("{base}/api/Account/register"))
-            .json(&json!({ "username": user, "email": email, "password": password }))
-            .send_t()
-            .await?;
+        let r = http.post(format!("{base}/api/Account/register")).json(&json!({ "username": user, "email": email, "password": password })).send_t().await?;
         ok(r, "POST /api/Account/register").await?;
     }
 
-    let r = http
-        .post(format!("{base}/api/Account/login"))
-        .json(&json!({ "username": user, "password": password }))
-        .send_t()
-        .await?;
-    let token = ok(r, "POST /api/Account/login (generated admin password)")
-        .await?
-        .json::<User>()
-        .await?
-        .token;
+    let r = http.post(format!("{base}/api/Account/login")).json(&json!({ "username": user, "password": password })).send_t().await?;
+    let token = ok(r, "POST /api/Account/login (generated admin password)").await?.json::<User>().await?.token;
     println!("admin login ok");
 
     let existing = list_libraries(&http, base, &token).await?;
@@ -240,29 +192,16 @@ pub async fn run() -> Result<()> {
         ok(r, &format!("POST /api/Library/create ({name})")).await?;
     }
     let library_ids: Vec<i64> = {
-        let mut ids: Vec<i64> = list_libraries(&http, base, &token)
-            .await?
-            .iter()
-            .map(|l| l.id)
-            .collect();
+        let mut ids: Vec<i64> = list_libraries(&http, base, &token).await?.iter().map(|l| l.id).collect();
         ids.sort_unstable();
         ids
     };
 
-    let r = http
-        .get(format!("{base}/api/Settings"))
-        .bearer_auth(&token)
-        .send_t()
-        .await?;
+    let r = http.get(format!("{base}/api/Settings")).bearer_auth(&token).send_t().await?;
     let mut settings: Value = ok(r, "GET /api/Settings").await?.json().await?;
     if apply_oidc(&mut settings["oidcConfig"], &want, &library_ids) {
         println!("configuring oidc against {}", want.authority);
-        let r = http
-            .post(format!("{base}/api/Settings"))
-            .bearer_auth(&token)
-            .json(&settings)
-            .send_t()
-            .await?;
+        let r = http.post(format!("{base}/api/Settings")).bearer_auth(&token).json(&settings).send_t().await?;
         // Kavita fetches the authority's discovery document itself here, so a
         // success also proves the pod can reach and trust Keycloak.
         ok(r, "POST /api/Settings (oidc)").await?;
@@ -274,10 +213,7 @@ pub async fn run() -> Result<()> {
         println!("oidc active");
         return Ok(());
     }
-    let selector = var(
-        "KAVITA_POD_SELECTOR",
-        "app.kubernetes.io/name=kavita,app.kubernetes.io/instance=kavita",
-    );
+    let selector = var("KAVITA_POD_SELECTOR", "app.kubernetes.io/name=kavita,app.kubernetes.io/instance=kavita");
     restart_kavita(&selector).await?;
     tokio::time::sleep(Duration::from_secs(10)).await;
     // The old pod keeps answering "disabled" until it is gone, so "enabled" means the new one is up.
@@ -298,12 +234,7 @@ mod tests {
     use super::*;
 
     fn want() -> Oidc {
-        Oidc {
-            authority: "https://kc/realms/default".into(),
-            client_id: "kavita".into(),
-            secret: "s3cretvalue".into(),
-            provider_name: "Keycloak".into(),
-        }
+        Oidc { authority: "https://kc/realms/default".into(), client_id: "kavita".into(), secret: "s3cretvalue".into(), provider_name: "Keycloak".into() }
     }
 
     #[test]

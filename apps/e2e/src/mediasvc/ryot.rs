@@ -74,7 +74,10 @@ impl Ry {
                 json!({ "input": { "password": { "username": name, "password": pass } } }),
             )
             .await?;
-        d["loginUser"]["apiKey"].as_str().map(String::from).ok_or_else(|| Fail::new(APP, "login", format!("{name}: {}", d["loginUser"]["error"].as_str().unwrap_or("refused"))))
+        d["loginUser"]["apiKey"]
+            .as_str()
+            .map(String::from)
+            .ok_or_else(|| Fail::new(APP, "login", format!("{name}: {}", d["loginUser"]["error"].as_str().unwrap_or("refused"))))
     }
 
     /// The standing admin's API key, registering the account on first use.
@@ -107,7 +110,13 @@ pub async fn tracking(ctx: &Ctx, f: &mut Flow) -> R<()> {
         return Err(Fail::new(APP, "user details", excerpt(&me.to_string())));
     }
     let list = format!("{m}-list");
-    ry.gql(ctx, Some(&key), "mutation($input: CreateOrUpdateCollectionInput!) { createOrUpdateCollection(input: $input) { id } }", json!({ "input": { "name": list } })).await?;
+    ry.gql(
+        ctx,
+        Some(&key),
+        "mutation($input: CreateOrUpdateCollectionInput!) { createOrUpdateCollection(input: $input) { id } }",
+        json!({ "input": { "name": list } }),
+    )
+    .await?;
     let cols = ry.gql(ctx, Some(&key), "{ userCollectionsList { response { name } } }", json!({})).await?;
     if !cols["userCollectionsList"]["response"].as_array().into_iter().flatten().any(|c| c["name"].as_str() == Some(&list)) {
         return Err(Fail::new(APP, "collection", format!("{list} is not listed: {}", excerpt(&cols.to_string()))));

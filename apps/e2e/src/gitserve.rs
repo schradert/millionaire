@@ -48,7 +48,12 @@ pub fn dechunk(mut b: &[u8]) -> Vec<u8> {
 
 /// A CGI response (`Status:` and headers, a blank line, the body) as an HTTP/1.1 response.
 pub fn cgi_to_http(out: &[u8]) -> Vec<u8> {
-    let (head, body) = out.windows(4).position(|w| w == b"\r\n\r\n").map(|i| (&out[..i], &out[i + 4..])).or_else(|| out.windows(2).position(|w| w == b"\n\n").map(|i| (&out[..i], &out[i + 2..]))).unwrap_or((&[][..], out));
+    let (head, body) = out
+        .windows(4)
+        .position(|w| w == b"\r\n\r\n")
+        .map(|i| (&out[..i], &out[i + 4..]))
+        .or_else(|| out.windows(2).position(|w| w == b"\n\n").map(|i| (&out[..i], &out[i + 2..])))
+        .unwrap_or((&[][..], out));
     let head = String::from_utf8_lossy(head);
     let mut status = "200 OK".to_string();
     let mut headers = String::new();
@@ -93,7 +98,9 @@ fn serve(mut conn: std::net::TcpStream, root: &Path) {
     let body = if chunked { dechunk(&body) } else { body };
     let (path, query) = target.split_once('?').unwrap_or((&target, ""));
     // Only a GET of the ref advertisement and the upload-pack POST: a clone, nothing writable.
-    let readable = (method == "GET" && (path.ends_with("/info/refs") && query == "service=git-upload-pack" || path.contains("/objects/") || path.ends_with("/HEAD"))) || (method == "POST" && path.ends_with("/git-upload-pack"));
+    let readable = (method == "GET"
+        && (path.ends_with("/info/refs") && query == "service=git-upload-pack" || path.contains("/objects/") || path.ends_with("/HEAD")))
+        || (method == "POST" && path.ends_with("/git-upload-pack"));
     if !readable || path.contains("..") {
         let _ = conn.write_all(b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
         return;
@@ -167,21 +174,36 @@ mod tests {
     fn cgi_output_becomes_http() {
         let r = cgi_to_http(b"Status: 404 Not Found\r\nContent-Type: text/plain\r\n\r\nnope");
         let s = String::from_utf8(r).unwrap();
-        assert!(s.starts_with("HTTP/1.1 404 Not Found\r\n") && s.contains("Content-Type: text/plain") && s.contains("Content-Length: 4") && s.ends_with("nope"));
+        assert!(
+            s.starts_with("HTTP/1.1 404 Not Found\r\n") && s.contains("Content-Type: text/plain") && s.contains("Content-Length: 4") && s.ends_with("nope")
+        );
         let r = String::from_utf8(cgi_to_http(b"Content-Type: x\n\nbody")).unwrap();
         assert!(r.starts_with("HTTP/1.1 200 OK") && r.ends_with("body"));
     }
 
     #[test]
     fn serves_a_clone_to_a_real_git_client() {
-        if Command::new("git").arg("--version").output().is_err() || Command::new("git").args(["http-backend"]).env("GIT_PROJECT_ROOT", "/nonexistent").env("REQUEST_METHOD", "GET").env("PATH_INFO", "/x").output().is_err() {
+        if Command::new("git").arg("--version").output().is_err()
+            || Command::new("git")
+                .args(["http-backend"])
+                .env("GIT_PROJECT_ROOT", "/nonexistent")
+                .env("REQUEST_METHOD", "GET")
+                .env("PATH_INFO", "/x")
+                .output()
+                .is_err()
+        {
             return; // no git here (the image build's sandbox): the in-cluster run covers it
         }
         let dir = std::env::temp_dir().join(format!("e2e-gitserve-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("srv")).unwrap();
         let g = |wd: &Path, args: &[&str]| {
-            let o = Command::new("git").current_dir(wd).args(["-c", "user.name=e2e", "-c", "user.email=e2e@e2e.invalid", "-c", "init.defaultBranch=main"]).args(args).output().unwrap();
+            let o = Command::new("git")
+                .current_dir(wd)
+                .args(["-c", "user.name=e2e", "-c", "user.email=e2e@e2e.invalid", "-c", "init.defaultBranch=main"])
+                .args(args)
+                .output()
+                .unwrap();
             assert!(o.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&o.stderr));
         };
         g(&dir.join("srv"), &["init", "--bare", "-q", "r.git"]);

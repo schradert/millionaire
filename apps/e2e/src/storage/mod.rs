@@ -28,8 +28,29 @@ pub fn family() -> Family {
 
 fn flows() -> Vec<FlowDef> {
     vec![
-        FlowDef::new(NAME, "ceph-block", Tier::Offline, "RBD volume written by one Pod and read by another; a snapshot restores the old content", step!(flows::block)).cleanup(step!(flows::block_cleanup)),
-        FlowDef::new(NAME, "ceph-filesystem", Tier::Offline, "CephFS volume (ReadWriteMany) read by a Pod while another still mounts it", step!(flows::filesystem)).cleanup(step!(flows::filesystem_cleanup)),
-        FlowDef::new(NAME, "rados", Tier::Offline, "ObjectBucketClaim provisions a bucket; put, list, get and delete an object with the generated credentials", step!(rados::object)).cleanup(step!(rados::cleanup)),
+        FlowDef::new(
+            NAME,
+            "ceph-block",
+            Tier::Offline,
+            "RBD volume written by one Pod and read by another; a snapshot restores the old content",
+            step!(flows::block),
+        )
+        .cleanup(step!(flows::block_cleanup)),
+        FlowDef::new(
+            NAME,
+            "ceph-filesystem",
+            Tier::Offline,
+            "CephFS volume (ReadWriteMany) read by a Pod while another still mounts it",
+            step!(flows::filesystem),
+        )
+        .cleanup(step!(flows::filesystem_cleanup)),
+        FlowDef::new(
+            NAME,
+            "rados",
+            Tier::Offline,
+            "ObjectBucketClaim provisions a bucket; put, list, get and delete an object with the generated credentials",
+            step!(rados::object),
+        )
+        .cleanup(step!(rados::cleanup)),
     ]
 }

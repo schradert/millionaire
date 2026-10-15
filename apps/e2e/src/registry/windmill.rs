@@ -63,7 +63,12 @@ pub async fn run_script(ctx: &Ctx, f: &mut Flow) -> R<()> {
 
     // A script is runnable a moment after it is saved: retry while Windmill says "not found".
     let id = poll(APP, "run script", Duration::from_secs(30), Duration::from_secs(1), || async {
-        let r = wm.req(ctx, Method::POST, &format!("/w/{m}/jobs/run/p/{PATH}")).json(&json!({ "name": m })).send_t().await.map_err(|e| Fail::new(APP, "run script", chain(&e)))?;
+        let r = wm
+            .req(ctx, Method::POST, &format!("/w/{m}/jobs/run/p/{PATH}"))
+            .json(&json!({ "name": m }))
+            .send_t()
+            .await
+            .map_err(|e| Fail::new(APP, "run script", chain(&e)))?;
         match r.status().as_u16() {
             404 => Ok(None),
             s if (200..300).contains(&s) => Ok(Some(r.text().await.at(APP, "job id")?.trim().trim_matches('"').to_string())),
@@ -72,7 +77,11 @@ pub async fn run_script(ctx: &Ctx, f: &mut Flow) -> R<()> {
     })
     .await?;
     let result = poll(APP, "job result", Duration::from_secs(120), Duration::from_secs(2), || async {
-        let r = wm.req(ctx, Method::GET, &format!("/w/{m}/jobs_u/completed/get_result/{id}")).send_t().await.map_err(|e| Fail::new(APP, "get result", chain(&e)))?;
+        let r = wm
+            .req(ctx, Method::GET, &format!("/w/{m}/jobs_u/completed/get_result/{id}"))
+            .send_t()
+            .await
+            .map_err(|e| Fail::new(APP, "get result", chain(&e)))?;
         if r.status().as_u16() == 404 {
             return Ok(None);
         }

@@ -30,9 +30,30 @@ pub fn family() -> Family {
 
 fn flows() -> Vec<FlowDef> {
     vec![
-        FlowDef::new(NAME, "harbor-image", Tier::Offline, "tagged project and robot; push a generated image, pull it back; repository, robot and project deleted", step!(harbor::push_pull)).cleanup(step!(harbor::cleanup)),
-        FlowDef::new(NAME, "argocd-app", Tier::Offline, "tagged Application from a Job-served Git repo syncs a ConfigMap into e2e; cascading delete", step!(argocd::gitops)).cleanup(step!(argocd::cleanup)),
-        FlowDef::new(NAME, "windmill-script", Tier::Offline, "tagged workspace, a script saved and run through the API; result checked; deleted", step!(windmill::run_script)).cleanup(step!(windmill::cleanup)),
+        FlowDef::new(
+            NAME,
+            "harbor-image",
+            Tier::Offline,
+            "tagged project and robot; push a generated image, pull it back; repository, robot and project deleted",
+            step!(harbor::push_pull),
+        )
+        .cleanup(step!(harbor::cleanup)),
+        FlowDef::new(
+            NAME,
+            "argocd-app",
+            Tier::Offline,
+            "tagged Application from a Job-served Git repo syncs a ConfigMap into e2e; cascading delete",
+            step!(argocd::gitops),
+        )
+        .cleanup(step!(argocd::cleanup)),
+        FlowDef::new(
+            NAME,
+            "windmill-script",
+            Tier::Offline,
+            "tagged workspace, a script saved and run through the API; result checked; deleted",
+            step!(windmill::run_script),
+        )
+        .cleanup(step!(windmill::cleanup)),
     ]
 }
 
@@ -41,7 +62,7 @@ async fn passes(ctx: &Ctx, scope: &Scope, delete: bool) -> Vec<(&'static str, sv
         ("harbor", harbor::sweep(ctx, scope, delete).await),
         ("argocd", argocd::sweep(ctx, scope, delete).await),
         ("windmill", windmill::sweep(ctx, scope, delete).await),
-            ]
+    ]
 }
 
 async fn cleanup(ctx: &Ctx, scope: &Scope, dry: bool) -> Flow {

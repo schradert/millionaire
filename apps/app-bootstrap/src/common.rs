@@ -14,9 +14,7 @@ pub fn var(name: &str, default: &str) -> String {
 /// Secret from the file named by `<name>_FILE`, falling back to the `<name>` env var.
 pub fn secret(name: &str) -> Result<String> {
     if let Ok(path) = env::var(format!("{name}_FILE")) {
-        return Ok(fs::read_to_string(path)?
-            .trim_end_matches(['\n', '\r'])
-            .to_string());
+        return Ok(fs::read_to_string(path)?.trim_end_matches(['\n', '\r']).to_string());
     }
     env::var(name).map_err(|_| format!("set {name}_FILE or {name}").into())
 }
@@ -37,11 +35,7 @@ pub async fn ok(resp: Response, what: &str) -> Result<Response> {
         Ok(resp)
     } else {
         let body = resp.text().await.unwrap_or_default();
-        Err(format!(
-            "{what}: HTTP {status}: {}",
-            body.chars().take(300).collect::<String>()
-        )
-        .into())
+        Err(format!("{what}: HTTP {status}: {}", body.chars().take(300).collect::<String>()).into())
     }
 }
 
@@ -87,10 +81,7 @@ impl Kube {
         let port = env::var("KUBERNETES_SERVICE_PORT")?;
         let ca = reqwest::Certificate::from_pem(&fs::read(format!("{SA_DIR}/ca.crt"))?)?;
         Ok(Self {
-            http: reqwest::Client::builder()
-                .add_root_certificate(ca)
-                .timeout(Duration::from_secs(30))
-                .build()?,
+            http: reqwest::Client::builder().add_root_certificate(ca).timeout(Duration::from_secs(30)).build()?,
             api: format!("https://{host}:{port}"),
             token: fs::read_to_string(format!("{SA_DIR}/token"))?.trim().to_string(),
             namespace: fs::read_to_string(format!("{SA_DIR}/namespace"))?.trim().to_string(),

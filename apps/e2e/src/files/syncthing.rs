@@ -60,10 +60,11 @@ pub fn device_id(bytes: &[u8; 32]) -> String {
 #[cfg(test)]
 pub fn valid_device_id(id: &str) -> bool {
     let flat: String = id.chars().filter(|c| *c != '-').collect();
-    flat.len() == 56 && flat.as_bytes().chunks(14).all(|g| {
-        let g = std::str::from_utf8(g).unwrap_or_default();
-        luhn32(&g[..13]) == g.chars().nth(13).unwrap_or(' ')
-    })
+    flat.len() == 56
+        && flat.as_bytes().chunks(14).all(|g| {
+            let g = std::str::from_utf8(g).unwrap_or_default();
+            luhn32(&g[..13]) == g.chars().nth(13).unwrap_or(' ')
+        })
 }
 
 struct St {
@@ -134,7 +135,13 @@ pub async fn folder_roundtrip(ctx: &Ctx, f: &mut Flow) -> R<()> {
     f.ok(APP, "REST API answers with the hub's key", format!("device {}", &hub[..7.min(hub.len())]));
 
     let dev = device_of(m)?;
-    send(st.req(ctx, Method::PUT, &format!("/rest/config/devices/{dev}")).json(&json!({ "deviceID": dev, "name": format!("{m}-device"), "addresses": ["dynamic"], "autoAcceptFolders": false, "introducer": false })), APP, "add device").await?;
+    send(
+        st.req(ctx, Method::PUT, &format!("/rest/config/devices/{dev}"))
+            .json(&json!({ "deviceID": dev, "name": format!("{m}-device"), "addresses": ["dynamic"], "autoAcceptFolders": false, "introducer": false })),
+        APP,
+        "add device",
+    )
+    .await?;
     f.ok(APP, "tagged device added", format!("{m}-device"));
     send(
         st.req(ctx, Method::PUT, &format!("/rest/config/folders/{m}")).json(&json!({

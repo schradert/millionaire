@@ -64,11 +64,7 @@ fn covers(current: &Value, want: &Value) -> bool {
 }
 
 fn device_ids(list: &Value) -> BTreeSet<String> {
-    list.as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|d| d["deviceID"].as_str().map(String::from))
-        .collect()
+    list.as_array().into_iter().flatten().filter_map(|d| d["deviceID"].as_str().map(String::from)).collect()
 }
 
 /// `base` with every key of `over` set, objects merged and anything else replaced.
@@ -156,11 +152,7 @@ async fn ensure(api: &Api, kind: &str, key: &str, wanted: &[Value]) -> Result<Va
 
 pub async fn run() -> Result<()> {
     let base = var("SYNCTHING_URL", "http://syncthing.home.svc.cluster.local:8384");
-    let api = Api {
-        http: Client::builder().timeout(Duration::from_secs(60)).build()?,
-        base: base.trim_end_matches('/').to_string(),
-        key: secret("API_KEY")?,
-    };
+    let api = Api { http: Client::builder().timeout(Duration::from_secs(60)).build()?, base: base.trim_end_matches('/').to_string(), key: secret("API_KEY")? };
     let devices = list("DEVICES")?;
     let folders = list("FOLDERS")?;
 

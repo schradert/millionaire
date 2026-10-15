@@ -37,11 +37,7 @@ pub async fn run() -> Result<()> {
     let mut current = retry("waiting for shoko", 120, || state(&http, base)).await?;
     if current == "Waiting" {
         println!("first run: setting the default user and starting the server");
-        let r = http
-            .post(format!("{base}/api/v3/Init/DefaultUser"))
-            .json(&json!({ "Username": user, "Password": password }))
-            .send_t()
-            .await?;
+        let r = http.post(format!("{base}/api/v3/Init/DefaultUser")).json(&json!({ "Username": user, "Password": password })).send_t().await?;
         ok(r, "POST /api/v3/Init/DefaultUser").await?;
         let r = http.get(format!("{base}/api/v3/Init/StartServer")).send_t().await?;
         ok(r, "GET /api/v3/Init/StartServer").await?;
@@ -58,16 +54,8 @@ pub async fn run() -> Result<()> {
         return Err(format!("shoko did not reach Started (state {current:?})").into());
     }
 
-    let r = http
-        .post(format!("{base}/api/auth"))
-        .json(&json!({ "user": user, "pass": password, "device": "app-bootstrap" }))
-        .send_t()
-        .await?;
-    ok(
-        r,
-        &format!("POST /api/auth as {user} (generated password; if Shoko was set up by hand, set {user}'s password to shoko/admin-password)"),
-    )
-    .await?;
+    let r = http.post(format!("{base}/api/auth")).json(&json!({ "user": user, "pass": password, "device": "app-bootstrap" })).send_t().await?;
+    ok(r, &format!("POST /api/auth as {user} (generated password; if Shoko was set up by hand, set {user}'s password to shoko/admin-password)")).await?;
     println!("admin {user} login ok");
     Ok(())
 }

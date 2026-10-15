@@ -28,7 +28,15 @@ pub fn family() -> Family {
 
 fn flows() -> Vec<FlowDef> {
     vec![
-        FlowDef::new(NAME, "prometheus-pod", Tier::Offline, "kube-state-metrics series for a tagged Pod appear in Prometheus", step!(flows::prometheus)).cleanup(step!(flows::prometheus_cleanup)),
-        FlowDef::new(NAME, "loki-roundtrip", Tier::Offline, "a tagged Pod pushes a log line to Loki; query_range returns it, another tenant does not see it", step!(flows::loki)).cleanup(step!(flows::loki_cleanup)),
+        FlowDef::new(NAME, "prometheus-pod", Tier::Offline, "kube-state-metrics series for a tagged Pod appear in Prometheus", step!(flows::prometheus))
+            .cleanup(step!(flows::prometheus_cleanup)),
+        FlowDef::new(
+            NAME,
+            "loki-roundtrip",
+            Tier::Offline,
+            "a tagged Pod pushes a log line to Loki; query_range returns it, another tenant does not see it",
+            step!(flows::loki),
+        )
+        .cleanup(step!(flows::loki_cleanup)),
     ]
 }

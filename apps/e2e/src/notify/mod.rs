@@ -26,6 +26,13 @@ pub fn family() -> Family {
 fn flows() -> Vec<FlowDef> {
     vec![
         FlowDef::new(NAME, "ntfy-roundtrip", Tier::Offline, "publish to a run-tagged topic, receive live and from the cache", step!(flows::roundtrip)),
-        FlowDef::new(NAME, "alertmanager-ntfy", Tier::Offline, "synthetic alert reaches ntfy within the timeout, then its resolution", step!(flows::alert_to_ntfy)).cleanup(step!(flows::alert_cleanup)),
+        FlowDef::new(
+            NAME,
+            "alertmanager-ntfy",
+            Tier::Offline,
+            "synthetic alert reaches ntfy within the timeout, then its resolution",
+            step!(flows::alert_to_ntfy),
+        )
+        .cleanup(step!(flows::alert_cleanup)),
     ]
 }

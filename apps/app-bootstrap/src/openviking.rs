@@ -25,9 +25,7 @@ pub async fn run() -> Result<()> {
     let secret_name = var("SECRET_NAME", "openviking-agent-key");
     let root = secret("ROOT_API_KEY")?;
     let http = Client::builder().timeout(Duration::from_secs(60)).build()?;
-    let admin = |m: reqwest::Method, path: String| {
-        http.request(m, format!("{base}/api/v1/admin{path}")).header("X-API-Key", &root)
-    };
+    let admin = |m: reqwest::Method, path: String| http.request(m, format!("{base}/api/v1/admin{path}")).header("X-API-Key", &root);
 
     retry("waiting for openviking", 120, || async {
         let r = http.get(format!("{base}/health")).send_t().await?;
@@ -35,21 +33,11 @@ pub async fn run() -> Result<()> {
     })
     .await?;
 
-    let accounts: Value = ok(admin(reqwest::Method::GET, "/accounts".into()).send_t().await?, "list accounts")
-        .await?
-        .json()
-        .await?;
-    let has_account = accounts["result"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .any(|a| a["account_id"] == account.as_str());
+    let accounts: Value = ok(admin(reqwest::Method::GET, "/accounts".into()).send_t().await?, "list accounts").await?.json().await?;
+    let has_account = accounts["result"].as_array().into_iter().flatten().any(|a| a["account_id"] == account.as_str());
     if !has_account {
         println!("creating account {account}");
-        let r = admin(reqwest::Method::POST, "/accounts".into())
-            .json(&json!({ "account_id": account, "admin_user_id": admin_user }))
-            .send_t()
-            .await?;
+        let r = admin(reqwest::Method::POST, "/accounts".into()).json(&json!({ "account_id": account, "admin_user_id": admin_user })).send_t().await?;
         ok(r, "create account").await?;
     }
 
@@ -62,32 +50,21 @@ pub async fn run() -> Result<()> {
         }
     };
     let find = |users: &Value, id: &str| -> Option<String> {
-        users["result"]
-            .as_array()?
-            .iter()
-            .find(|u| u["user_id"] == id)
-            .and_then(|u| u["api_key"].as_str())
-            .map(String::from)
+        users["result"].as_array()?.iter().find(|u| u["user_id"] == id).and_then(|u| u["api_key"].as_str()).map(String::from)
     };
 
     let users = list("list users").await?;
     // The account must keep an admin: ensure it before the agent user.
     if !users["result"].as_array().into_iter().flatten().any(|u| u["role"] == "admin") {
         println!("registering admin user {admin_user}");
-        let r = admin(reqwest::Method::POST, users_path.clone())
-            .json(&json!({ "user_id": admin_user, "role": "admin" }))
-            .send_t()
-            .await?;
+        let r = admin(reqwest::Method::POST, users_path.clone()).json(&json!({ "user_id": admin_user, "role": "admin" })).send_t().await?;
         ok(r, "register admin user").await?;
     }
     let key = match find(&users, &agent_user) {
         Some(k) => k,
         None => {
             println!("registering user {agent_user}");
-            let r = admin(reqwest::Method::POST, users_path.clone())
-                .json(&json!({ "user_id": agent_user, "role": "user" }))
-                .send_t()
-                .await?;
+            let r = admin(reqwest::Method::POST, users_path.clone()).json(&json!({ "user_id": agent_user, "role": "user" })).send_t().await?;
             let v: Value = ok(r, "register user").await?.json().await?;
             match v["result"]["user_key"].as_str() {
                 Some(k) => k.to_string(),

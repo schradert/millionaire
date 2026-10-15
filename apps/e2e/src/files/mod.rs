@@ -30,13 +30,31 @@ pub fn family() -> Family {
 
 fn flows() -> Vec<FlowDef> {
     vec![
-        FlowDef::new(NAME, "baikal-dav", Tier::Offline, "tagged calendar + event and address book + contact over CalDAV/CardDAV; REPORT finds them; deleted", step!(baikal::dav_roundtrip))
-            .assert(step!(baikal::items_deleted))
-            .cleanup(step!(baikal::cleanup)),
-        FlowDef::new(NAME, "syncthing-folder", Tier::Offline, "tagged device and folder on the hub through the REST API; read back, idle, deleted", step!(syncthing::folder_roundtrip))
-            .cleanup(step!(syncthing::deleted)),
-        FlowDef::new(NAME, "atuin-sync", Tier::Offline, "the e2e account pushes a tagged record from one device and pulls it from another; store cleared", step!(atuin::sync_roundtrip))
-            .cleanup(step!(atuin::store_cleared)),
+        FlowDef::new(
+            NAME,
+            "baikal-dav",
+            Tier::Offline,
+            "tagged calendar + event and address book + contact over CalDAV/CardDAV; REPORT finds them; deleted",
+            step!(baikal::dav_roundtrip),
+        )
+        .assert(step!(baikal::items_deleted))
+        .cleanup(step!(baikal::cleanup)),
+        FlowDef::new(
+            NAME,
+            "syncthing-folder",
+            Tier::Offline,
+            "tagged device and folder on the hub through the REST API; read back, idle, deleted",
+            step!(syncthing::folder_roundtrip),
+        )
+        .cleanup(step!(syncthing::deleted)),
+        FlowDef::new(
+            NAME,
+            "atuin-sync",
+            Tier::Offline,
+            "the e2e account pushes a tagged record from one device and pulls it from another; store cleared",
+            step!(atuin::sync_roundtrip),
+        )
+        .cleanup(step!(atuin::store_cleared)),
     ]
 }
 

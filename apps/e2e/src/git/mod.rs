@@ -24,8 +24,11 @@ pub fn family() -> Family {
 
 fn flows() -> Vec<FlowDef> {
     vec![
-        FlowDef::new(NAME, "forgejo-repo", Tier::Offline, "create a repo, push over https, clone it back, delete it", step!(flows::repo_roundtrip)).assert(step!(flows::repo_deleted)).cleanup(step!(flows::cleanup)),
-        FlowDef::new(NAME, "bookmarks-floccus", Tier::Offline, "bookmarks route reaches Forgejo; an XBEL repo syncs between two clones", step!(flows::floccus)).cleanup(step!(flows::cleanup)),
+        FlowDef::new(NAME, "forgejo-repo", Tier::Offline, "create a repo, push over https, clone it back, delete it", step!(flows::repo_roundtrip))
+            .assert(step!(flows::repo_deleted))
+            .cleanup(step!(flows::cleanup)),
+        FlowDef::new(NAME, "bookmarks-floccus", Tier::Offline, "bookmarks route reaches Forgejo; an XBEL repo syncs between two clones", step!(flows::floccus))
+            .cleanup(step!(flows::cleanup)),
     ]
 }
 

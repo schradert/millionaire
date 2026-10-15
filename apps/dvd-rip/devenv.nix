@@ -41,23 +41,24 @@ in {
 
   # Run from the checkout rather than a store copy: devenv's eval cache
   # doesn't notice edits to files inside bin/, so a store copy goes stale.
-  scripts = lib.genAttrs [
-    "dvd-access"
-    "dvd-backup"
-    "dvd-inspect"
-    "dvd-encode"
-    "dvd-review"
-    "dvd-summary"
-    "dvd-damage"
-    "dvd-sort"
-    "dvd-rename"
-    "dvd-rip"
-    "dvd-play"
-    "dvd-watch"
-    "dvd-worker"
-  ] (name: {
-    exec = ''exec ${pkgs.bash}/bin/bash "$DEVENV_ROOT/bin/${name}" "$@"'';
-  });
+  scripts =
+    lib.genAttrs [
+      "dvd-access"
+      "dvd-backup"
+      "dvd-inspect"
+      "dvd-encode"
+      "dvd-review"
+      "dvd-summary"
+      "dvd-damage"
+      "dvd-sort"
+      "dvd-rename"
+      "dvd-rip"
+      "dvd-play"
+      "dvd-watch"
+      "dvd-worker"
+    ] (name: {
+      exec = ''exec ${pkgs.bash}/bin/bash "$DEVENV_ROOT/bin/${name}" "$@"'';
+    });
 
   # The ripping service: `devenv up` (in tmux on falcon). Insert a disc and it
   # is backed up, ejected and encoded; reinserting a ripped disc just ejects.

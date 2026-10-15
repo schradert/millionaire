@@ -58,23 +58,34 @@ pub async fn feed_roundtrip(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let mf = Mf::connect()?;
     let m = tagged(APP, &ctx.marker)?;
     let (user, pw) = (user_of(m), format!("Aa1-{}", random_hex()?));
-    let created = get_json(mf.admin(ctx, Method::POST, "/v1/users").json(&json!({ "username": user, "password": pw, "is_admin": false })), APP, "create user").await?;
+    let created =
+        get_json(mf.admin(ctx, Method::POST, "/v1/users").json(&json!({ "username": user, "password": pw, "is_admin": false })), APP, "create user").await?;
     let uid = created["id"].as_i64().ok_or_else(|| Fail::new(APP, "create user", "no id"))?;
     f.ok(APP, "tagged user created by the admin", format!("{user} (id {uid})"));
 
-    let cat = get_json(mf.as_user(ctx, &user, &pw, Method::POST, "/v1/categories").json(&json!({ "title": format!("{m}-category") })), APP, "create category").await?;
+    let cat = get_json(mf.as_user(ctx, &user, &pw, Method::POST, "/v1/categories").json(&json!({ "title": format!("{m}-category") })), APP, "create category")
+        .await?;
     let cat_id = cat["id"].as_i64().ok_or_else(|| Fail::new(APP, "create category", "no id"))?;
     f.ok(APP, "category created", format!("{m}-category"));
 
     let srv = Served::start("application/atom+xml; charset=utf-8", &atom(m, 1))?;
     let feed_url = format!("{}/{m}.xml", srv.base);
-    let r = mf.as_user(ctx, &user, &pw, Method::POST, "/v1/feeds").json(&json!({ "feed_url": feed_url, "category_id": cat_id })).send_t().await.map_err(|e| Fail::new(APP, "create feed", crate::ctx::chain(&e)))?;
+    let r = mf
+        .as_user(ctx, &user, &pw, Method::POST, "/v1/feeds")
+        .json(&json!({ "feed_url": feed_url, "category_id": cat_id }))
+        .send_t()
+        .await
+        .map_err(|e| Fail::new(APP, "create feed", crate::ctx::chain(&e)))?;
     let status = r.status();
     let body: Value = r.json().await.unwrap_or(Value::Null);
     if !status.is_success() {
         let why = body["error_message"].as_str().unwrap_or("");
         if why.contains("private") || why.contains("denied") || why.contains("not allowed") || why.contains("forbidden") {
-            return Err(Fail::skip(APP, "create feed", format!("Miniflux refuses to fetch from the Job's address ({why}); set FETCHER_ALLOW_PRIVATE_NETWORKS=1")));
+            return Err(Fail::skip(
+                APP,
+                "create feed",
+                format!("Miniflux refuses to fetch from the Job's address ({why}); set FETCHER_ALLOW_PRIVATE_NETWORKS=1"),
+            ));
         }
         return Err(Fail::new(APP, "create feed", format!("HTTP {status}: {}", excerpt(&body.to_string()))));
     }
@@ -103,7 +114,11 @@ pub async fn feed_roundtrip(ctx: &Ctx, f: &mut Flow) -> R<()> {
     f.ok(APP, "second entry appears after a refresh", format!("{} entries", titles.len()));
 
     send(mf.as_user(ctx, &user, &pw, Method::DELETE, &format!("/v1/feeds/{feed_id}")), APP, "delete feed").await?;
-    let r = mf.as_user(ctx, &user, &pw, Method::GET, &format!("/v1/feeds/{feed_id}")).send_t().await.map_err(|e| Fail::new(APP, "get deleted feed", crate::ctx::chain(&e)))?;
+    let r = mf
+        .as_user(ctx, &user, &pw, Method::GET, &format!("/v1/feeds/{feed_id}"))
+        .send_t()
+        .await
+        .map_err(|e| Fail::new(APP, "get deleted feed", crate::ctx::chain(&e)))?;
     if r.status().as_u16() != 404 {
         return Err(Fail::new(APP, "feed deleted", format!("GET answers HTTP {} after DELETE", r.status())));
     }

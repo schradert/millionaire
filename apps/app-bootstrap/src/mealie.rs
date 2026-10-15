@@ -26,11 +26,7 @@ const DEFAULT_PASSWORD: &str = "MyPassword";
 
 /// `POST /api/auth/token`; `Ok(None)` for rejected credentials.
 async fn login(http: &Client, base: &str, user: &str, password: &str) -> Result<Option<String>> {
-    let r = http
-        .post(format!("{base}/api/auth/token"))
-        .form(&[("username", user), ("password", password)])
-        .send_t()
-        .await?;
+    let r = http.post(format!("{base}/api/auth/token")).form(&[("username", user), ("password", password)]).send_t().await?;
     if r.status() == reqwest::StatusCode::UNAUTHORIZED {
         return Ok(None);
     }
@@ -94,17 +90,8 @@ pub async fn run() -> Result<()> {
 
     if me["email"].as_str().map(str::to_lowercase).as_deref() != Some(email.as_str()) || me["username"] != json!(username) {
         println!("setting seeded admin identity to {username} <{email}>");
-        let r = http
-            .put(format!("{base}/api/users/{id}"))
-            .bearer_auth(&token)
-            .json(&profile_update(&me, &username, &full_name, &email))
-            .send_t()
-            .await?;
-        ok(
-            r,
-            &format!("PUT /api/users/{id} (fails if another user already owns {username} or {email}, e.g. an OIDC login that beat the bootstrap)"),
-        )
-        .await?;
+        let r = http.put(format!("{base}/api/users/{id}")).bearer_auth(&token).json(&profile_update(&me, &username, &full_name, &email)).send_t().await?;
+        ok(r, &format!("PUT /api/users/{id} (fails if another user already owns {username} or {email}, e.g. an OIDC login that beat the bootstrap)")).await?;
     }
 
     println!("setting the generated admin password");

@@ -24,7 +24,10 @@ pub async fn main(args: &[String]) -> ExitCode {
         ["loki-push", url, tenant, marker, line] => {
             let http = reqwest::Client::builder().timeout(Duration::from_secs(30)).build().map_err(|e| e.to_string());
             match http {
-                Ok(h) => crate::observability::loki::push(&h, url, tenant, marker, line).await.map(|_| format!("pushed to {url} as tenant {tenant}")).map_err(|e| format!("{}: {}", e.step, e.msg)),
+                Ok(h) => crate::observability::loki::push(&h, url, tenant, marker, line)
+                    .await
+                    .map(|_| format!("pushed to {url} as tenant {tenant}"))
+                    .map_err(|e| format!("{}: {}", e.step, e.msg)),
                 Err(e) => Err(e),
             }
         }

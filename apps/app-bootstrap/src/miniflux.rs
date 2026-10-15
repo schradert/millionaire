@@ -37,12 +37,7 @@ struct Ui {
 
 impl Ui {
     fn with_cookies(&self, req: RequestBuilder) -> RequestBuilder {
-        let cookie = self
-            .cookies
-            .iter()
-            .map(|(k, v)| format!("{k}={v}"))
-            .collect::<Vec<_>>()
-            .join("; ");
+        let cookie = self.cookies.iter().map(|(k, v)| format!("{k}={v}")).collect::<Vec<_>>().join("; ");
         req.header(header::COOKIE, cookie)
     }
 
@@ -112,11 +107,7 @@ fn attrs(tag: &str) -> BTreeMap<String, String> {
 /// option of each select, textareas.
 fn form_fields(html: &str, action: &str) -> Vec<(String, String)> {
     let needle = format!(r#"action="{action}""#);
-    let form = html
-        .split("<form")
-        .skip(1)
-        .find(|f| f.split('>').next().unwrap_or_default().contains(&needle))
-        .unwrap_or(html);
+    let form = html.split("<form").skip(1).find(|f| f.split('>').next().unwrap_or_default().contains(&needle)).unwrap_or(html);
     let form = form.split("</form>").next().unwrap_or(form);
     let mut fields = Vec::new();
     // (name, first option's value, an option was selected): a select with no `selected`
@@ -186,9 +177,7 @@ async fn ensure_fever(base: &str, user: &str, password: &str) -> Result<()> {
     };
     // The login form is served at "/" (GET /login is POST-only and answers 405).
     let token = csrf(&ui.get("/").await?)?;
-    let r = ui
-        .post("/login", &[("csrf", &token), ("username", user), ("password", password)])
-        .await?;
+    let r = ui.post("/login", &[("csrf", &token), ("username", user), ("password", password)]).await?;
     // A good login redirects away from /login; a bad one re-renders the form (200).
     if r.status() != StatusCode::SEE_OTHER && r.status() != StatusCode::FOUND {
         return Err(format!("web login as {user}: HTTP {}", r.status()).into());
@@ -239,11 +228,7 @@ pub async fn run() -> Result<()> {
     .await?;
     let kc = keycloak::user().await?;
 
-    let r = http
-        .get(format!("{base}/v1/users/{user}"))
-        .basic_auth(&admin, Some(&admin_password))
-        .send_t()
-        .await?;
+    let r = http.get(format!("{base}/v1/users/{user}")).basic_auth(&admin, Some(&admin_password)).send_t().await?;
     if r.status() == StatusCode::NOT_FOUND {
         let r = http
             .post(format!("{base}/v1/users"))
@@ -279,12 +264,7 @@ pub async fn run() -> Result<()> {
             println!("{user} already linked, admin, and on the generated password");
         } else {
             let keys = changes.keys().cloned().collect::<Vec<_>>().join(", ");
-            let r = http
-                .put(format!("{base}/v1/users/{id}"))
-                .basic_auth(&admin, Some(&admin_password))
-                .json(&Value::Object(changes))
-                .send_t()
-                .await?;
+            let r = http.put(format!("{base}/v1/users/{id}")).basic_auth(&admin, Some(&admin_password)).json(&Value::Object(changes)).send_t().await?;
             ok(r, "PUT /v1/users").await?;
             println!("updated {user}: {keys}");
         }

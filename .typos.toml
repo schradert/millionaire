@@ -5,7 +5,13 @@
 # "snd_hda_intel") that typos misreads as misspellings — none are editable
 # without misrepresenting the detected hardware, so skip the directory.
 # docs/games-inventory.md quotes real save/file names (.sav, "Clair Obscur") verbatim.
-extend-exclude = ["static/facter/", "old/", "docs/games-inventory.md"]
+# nixidy/system/observability/dashboards/*.json are upstream Grafana dashboards kept verbatim.
+extend-exclude = [
+  "static/facter/",
+  "old/",
+  "docs/games-inventory.md",
+  "nixidy/system/observability/dashboards/",
+]
 
 [default]
 # Syncthing device IDs (modules/syncthing.nix) and age recipients: base32 strings, not words;
@@ -17,6 +23,8 @@ extend-ignore-re = [
   "TPE[0-9]",
   # Bazarr's own settings keys (serie_default_enabled, serie_default_profile)
   "serie_default_[a-z]+",
+  # base64 test vectors ("f", "fo", "foo", ...)
+  "\"fo\"",
 ]
 
 [default.extend-identifiers]

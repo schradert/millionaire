@@ -143,6 +143,8 @@ in {
         "embedded/templates"
         "pulumi/sdks"
         "apps/sveltekit-demo/bun.nix"
+        # upstream Grafana dashboards, kept byte-for-byte (a formatter change re-renders every ConfigMap)
+        "nixidy/system/observability/dashboards/"
       ];
       # Fast checks on commit, everything on push. canivete defaults every hook
       # to pre-commit+pre-push, which made each commit run the whole tree's
@@ -235,7 +237,7 @@ in {
           "^https?://[^./]+(:[0-9]+)?(/.*)?$"
           # Loopback proxy targets and link-local metadata endpoints in NixOS
           # configs are wiring, not links — unreachable from the dev machine.
-          "^https?://127\\.0\\.0\\.1"
+          "^https?://([^/@]*@)?127\\.0\\.0\\.1"
           "^https?://169\\.254\\."
           # RFC1918 private ranges and *.internal hosts are LAN/cluster wiring
           # (router admin UIs, moonraker, etc.) — unreachable from the dev box.
@@ -251,6 +253,12 @@ in {
           # GET 404s even though the repo is valid (same as descheduler below).
           "https://kubernetes-sigs.github.io/descheduler"
           "https://helm.ngc.nvidia.com/nvidia"
+          "https://otwld.github.io/ollama-helm"
+          "https://angelnu.github.io/helm-charts"
+          # XML namespace URIs (Atom etc.) are identifiers, not pages
+          "^https?://www\\.w3\\.org/"
+          # Kubernetes service env var shapes in comments (`tcp://ip:port`)
+          "ip:port"
           "https://maximhq.github.io/bifrost/helm-charts"
           "https://helm.coder.com/v2"
           "https://api.bitwarden.com"
@@ -258,6 +266,12 @@ in {
           "^.+/dns-query$"
         ];
         no-commit-to-branch.enable = lib.mkForce false;
+        # MD029: README todos keep stable numbers with gaps (docs cite "todo 55"); MD060 (new in
+        # markdownlint-cli 0.48) flags every compact table in the repo.
+        markdownlint.settings.configuration = {
+          MD029 = false;
+          MD060 = false;
+        };
         # statix walks the whole tree, so pre-existing findings anywhere block
         # every commit. Keep the hook, but disable the two codes the existing
         # codebase trips tree-wide (empty_pattern ×41, manual_inherit_from ×6)
