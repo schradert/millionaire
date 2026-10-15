@@ -12,7 +12,9 @@
 //!    profiles (the settings call replaces the whole set, so the others are sent back unchanged). When no
 //!    profile of that name exists but one named `BAZARR_RENAME_FROM` (default `English`, the profile an
 //!    earlier run made) does, that profile is renamed and given the languages instead, so the series and
-//!    movies already on it (and the defaults pointing at it) follow.
+//!    movies already on it (and the defaults pointing at it) follow. A profile of that name that lacks wanted
+//!    languages gets them added; when it exists next to `BAZARR_RENAME_FROM` (an earlier bootstrap made it with
+//!    fewer languages) the latter is removed and its defaults, series and movies move to it.
 //! 3. Make that profile the default for new series and movies, unless a default is already on.
 //! 4. Link Sonarr and Radarr (`SONARR_API_KEY[_FILE]`/`RADARR_API_KEY[_FILE]`; host
 //!    `<app>.media.svc.cluster.local`, port 80), each only when its link is not up yet.
@@ -78,21 +80,51 @@ fn language_profile(id: i64, name: &str, languages: &[String]) -> Value {
     })
 }
 
-/// Existing profiles with `name` among them: `(profiles, id of name, changed)`. A profile already called `name`
-/// is left alone; else the one called `rename_from` becomes `name` (keeping its id); else `name` is added.
-fn with_profile(existing: &Value, name: &str, rename_from: &str, languages: &[String]) -> (Vec<Value>, i64, bool) {
+/// The profiles to save and what changed.
+struct Profiles {
+    all: Vec<Value>,
+    /// Id of the profile called `name`.
+    id: i64,
+    changed: bool,
+    /// Id of the `rename_from` profile that was removed because `name` already existed (a run with an older bootstrap
+    /// made `name` with fewer languages): the defaults and series/movies pointing at it move to `id`.
+    superseded: Option<i64>,
+}
+
+/// Existing profiles with `name` among them, holding every wanted language. A profile called `name` gets the languages
+/// it lacks (the others stay) and replaces the one called `rename_from`, if both exist; else `rename_from` becomes
+/// `name` (keeping its id); else `name` is added.
+fn with_profile(existing: &Value, name: &str, rename_from: &str, languages: &[String]) -> Profiles {
     let mut all: Vec<Value> = existing.as_array().cloned().unwrap_or_default();
-    if let Some(id) = all.iter().find(|p| p["name"] == json!(name)).and_then(|p| p["profileId"].as_i64()) {
-        return (all, id, false);
+    let old_id = (rename_from != name).then(|| all.iter().find(|p| p["name"] == json!(rename_from)).and_then(|p| p["profileId"].as_i64())).flatten();
+    if let Some(i) = all.iter().position(|p| p["name"] == json!(name)) {
+        let id = all[i]["profileId"].as_i64().unwrap_or(1);
+        let have: Vec<String> = all[i]["items"].as_array().into_iter().flatten().filter_map(|it| it["language"].as_str().map(String::from)).collect();
+        let lacking = missing(&have, languages);
+        let mut changed = false;
+        if !lacking.is_empty() {
+            let mut items = all[i]["items"].as_array().cloned().unwrap_or_default();
+            let first = items.iter().filter_map(|it| it["id"].as_i64()).max().unwrap_or(0) + 1;
+            for (id, l) in (first..).zip(lacking) {
+                items.push(json!({ "id": id, "language": l, "audio_exclude": "False", "hi": "False", "forced": "False", "audio_only_include": "False" }));
+            }
+            all[i]["items"] = Value::Array(items);
+            changed = true;
+        }
+        if let Some(old) = old_id {
+            all.retain(|p| p["profileId"].as_i64() != Some(old));
+            return Profiles { all, id, changed: true, superseded: Some(old) };
+        }
+        return Profiles { all, id, changed, superseded: None };
     }
     if let Some(i) = all.iter().position(|p| p["name"] == json!(rename_from)) {
         let id = all[i]["profileId"].as_i64().unwrap_or(1);
         all[i] = language_profile(id, name, languages);
-        return (all, id, true);
+        return Profiles { all, id, changed: true, superseded: None };
     }
     let id = all.iter().filter_map(|p| p["profileId"].as_i64()).max().unwrap_or(0) + 1;
     all.push(language_profile(id, name, languages));
-    (all, id, true)
+    Profiles { all, id, changed: true, superseded: None }
 }
 
 /// Names from `wanted` that `have` lacks, in order.
@@ -158,15 +190,18 @@ pub async fn run() -> Result<()> {
     }
 
     // 2. profile
-    let (profiles, profile_id, added) = with_profile(&b.get("/api/system/languages/profiles").await?, &profile_name, &rename_from, &wanted_languages);
-    if added {
-        form.push(("languages-profiles".into(), Value::Array(profiles).to_string()));
+    let plan = with_profile(&b.get("/api/system/languages/profiles").await?, &profile_name, &rename_from, &wanted_languages);
+    let (profile_id, superseded) = (plan.id, plan.superseded);
+    let known: Vec<i64> = plan.all.iter().filter_map(|p| p["profileId"].as_i64()).collect();
+    if plan.changed {
+        form.push(("languages-profiles".into(), Value::Array(plan.all).to_string()));
     }
 
-    // 3. defaults
+    // 3. defaults (also when they still point at the profile this one replaced)
     let general = &settings["general"];
     for (kind, flag, profile) in [("series", "serie_default_enabled", "serie_default_profile"), ("movies", "movie_default_enabled", "movie_default_profile")] {
-        if general[flag] != json!(true) {
+        let on_superseded = superseded.is_some() && general[profile].as_i64() == superseded;
+        if general[flag] != json!(true) || on_superseded {
             println!("bazarr: {profile_name} is the default profile for {kind}");
             form.push((format!("settings-general-{flag}"), "true".into()));
             form.push((format!("settings-general-{profile}"), profile_id.to_string()));
@@ -222,8 +257,14 @@ pub async fn run() -> Result<()> {
             eprintln!("bazarr: {kind} not synced yet, leaving the profile to the default for new items");
             continue;
         };
-        let unset: Vec<i64> =
-            synced["data"].as_array().into_iter().flatten().filter(|i| i["profileId"].is_null()).filter_map(|i| i[id_field].as_i64()).collect();
+        // Without a profile, or on one that no longer exists (the one that was replaced).
+        let unset: Vec<i64> = synced["data"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|i| i["profileId"].as_i64().is_none_or(|p| !known.contains(&p)))
+            .filter_map(|i| i[id_field].as_i64())
+            .collect();
         if unset.is_empty() {
             continue;
         }
@@ -253,24 +294,42 @@ mod tests {
     #[test]
     fn profile_is_added_once() {
         let langs = vec!["en".to_string(), "pt".to_string()];
-        let (all, id, added) = with_profile(&json!([]), "Practice", "English", &langs);
-        assert!((all.len(), id, added) == (1, 1, true));
-        assert_eq!(all[0]["items"][1]["language"], "pt");
-        let (all2, id2, added2) = with_profile(&Value::Array(all), "Practice", "English", &langs);
-        assert!((all2.len(), id2, added2) == (1, 1, false));
-        let (all3, id3, _) = with_profile(&json!([{ "profileId": 4, "name": "French" }]), "Practice", "English", &langs);
-        assert!(all3.len() == 2 && id3 == 5);
+        let p = with_profile(&json!([]), "Practice", "English", &langs);
+        assert!((p.all.len(), p.id, p.changed, p.superseded) == (1, 1, true, None));
+        assert_eq!(p.all[0]["items"][1]["language"], "pt");
+        let p2 = with_profile(&Value::Array(p.all), "Practice", "English", &langs);
+        assert!((p2.all.len(), p2.id, p2.changed) == (1, 1, false));
+        let p3 = with_profile(&json!([{ "profileId": 4, "name": "French" }]), "Practice", "English", &langs);
+        assert!(p3.all.len() == 2 && p3.id == 5);
+    }
+
+    #[test]
+    fn a_thin_profile_gets_the_languages_and_replaces_the_earlier_one() {
+        // An older bootstrap made "Practice" with English only next to the default "English".
+        let langs = vec!["en".to_string(), "pt".to_string(), "es".to_string()];
+        let have = json!([
+            { "profileId": 1, "name": "English", "items": [{ "id": 1, "language": "en" }] },
+            { "profileId": 2, "name": "Practice", "items": [{ "id": 1, "language": "en" }] },
+        ]);
+        let p = with_profile(&have, "Practice", "English", &langs);
+        assert!((p.all.len(), p.id, p.changed, p.superseded) == (1, 2, true, Some(1)));
+        let items = p.all[0]["items"].as_array().unwrap();
+        assert_eq!(items.iter().map(|i| i["language"].as_str().unwrap()).collect::<Vec<_>>(), ["en", "pt", "es"]);
+        assert_eq!(items[2]["id"], 3);
+        // Settled: a rerun changes nothing.
+        let again = with_profile(&Value::Array(p.all), "Practice", "English", &langs);
+        assert!((again.all.len(), again.changed, again.superseded) == (1, false, None));
     }
 
     #[test]
     fn the_earlier_profile_is_renamed_keeping_its_id() {
         let langs = vec!["en".to_string(), "es".to_string()];
         let old = json!([{ "profileId": 3, "name": "English", "items": [{ "id": 1, "language": "en" }] }, { "profileId": 4, "name": "Other" }]);
-        let (all, id, changed) = with_profile(&old, "Practice", "English", &langs);
-        assert!((all.len(), id, changed) == (2, 3, true));
-        assert_eq!(all[0]["name"], "Practice");
-        assert_eq!(all[0]["items"].as_array().unwrap().len(), 2);
-        assert_eq!(all[1]["name"], "Other");
+        let p = with_profile(&old, "Practice", "English", &langs);
+        assert!((p.all.len(), p.id, p.changed, p.superseded) == (2, 3, true, None));
+        assert_eq!(p.all[0]["name"], "Practice");
+        assert_eq!(p.all[0]["items"].as_array().unwrap().len(), 2);
+        assert_eq!(p.all[1]["name"], "Other");
     }
 
     #[test]
