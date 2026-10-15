@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
-  image: harbor.trdos.me/library/app-bootstrap:0.22.0@sha256:54821207ee6084468b141d0241860900a0b8aa1d465cfde4769e529626aee9ac
-  spec: bc7925cfa01c035a7a29cb88252b5bc2bdc4e3bae19216e619170171cc855185
+  image: harbor.trdos.me/library/app-bootstrap:0.22.1@sha256:efcaab3b2ee14c6d12e21e323ee0c59948842dd9bf75a6f2de5f07ec590cde6f
+  spec: e48ebe95c90b64c7c69bdb05fbc7b22938c558db6b570becad7ba472ade779f3
 kind: ConfigMap
 metadata:
   name: autobrr-bootstrap
