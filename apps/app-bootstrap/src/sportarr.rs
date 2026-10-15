@@ -78,6 +78,21 @@ fn retention_days() -> i64 {
     var("SPORTARR_RETENTION_DAYS", "30").parse().unwrap_or(30)
 }
 
+/// A league added with no team selection comes up unmonitored and without events: switch it on (every team in it is
+/// followed) and queue the event sync, so the schedule is there to search.
+async fn settle_league(http: &Client, s: &Sportarr, external_id: &str) -> Result<()> {
+    for l in s.get(http, "/api/leagues").await?.as_array().into_iter().flatten() {
+        let (Some(id), true) = (l["id"].as_i64(), l["externalId"].as_str() == Some(external_id)) else { continue };
+        if l["monitored"] != json!(true) {
+            s.put(http, &format!("/api/leagues/{id}"), &json!({ "monitored": true })).await?;
+        }
+        if l["eventCount"].as_i64().unwrap_or(0) == 0 {
+            s.post(http, &format!("/api/leagues/{id}/refresh-events"), &json!({})).await?;
+        }
+    }
+    Ok(())
+}
+
 async fn ensure_team(http: &Client, s: &Sportarr, spec: &Value, profile: i64) -> Result<()> {
     let name = spec["name"].as_str().ok_or("a SPORTARR_TEAMS entry without a name")?;
     let sport = spec["sport"].as_str();
@@ -127,6 +142,9 @@ async fn ensure_team(http: &Client, s: &Sportarr, spec: &Value, profile: i64) ->
             }
         }
     }
+    for id in &ids {
+        settle_league(http, s, id).await?;
+    }
     println!("sportarr: {name} monitored in {} competitions", ids.len());
     Ok(())
 }
@@ -148,6 +166,7 @@ async fn ensure_league(http: &Client, s: &Sportarr, spec: &Value, profile: i64) 
     body["qualityProfileId"] = json!(spec["quality_profile"].as_i64().unwrap_or(profile));
     body["retentionDays"] = json!(spec["retention_days"].as_i64().unwrap_or_else(retention_days));
     s.post(http, "/api/leagues", &body).await?;
+    settle_league(http, s, body["externalId"].as_str().unwrap_or_default()).await?;
     println!("sportarr: added league {name}");
     Ok(())
 }
