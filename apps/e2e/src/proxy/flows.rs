@@ -2,6 +2,9 @@
 //! the admin user (groups `admin`, `family`) and the family user (`family`) each get what the
 //! declared groups say, an admitted request reaching the app and a refused one the proxy's 403.
 //! The portal flow checks every tile URL and that the portal's exports list the declared tiles.
+//! The gate flow checks every route at once: an anonymous request reaches no admin app (every
+//! oauth2-proxy route sends it to Keycloak, every admin tile an app serves itself refuses it) and
+//! the family user is refused on each admin-only route.
 
 use crate::trace::SendTraced as _;
 use std::time::Duration;
@@ -195,6 +198,130 @@ rows! {
     argo_rollouts: "argo-rollouts" => "rollouts",
 }
 
+// ---------- anonymous access ----------
+
+/// Admin tiles an app serves itself (no oauth2-proxy in front), with a path that needs a login:
+/// an anonymous request there must be refused or sent to a login page. An admin tile that is
+/// neither an oauth2-proxy upstream nor listed here fails the gate flow, so a new admin app
+/// cannot go live open by omission.
+pub const NATIVE_AUTH: [(&str, &str); 5] = [
+    ("argo", "/api/v1/applications"),
+    ("argo-workflows", "/api/v1/workflows/argo"),
+    ("windmill", "/api/users/whoami"),
+    ("keycloak", "/admin/realms/default/users"),
+    ("rook-ceph", "/api/summary"),
+];
+
+/// An anonymous request to a path that needs a login: 401, 403 or a redirect to a login page
+/// is right; a 2xx answered with data, a 404, a 5xx or no answer is not.
+pub fn judge_anonymous(a: &Answer) -> Result<(), String> {
+    match a.status {
+        Some(401 | 403 | 300..=399) => Ok(()),
+        Some(200..=299) => Err(format!("{} to an anonymous request", a.describe())),
+        Some(_) => Err(a.describe()),
+        None => Err(a.error.clone()),
+    }
+}
+
+/// Tiles for an audience (any group) that are not oauth2-proxy upstreams.
+pub fn native_admin_tiles<'a>(tiles: &'a [Tile], upstream_hosts: &[String]) -> Vec<&'a Tile> {
+    tiles.iter().filter(|t| !t.groups.is_empty() && !upstream_hosts.iter().any(|h| format!("https://{h}") == t.url.trim_end_matches('/'))).collect()
+}
+
+type Job = std::pin::Pin<Box<dyn std::future::Future<Output = Option<String>> + Send>>;
+
+/// Run `jobs` with at most 8 at a time; what they report (`Some(problem)`) is collected.
+async fn limited(jobs: Vec<Job>) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut set = JoinSet::new();
+    for j in jobs {
+        set.spawn(j);
+        if set.len() >= 8 {
+            out.extend(set.join_next().await.and_then(Result::ok).flatten());
+        }
+    }
+    while let Some(r) = set.join_next().await {
+        out.extend(r.ok().flatten());
+    }
+    out
+}
+
+pub async fn admin_gate(ctx: &Ctx, f: &mut Flow) -> R<()> {
+    let ups = catalog::upstreams()?;
+    let tiles = catalog::tiles()?;
+    let iss = issuer();
+    let mut bad: Vec<String> = Vec::new();
+
+    // Every oauth2-proxy route: no token goes to Keycloak.
+    let jobs: Vec<Job> = ups
+        .iter()
+        .map(|u| {
+            let (c, host, iss) = (ctx.noredir.clone(), u.host.clone(), iss.clone());
+            Box::pin(async move { sign_in_redirect(&c, &format!("https://{host}/"), &iss).await.err().map(|e| format!("{host}: {}", e.msg)) }) as Job
+        })
+        .collect();
+    let failures = limited(jobs).await;
+    if failures.is_empty() {
+        f.ok("oauth2-proxy", "every route sends an anonymous request to Keycloak", format!("{} routes", ups.len()));
+    }
+    bad.extend(failures);
+
+    // Admin-only routes: the family user gets the group check's 403.
+    let kc = Kc::connect()?;
+    let u = kc::users(ctx, &kc).await?;
+    let token = kc.token_for(ctx, &u.family).await?;
+    let admin_only: Vec<&catalog::Upstream> = ups.iter().filter(|u| !allowed(&u.groups, &FAMILY_GROUPS)).collect();
+    let jobs: Vec<Job> = admin_only
+        .iter()
+        .map(|u| {
+            let (c, host, token, iss) = (ctx.noredir.clone(), u.host.clone(), token.clone(), iss.clone());
+            Box::pin(async move {
+                let a = get(&c, &format!("https://{host}/"), Some(&token), Duration::from_secs(30)).await;
+                match judge(false, &a, &iss) {
+                    Verdict::Ok => None,
+                    Verdict::Down(m) | Verdict::Wrong(m) => Some(format!("{host}: family user: {m}")),
+                }
+            }) as Job
+        })
+        .collect();
+    let failures = limited(jobs).await;
+    if failures.is_empty() {
+        f.ok("oauth2-proxy", "the family user is refused on every admin-only route", format!("{} routes", admin_only.len()));
+    }
+    bad.extend(failures);
+
+    // Admin tiles an app serves itself: an anonymous request to a login-only path is refused.
+    let hosts: Vec<String> = ups.iter().map(|u| u.host.clone()).collect();
+    let native = native_admin_tiles(&tiles, &hosts);
+    let mut jobs: Vec<Job> = Vec::new();
+    for t in &native {
+        let Some((_, path)) = NATIVE_AUTH.iter().find(|(n, _)| *n == t.name) else {
+            bad.push(format!("{} ({}): an admin tile with no oauth2-proxy route and no anonymous check in NATIVE_AUTH (apps/e2e/src/proxy/flows.rs)", t.name, t.url));
+            continue;
+        };
+        let (c, name, url) = (ctx.noredir.clone(), t.name.clone(), format!("{}{path}", t.url.trim_end_matches('/')));
+        jobs.push(Box::pin(async move {
+            let a = get(&c, &url, None, Duration::from_secs(30)).await;
+            match judge_anonymous(&a) {
+                Ok(()) => None,
+                Err(_) if judge_tile(&a) == TileState::Unresolvable => None,
+                Err(m) => Some(format!("{name} {url}: {m}")),
+            }
+        }));
+    }
+    let failures = limited(jobs).await;
+    if failures.is_empty() {
+        f.ok("native auth", "admin tiles an app serves itself refuse an anonymous request", native.iter().map(|t| t.name.as_str()).collect::<Vec<_>>().join(", "));
+    }
+    bad.extend(failures);
+
+    if bad.is_empty() {
+        Ok(())
+    } else {
+        Err(Fail::new("proxy", "admin gate", format!("{} problems: {}", bad.len(), bad.join("; "))))
+    }
+}
+
 // ---------- portal ----------
 
 /// A tile's answer without a token: any answer an app gives (200, a redirect to its own or
@@ -355,15 +482,39 @@ mod tests {
     }
 
     #[test]
+    fn anonymous_requests_to_a_login_only_path() {
+        assert!(judge_anonymous(&ans(401, "")).is_ok());
+        assert!(judge_anonymous(&ans(403, "")).is_ok());
+        assert!(judge_anonymous(&ans(302, "https://x.example/login")).is_ok());
+        assert!(judge_anonymous(&ans(200, "")).is_err());
+        assert!(judge_anonymous(&ans(404, "")).is_err());
+        assert!(judge_anonymous(&ans(500, "")).is_err());
+        let none = Answer { status: None, location: String::new(), error: "connection refused".into(), timed_out: false };
+        assert!(judge_anonymous(&none).is_err());
+    }
+
+    #[test]
+    fn admin_tiles_outside_the_proxy_are_the_ones_to_check() {
+        let t = |n: &str, u: &str, g: &[&str]| Tile { name: n.into(), url: u.into(), groups: g.iter().map(|g| g.to_string()).collect() };
+        let tiles = [t("proxied", "https://p.example", &["admin"]), t("native", "https://n.example/", &["admin"]), t("family", "https://f.example", &[])];
+        let names: Vec<&str> = native_admin_tiles(&tiles, &["p.example".to_string()]).iter().map(|t| t.name.as_str()).collect();
+        assert_eq!(names, ["native"]);
+        let mut n: Vec<&str> = NATIVE_AUTH.iter().map(|(n, _)| *n).collect();
+        n.sort_unstable();
+        n.dedup();
+        assert_eq!(n.len(), NATIVE_AUTH.len());
+    }
+
+    #[test]
     fn tiles_without_a_root_page_are_probed_at_their_health_path() {
-        let t = |n: &str, u: &str| Tile { name: n.into(), url: u.into() };
+        let t = |n: &str, u: &str| Tile { name: n.into(), url: u.into(), groups: vec![] };
         assert_eq!(probe_url(&t("kosync", "https://kosync.example")), "https://kosync.example/healthcheck");
         assert_eq!(probe_url(&t("radarr", "https://radarr.example")), "https://radarr.example");
     }
 
     #[test]
     fn export_differences_are_named() {
-        let tiles = vec![Tile { name: "a".into(), url: "https://a.example".into() }, Tile { name: "b".into(), url: "https://b.example".into() }];
+        let tiles = vec![Tile { name: "a".into(), url: "https://a.example".into(), groups: vec![] }, Tile { name: "b".into(), url: "https://b.example".into(), groups: vec![] }];
         let export = json!([{ "name": "a", "url": "https://a.example" }, { "name": "c", "url": "https://c.example" }]);
         assert_eq!(export_diff(&tiles, &export), ["b missing", "c listed but not declared"]);
         let export = json!([{ "name": "a", "url": "https://other.example" }, { "name": "b", "url": "https://b.example" }]);

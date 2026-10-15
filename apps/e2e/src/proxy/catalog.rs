@@ -16,6 +16,8 @@ pub struct Upstream {
 pub struct Tile {
     pub name: String,
     pub url: String,
+    /// Keycloak groups the tile is for (any of); empty = every signed-in user.
+    pub groups: Vec<String>,
 }
 
 fn read(file: &str) -> R<String> {
@@ -53,7 +55,10 @@ pub fn parse_tiles(text: &str) -> Result<Vec<Tile>, String> {
     v.as_array()
         .ok_or("not a list")?
         .iter()
-        .map(|t| Ok(Tile { name: t["name"].as_str().ok_or("tile without name")?.to_string(), url: t["url"].as_str().ok_or("tile without url")?.to_string() }))
+        .map(|t| {
+            let groups = t["groups"].as_array().into_iter().flatten().filter_map(|g| g.as_str().map(String::from)).collect();
+            Ok(Tile { name: t["name"].as_str().ok_or("tile without name")?.to_string(), url: t["url"].as_str().ok_or("tile without url")?.to_string(), groups })
+        })
         .collect()
 }
 
@@ -75,6 +80,7 @@ mod tests {
     fn parses_tiles() {
         let t = parse_tiles(r#"[{"name":"radarr","url":"https://radarr.example","groups":["admin"],"section":"Media"}]"#).unwrap();
         assert_eq!((t[0].name.as_str(), t[0].url.as_str()), ("radarr", "https://radarr.example"));
+        assert_eq!(t[0].groups, ["admin"]);
         assert!(parse_tiles(r#"[{"name":"x"}]"#).is_err());
     }
 }
