@@ -1,11 +1,13 @@
 //! Servarr wiring: root folders, the qBittorrent download client, and Prowlarr's app sync.
 //!
-//! `app-bootstrap arr` configures whatever of Sonarr, Radarr, Lidarr and Prowlarr has an API key
+//! `app-bootstrap arr` configures whatever of Sonarr, Radarr, Lidarr, Bookshelf (ebooks), Bookshelf Audio
+//! (audiobooks; both Readarr forks, `BOOKSHELF[_AUDIO]_*`) and Prowlarr has an API key
 //! (`<APP>_API_KEY[_FILE]`; `<APP>_URL` defaults to `http://<app>.media.svc.cluster.local`). Every
 //! item is looked up first and only created when missing, so reruns change nothing and anything
 //! tuned by hand is left alone.
 //!
-//! - Root folder `<APP>_ROOT` (default `/media/tv`, `/media/movies`, `/media/music`).
+//! - Root folder `<APP>_ROOT` (default `/media/tv`, `/media/movies`, `/media/music`, `/media/books`,
+//!   `/media/audiobooks`).
 //! - Download client "qBittorrent" (`QBITTORRENT_HOST`/`_PORT_NUMBER`/`_USER`/`_PASSWORD[_FILE]`), built from
 //!   the app's own `/downloadclient/schema` and saved with `forceSave=true`. qBittorrent may be scaled
 //!   down (no VPN credentials yet) and the app can still refuse the client: that is a warning, not an
@@ -13,7 +15,9 @@
 //! - qBittorrent's own default save path (`QBITTORRENT_SAVE_PATH`, default `/media/downloads`, the mount the
 //!   arr apps share). Without it qBittorrent saves to its private `/config/Downloads` and every arr app
 //!   reports a remote-path-mapping error.
-//! - Prowlarr applications "Sonarr", "Radarr" and "Lidarr" (full sync), from `/applications/schema`.
+//! - Prowlarr applications "Sonarr", "Radarr", "Lidarr", "Bookshelf" and "Bookshelf Audio" (full sync), from
+//!   `/applications/schema` (the Bookshelf ones as Prowlarr's "Readarr", matched by name).
+//! - With `NTFY_URL` (`https://host/topic`), an "ntfy" notification in each app (grabs, imports, failures, health).
 //! - Prowlarr's own qBittorrent download client (category `prowlarr`, for grabs from its search page) and a
 //!   FlareSolverr indexer proxy (`FLARESOLVERR_URL`, tag `flaresolverr`).
 //! - Prowlarr indexers from `PROWLARR_INDEXERS`, a JSON list of `{name, definition, enable?, priority?,
@@ -78,20 +82,25 @@ fn first_id(list: &Value) -> Option<i64> {
     list.as_array()?.iter().filter_map(|p| p["id"].as_i64()).filter(|id| *id != 0).min()
 }
 
-/// Make sure `path` is a root folder. Lidarr also wants default profiles.
+/// Make sure `path` is a root folder. Lidarr and Readarr (v1) also want default profiles.
 pub async fn ensure_root_folder(http: &Client, s: &Servarr, path: &str) -> Result<bool> {
+    ensure_named_root_folder(http, s, path, "Music").await
+}
+
+/// `ensure_root_folder` with the folder's display name (v1 apps).
+pub async fn ensure_named_root_folder(http: &Client, s: &Servarr, path: &str, name: &str) -> Result<bool> {
     let folders = s.get(http, "/rootfolder").await?;
     if folders.as_array().into_iter().flatten().any(|f| f["path"].as_str().map(|p| p.trim_end_matches('/')) == Some(path.trim_end_matches('/'))) {
         return Ok(false);
     }
     let mut body = json!({ "path": path });
     if s.api == "v1" {
-        // Lidarr
-        let quality = first_id(&s.get(http, "/qualityprofile").await?).ok_or("lidarr has no quality profile")?;
-        let metadata = first_id(&s.get(http, "/metadataprofile").await?).ok_or("lidarr has no metadata profile")?;
+        // Lidarr, Readarr
+        let quality = first_id(&s.get(http, "/qualityprofile").await?).ok_or("no quality profile")?;
+        let metadata = first_id(&s.get(http, "/metadataprofile").await?).ok_or("no metadata profile")?;
         body = json!({
-            "name": "Music", "path": path, "defaultQualityProfileId": quality, "defaultMetadataProfileId": metadata,
-            "defaultMonitorOption": "all", "defaultNewItemMonitorOption": "all", "defaultTags": [],
+            "name": name, "path": path, "defaultQualityProfileId": quality, "defaultMetadataProfileId": metadata,
+            "defaultMonitorOption": "all", "defaultNewItemMonitorOption": "all", "defaultTags": [], "isCalibreLibrary": false,
         });
     }
     s.post(http, "/rootfolder", &body).await?;
@@ -118,8 +127,24 @@ async fn ensure_provider(
     extra: Value,
     set: &dyn Fn(&str) -> Option<Value>,
 ) -> Result<bool> {
+    ensure_provider_by(http, s, collection, name, implementation, true, extra, set).await
+}
+
+/// `ensure_provider`, matching existing providers by name only when `by_impl` is false (several of
+/// one implementation, like two Readarr instances in Prowlarr).
+#[allow(clippy::too_many_arguments)]
+async fn ensure_provider_by(
+    http: &Client,
+    s: &Servarr,
+    collection: &str,
+    name: &str,
+    implementation: &str,
+    by_impl: bool,
+    extra: Value,
+    set: &dyn Fn(&str) -> Option<Value>,
+) -> Result<bool> {
     let existing = s.get(http, collection).await?;
-    if existing.as_array().into_iter().flatten().any(|p| p["name"] == json!(name) || p["implementation"] == json!(implementation)) {
+    if existing.as_array().into_iter().flatten().any(|p| p["name"] == json!(name) || (by_impl && p["implementation"] == json!(implementation))) {
         return Ok(false);
     }
     let schemas = s.get(http, &format!("{collection}/schema")).await?;
@@ -279,16 +304,57 @@ async fn ensure_indexers(http: &Client, p: &Servarr, spec: &Value) -> Result<()>
 struct App {
     name: &'static str,
     env: &'static str,
+    /// Service name (`<host>.media.svc.cluster.local`).
+    host: &'static str,
     api: &'static str,
     root: &'static str,
+    /// Root folder display name (v1 apps).
+    folder: &'static str,
     category: &'static str,
+    /// Prowlarr's application implementation.
+    prowlarr: &'static str,
 }
 
-const APPS: [App; 3] = [
-    App { name: "Sonarr", env: "SONARR", api: "v3", root: "/media/tv", category: "sonarr" },
-    App { name: "Radarr", env: "RADARR", api: "v3", root: "/media/movies", category: "radarr" },
-    App { name: "Lidarr", env: "LIDARR", api: "v1", root: "/media/music", category: "lidarr" },
+const APPS: [App; 5] = [
+    App { name: "Sonarr", env: "SONARR", host: "sonarr", api: "v3", root: "/media/tv", folder: "TV", category: "sonarr", prowlarr: "Sonarr" },
+    App { name: "Radarr", env: "RADARR", host: "radarr", api: "v3", root: "/media/movies", folder: "Movies", category: "radarr", prowlarr: "Radarr" },
+    App { name: "Lidarr", env: "LIDARR", host: "lidarr", api: "v1", root: "/media/music", folder: "Music", category: "lidarr", prowlarr: "Lidarr" },
+    App {
+        name: "Bookshelf",
+        env: "BOOKSHELF",
+        host: "bookshelf",
+        api: "v1",
+        root: "/media/books",
+        folder: "Books",
+        category: "bookshelf",
+        prowlarr: "Readarr",
+    },
+    App {
+        name: "Bookshelf Audio",
+        env: "BOOKSHELF_AUDIO",
+        host: "bookshelf-audio",
+        api: "v1",
+        root: "/media/audiobooks",
+        folder: "Audiobooks",
+        category: "bookshelf-audio",
+        prowlarr: "Readarr",
+    },
 ];
+
+/// ntfy notification fields: `serverUrl` and the topic from `NTFY_URL` (`https://host/topic`).
+fn ntfy_fields(url: &str) -> Option<impl Fn(&str) -> Option<Value>> {
+    let (server, topic) = url.trim_end_matches('/').rsplit_once('/')?;
+    if !server.contains("://") || topic.is_empty() {
+        return None;
+    }
+    let (server, topic) = (server.to_string(), topic.to_string());
+    Some(move |f: &str| match f {
+        "serverUrl" => Some(json!(server)),
+        "topics" => Some(json!([topic])),
+        "priority" => Some(json!(3)),
+        _ => None,
+    })
+}
 
 pub async fn run() -> Result<()> {
     let http = Client::builder().timeout(Duration::from_secs(60)).build()?;
@@ -311,13 +377,13 @@ pub async fn run() -> Result<()> {
             println!("{}: no API key set, skipping", app.name);
             continue;
         };
-        let l = app.name.to_lowercase();
+        let l = app.host;
         let base = var(&format!("{}_URL", app.env), &format!("http://{l}.media.svc.cluster.local"));
         let s = Servarr { base: base.clone(), key: key.clone(), api: app.api };
-        s.wait(&http, &l).await?;
+        s.wait(&http, l).await?;
 
         let root = var(&format!("{}_ROOT", app.env), app.root);
-        if retry(&format!("{l} root folder"), 12, || ensure_root_folder(&http, &s, &root)).await? {
+        if retry(&format!("{l} root folder"), 12, || ensure_named_root_folder(&http, &s, &root, app.folder)).await? {
             println!("{l}: added root folder {root}");
         }
         let category = var(&format!("{}_CATEGORY", app.env), app.category);
@@ -328,6 +394,15 @@ pub async fn run() -> Result<()> {
             Ok(true) => println!("{l}: added the qBittorrent download client"),
             Ok(false) => {}
             Err(e) => eprintln!("{l}: skipping the qBittorrent download client (is qbittorrent up?): {e}"),
+        }
+        if let Some(set) = env::var("NTFY_URL").ok().as_deref().and_then(ntfy_fields) {
+            let on = json!({ "onGrab": true, "onReleaseImport": true, "onDownload": true, "onUpgrade": true, "onHealthIssue": true,
+                "onHealthRestored": true, "onDownloadFailure": true, "onImportFailure": true, "onManualInteractionRequired": true });
+            match ensure_provider(&http, &s, "/notification", "ntfy", "Ntfy", on, &set).await {
+                Ok(true) => println!("{l}: added the ntfy notification"),
+                Ok(false) => {}
+                Err(e) => eprintln!("{l}: skipping the ntfy notification: {e}"),
+            }
         }
         present.push((app, base, key));
     }
@@ -348,7 +423,8 @@ pub async fn run() -> Result<()> {
             _ => None,
         };
         let extra = json!({ "syncLevel": "fullSync" });
-        if ensure_provider(&http, &prowlarr, "/applications", app.name, app.name, extra, &set).await? {
+        let by_impl = app.prowlarr == app.name;
+        if ensure_provider_by(&http, &prowlarr, "/applications", app.name, app.prowlarr, by_impl, extra, &set).await? {
             println!("prowlarr: added application {}", app.name);
         }
     }
@@ -378,6 +454,16 @@ pub async fn run() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ntfy_url_split() {
+        let set = ntfy_fields("https://ntfy.example/media").unwrap();
+        assert_eq!(set("serverUrl"), Some(json!("https://ntfy.example")));
+        assert_eq!(set("topics"), Some(json!(["media"])));
+        assert_eq!(set("other"), None);
+        assert!(ntfy_fields("media").is_none());
+        assert!(ntfy_fields("https://ntfy.example/").is_none());
+    }
 
     #[test]
     fn fills_named_fields_only() {

@@ -1,6 +1,6 @@
 //! Idempotent first-run bootstraps, run as ArgoCD PostSync Jobs.
 //!
-//! `app-bootstrap <app>` where app is `actual`, `arr`, `atuin`, `audiobookshelf`, `autobrr`, `bazarr`, `forgejo`, `homarr`, `immich`, `kavita`, `komga`, `maintainerr`, `mealie`, `miniflux`, `navidrome`, `ombi`, `openviking`, `ryot`, `seerr`, `shoko`, `syncthing` or `contextforge`. Every step checks
+//! `app-bootstrap <app>` where app is `actual`, `arr`, `atuin`, `audiobookshelf`, `autobrr`, `bazarr`, `forgejo`, `homarr`, `immich`, `kapowarr`, `kavita`, `komga`, `maintainerr`, `mealie`, `miniflux`, `navidrome`, `ombi`, `openviking`, `ryot`, `seerr`, `shoko`, `syncthing` or `contextforge`. Every step checks
 //! the current state first, so a rerun against a configured app changes nothing.
 
 mod actual;
@@ -14,6 +14,7 @@ mod contextforge;
 mod forgejo;
 mod homarr;
 mod immich;
+mod kapowarr;
 mod kavita;
 mod keycloak;
 mod komga;
@@ -50,6 +51,7 @@ async fn main() -> ExitCode {
         "bazarr" => bazarr::run().await,
         "forgejo" => forgejo::run().await,
         "immich" => immich::run().await,
+        "kapowarr" => kapowarr::run().await,
         "kavita" => kavita::run().await,
         "komga" => komga::run().await,
         "maintainerr" => maintainerr::run().await,
@@ -64,7 +66,7 @@ async fn main() -> ExitCode {
         "syncthing" => syncthing::run().await,
         "contextforge" => contextforge::run().await,
         "homarr" => homarr::run().await,
-        other => Err(format!("usage: app-bootstrap <actual|arr|atuin|audiobookshelf|autobrr|bazarr|forgejo|immich|kavita|komga|maintainerr|mealie|miniflux|navidrome|ombi|openviking|ryot|seerr|shoko|syncthing|contextforge|homarr> (got {other:?})").into()),
+        other => Err(format!("usage: app-bootstrap <actual|arr|atuin|audiobookshelf|autobrr|bazarr|forgejo|immich|kapowarr|kavita|komga|maintainerr|mealie|miniflux|navidrome|ombi|openviking|ryot|seerr|shoko|syncthing|contextforge|homarr> (got {other:?})").into()),
     };
     let code = match res {
         Ok(()) => {

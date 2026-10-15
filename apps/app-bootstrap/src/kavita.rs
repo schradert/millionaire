@@ -23,7 +23,8 @@ const SA_DIR: &str = "/var/run/secrets/kubernetes.io/serviceaccount";
 
 /// (name, folder, LibraryType, FileTypeGroups). LibraryType: Comic=1, Book=2.
 /// FileTypeGroup: Archive=1, Epub=2, Pdf=3, Images=4.
-const LIBRARIES: &[(&str, &str, u8, &[u8])] = &[("Books", "/media/books", 2, &[2, 3]), ("Comics", "/media/comics", 1, &[1, 3, 4])];
+const LIBRARIES: &[(&str, &str, u8, &[u8])] =
+    &[("Books", "/media/books", 2, &[2, 3]), ("Comics", "/media/comics", 1, &[1, 3, 4]), ("Manga", "/media/manga", 0, &[1, 3, 4])];
 
 /// Roles given to accounts provisioned through OIDC (never Admin).
 const DEFAULT_ROLES: &[&str] = &["Login", "Download", "Bookmark"];
@@ -241,7 +242,7 @@ mod tests {
     fn creates_only_missing() {
         let names = vec!["books".to_string()];
         let todo: Vec<_> = missing(&names, LIBRARIES).iter().map(|l| l.0).collect();
-        assert_eq!(todo, ["Comics"]);
+        assert_eq!(todo, ["Comics", "Manga"]);
     }
 
     #[test]
