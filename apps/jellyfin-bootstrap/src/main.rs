@@ -10,6 +10,9 @@
 //!    plugin (restarting Jellyfin once when newly installed), write the OIDC provider
 //!    config only when it differs, and add the login-page button via the branding
 //!    LoginDisclaimer.
+//! 7. Install the plugins named in PLUGINS (`name|guid|version`, comma-separated, from the stable
+//!    repository) that are missing, restarting Jellyfin once. Their settings are left to whoever
+//!    needs them (Ryot's bootstrap writes the Webhook destination).
 
 use std::{env, fs, process::ExitCode, time::Duration};
 
@@ -30,10 +33,11 @@ const SSO_PLUGIN_GUID: &str = "505ce9d1d91642fa86ca673ef241d7df";
 /// 4.x is the line that targets Jellyfin 10.11 (manifest targetAbi 10.11.0.0).
 const SSO_PLUGIN_VERSION: &str = "4.0.0.4";
 const SSO_REPO_NAME: &str = "Jellyfin SSO";
-const SSO_REPO_URL: &str =
-    "https://raw.githubusercontent.com/9p4/jellyfin-plugin-sso/manifest-release/manifest.json";
+const SSO_REPO_URL: &str = "https://raw.githubusercontent.com/9p4/jellyfin-plugin-sso/manifest-release/manifest.json";
+const STABLE_REPO_URL: &str = "https://repo.jellyfin.org/files/plugin/manifest.json";
 const SSO_CSS_MARKER: &str = "/* jellyfin-bootstrap:sso */";
-const SSO_CSS: &str = "/* jellyfin-bootstrap:sso */\na.raised.emby-button { padding: 0.9em 1em; color: inherit !important; }\n.disclaimerContainer { display: block; }";
+const SSO_CSS: &str =
+    "/* jellyfin-bootstrap:sso */\na.raised.emby-button { padding: 0.9em 1em; color: inherit !important; }\n.disclaimerContainer { display: block; }";
 
 /// (name, path, collectionType). /media/dvd is deliberately absent: those ISOs are for Kodi.
 const LIBRARIES: &[(&str, &str, &str)] = &[
@@ -88,9 +92,7 @@ struct MaintainerrSettings {
 }
 
 fn auth_header(token: Option<&str>) -> String {
-    let mut h = format!(
-        r#"MediaBrowser Client="{CLIENT}", Device="{DEVICE}", DeviceId="{DEVICE_ID}", Version="{VERSION}""#
-    );
+    let mut h = format!(r#"MediaBrowser Client="{CLIENT}", Device="{DEVICE}", DeviceId="{DEVICE_ID}", Version="{VERSION}""#);
     if let Some(t) = token {
         h.push_str(&format!(r#", Token="{t}""#));
     }
@@ -99,22 +101,14 @@ fn auth_header(token: Option<&str>) -> String {
 
 fn read_password() -> Result<String> {
     if let Ok(path) = env::var("ADMIN_PASSWORD_FILE") {
-        return Ok(fs::read_to_string(path)?
-            .trim_end_matches(['\n', '\r'])
-            .to_string());
+        return Ok(fs::read_to_string(path)?.trim_end_matches(['\n', '\r']).to_string());
     }
     env::var("ADMIN_PASSWORD").map_err(|_| "set ADMIN_PASSWORD_FILE or ADMIN_PASSWORD".into())
 }
 
 /// Names from `wanted` that are not already present (case-insensitive).
-fn missing<'a>(
-    existing: &[String],
-    wanted: &'a [(&'a str, &'a str, &'a str)],
-) -> Vec<&'a (&'a str, &'a str, &'a str)> {
-    wanted
-        .iter()
-        .filter(|(name, ..)| !existing.iter().any(|e| e.eq_ignore_ascii_case(name)))
-        .collect()
+fn missing<'a>(existing: &[String], wanted: &'a [(&'a str, &'a str, &'a str)]) -> Vec<&'a (&'a str, &'a str, &'a str)> {
+    wanted.iter().filter(|(name, ..)| !existing.iter().any(|e| e.eq_ignore_ascii_case(name))).collect()
 }
 
 async fn ok(resp: Response, what: &str) -> Result<Response> {
@@ -123,11 +117,7 @@ async fn ok(resp: Response, what: &str) -> Result<Response> {
         Ok(resp)
     } else {
         let body = resp.text().await.unwrap_or_default();
-        Err(format!(
-            "{what}: HTTP {status}: {}",
-            body.chars().take(300).collect::<String>()
-        )
-        .into())
+        Err(format!("{what}: HTTP {status}: {}", body.chars().take(300).collect::<String>()).into())
     }
 }
 
@@ -136,16 +126,8 @@ async fn wait_for_jellyfin(http: &Client, base: &str) -> Result<PublicInfo> {
     loop {
         attempt += 1;
         let res = async {
-            let r = http
-                .get(format!("{base}/System/Info/Public"))
-                .send()
-                .await?;
-            Ok::<_, Box<dyn std::error::Error>>(
-                ok(r, "GET /System/Info/Public")
-                    .await?
-                    .json::<PublicInfo>()
-                    .await?,
-            )
+            let r = http.get(format!("{base}/System/Info/Public")).send().await?;
+            Ok::<_, Box<dyn std::error::Error>>(ok(r, "GET /System/Info/Public").await?.json::<PublicInfo>().await?)
         }
         .await;
         match res {
@@ -176,31 +158,13 @@ async fn run_wizard(http: &Client, base: &str, user: &str, password: &str) -> Re
     )
     .await?;
     // Jellyfin materialises the initial user on first read of this endpoint.
+    ok(http.get(format!("{base}/Startup/User")).header("X-Emby-Authorization", &hdr).send().await?, "GET /Startup/User").await?;
     ok(
-        http.get(format!("{base}/Startup/User"))
-            .header("X-Emby-Authorization", &hdr)
-            .send()
-            .await?,
-        "GET /Startup/User",
-    )
-    .await?;
-    ok(
-        http.post(format!("{base}/Startup/User"))
-            .header("X-Emby-Authorization", &hdr)
-            .json(&json!({ "Name": user, "Password": password }))
-            .send()
-            .await?,
+        http.post(format!("{base}/Startup/User")).header("X-Emby-Authorization", &hdr).json(&json!({ "Name": user, "Password": password })).send().await?,
         "POST /Startup/User",
     )
     .await?;
-    ok(
-        http.post(format!("{base}/Startup/Complete"))
-            .header("X-Emby-Authorization", &hdr)
-            .send()
-            .await?,
-        "POST /Startup/Complete",
-    )
-    .await?;
+    ok(http.post(format!("{base}/Startup/Complete")).header("X-Emby-Authorization", &hdr).send().await?, "POST /Startup/Complete").await?;
     println!("startup wizard completed");
     Ok(())
 }
@@ -216,13 +180,7 @@ async fn authenticate(http: &Client, base: &str, user: &str, password: &str) -> 
                 .json(&json!({ "Username": user, "Pw": password }))
                 .send()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(
-                ok(r, "POST /Users/AuthenticateByName")
-                    .await?
-                    .json::<AuthResult>()
-                    .await?
-                    .access_token,
-            )
+            Ok::<_, Box<dyn std::error::Error>>(ok(r, "POST /Users/AuthenticateByName").await?.json::<AuthResult>().await?.access_token)
         }
         .await;
         match res {
@@ -238,19 +196,14 @@ async fn authenticate(http: &Client, base: &str, user: &str, password: &str) -> 
 
 async fn ensure_libraries(http: &Client, base: &str, token: &str) -> Result<()> {
     let hdr = auth_header(Some(token));
-    let existing: Vec<String> = ok(
-        http.get(format!("{base}/Library/VirtualFolders"))
-            .header("X-Emby-Authorization", &hdr)
-            .send()
-            .await?,
-        "GET /Library/VirtualFolders",
-    )
-    .await?
-    .json::<Vec<VirtualFolder>>()
-    .await?
-    .into_iter()
-    .map(|f| f.name)
-    .collect();
+    let existing: Vec<String> =
+        ok(http.get(format!("{base}/Library/VirtualFolders")).header("X-Emby-Authorization", &hdr).send().await?, "GET /Library/VirtualFolders")
+            .await?
+            .json::<Vec<VirtualFolder>>()
+            .await?
+            .into_iter()
+            .map(|f| f.name)
+            .collect();
     println!("existing libraries: {existing:?}");
 
     let todo = missing(&existing, LIBRARIES);
@@ -263,12 +216,7 @@ async fn ensure_libraries(http: &Client, base: &str, token: &str) -> Result<()> 
         ok(
             http.post(format!("{base}/Library/VirtualFolders"))
                 .header("X-Emby-Authorization", &hdr)
-                .query(&[
-                    ("name", *name),
-                    ("collectionType", *kind),
-                    ("paths", *path),
-                    ("refreshLibrary", "true"),
-                ])
+                .query(&[("name", *name), ("collectionType", *kind), ("paths", *path), ("refreshLibrary", "true")])
                 .send()
                 .await?,
             &format!("POST /Library/VirtualFolders ({name})"),
@@ -279,21 +227,11 @@ async fn ensure_libraries(http: &Client, base: &str, token: &str) -> Result<()> 
 }
 
 async fn find_key(http: &Client, base: &str, token: &str) -> Result<Option<String>> {
-    let keys = ok(
-        http.get(format!("{base}/Auth/Keys"))
-            .header("X-Emby-Authorization", auth_header(Some(token)))
-            .send()
-            .await?,
-        "GET /Auth/Keys",
-    )
-    .await?
-    .json::<ApiKeys>()
-    .await?;
-    Ok(keys
-        .items
-        .into_iter()
-        .find(|k| k.app_name == MAINTAINERR_KEY_NAME)
-        .map(|k| k.access_token))
+    let keys = ok(http.get(format!("{base}/Auth/Keys")).header("X-Emby-Authorization", auth_header(Some(token))).send().await?, "GET /Auth/Keys")
+        .await?
+        .json::<ApiKeys>()
+        .await?;
+    Ok(keys.items.into_iter().find(|k| k.app_name == MAINTAINERR_KEY_NAME).map(|k| k.access_token))
 }
 
 async fn ensure_api_key(http: &Client, base: &str, token: &str) -> Result<String> {
@@ -303,34 +241,22 @@ async fn ensure_api_key(http: &Client, base: &str, token: &str) -> Result<String
     }
     println!("creating {MAINTAINERR_KEY_NAME} API key");
     ok(
-        http.post(format!("{base}/Auth/Keys"))
-            .header("X-Emby-Authorization", auth_header(Some(token)))
-            .query(&[("app", MAINTAINERR_KEY_NAME)])
-            .send()
-            .await?,
+        http.post(format!("{base}/Auth/Keys")).header("X-Emby-Authorization", auth_header(Some(token))).query(&[("app", MAINTAINERR_KEY_NAME)]).send().await?,
         "POST /Auth/Keys",
     )
     .await?;
-    find_key(http, base, token)
-        .await?
-        .ok_or_else(|| "API key not listed after creation".into())
+    find_key(http, base, token).await?.ok_or_else(|| "API key not listed after creation".into())
 }
 
 /// Maintainerr returns the key masked (`abc...xyz`), so match the mask as well as the full value.
 fn key_matches(current: &str, key: &str) -> bool {
-    current == key
-        || (current.len() == 9
-            && current.get(3..6) == Some("...")
-            && key.starts_with(&current[..3])
-            && key.ends_with(&current[6..]))
+    current == key || (current.len() == 9 && current.get(3..6) == Some("...") && key.starts_with(&current[..3]) && key.ends_with(&current[6..]))
 }
 
 fn settings_in_sync(s: &MaintainerrSettings, jellyfin_url: &str, key: &str) -> bool {
     s.media_server_type.as_deref() == Some("jellyfin")
         && s.jellyfin_url.as_deref() == Some(jellyfin_url)
-        && s.jellyfin_api_key
-            .as_deref()
-            .is_some_and(|c| key_matches(c, key))
+        && s.jellyfin_api_key.as_deref().is_some_and(|c| key_matches(c, key))
 }
 
 async fn fetch_maintainerr_settings(http: &Client, base: &str) -> Result<MaintainerrSettings> {
@@ -339,12 +265,7 @@ async fn fetch_maintainerr_settings(http: &Client, base: &str) -> Result<Maintai
         attempt += 1;
         let res = async {
             let r = http.get(format!("{base}/api/settings")).send().await?;
-            Ok::<_, Box<dyn std::error::Error>>(
-                ok(r, "GET /api/settings")
-                    .await?
-                    .json::<MaintainerrSettings>()
-                    .await?,
-            )
+            Ok::<_, Box<dyn std::error::Error>>(ok(r, "GET /api/settings").await?.json::<MaintainerrSettings>().await?)
         }
         .await;
         match res {
@@ -358,12 +279,7 @@ async fn fetch_maintainerr_settings(http: &Client, base: &str) -> Result<Maintai
     }
 }
 
-async fn ensure_maintainerr(
-    http: &Client,
-    base: &str,
-    jellyfin_url: &str,
-    key: &str,
-) -> Result<()> {
+async fn ensure_maintainerr(http: &Client, base: &str, jellyfin_url: &str, key: &str) -> Result<()> {
     let current = fetch_maintainerr_settings(http, base).await?;
     if settings_in_sync(&current, jellyfin_url, key) {
         println!("maintainerr already configured, nothing to do");
@@ -399,13 +315,7 @@ struct SsoSettings {
 }
 
 fn csv(name: &str, default: &str) -> Vec<String> {
-    env::var(name)
-        .unwrap_or_else(|_| default.into())
-        .split(',')
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(String::from)
-        .collect()
+    env::var(name).unwrap_or_else(|_| default.into()).split(',').map(str::trim).filter(|s| !s.is_empty()).map(String::from).collect()
 }
 
 fn sso_settings() -> Result<Option<SsoSettings>> {
@@ -446,42 +356,57 @@ fn desired_oid_config(s: &SsoSettings) -> Value {
 
 /// Case-insensitive object key lookup (Jellyfin emits PascalCase, docs show camelCase).
 fn get_ci<'a>(v: &'a Value, key: &str) -> Option<&'a Value> {
-    v.as_object()?
-        .iter()
-        .find(|(k, _)| k.eq_ignore_ascii_case(key))
-        .map(|(_, v)| v)
+    v.as_object()?.iter().find(|(k, _)| k.eq_ignore_ascii_case(key)).map(|(_, v)| v)
 }
 
 /// True when every field in `desired` is already set to the same value in `current`.
 fn config_in_sync(current: &Value, desired: &Value) -> bool {
-    desired.as_object().is_some_and(|d| {
-        d.iter().all(|(k, want)| get_ci(current, k) == Some(want))
-    })
+    desired.as_object().is_some_and(|d| d.iter().all(|(k, want)| get_ci(current, k) == Some(want)))
 }
 
 fn norm_guid(g: &str) -> String {
     g.chars().filter(|c| *c != '-').collect::<String>().to_ascii_lowercase()
 }
 
-/// Ok(true) if the SSO plugin shows up in /Plugins; Err if it is installed but unusable.
-fn sso_plugin_state(plugins: &Value) -> Result<bool> {
+/// Ok(true) if the plugin (by GUID or name) shows up in /Plugins; Err if it is installed but unusable.
+fn plugin_state(plugins: &Value, guid: &str, plugin: &str) -> Result<bool> {
     let Some(list) = plugins.as_array() else {
         return Ok(false);
     };
+    let guid = norm_guid(guid);
     for p in list {
         let id = get_ci(p, "Id").and_then(Value::as_str).map(norm_guid);
         let name = get_ci(p, "Name").and_then(Value::as_str);
-        if id.as_deref() == Some(SSO_PLUGIN_GUID) || name == Some(SSO_PLUGIN_NAME) {
+        if id.as_deref() == Some(guid.as_str()) || name == Some(plugin) {
             let status = get_ci(p, "Status").and_then(Value::as_str).unwrap_or("");
-            if status.eq_ignore_ascii_case("Malfunctioned")
-                || status.eq_ignore_ascii_case("NotSupported")
-            {
-                return Err(format!("SSO plugin present but status {status}").into());
+            if status.eq_ignore_ascii_case("Malfunctioned") || status.eq_ignore_ascii_case("NotSupported") {
+                return Err(format!("{plugin} plugin present but status {status}").into());
             }
             return Ok(true);
         }
     }
     Ok(false)
+}
+
+fn sso_plugin_state(plugins: &Value) -> Result<bool> {
+    plugin_state(plugins, SSO_PLUGIN_GUID, SSO_PLUGIN_NAME)
+}
+
+/// One stable-repository plugin to install: (name, guid, version).
+type PluginSpec = (String, String, String);
+
+/// `PLUGINS`: comma-separated `name|guid|version` entries.
+fn parse_plugins(raw: &str) -> Result<Vec<PluginSpec>> {
+    raw.split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(|entry| match entry.split('|').map(str::trim).collect::<Vec<_>>()[..] {
+            [name, guid, version] if !name.is_empty() && !guid.is_empty() && !version.is_empty() => {
+                Ok((name.to_string(), guid.to_string(), version.to_string()))
+            }
+            _ => Err(format!("PLUGINS entry {entry:?} is not name|guid|version").into()),
+        })
+        .collect()
 }
 
 /// Returns the repository list to POST, or None when ours is already registered and enabled.
@@ -504,9 +429,7 @@ fn repos_with_sso(current: &Value) -> Option<Value> {
 }
 
 fn login_disclaimer(provider: &str) -> String {
-    format!(
-        r#"<form action="/sso/OID/start/{provider}"><button class="raised block emby-button button-submit">Sign in with Keycloak</button></form>"#
-    )
+    format!(r#"<form action="/sso/OID/start/{provider}"><button class="raised block emby-button button-submit">Sign in with Keycloak</button></form>"#)
 }
 
 /// New CustomCss with our block appended, or None if already present.
@@ -521,29 +444,16 @@ fn css_with_sso(current: &str) -> Option<String> {
 }
 
 async fn get_json(http: &Client, base: &str, token: &str, path: &str) -> Result<Value> {
-    Ok(ok(
-        http.get(format!("{base}{path}"))
-            .header("X-Emby-Authorization", auth_header(Some(token)))
-            .send()
-            .await?,
-        &format!("GET {path}"),
-    )
-    .await?
-    .json::<Value>()
-    .await?)
+    Ok(ok(http.get(format!("{base}{path}")).header("X-Emby-Authorization", auth_header(Some(token))).send().await?, &format!("GET {path}"))
+        .await?
+        .json::<Value>()
+        .await?)
 }
 
 /// Restart Jellyfin and wait until it answers again (after having gone down, or 30s).
 async fn restart_and_wait(http: &Client, base: &str, token: &str) -> Result<()> {
     println!("restarting jellyfin");
-    ok(
-        http.post(format!("{base}/System/Restart"))
-            .header("X-Emby-Authorization", auth_header(Some(token)))
-            .send()
-            .await?,
-        "POST /System/Restart",
-    )
-    .await?;
+    ok(http.post(format!("{base}/System/Restart")).header("X-Emby-Authorization", auth_header(Some(token))).send().await?, "POST /System/Restart").await?;
     let mut went_down = false;
     for _ in 0..15 {
         sleep(Duration::from_secs(2)).await;
@@ -566,22 +476,12 @@ async fn restart_and_wait(http: &Client, base: &str, token: &str) -> Result<()> 
 }
 
 /// Returns true when the plugin was newly installed (and Jellyfin restarted).
-async fn ensure_sso_plugin(
-    http: &Client,
-    base: &str,
-    user: &str,
-    password: &str,
-    token: &mut String,
-) -> Result<()> {
+async fn ensure_sso_plugin(http: &Client, base: &str, user: &str, password: &str, token: &mut String) -> Result<()> {
     let repos = get_json(http, base, token, "/Repositories").await?;
     if let Some(new_repos) = repos_with_sso(&repos) {
         println!("registering plugin repository {SSO_REPO_NAME}");
         ok(
-            http.post(format!("{base}/Repositories"))
-                .header("X-Emby-Authorization", auth_header(Some(token)))
-                .json(&new_repos)
-                .send()
-                .await?,
+            http.post(format!("{base}/Repositories")).header("X-Emby-Authorization", auth_header(Some(token))).json(&new_repos).send().await?,
             "POST /Repositories",
         )
         .await?;
@@ -594,11 +494,7 @@ async fn ensure_sso_plugin(
     ok(
         http.post(format!("{base}/Packages/Installed/{}", SSO_PLUGIN_NAME.replace(' ', "%20")))
             .header("X-Emby-Authorization", auth_header(Some(token)))
-            .query(&[
-                ("assemblyGuid", SSO_PLUGIN_GUID),
-                ("version", SSO_PLUGIN_VERSION),
-                ("repositoryUrl", SSO_REPO_URL),
-            ])
+            .query(&[("assemblyGuid", SSO_PLUGIN_GUID), ("version", SSO_PLUGIN_VERSION), ("repositoryUrl", SSO_REPO_URL)])
             .send()
             .await?,
         "POST /Packages/Installed",
@@ -608,6 +504,41 @@ async fn ensure_sso_plugin(
     *token = authenticate(http, base, user, password).await?;
     if !sso_plugin_state(&get_json(http, base, token, "/Plugins").await?)? {
         return Err("SSO plugin not listed after install + restart".into());
+    }
+    Ok(())
+}
+
+/// Install whichever of `wanted` is missing, then restart Jellyfin once.
+async fn ensure_plugins(http: &Client, base: &str, user: &str, password: &str, token: &mut String, wanted: &[PluginSpec]) -> Result<()> {
+    let plugins = get_json(http, base, token, "/Plugins").await?;
+    let mut installed = Vec::new();
+    for (name, guid, version) in wanted {
+        if plugin_state(&plugins, guid, name)? {
+            println!("{name} plugin already installed");
+            continue;
+        }
+        println!("installing {name} plugin {version}");
+        ok(
+            http.post(format!("{base}/Packages/Installed/{}", name.replace(' ', "%20")))
+                .header("X-Emby-Authorization", auth_header(Some(token)))
+                .query(&[("assemblyGuid", guid.as_str()), ("version", version.as_str()), ("repositoryUrl", STABLE_REPO_URL)])
+                .send()
+                .await?,
+            "POST /Packages/Installed",
+        )
+        .await?;
+        installed.push((name, guid));
+    }
+    if installed.is_empty() {
+        return Ok(());
+    }
+    restart_and_wait(http, base, token).await?;
+    *token = authenticate(http, base, user, password).await?;
+    let plugins = get_json(http, base, token, "/Plugins").await?;
+    for (name, guid) in installed {
+        if !plugin_state(&plugins, guid, name)? {
+            return Err(format!("{name} plugin not listed after install + restart").into());
+        }
     }
     Ok(())
 }
@@ -633,11 +564,7 @@ async fn ensure_sso_provider(http: &Client, base: &str, token: &str, s: &SsoSett
     }
     println!("configuring sso provider {}", s.provider);
     ok(
-        http.post(format!("{base}/sso/OID/Add/{}", s.provider))
-            .header("X-Emby-Authorization", auth_header(Some(token)))
-            .json(&desired)
-            .send()
-            .await?,
+        http.post(format!("{base}/sso/OID/Add/{}", s.provider)).header("X-Emby-Authorization", auth_header(Some(token))).json(&desired).send().await?,
         "POST /sso/OID/Add",
     )
     .await?;
@@ -647,14 +574,8 @@ async fn ensure_sso_provider(http: &Client, base: &str, token: &str, s: &SsoSett
 async fn ensure_login_button(http: &Client, base: &str, token: &str, provider: &str) -> Result<()> {
     let mut branding = get_json(http, base, token, "/System/Configuration/branding").await?;
     let want = login_disclaimer(provider);
-    let cur_disclaimer = get_ci(&branding, "LoginDisclaimer")
-        .and_then(Value::as_str)
-        .unwrap_or("")
-        .to_string();
-    let cur_css = get_ci(&branding, "CustomCss")
-        .and_then(Value::as_str)
-        .unwrap_or("")
-        .to_string();
+    let cur_disclaimer = get_ci(&branding, "LoginDisclaimer").and_then(Value::as_str).unwrap_or("").to_string();
+    let cur_css = get_ci(&branding, "CustomCss").and_then(Value::as_str).unwrap_or("").to_string();
     let new_css = css_with_sso(&cur_css);
     if cur_disclaimer == want && new_css.is_none() {
         println!("login button already configured");
@@ -666,11 +587,7 @@ async fn ensure_login_button(http: &Client, base: &str, token: &str, provider: &
     obj.insert("LoginDisclaimer".into(), json!(want));
     obj.insert("CustomCss".into(), json!(new_css.unwrap_or(cur_css)));
     ok(
-        http.post(format!("{base}/System/Configuration/branding"))
-            .header("X-Emby-Authorization", auth_header(Some(token)))
-            .json(&branding)
-            .send()
-            .await?,
+        http.post(format!("{base}/System/Configuration/branding")).header("X-Emby-Authorization", auth_header(Some(token))).json(&branding).send().await?,
         "POST /System/Configuration/branding",
     )
     .await?;
@@ -678,8 +595,7 @@ async fn ensure_login_button(http: &Client, base: &str, token: &str, provider: &
 }
 
 async fn run() -> Result<()> {
-    let base = env::var("JELLYFIN_URL")
-        .unwrap_or_else(|_| "http://jellyfin.media.svc.cluster.local:8096".into());
+    let base = env::var("JELLYFIN_URL").unwrap_or_else(|_| "http://jellyfin.media.svc.cluster.local:8096".into());
     let base = base.trim_end_matches('/');
     let user = env::var("ADMIN_USER").unwrap_or_else(|_| "admin".into());
     let password = read_password()?;
@@ -695,6 +611,10 @@ async fn run() -> Result<()> {
         let jellyfin_url = env::var("MAINTAINERR_JELLYFIN_URL").unwrap_or_else(|_| base.into());
         let key = ensure_api_key(&http, base, &token).await?;
         ensure_maintainerr(&http, maintainerr.trim_end_matches('/'), &jellyfin_url, &key).await?;
+    }
+    let plugins = parse_plugins(&env::var("PLUGINS").unwrap_or_default())?;
+    if !plugins.is_empty() {
+        ensure_plugins(&http, base, &user, &password, &mut token, &plugins).await?;
     }
     if let Some(sso) = sso_settings()? {
         ensure_sso_plugin(&http, base, &user, &password, &mut token).await?;
@@ -734,11 +654,7 @@ mod tests {
     }
 
     fn settings(t: &str, u: &str, k: &str) -> MaintainerrSettings {
-        MaintainerrSettings {
-            media_server_type: Some(t.into()),
-            jellyfin_url: Some(u.into()),
-            jellyfin_api_key: Some(k.into()),
-        }
+        MaintainerrSettings { media_server_type: Some(t.into()), jellyfin_url: Some(u.into()), jellyfin_api_key: Some(k.into()) }
     }
 
     #[test]
@@ -779,15 +695,23 @@ mod tests {
         let mut current = desired.clone();
         current["PortOverride"] = Value::Null;
         assert!(config_in_sync(&current, &desired));
-        let lower: Value = serde_json::from_str(
-            &desired.to_string().replace("\"OidEndpoint\"", "\"oidEndpoint\""),
-        )
-        .unwrap();
+        let lower: Value = serde_json::from_str(&desired.to_string().replace("\"OidEndpoint\"", "\"oidEndpoint\"")).unwrap();
         assert!(config_in_sync(&lower, &desired));
         current["OidSecret"] = json!("other");
         assert!(!config_in_sync(&current, &desired));
         assert!(!config_in_sync(&json!({}), &desired));
         assert!(!config_in_sync(&Value::Null, &desired));
+    }
+
+    #[test]
+    fn plugins_parse() {
+        assert!(parse_plugins("").unwrap().is_empty());
+        let p = parse_plugins("Webhook|71552a5a5c5c4350a2aeebe451a30173|21.0.0.0, Trakt|4fe3201e-d6ae-4f2e-8917-e12bda571281|30.0.0.0").unwrap();
+        assert_eq!(p.len(), 2);
+        assert_eq!(p[1], ("Trakt".into(), "4fe3201e-d6ae-4f2e-8917-e12bda571281".into(), "30.0.0.0".into()));
+        assert!(parse_plugins("Webhook|abc").is_err());
+        assert!(plugin_state(&json!([{"Name": "Trakt", "Id": "4fe3201ed6ae4f2e8917e12bda571281", "Status": "Active"}]), &p[1].1, "Trakt").unwrap());
+        assert!(!plugin_state(&json!([{"Name": "Webhook", "Id": "71552a5a5c5c4350a2aeebe451a30173"}]), &p[1].1, "Trakt").unwrap());
     }
 
     #[test]
