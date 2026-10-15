@@ -15,6 +15,8 @@ extend-ignore-re = [
   "age1[a-z0-9]{58}",
   "X-ND-Authorization",
   "TPE[0-9]",
+  # Bazarr's own settings keys (serie_default_enabled, serie_default_profile)
+  "serie_default_[a-z]+",
 ]
 
 [default.extend-identifiers]
