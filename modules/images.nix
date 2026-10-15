@@ -204,6 +204,9 @@
           version = (builtins.fromTOML (builtins.readFile "${src}/Cargo.toml")).package.version;
           inherit src;
           cargoLock.lockFile = "${src}/Cargo.lock";
+          # Some unit tests bind loopback servers and run git, which the build sandbox cannot do
+          # (the feed and git server tests fail there); the pre-push hooks run them.
+          doCheck = false;
         };
       in
         n2c.buildImage {

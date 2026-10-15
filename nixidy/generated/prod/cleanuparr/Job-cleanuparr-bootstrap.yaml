@@ -1,0 +1,91 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: cleanuparr-bootstrap
+  namespace: media
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - cleanuparr
+          env:
+            - name: CLEANUPARR_PASSWORD_FILE
+              value: /secrets/admin/password
+            - name: CLEANUPARR_URL
+              value: http://cleanuparr.media.svc.cluster.local:11011
+            - name: LIDARR_API_KEY_FILE
+              value: /secrets/lidarr/apikey
+            - name: NTFY_TOPIC
+              value: media
+            - name: NTFY_URL
+              value: https://ntfy.trdos.me
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4318
+            - name: PYROSCOPE_SAMPLE_RATE
+              value: "1000"
+            - name: PYROSCOPE_SERVER_ADDRESS
+              value: http://pyroscope.observability.svc.cluster.local:4040
+            - name: QBITTORRENT_PASSWORD_FILE
+              value: /secrets/qbittorrent/password
+            - name: RADARR_API_KEY_FILE
+              value: /secrets/radarr/apikey
+            - name: SONARR_API_KEY_FILE
+              value: /secrets/sonarr/apikey
+          image: harbor.trdos.me/library/app-bootstrap:0.32.0@sha256:d176aaba96dd6df583ad95f131d0cf04488f28522a045bb20a707addd8e5382f
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /secrets/admin
+              name: admin
+              readOnly: true
+            - mountPath: /secrets/lidarr
+              name: lidarr
+              readOnly: true
+            - mountPath: /secrets/qbittorrent
+              name: qbittorrent
+              readOnly: true
+            - mountPath: /secrets/radarr
+              name: radarr
+              readOnly: true
+            - mountPath: /secrets/sonarr
+              name: sonarr
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - emptyDir: {}
+          name: tmp
+        - name: admin
+          secret:
+            secretName: cleanuparr-admin
+        - name: lidarr
+          secret:
+            secretName: lidarr-apikey
+        - name: qbittorrent
+          secret:
+            secretName: qbittorrent-admin
+        - name: radarr
+          secret:
+            secretName: radarr-apikey
+        - name: sonarr
+          secret:
+            secretName: sonarr-apikey
