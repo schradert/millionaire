@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 35cfa3ad7317202a6b2cdb259df4545f59611ceecd5cf75ecba8804a234524e4
+        checksum/configMaps: 16b594fb920d9801c77120092aa02ac5aae142988d23f083954c9d746d6c30ac
       labels:
         app.kubernetes.io/controller: lingarr
         app.kubernetes.io/instance: lingarr

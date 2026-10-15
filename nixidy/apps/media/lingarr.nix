@@ -8,17 +8,22 @@
     inherit (config.canivete.meta) domain;
     hostname = "lingarr.${domain}";
     port = 9876;
-    # Languages Lingarr translates from and to. LibreTranslate loads only these models.
+    # Languages Lingarr translates from and to. LibreTranslate loads only these models. The targets are
+    # the language-practice set of Bazarr (nixidy/apps/media/arr/bazarr.nix): Lingarr only translates a
+    # language the media has no subtitle file for, so what Bazarr finds is never overwritten.
     languages = {
       en = "English";
+      pt = "Portuguese";
       es = "Spanish";
+      fr = "French";
+      de = "German";
     };
     language = code: {
       name = languages.${code};
       inherit code;
     };
     source = ["en"];
-    target = ["es"];
+    target = ["pt" "es" "fr" "de"];
     # Bifrost (nixidy/system/ai) as the primary translator, LibreTranslate the fallback. Off until the
     # gateway has provider keys (`providerKeys` in bifrost.nix); with it on and no keys, every request
     # fails and Lingarr falls through to LibreTranslate.
@@ -196,9 +201,10 @@
               resources = {
                 requests = {
                   cpu = "50m";
-                  memory = "768Mi";
+                  memory = "1Gi";
                 };
-                limits.memory = "2Gi";
+                # Eight models (en to and from four languages), about 200 MB of model data per pair.
+                limits.memory = "4Gi";
               };
               probes = {
                 liveness = {

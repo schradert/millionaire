@@ -16,6 +16,10 @@ spec:
         - args:
             - bazarr
           env:
+            - name: BAZARR_LANGUAGES
+              value: en,pt,pb,es,fr,de
+            - name: BAZARR_PROFILE
+              value: Language practice
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: http://alloy.observability.svc.cluster.local:4318
             - name: PYROSCOPE_SAMPLE_RATE

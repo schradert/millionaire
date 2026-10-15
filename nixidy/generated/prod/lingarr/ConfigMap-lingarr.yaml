@@ -9,7 +9,7 @@ data:
   SERVICE_TYPE: '["libretranslate"]'
   SONARR_URL: http://sonarr.media.svc.cluster.local
   SOURCE_LANGUAGES: '[{"code":"en","name":"English"}]'
-  TARGET_LANGUAGES: '[{"code":"es","name":"Spanish"}]'
+  TARGET_LANGUAGES: '[{"code":"pt","name":"Portuguese"},{"code":"es","name":"Spanish"},{"code":"fr","name":"French"},{"code":"de","name":"German"}]'
   TELEMETRY_ENABLED: "false"
   TZ: Etc/UTC
 kind: ConfigMap
