@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: unpackerr
+    app.kubernetes.io/instance: unpackerr
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: unpackerr
+  name: unpackerr
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: unpackerr
+      app.kubernetes.io/instance: unpackerr
+      app.kubernetes.io/name: unpackerr
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 699e10fa168bdbf155bad1cd48e4a4f65522cbc5f7b6c3e645427bb7861cc8da
+      labels:
+        app.kubernetes.io/controller: unpackerr
+        app.kubernetes.io/instance: unpackerr
+        app.kubernetes.io/name: unpackerr
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - envFrom:
+            - secretRef:
+                name: unpackerr
+            - configMapRef:
+                name: unpackerr
+          image: ghcr.io/unpackerr/unpackerr:0.16.1@sha256:406586865431b40b29353d899fb75a788f5384743f7f381444db5fe55d206914
+          livenessProbe:
+            tcpSocket:
+              port: 5656
+          name: unpackerr
+          readinessProbe:
+            tcpSocket:
+              port: 5656
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+          volumeMounts:
+            - mountPath: /media/downloads
+              name: media-downloads
+            - mountPath: /tmp
+              name: tmpfs
+              subPath: tmp
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      securityContext:
+        fsGroup: 65534
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 65534
+        runAsUser: 65534
+      serviceAccountName: unpackerr
+      volumes:
+        - name: media-downloads
+          persistentVolumeClaim:
+            claimName: media-downloads
+        - emptyDir: {}
+          name: tmpfs

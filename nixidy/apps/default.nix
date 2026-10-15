@@ -51,6 +51,7 @@
     ./media/arr/recyclarr.nix
     ./media/arr/sabnzbd.nix
     ./media/arr/sonarr.nix
+    ./media/arr/unpackerr.nix
     ./media/arr/sportarr.nix
     ./media/flaresolverr.nix
     ./media/maintainerr.nix

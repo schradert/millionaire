@@ -1,0 +1,8 @@
+{
+  "version": "0.16.1",
+  "digest": "sha256:406586865431b40b29353d899fb75a788f5384743f7f381444db5fe55d206914",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/unpackerr/unpackerr"
+  }
+}
