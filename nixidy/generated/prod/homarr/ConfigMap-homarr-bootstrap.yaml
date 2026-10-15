@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
   image: harbor.trdos.me/library/app-bootstrap:0.22.1@sha256:efcaab3b2ee14c6d12e21e323ee0c59948842dd9bf75a6f2de5f07ec590cde6f
-  spec: 7887cb91b61f369278f49474cd20959938609ea1b0ac941e24658197e399b456
+  spec: b54fe76fd7166c089d3c0f8ee8aab5d3424789254c1382c4e04aad7fa715c8ba
 kind: ConfigMap
 metadata:
   name: homarr-bootstrap

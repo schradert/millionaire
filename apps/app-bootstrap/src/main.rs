@@ -1,6 +1,6 @@
 //! Idempotent first-run bootstraps, run as ArgoCD PostSync Jobs.
 //!
-//! `app-bootstrap <app>` where app is `actual`, `arr`, `atuin`, `audiobookshelf`, `autobrr`, `bazarr`, `forgejo`, `homarr`, `immich`, `kapowarr`, `kavita`, `komga`, `lingarr`, `maintainerr`, `mealie`, `miniflux`, `navidrome`, `ombi`, `openviking`, `ryot`, `seerr`, `shoko`, `sportarr`, `streamystats`, `syncthing`, `tracearr`, `contextforge` or `keycloak-invite` (Keycloak's set-your-password email for newly declared family users). Every step checks
+//! `app-bootstrap <app>` where app is `actual`, `arr`, `atuin`, `audiobookshelf`, `autobrr`, `bazarr`, `cleanuparr`, `forgejo`, `homarr`, `immich`, `kapowarr`, `kavita`, `komga`, `lingarr`, `maintainerr`, `mealie`, `miniflux`, `navidrome`, `ombi`, `openviking`, `ryot`, `seerr`, `shoko`, `sportarr`, `streamystats`, `syncthing`, `tracearr`, `contextforge` or `keycloak-invite` (Keycloak's set-your-password email for newly declared family users). Every step checks
 //! the current state first, so a rerun against a configured app changes nothing.
 
 mod actual;
@@ -9,6 +9,7 @@ mod atuin;
 mod audiobookshelf;
 mod autobrr;
 mod bazarr;
+mod cleanuparr;
 mod common;
 mod contextforge;
 mod forgejo;
@@ -54,6 +55,7 @@ async fn main() -> ExitCode {
         "audiobookshelf" => audiobookshelf::run().await,
         "autobrr" => autobrr::run().await,
         "bazarr" => bazarr::run().await,
+        "cleanuparr" => cleanuparr::run().await,
         "forgejo" => forgejo::run().await,
         "immich" => immich::run().await,
         "kapowarr" => kapowarr::run().await,
@@ -76,7 +78,7 @@ async fn main() -> ExitCode {
         "contextforge" => contextforge::run().await,
         "homarr" => homarr::run().await,
         "keycloak-invite" => keycloak::invite().await,
-        other => Err(format!("usage: app-bootstrap <actual|arr|atuin|audiobookshelf|autobrr|bazarr|forgejo|immich|kapowarr|kavita|komga|lingarr|maintainerr|mealie|miniflux|navidrome|ombi|openviking|ryot|seerr|shoko|sportarr|streamystats|syncthing|tracearr|contextforge|homarr|keycloak-invite> (got {other:?})").into()),
+        other => Err(format!("usage: app-bootstrap <actual|arr|atuin|audiobookshelf|autobrr|bazarr|cleanuparr|forgejo|immich|kapowarr|kavita|komga|lingarr|maintainerr|mealie|miniflux|navidrome|ombi|openviking|ryot|seerr|shoko|sportarr|streamystats|syncthing|tracearr|contextforge|homarr|keycloak-invite> (got {other:?})").into()),
     };
     let code = match res {
         Ok(()) => {

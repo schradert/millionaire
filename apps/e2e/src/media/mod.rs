@@ -94,6 +94,12 @@ fn flows() -> Vec<FlowDef> {
             "Lingarr: Sonarr and Radarr linked, scheduled translation on, LibreTranslate serves the languages",
             step!(flows_integrations::lingarr),
         ),
+        d(
+            "integrations-cleanuparr",
+            Offline,
+            "Cleanuparr: arr apps and qBittorrent connected, cleaning and the Seeker on, ntfy",
+            step!(flows_integrations::cleanuparr),
+        ),
         d("integrations-autobrr", Offline, "autobrr: download clients and a filter per arr app", step!(flows_integrations::autobrr)),
         d(
             "integrations-maintainerr",

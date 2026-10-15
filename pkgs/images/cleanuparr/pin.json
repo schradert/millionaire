@@ -1,0 +1,9 @@
+{
+  "version": "2.10.10",
+  "digest": "sha256:fd532c99716dbaba1cda12208f3a8e3651b8125c50fcd59dfe35a91c9506e665",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/cleanuparr/cleanuparr",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}

@@ -42,6 +42,8 @@ spec:
             app.kubernetes.io/name: bookshelf-audio
         - matchLabels:
             app.kubernetes.io/name: kapowarr
+        - matchLabels:
+            app.kubernetes.io/name: cleanuparr
       toPorts:
         - ports:
             - port: "8080"

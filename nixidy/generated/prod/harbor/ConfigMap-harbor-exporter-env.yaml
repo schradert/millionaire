@@ -20,8 +20,8 @@ data:
   HARBOR_SERVICE_HOST: harbor-core
   HARBOR_SERVICE_PORT: "80"
   HARBOR_SERVICE_SCHEME: http
-  HTTPS_PROXY: ""
   HTTP_PROXY: ""
+  HTTPS_PROXY: ""
   LOG_LEVEL: info
   NO_PROXY: harbor-core,harbor-jobservice,harbor-database,harbor-registry,harbor-portal,harbor-trivy,harbor-exporter,127.0.0.1,localhost,.local,.internal
 kind: ConfigMap
