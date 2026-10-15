@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
-  image: harbor.trdos.me/library/app-bootstrap:0.32.0@sha256:d176aaba96dd6df583ad95f131d0cf04488f28522a045bb20a707addd8e5382f
-  spec: 2c8266a96cede89fefcbfc5560a5af1e8bcd4a1b3ca195d34a6300a3c529c557
+  image: harbor.trdos.me/library/app-bootstrap:0.37.0@sha256:1cb3aeaf50a7871ae695ffdfef8b392391f926ad35366fdbfd55671de7562583
+  spec: 59e173dce2bb95a7609f95cb2e4a0c488b69304536bc0d3843f5d4551f6f6754
 kind: ConfigMap
 metadata:
   name: lingarr-bootstrap
