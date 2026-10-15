@@ -1,6 +1,4 @@
-{config, ...}: let
-  inherit (config.canivete.meta) people;
-in {
+{config, ...}: {
   nixidy = {
     charts,
     lib,
@@ -9,50 +7,10 @@ in {
   }: let
     inherit (config.canivete.meta) domain;
     hostname = "seerr.${domain}";
-    # Single sign-on in front of Seerr. oauth2-proxy has already admitted a Keycloak `admin`
-    # user; when the browser has no Seerr session this signs in as the Jellyfin admin account
-    # (Seerr user 1, admin) and sets the session cookie, so the user lands signed in. A
-    # session Seerr no longer accepts sends /login back through the same step.
-    ssoConf = ''
-      map $http_cookie $seerr_no_session { default 1; "~(^|;\s*)connect\.sid=" 0; }
-      map $arg_next $seerr_next { default /; "~^/([^/\\\\]|$)" $arg_next; }
-      server {
-        listen 5056;
-        absolute_redirect off;
-        location = /_login {
-          internal;
-          proxy_pass http://127.0.0.1:5055/api/v1/auth/jellyfin;
-          proxy_method POST;
-          proxy_pass_request_body off;
-          proxy_set_header Content-Type application/json;
-          proxy_set_header X-Forwarded-Proto https;
-          proxy_set_body '{"username":"admin","password":"{{ .password }}"}';
-        }
-        # `return` runs before the access phase, so the redirect is a named location
-        # reached from try_files, after auth_request has made the session.
-        location = /_sso {
-          auth_request /_login;
-          auth_request_set $seerr_cookie $upstream_http_set_cookie;
-          try_files /_none @seerr_signed_in;
-        }
-        location @seerr_signed_in {
-          add_header Set-Cookie $seerr_cookie always;
-          return 302 $seerr_next;
-        }
-        location = /login { return 302 /_sso?next=/; }
-        location / {
-          if ($seerr_no_session) { return 302 /_sso?next=$uri; }
-          proxy_pass http://127.0.0.1:5055;
-          proxy_set_header Host $host;
-          proxy_set_header X-Real-IP $remote_addr;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto https;
-          proxy_http_version 1.1;
-        }
-      }
-    '';
+    nsKey = "k8s:io.kubernetes.pod.namespace";
   in {
-    portal.apps.seerr.groups = ["admin"];
+    # Admins and the family; the `sso` sidecar maps the group to the person's own Seerr permissions.
+    portal.apps.seerr.groups = ["admin" "family"];
     gatus.endpoints.seerr = {
       url = "https://${hostname}";
       group = "internal";
@@ -60,16 +18,23 @@ in {
     };
     applications.seerr = {
       namespace = "media";
-      # Seerr has no native OIDC in any release (v3.5.0 and develop; the OIDC pull
-      # request #2715 is open and its preview image has no group-to-role mapping), so it
-      # stays behind oauth2-proxy (admin) and the `sso` sidecar below signs the user in. Its
-      # only admin path is the setup wizard's Jellyfin sign-in, which makes the
-      # Jellyfin admin Seerr user 1. This job does that with the bootstrapped
-      # Jellyfin `admin` account and tristan's email, enables all libraries and
-      # finishes the wizard. Break-glass is that Jellyfin admin login
-      # (Secret jellyfin-admin, Bitwarden jellyfin/admin-password); Seerr has no
-      # separate admin password. Radarr and Sonarr are added as default servers.
-      # Idempotent post-sync bootstrap (apps/app-bootstrap seerr, >= 0.7.0).
+      # Seerr has no native OIDC in any release (v3.5.0 and develop; the OIDC pull request
+      # #2715 is open and its preview image has no group-to-role mapping). Its UI stays behind
+      # oauth2-proxy and the `sso` sidecar (apps/seerr-sso) turns the identity oauth2-proxy
+      # validated into the person's own Seerr account: created on first sign-in (imported from
+      # their Jellyfin user when there is one, so watch history is theirs), admin group -> Seerr
+      # admin, family group -> request only, re-applied whenever a session is made. The account's
+      # password is derived from the key `seerr-sso-key` and never shown. The sidecar only answers
+      # callers oauth2-proxy proxied (it asks oauth2-proxy to validate the request's own
+      # credentials), and the CiliumNetworkPolicy below lets nothing else reach it.
+      #
+      # Seerr's only admin path is the setup wizard's Jellyfin sign-in, which makes the Jellyfin
+      # admin Seerr user 1. The bootstrap does that with the bootstrapped Jellyfin `admin`
+      # account, gives it a non-personal email, enables all libraries and finishes the wizard.
+      # That account is break-glass only (Secret jellyfin-admin, Bitwarden
+      # jellyfin/admin-password) and reachable only on the pod's own port 5055; nobody is signed
+      # in as it. Radarr and Sonarr are added as default servers.
+      # Idempotent post-sync bootstrap (apps/app-bootstrap seerr, >= 0.23.0).
       bootstrap = lib.mkIf (pinned.images ? app-bootstrap-seerr) {
         image = with pinned.images.app-bootstrap-seerr; "${repository}:${tag}@${digest}";
         args = ["seerr"];
@@ -79,7 +44,8 @@ in {
           JELLYFIN_PORT = "8096";
           JELLYFIN_ADMIN_USER = "admin";
           JELLYFIN_ADMIN_PASSWORD_FILE = "/secrets/jellyfin/password";
-          ADMIN_EMAIL = people.my.profiles.personal.email;
+          # Seerr user 1's email: not a person's, so Keycloak users never match it.
+          ADMIN_EMAIL = "seerr-admin@${domain}";
           # Radarr/Sonarr as default servers (>= 0.15.0); the profiles are Recyclarr's.
           RADARR_API_KEY_FILE = "/secrets/radarr/apikey";
           SONARR_API_KEY_FILE = "/secrets/sonarr/apikey";
@@ -96,6 +62,47 @@ in {
         };
       };
       volsync.pvcs.seerr.title = "seerr";
+      # The `sso` port (5056) takes only oauth2-proxy: it is where the identity is turned into an
+      # account. Seerr's own port (5055) takes the namespace's pods (the bootstrap, Maintainerr,
+      # the media e2e Job) and the e2e Job, which removes the accounts its test users get. The
+      # gateway needs neither: the route goes to oauth2-proxy. The kubelet probes Seerr from the host.
+      resources.ciliumNetworkPolicies.seerr.spec = {
+        endpointSelector.matchLabels."app.kubernetes.io/name" = "seerr";
+        ingress = [
+          {fromEntities = ["host"];}
+          {
+            fromEndpoints = lib.toList {
+              matchLabels = {
+                ${nsKey} = "identity";
+                "app.kubernetes.io/name" = "oauth2-proxy";
+              };
+            };
+            toPorts = lib.toList {
+              ports = lib.toList {
+                port = "5056";
+                protocol = "TCP";
+              };
+            };
+          }
+          {
+            fromEndpoints = [
+              {matchLabels.${nsKey} = "media";}
+              {
+                matchLabels = {
+                  ${nsKey} = "e2e";
+                  "app.kubernetes.io/name" = "e2e";
+                };
+              }
+            ];
+            toPorts = lib.toList {
+              ports = lib.toList {
+                port = "5055";
+                protocol = "TCP";
+              };
+            };
+          }
+        ];
+      };
       helm.releases.seerr = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
@@ -112,7 +119,24 @@ in {
             probes.startup.enabled = true;
           };
           controllers.seerr.containers.sso = {
-            image = pinned.images.nginx;
+            image = pinned.images.seerr-sso;
+            env = {
+              UPSTREAM = "http://127.0.0.1:5055";
+              AUTH_URL = "http://oauth2-proxy.identity.svc.cluster.local:4180/oauth2/auth";
+              # Seerr's own settings file holds the API key the sidecar manages users with.
+              SETTINGS_FILE = "/app/config/settings.json";
+              SSO_KEY_FILE = "/secrets/key/password";
+              ADMIN_GROUPS = "admin";
+              FAMILY_GROUPS = "family";
+            };
+            securityContext = {
+              runAsUser = 1000;
+              runAsGroup = 1000;
+              runAsNonRoot = true;
+              allowPrivilegeEscalation = false;
+              readOnlyRootFilesystem = true;
+              capabilities.drop = ["ALL"];
+            };
             ports = lib.toList {
               name = "sso";
               containerPort = 5056;
@@ -132,14 +156,19 @@ in {
             type = "persistentVolumeClaim";
             accessMode = "ReadWriteOnce";
             size = "1Gi";
-            advancedMounts.seerr.seerr = [{path = "/app/config";}];
+            advancedMounts.seerr = {
+              seerr = [{path = "/app/config";}];
+              sso = lib.toList {
+                path = "/app/config";
+                readOnly = true;
+              };
+            };
           };
-          persistence.sso = {
+          persistence.sso-key = {
             type = "secret";
-            name = "seerr-sso";
+            name = "seerr-sso-key";
             advancedMounts.seerr.sso = lib.toList {
-              path = "/etc/nginx/conf.d/default.conf";
-              subPath = "default.conf";
+              path = "/secrets/key";
               readOnly = true;
             };
           };
@@ -160,15 +189,37 @@ in {
           };
         };
       };
-      # The sidecar's config holds the Jellyfin admin password, so it is a Secret.
-      resources.externalSecrets.seerr-sso.spec = {
-        secretStoreRef.name = "kubernetes-media";
-        secretStoreRef.kind = "ClusterSecretStore";
-        target.template.data."default.conf" = ssoConf;
+      # The key the accounts' passwords are derived from: random once, never refreshed
+      # (CreatedOnce), pushed to Bitwarden so a rebuilt cluster keeps it (a lost key only
+      # makes the sidecar set every password again).
+      resources.passwords.seerr-sso-key.spec = {
+        length = 48;
+        digits = 10;
+        symbols = 0;
+        noUpper = false;
+        allowRepeat = true;
+      };
+      resources.externalSecrets.seerr-sso-key.spec = {
+        refreshPolicy = "CreatedOnce";
+        dataFrom = lib.toList {
+          sourceRef.generatorRef = {
+            apiVersion = "generators.external-secrets.io/v1alpha1";
+            kind = "Password";
+            name = "seerr-sso-key";
+          };
+        };
+      };
+      resources.pushSecrets.seerr-sso-key.spec = {
+        secretStoreRefs = lib.toList {
+          name = "bitwarden";
+          kind = "ClusterSecretStore";
+        };
+        selector.secret.name = "seerr-sso-key";
         data = lib.toList {
-          secretKey = "password";
-          remoteRef.key = "jellyfin-admin";
-          remoteRef.property = "password";
+          match = {
+            secretKey = "password";
+            remoteRef.remoteKey = "seerr/sso-key";
+          };
         };
       };
     };

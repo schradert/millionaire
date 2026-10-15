@@ -56,7 +56,8 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | immich | OIDC | done: immich-cli, `immich-login` (`modules/media-clients.nix`) | done: same | n-a | done: Immich | bws `immich/tristan/api-key` (app-bootstrap immich >= 0.18.0: the admin's key; the admin is tristan, linked by email) |
 | audiobookshelf | OIDC (native) | web | web | n-a | done: Audiobookshelf | — |
 | kavita, komga | OIDC | web (OPDS: docs/ereader-opds.md) | web | n-a | done: Mihon, Komelia | — |
-| sonarr, radarr, lidarr, prowlarr, bazarr, autobrr, maintainerr, seerr, shoko, ryot, multi-scrobbler, maloja | oauth2-proxy / own | web | web | n-a | web | — |
+| sonarr, radarr, lidarr, prowlarr, bazarr, autobrr, maintainerr, shoko, ryot, multi-scrobbler, maloja | oauth2-proxy / own | web | web | n-a | web | — |
+| seerr | oauth2-proxy + `seerr-sso` sidecar (admin and family groups): each person gets their own Seerr account (admin group: Seerr admin; family: request only), password derived and never shown | web | web | n-a | web | key: bws `seerr/sso-key`; break-glass: the Jellyfin `admin`, Seerr user 1, on the pod port 5055 only |
 | owncast, jitsi | own | web | web | n-a | todo (no Jitsi app in catalog) | — |
 | music-assistant | oauth2-proxy | web | web | n-a | via Home Assistant | — |
 | dvd-webdav, games-webdav | own | n-a | n-a | games: `modules/gaming/consoles.nix` (library off) | n-a | — |

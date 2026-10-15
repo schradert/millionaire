@@ -1,0 +1,9 @@
+{
+  "version": "0.1.0",
+  "digest": "sha256:ff796b3bd5c1d544c740bd4737a5c15cbc5a3b33f67a990383ef2a337853ffb3",
+  "source": {
+    "type": "oci-tag",
+    "repository": "harbor.trdos.me/library/seerr-sso",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}

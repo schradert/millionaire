@@ -16,6 +16,7 @@ spec:
           - maintainerr
           - navidrome
           - qbittorrent
+          - seerr
   ingress:
     - fromEntities:
         - host
