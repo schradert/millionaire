@@ -22,3 +22,23 @@ creation_rules:
           - *falcon
           - *axolotl
           - *systeamadeck
+  # Syncthing device identities (`syncthing-identity <host>`): each host decrypts only its own
+  - path_regex: secrets/sops/syncthing-morgenmuffel\.yaml
+    key_groups:
+      - age:
+          - *tristan
+  - path_regex: secrets/sops/syncthing-falcon\.yaml
+    key_groups:
+      - age:
+          - *tristan
+          - *falcon
+  - path_regex: secrets/sops/syncthing-axolotl\.yaml
+    key_groups:
+      - age:
+          - *tristan
+          - *axolotl
+  - path_regex: secrets/sops/syncthing-systeamadeck\.yaml
+    key_groups:
+      - age:
+          - *tristan
+          - *systeamadeck

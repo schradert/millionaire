@@ -10,7 +10,7 @@ Bitwarden items are Secrets Manager secrets in the cluster's project (the one th
 
 Do this first. Every SSO app below logs in through it.
 
-1. Open https://keycloak.trdos.me/realms/default/account and log in as `tristan` with Bitwarden `keycloak/tristan/initial-password`.
+1. Open <https://keycloak.trdos.me/realms/default/account> and log in as `tristan` with Bitwarden `keycloak/tristan/initial-password`.
 2. Set a new password. Register a passkey (phone, laptop or YubiKey; a YubiKey needs a FIDO2 PIN). Set up TOTP.
 3. Optional: add a backup YubiKey under Account security → Signing in.
 
@@ -21,7 +21,7 @@ Unblocks: SSO into every app, and the browser checks in step 7.
 These are third-party credentials that can't be generated in-cluster.
 
 | Bitwarden item(s) | Flag to flip | Unblocks |
-|---|---|---|
+| --- | --- | --- |
 | `ai/anthropic/api-key`, `ai/openai/api-key`, `ai/google/api-key` | `providerKeys` in `nixidy/system/ai/bifrost.nix` and `nixidy/system/ai/promptfoo.nix` | LLM routing through bifrost (librechat, openviking, openclaw) and promptfoo evals |
 | `ai/openclaw/discord-token` (Discord bot token) | `credentials` in `nixidy/system/ai/openclaw.nix` | the OpenClaw Discord gateway |
 | `vpn/protonvpn/wireguard-private-key` (see "qBittorrent VPN (ProtonVPN)" below) | `credentials` in `nixidy/apps/media/qbittorrent.nix` | qBittorrent behind the gluetun VPN. After qBittorrent is up, sync `prowlarr` in full (not a selective sync) so its bootstrap adds qBittorrent as the download client in Sonarr, Radarr and Lidarr. Then run the full e2e suite (step 9). |
@@ -29,14 +29,14 @@ These are third-party credentials that can't be generated in-cluster.
 | `govee/email`, `govee/password`, `govee/api-key` | `credentials` in `nixidy/apps/home/govee2mqtt.nix` | Govee devices in Home Assistant through MQTT |
 | `printing/mooncord/discord-token` | `credentials` in `nixidy/apps/printing/mooncord.nix` (only once the Voron exists) | the Moonraker Discord bot |
 | ListenBrainz user token (listenbrainz.org → settings) | add `MALOJA_SCROBBLE_LISTENBRAINZ_TOKEN` to the `maloja` ExternalSecret (see the TODO in `nixidy/apps/media/maloja.nix`) | Maloja relaying scrobbles to ListenBrainz |
-| Indexer/tracker accounts | none: add them in Prowlarr (https://prowlarr.trdos.me → Indexers); Prowlarr already syncs to Sonarr/Radarr/Lidarr | searching and grabbing in the arr apps |
+| Indexer/tracker accounts | none: add them in Prowlarr (<https://prowlarr.trdos.me> → Indexers); Prowlarr already syncs to Sonarr/Radarr/Lidarr | searching and grabbing in the arr apps |
 | `ai/huggingface/token` | none yet: vllm and heretic stay disabled until a GPU node exists | the GPU workloads, later |
 
 ### qBittorrent VPN (ProtonVPN)
 
 ProtonVPN is the default (`vpn.provider = "protonvpn"` in `nixidy/apps/media/qbittorrent.nix`): gluetun's native provider over WireGuard, P2P servers only (`PORT_FORWARD_ONLY=on`), with NAT-PMP port forwarding (`VPN_PORT_FORWARDING=on`). gluetun pushes each forwarded port into qBittorrent's listening port. Port forwarding needs a paid plan (VPN Plus or higher); the free plan has no P2P servers.
 
-1. Log in at https://account.protonvpn.com → **Downloads** → **WireGuard configuration**.
+1. Log in at <https://account.protonvpn.com> → **Downloads** → **WireGuard configuration**.
 2. Name it (e.g. `homelab-qbittorrent`) and pick platform **GNU/Linux** (or Router).
 3. Under VPN options, turn **NAT-PMP (Port Forwarding)** on. Leave **Moderate NAT** off. VPN Accelerator can stay on.
 4. Pick any server marked **P2P** (gluetun chooses its own P2P server; the key works for all of them) and click **Create**.
@@ -94,8 +94,8 @@ Unblocks: safe new LoadBalancer Services (the Syncthing LAN listener and the rsy
 
 Do these after step 1. Each app should land logged in as tristan, with admin rights where noted, and no second password prompt.
 
-- [ ] Ryot (https://ryot.trdos.me): straight to the app as admin, with no oauth2-proxy gate. The bootstrap pre-registered the Keycloak-linked admin.
-- [ ] Sure (https://sure.trdos.me): Keycloak login goes straight in, with no link-account password page.
+- [ ] Ryot (<https://ryot.trdos.me>): straight to the app as admin, with no oauth2-proxy gate. The bootstrap pre-registered the Keycloak-linked admin.
+- [ ] Sure (<https://sure.trdos.me>): Keycloak login goes straight in, with no link-account password page.
 - [ ] Actual, Mealie, Immich, Kavita, Komga, Shoko, Seerr, Windmill, LibreChat, Jellyfin: SSO login as admin.
 - [ ] Audiobookshelf: tristan is admin. Also check that a `family`-only user gets `user`, not denied: the `abs_groups` claim maps `family` → `user`.
 - [ ] Navidrome: the web UI through oauth2-proxy is admin. Subsonic clients use `navidrome/admin-password`.
@@ -140,12 +140,12 @@ Unblocks: deleting the sources on falcon and the Deck, after the VolSync check a
 
 ## 11. Syncthing devices and folders (data-archive)
 
-The hub's folders and the clients come from the table in `modules/syncthing.nix`; a device is accepted only through an ID recorded there. The 13 folders are `org`, `documents`, `downloads-keep`, `sensitive`, `saves-retroarch`, `states-retroarch`, `saves-cemu`, `saves-duckstation`, `wow-wtf`, `wow-interface`, `chiaki`, and the one-way `steam-input` and `ludusavi`. The Deck, falcon, axolotl and morgenmuffel are placeholders until step 3.
+The hub's folders and the clients come from the table in `modules/syncthing.nix`; a device is accepted only through an ID recorded there. The 13 folders are `org`, `documents`, `downloads-keep`, `sensitive`, `saves-retroarch`, `states-retroarch`, `saves-cemu`, `saves-duckstation`, `wow-wtf`, `wow-interface`, `chiaki`, and the one-way `steam-input` and `ludusavi`. The Deck, falcon, axolotl and morgenmuffel have declared identities: `syncthing-identity <host>` made each key pair (sops, `secrets/sops/syncthing-<host>.yaml`) and the IDs are in the table, so nothing is recorded from the hosts. Only the Pixel's ID is manual (step 3).
 
 1. Publish the bootstrap image: `image publish app-bootstrap` (0.19.0). Add `pkgs/images/app-bootstrap-syncthing/pin.json`: the shape of `pkgs/images/app-bootstrap-actual/pin.json` with version `0.19.0` and the digest `image publish` printed. Until then no `syncthing-bootstrap` Job is rendered and the hub has no folders.
-2. Switch each host once so its Syncthing exists: `darwin-rebuild switch --flake .` on morgenmuffel, `deploy '.#axolotl'`, `'.#falcon.system'` and `'.#systeamadeck'`. Nothing syncs yet (the hub does not know them).
-3. Record the IDs. On each host run `syncthing --device-id` and put the output in `syncthing.devices.<host>.id` (`morgenmuffel`, `axolotl`, `falcon`, `systeamadeck`). For the phone: Syncthing-Fork → menu → Show device ID, into `syncthing.devices.pixel.id` (it carries only `org`). Record the Pixel's ID before step 4: the bootstrap removes every device that is not in the table, including one paired through the hub GUI.
-4. Render (`nixidy/generated/prod/syncthing`), commit and sync. The Job adds the folders and devices and removes the hub's stale self entry (`LKEPHSE-...`, an old pod identity). Check: `kubectl -n home logs job/syncthing-bootstrap`, and the hub GUI (https://sync.trdos.me) lists the 13 folders.
+2. Switch each host once so its Syncthing exists: `darwin-rebuild switch --flake .` on morgenmuffel, `deploy '.#axolotl'`, `'.#falcon.system'` and `'.#systeamadeck'`. Nothing syncs until the hub has the devices (step 4).
+3. Record the Pixel's ID: Syncthing-Fork → menu → Show device ID, into `syncthing.devices.pixel.id` (it carries only `org`). The app makes its own certificate on the phone, so this is the one remaining manual entry. Do it before step 4: the bootstrap removes every device that is not in the table, including one paired through the hub GUI. The other hosts need nothing: after the switch in step 2 each Syncthing starts with its declared certificate.
+4. Render (`nixidy/generated/prod/syncthing`), commit and sync. The Job adds the folders and devices and removes the hub's stale self entry (`LKEPHSE-...`, an old pod identity). Check: `kubectl -n home logs job/syncthing-bootstrap`, and the hub GUI (<https://sync.trdos.me>) lists the 13 folders.
 5. Seed one host at a time. The first client to connect uploads its folder contents; start the host that has the real data (the live Deck for the saves and WoW, whichever holds Documents), wait for the hub to show **Up to Date**, then bring the next host in. Two hosts with different files of the same name in a `sendreceive` folder make conflict copies.
 6. macOS (morgenmuffel): the launchd agent reads `~/Documents` and `~/Downloads`; expected to need Full Disk Access for the syncthing binary (`readlink -f "$(command -v syncthing)"`, again after a Syncthing update). Not tested: if a folder stays in an error state, read `~/Library/Logs/Syncthing/syncthing-stderr.log`.
 7. The hub is reachable only through global discovery and relays (no LoadBalancer on 22000, README todo 39), so the first connection can take a minute. The Deck needs no tailnet for this.

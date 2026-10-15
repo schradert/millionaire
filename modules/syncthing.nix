@@ -31,15 +31,28 @@ in {
     # The hub's pinned identity (nixidy/apps/home/syncthing.nix). Redo only if its Secret is lost:
     #   kubectl -n home exec deploy/syncthing -c syncthing -- syncthing --device-id --home /var/syncthing/config
     hub.id = "WHD56GJ-S5XJMEV-PJNFHRL-7XZKKIE-IONK2R2-ZIQEN3P-JSQKR77-GLFEDQE";
-    # Placeholders: record each ID from `syncthing --device-id` on the host (docs/manual-steps.md).
+    # Each client's identity is declared: `syncthing-identity <host>` (devshell) generates the key
+    # pair once, sops-encrypts it to secrets/sops/syncthing-<host>.yaml and prints the ID, which
+    # is public and recorded here. The `system` module below installs the pair for the host's Syncthing.
     morgenmuffel = {
+      id = "C7KGE3I-GMHHEKH-BMN6GZP-2YGGOYC-6254ZOI-FRRFZG6-5IXYNJY-WQOCLAD";
       os = "darwin";
       profiles = ["workstation"];
     };
-    axolotl.profiles = ["workstation"];
-    falcon.profiles = ["workstation" "gaming"];
-    systeamadeck.profiles = ["gaming"];
-    # The phone's Syncthing-Fork carries only the notes.
+    axolotl = {
+      id = "SLALODJ-OT6UR6E-TWGHZXV-3DK753M-VYS37AF-HOM6SGQ-MTALRCW-NFDDYQD";
+      profiles = ["workstation"];
+    };
+    falcon = {
+      id = "WXQNXWB-T2DU7FN-FFWIFYN-EPWICPJ-SDGDPO4-EB73EEG-5IOQV7F-HGWLJQ5";
+      profiles = ["workstation" "gaming"];
+    };
+    systeamadeck = {
+      id = "WYLPTZF-BM3N2VJ-QE3WGYS-UGWUSRR-ASUX6LI-CEYXFUO-PCPIY53-BGV2FAJ";
+      profiles = ["gaming"];
+    };
+    # The phone's Syncthing-Fork carries only the notes. Its identity is made by the app: record
+    # it from Syncthing-Fork -> menu -> Show device ID (docs/manual-steps.md).
     pixel = {
       os = "android";
       folders = ["org"];
@@ -195,6 +208,42 @@ in {
     };
   };
 
+  # The host's identity (secrets/sops/syncthing-<host>.yaml, made by `syncthing-identity`), decrypted
+  # for the primary user, whose Syncthing installs it as cert.pem/key.pem (`home` below). The set is
+  # an option because static/tailnet-personal.nix owns the whole `sops.secrets` of the Deck.
+  system = {
+    config,
+    flake,
+    lib,
+    ...
+  }: let
+    inherit (flake.config.canivete.meta.people) me;
+    host = toString (config.networking.hostName or "");
+    file = ../secrets/sops + "/syncthing-${host}.yaml";
+    mine = flake.config.syncthing.devices.${host} or null;
+  in {
+    options.syncthingIdentity.secrets = lib.mkOption {
+      type = lib.types.attrs;
+      readOnly = true;
+      internal = true;
+      description = "sops secrets holding this host's Syncthing certificate and key";
+    };
+    config = {
+      syncthingIdentity.secrets = lib.optionalAttrs (mine != null && mine.id != null && builtins.pathExists file) (lib.listToAttrs (map (part:
+        lib.nameValuePair "syncthing-${part}" {
+          key = part;
+          # by contents, not via the flake source (see modules/sops.nix)
+          sopsFile = builtins.path {
+            path = file;
+            name = "sops-syncthing-${host}.yaml";
+          };
+          owner = me;
+          mode = "0400";
+        }) ["cert" "key"]));
+      sops.secrets = config.syncthingIdentity.secrets;
+    };
+  };
+
   # Each client is a Syncthing of its own, peered with the hub only: no introducer and nothing
   # accepted automatically (overrideDevices/overrideFolders drop whatever is not declared here).
   # Personal workstations and gaming hosts (the Deck included); the work Mac stays out.
@@ -223,6 +272,13 @@ in {
     pathOf = f: "${config.home.homeDirectory}/${f.path.${os}}";
     ignores = f: lib.optional (os == "darwin") "(?d).DS_Store" ++ f.ignore;
     inherit (syncthing.devices) hub;
+    secretPath = name: let
+      secrets =
+        if osConfig == null
+        then {}
+        else osConfig.sops.secrets or {};
+    in
+      secrets.${name}.path or null;
   in {
     config = lib.mkIf (config.profile == "personal" && profiles != []) (lib.mkMerge [
       {
@@ -232,6 +288,9 @@ in {
         };
         services.syncthing = {
           enable = true;
+          # the declared identity (the `system` module above): its device ID is the one in the table
+          cert = secretPath "syncthing-cert";
+          key = secretPath "syncthing-key";
           overrideDevices = true;
           overrideFolders = true;
           settings = {

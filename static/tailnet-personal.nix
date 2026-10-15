@@ -35,15 +35,16 @@
     # NixOS host; personal devices cannot decrypt that file and sops-install-secrets
     # fails as a whole, so this owns the host's entire secret set. Add any other
     # personal-host secret here (from personal.yaml).
-    sops.secrets = lib.mkForce {
-      tailscale-authkey = {
-        key = "headscale/preauth-key/personal";
-        # by contents, not via the flake source (see modules/sops.nix)
-        sopsFile = builtins.path {
-          path = ../secrets/sops/personal.yaml;
-          name = "sops-personal.yaml";
+    sops.secrets = lib.mkForce ({
+        tailscale-authkey = {
+          key = "headscale/preauth-key/personal";
+          # by contents, not via the flake source (see modules/sops.nix)
+          sopsFile = builtins.path {
+            path = ../secrets/sops/personal.yaml;
+            name = "sops-personal.yaml";
+          };
         };
-      };
-    };
+      }
+      // config.syncthingIdentity.secrets);
   };
 }
