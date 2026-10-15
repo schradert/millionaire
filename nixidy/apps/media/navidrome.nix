@@ -5,6 +5,7 @@ in {
     charts,
     lib,
     pinned,
+    scrobble,
     ...
   }: let
     inherit (config.canivete.meta) domain;
@@ -43,12 +44,11 @@ in {
         key = "password";
         bitwarden = "navidrome/admin-password";
       };
-      # Maloja API key Navidrome scrobbles with (its "ListenBrainz token"); Maloja
-      # registers it from this Secret (maloja.nix) and the bootstrap links it.
-      generatedSecrets.navidrome-maloja.key = "token";
-      # Idempotent post-sync bootstrap (apps/app-bootstrap navidrome, >= 0.15.0 for the ListenBrainz link): first admin
-      # named after tristan, so the oauth2-proxy-forwarded username IS the admin. The generated
-      # password is for Subsonic clients and break-glass native login.
+      # Idempotent post-sync bootstrap (apps/app-bootstrap navidrome, >= 0.38.0 for the per-user
+      # ListenBrainz links): first admin named after tristan, so the oauth2-proxy-forwarded username
+      # IS the admin. The generated password is for Subsonic clients and break-glass native login.
+      # Every scrobbling user (scrobbling.nix) gets their own account and their own token, which
+      # multi-scrobbler maps to that user's Maloja.
       bootstrap = lib.mkIf bootstrapped {
         image = with pinned.images.app-bootstrap-navidrome; "${repository}:${tag}@${digest}";
         args = ["navidrome"];
@@ -56,13 +56,12 @@ in {
           NAVIDROME_URL = "http://navidrome.media.svc.cluster.local:${toString port}";
           ADMIN_USER = people.me;
           ADMIN_PASSWORD_FILE = "/secrets/admin/password";
-          # Maloja API key, validated against ND_LISTENBRAINZ_BASEURL (Maloja).
-          LISTENBRAINZ_TOKEN_FILE = "/secrets/maloja/token";
+          # user=token file: each token is validated against ND_LISTENBRAINZ_BASEURL (multi-scrobbler).
+          SCROBBLE_USERS = lib.concatMapStringsSep "," (u: "${u}=/secrets/lz-${scrobble.slug u}/token") scrobble.users;
         };
-        secrets = {
-          admin = "navidrome-admin";
-          maloja = "navidrome-maloja";
-        };
+        secrets =
+          {admin = "navidrome-admin";}
+          // lib.listToAttrs (map (u: lib.nameValuePair "lz-${scrobble.slug u}" (scrobble.ingressSecret u)) scrobble.users);
       };
       volsync.pvcs.navidrome.title = "navidrome";
       # Navidrome trusts the user header from any whitelisted pod IP, so only oauth2-proxy,
@@ -164,14 +163,13 @@ in {
               ND_REVERSEPROXYWHITELIST = "10.0.0.0/8";
             }
             // {
-              # ListenBrainz scrobble target points at Maloja's LB-compatible endpoint.
-              # Maloja then proxy-forwards to real (pseudonymous) ListenBrainz.
-              # Per-user LB tokens are configured in Navidrome's user UI; the token a user
-              # supplies is their Maloja API key (which Maloja in turn relays under the user's
-              # pseudonymous LB token, configured in Maloja).
+              # The ListenBrainz base URL is global but the token is per user, so it is
+              # multi-scrobbler's ListenBrainz endpoint: the token selects the user's source there,
+              # which can only scrobble to that user's own Maloja (multi-scrobbler.nix). The bootstrap
+              # links each user's token.
               ND_LASTFM_ENABLED = "false";
               ND_LISTENBRAINZ_ENABLED = "true";
-              ND_LISTENBRAINZ_BASEURL = "http://maloja.media.svc.cluster.local:42010/apis/listenbrainz/1/";
+              ND_LISTENBRAINZ_BASEURL = "http://multi-scrobbler.media.svc.cluster.local:9078/1/";
               # Smart playlists & similar-artist suggestions
               ND_DEEZER_ENABLED = "false";
               ND_SPOTIFY_ID = "";
