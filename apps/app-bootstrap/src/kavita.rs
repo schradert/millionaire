@@ -21,10 +21,20 @@ use crate::common::{ok, retry, secret, var, Result};
 
 const SA_DIR: &str = "/var/run/secrets/kubernetes.io/serviceaccount";
 
-/// (name, folder, LibraryType, FileTypeGroups). LibraryType: Comic=1, Book=2.
+/// (name, folder, LibraryType, FileTypeGroups). LibraryType: Manga=0, Comic=1, Book=2.
 /// FileTypeGroup: Archive=1, Epub=2, Pdf=3, Images=4.
 const LIBRARIES: &[(&str, &str, u8, &[u8])] =
     &[("Books", "/media/books", 2, &[2, 3]), ("Comics", "/media/comics", 1, &[1, 3, 4]), ("Manga", "/media/manga", 0, &[1, 3, 4])];
+
+/// The metadata provider Kavita accepts for a library type (KavitaPlusConfiguration): Manga (0) only
+/// Mangabaka (3); Comic (1) and Book (2) take Hardcover (2).
+fn metadata_provider(kind: u8) -> u8 {
+    if kind == 0 {
+        3
+    } else {
+        2
+    }
+}
 
 /// Roles given to accounts provisioned through OIDC (never Admin).
 const DEFAULT_ROLES: &[&str] = &["Login", "Download", "Bookmark"];
@@ -179,9 +189,8 @@ pub async fn run() -> Result<()> {
                 "allowScrobbling": false,
                 "allowMetadataMatching": true,
                 "enableMetadata": true,
-                // Required since Kavita 0.9 (400 "MetadataProvider is invalid" without it);
-                // 2 = the provider the existing Books library uses.
-                "metadataProvider": 2,
+                // Required since Kavita 0.9, and it must suit the library type (500 "invalid-metadata-provider").
+                "metadataProvider": metadata_provider(*kind),
                 "removePrefixForSortName": false,
                 "inheritWebLinksFromFirstChapter": false,
                 "defaultLanguage": "",
@@ -236,6 +245,13 @@ mod tests {
 
     fn want() -> Oidc {
         Oidc { authority: "https://kc/realms/default".into(), client_id: "kavita".into(), secret: "s3cretvalue".into(), provider_name: "Keycloak".into() }
+    }
+
+    #[test]
+    fn provider_suits_type() {
+        assert_eq!(metadata_provider(0), 3);
+        assert_eq!(metadata_provider(1), 2);
+        assert_eq!(metadata_provider(2), 2);
     }
 
     #[test]
