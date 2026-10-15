@@ -491,6 +491,18 @@ pub async fn ombi(ctx: &Ctx, f: &mut Flow) -> R<()> {
 
     // The album.
     let (lidarr, album_id, _root) = lidarr_slip(ctx, f).await?;
+    // Adding the artist queues a refresh that applies the "monitor none" add option; an approval landing
+    // before it finishes is undone by it.
+    poll("lidarr", "artist refresh finished", Duration::from_secs(180), Duration::from_secs(3), || async {
+        let cmds = lidarr.get(ctx, "/command").await?;
+        let busy = cmds
+            .as_array()
+            .into_iter()
+            .flatten()
+            .any(|c| matches!(c["status"].as_str(), Some("queued" | "started")) && c["name"].as_str().is_some_and(|n| n.contains("Artist")));
+        Ok((!busy).then_some(()))
+    })
+    .await?;
     let res = json(
         ombi.as_user(ctx, Method::POST, "/request/music", &jwt).json(&json!({ "foreignAlbumId": content::SLIP_RELEASE_GROUP })),
         "ombi",
