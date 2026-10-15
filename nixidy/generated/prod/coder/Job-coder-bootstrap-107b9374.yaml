@@ -3,7 +3,7 @@ kind: Job
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "5"
-  name: coder-bootstrap-c29cd163
+  name: coder-bootstrap-107b9374
   namespace: development
 spec:
   activeDeadlineSeconds: 1200
@@ -17,7 +17,7 @@ spec:
             - -euo
             - pipefail
             - -c
-            - |
+            - |+
               url=http://coder.development.svc.cluster.local
               until curl -sf "$url/healthz" >/dev/null; do echo "waiting for coderd"; sleep 5; done
               if [ "$(curl -s -o /dev/null -w '%{http_code}' "$url/api/v2/users/first")" = 404 ]; then
@@ -32,6 +32,20 @@ spec:
                 coder users create --username "$USER_NAME" --email "$USER_EMAIL" --login-type oidc
               fi
               coder users edit-roles "$USER_NAME" --roles owner --yes
+              mkdir -p /tmp/templates/devenv
+              cp -L /templates/devenv/.terraform.lock.hcl /tmp/templates/devenv/.terraform.lock.hcl
+              cp -L /templates/devenv/main.tf /tmp/templates/devenv/main.tf
+              : > /tmp/variables-devenv.yaml
+              echo 'image: "harbor.trdos.me/library/workspace:0.1.0@sha256:da1cbd9cc152beeff663bd83b5a178574ff275b037bf1a8601b311670410f61f"' >> /tmp/variables-devenv.yaml
+              if coder templates versions list devenv -o json 2>/dev/null | grep -qF '"789482af4d73"'; then
+                echo "devenv: 789482af4d73 already pushed"
+              else
+                coder templates push devenv --directory /tmp/templates/devenv --name 789482af4d73 \
+                  --variables-file /tmp/variables-devenv.yaml --message 'nixidy 789482af4d73' --yes
+              fi
+              coder templates edit devenv --display-name 'devenv project' --description 'One repository with its devenv, a persistent home and Nix store, Claude Code and opencode.' \
+                --icon /emojis/2744.png --default-ttl 8h --activity-bump 1h --yes
+
           env:
             - name: HOME
               value: /tmp
@@ -63,6 +77,9 @@ spec:
           volumeMounts:
             - mountPath: /tmp
               name: tmp
+            - mountPath: /templates/devenv
+              name: template-devenv
+              readOnly: true
       restartPolicy: OnFailure
       securityContext:
         runAsGroup: 1000
@@ -73,3 +90,6 @@ spec:
       volumes:
         - emptyDir: {}
           name: tmp
+        - configMap:
+            name: coder-template-devenv
+          name: template-devenv

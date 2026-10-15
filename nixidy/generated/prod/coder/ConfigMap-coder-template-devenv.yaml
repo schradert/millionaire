@@ -1,0 +1,505 @@
+apiVersion: v1
+data:
+  .terraform.lock.hcl: |
+    # This file is maintained automatically by "terraform init".
+    # Manual edits may be lost in future updates.
+
+    provider "registry.terraform.io/coder/coder" {
+      version     = "2.18.0"
+      constraints = "~> 2.18.0"
+      hashes = [
+        "h1:Nion+4EjMVVnDv9YQBpCnCPMArn39lACZXigoE6e8s8=",
+        "h1:O25nA2tkM1JFJtQpaX2TOTeWvsSyuxDoJo6/QTv78hM=",
+        "h1:h7PhF4zxKmMxCWfgFEcByzXgBylkS6KH2peuczLXbls=",
+        "zh:107c4eb7a36335ac94637679845c040759e21d3fb108d07081e0689cb93121b1",
+        "zh:1f8d904d59e35948f8f795e58d7895b791bd9a12c8409079f5bb90221303c1b6",
+        "zh:3942d5c6b6fad45b3b92f82c7b3f40a2d7f2b7b72da07f1ac63e1022b46bdbc7",
+        "zh:464f3b53eccfefc3ca02b46da07fb277362c16f81f45cc4570150520e5b9bf75",
+        "zh:6ae37bef989559a212ce04a615444d40452425e01081d8499843a24db0a09e85",
+        "zh:6f1410911124b0078a0f1c077899b4d834cd6821596ed350e4b4ad8f5b0030e7",
+        "zh:9ca356eb0e23bc034091fc9672bbe307a69e242c341a669f10db81e9a75fab2d",
+        "zh:b36687f0793295337286ae71d8157dc4c78a13fb5a9b1276093db82cdb8edd76",
+        "zh:c60a39cbde9fb473bfd0c2ad1685a0ce8d4a56408f060c6d1b858bae2e535d98",
+        "zh:d26ffdb52e095662e16b19942b7579bea7dc60577bd81f5cd671e6632ce48a0b",
+        "zh:da5414d74b21ecdcf8f93adc2199925c530cde1f53cde014201713d315916366",
+        "zh:e7e801f91b8afba90d40aa390c8b822ba064a54932a4a25bbff1593942e9bf72",
+        "zh:f064fb800fc687b2d60d4c12e1e65875a2f4b21cf8bb0b5e018d3ecbf7d29de2",
+        "zh:f569b65999264a9416862bca5cd2a6177d94ccb0424f3a4ef424428912b9cb3c",
+      ]
+    }
+
+    provider "registry.terraform.io/hashicorp/kubernetes" {
+      version     = "3.3.0"
+      constraints = "~> 3.3"
+      hashes = [
+        "h1:EgLfSDyeF0U/8b86+5GaD63F8oTi17/Hb0VOcf/gQ0o=",
+        "h1:PiCkS3Dj2DFiGb0LbWWqLBoE5I89IosDFXd3SJ0IR4c=",
+        "h1:c1zcjz8POGdzH8AxmxNcsFGEIluS1toQgiQ3Rkh40+c=",
+        "zh:032ef748e64ac668be92dfe383b99f27a57506e1e3555f3c1eccabab852d7ea1",
+        "zh:0e91225427284c67b313fda814439416f83c484c017df5c902992ae936154ae2",
+        "zh:2724542e27e70f6ad98b2a52b9e2ae5a59c6daf5b52433994efa23c3a60ca72c",
+        "zh:2a00499272914259ac0bc098b46b32db7b503bac7cde895975b2e7f26e1c5c90",
+        "zh:3152d82f36512eada40daa35939b2908f0d43f92e6df5d0ea3fb0be77c3b3af1",
+        "zh:402af4bdcd166e13f60d2d2e50252420d2968658a649756908af6cefededd3bc",
+        "zh:6395c7aabb90289138f11ca7e2ae5c190251079d3411678b6d94ec69966a4635",
+        "zh:7967a3ab94d312d6857442fad0f9d187162c3d3f4f7e431505b4c6787b651f12",
+        "zh:8effa0b20b4017f1921efae5d3326132f04f15727c56b37b50f66a67277a435d",
+        "zh:982acde76a4b0277add8c2097d4a903583ef0c335970101ec474ae77c8d5f878",
+        "zh:c853f735e14ca2b61b4489c5168363b8a5e748d87509018c68601047ceb86446",
+        "zh:caec2baae96383d57ade3c1d4200147e34bb9c2fe8cd17f857200a34c64f2b81",
+        "zh:f569b65999264a9416862bca5cd2a6177d94ccb0424f3a4ef424428912b9cb3c",
+      ]
+    }
+  main.tf: |
+    # Coder template `devenv`: one project per workspace. A pod in namespace
+    # `workspaces` with two volumes, the home (the repository, credentials, caches)
+    # and a single-user Nix store, which an init container seeds from the image
+    # (`workspace-seed`). The repository is cloned once; its devenv loads through
+    # direnv. Pushed by the coder bootstrap Job (nixidy/apps/development/coder),
+    # which passes the variables below. See docs/dev-workspaces.md.
+
+    terraform {
+      required_providers {
+        coder = {
+          source  = "coder/coder"
+          version = "~> 2.18.0"
+        }
+        kubernetes = {
+          source  = "hashicorp/kubernetes"
+          version = "~> 3.3"
+        }
+      }
+    }
+
+    provider "coder" {}
+
+    # In-cluster: coderd's ServiceAccount, which has a Role in `namespace` only.
+    provider "kubernetes" {}
+
+    variable "namespace" {
+      type    = string
+      default = "workspaces"
+    }
+
+    variable "image" {
+      type        = string
+      description = "harbor.<domain>/library/workspace:<tag>@<digest> (apps/workspace)"
+    }
+
+    variable "storage_class" {
+      type    = string
+      default = "ceph-block"
+    }
+
+    variable "nodes" {
+      type        = string
+      description = "Comma-separated nodes the pod may run on, preferred first."
+      default     = "falcon,axolotl"
+    }
+
+    variable "bifrost_url" {
+      type    = string
+      default = "http://bifrost.ai.svc.cluster.local:8000"
+    }
+
+    variable "ai_models" {
+      type        = string
+      description = "Comma-separated Bifrost models (provider/model) offered to opencode."
+      default     = "anthropic/claude-sonnet-4-5,openai/gpt-5,gemini/gemini-2.5-pro"
+    }
+
+    data "coder_workspace" "me" {}
+    data "coder_workspace_owner" "me" {}
+
+    data "coder_parameter" "repo" {
+      name         = "repo"
+      display_name = "Repository"
+      description  = "Git URL cloned into the home directory on first start."
+      type         = "string"
+      default      = "https://github.com/schradert/millionaire.git"
+      icon         = "/icon/git.svg"
+      mutable      = false
+    }
+
+    data "coder_parameter" "cpu" {
+      name         = "cpu"
+      display_name = "CPU"
+      description  = "Cores requested; the pod may burst above them."
+      type         = "number"
+      default      = "4"
+      icon         = "/icon/memory.svg"
+      mutable      = true
+      option {
+        name  = "2 cores"
+        value = "2"
+      }
+      option {
+        name  = "4 cores"
+        value = "4"
+      }
+      option {
+        name  = "8 cores"
+        value = "8"
+      }
+      option {
+        name  = "16 cores"
+        value = "16"
+      }
+    }
+
+    data "coder_parameter" "memory" {
+      name         = "memory"
+      display_name = "Memory"
+      description  = "GiB, requested and the limit."
+      type         = "number"
+      default      = "8"
+      icon         = "/icon/memory.svg"
+      mutable      = true
+      option {
+        name  = "4 GiB"
+        value = "4"
+      }
+      option {
+        name  = "8 GiB"
+        value = "8"
+      }
+      option {
+        name  = "16 GiB"
+        value = "16"
+      }
+      option {
+        name  = "32 GiB"
+        value = "32"
+      }
+    }
+
+    data "coder_parameter" "home_size" {
+      name         = "home_size"
+      display_name = "Home volume"
+      description  = "GiB; can grow, not shrink."
+      type         = "number"
+      default      = "20"
+      icon         = "/emojis/1f4be.png"
+      mutable      = true
+      validation {
+        min = 5
+        max = 200
+      }
+    }
+
+    data "coder_parameter" "nix_size" {
+      name         = "nix_size"
+      display_name = "Nix store volume"
+      description  = "GiB; can grow, not shrink."
+      type         = "number"
+      default      = "50"
+      icon         = "/emojis/2744.png"
+      mutable      = true
+      validation {
+        min = 10
+        max = 500
+      }
+    }
+
+    locals {
+      name    = "coder-${data.coder_workspace.me.id}"
+      project = trimsuffix(element(split("/", data.coder_parameter.repo.value), length(split("/", data.coder_parameter.repo.value)) - 1), ".git")
+      nodes   = [for n in split(",", var.nodes) : trimspace(n) if trimspace(n) != ""]
+      models  = [for m in split(",", var.ai_models) : trimspace(m) if trimspace(m) != ""]
+      labels = {
+        "app.kubernetes.io/name"     = "coder-workspace"
+        "app.kubernetes.io/instance" = local.name
+        "app.kubernetes.io/part-of"  = "coder"
+        "com.coder.resource"         = "true"
+        "com.coder.workspace.id"     = data.coder_workspace.me.id
+        "com.coder.workspace.name"   = data.coder_workspace.me.name
+        "com.coder.user.id"          = data.coder_workspace_owner.me.id
+        "com.coder.user.username"    = data.coder_workspace_owner.me.name
+      }
+      git_name = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
+
+      # opencode: Bifrost as an OpenAI-compatible provider (in-cluster, no key).
+      opencode_config = jsonencode({
+        "$schema"  = "https://opencode.ai/config.json"
+        autoupdate = false
+        provider = {
+          bifrost = {
+            npm     = "@ai-sdk/openai-compatible"
+            name    = "Bifrost (homelab)"
+            options = { baseURL = "${var.bifrost_url}/v1", apiKey = "bifrost" }
+            models  = { for m in local.models : m => { name = m } }
+          }
+        }
+      })
+
+      # Every start, on persistent volumes: idempotent, never overwrites the user's files.
+      startup_script = <<-EOT
+        #!/usr/bin/env bash
+        set -u
+        toolchain=$(dirname "$(dirname "$(readlink -f "$(command -v bash)")")")
+        mkdir -p "$HOME/.config/direnv" "$HOME/.config/opencode"
+
+        if [ ! -e "$HOME/.bashrc" ]; then
+          cat > "$HOME/.bashrc" <<'RC'
+        eval "$(direnv hook bash)"
+        # Claude Code through Bifrost instead of the claude.ai login (no Remote Control then).
+        alias claude-bifrost='ANTHROPIC_BASE_URL=$BIFROST_URL/anthropic ANTHROPIC_AUTH_TOKEN=bifrost claude'
+        RC
+        fi
+        [ -e "$HOME/.config/direnv/direnvrc" ] || echo "source $toolchain/share/nix-direnv/direnvrc" > "$HOME/.config/direnv/direnvrc"
+        [ -e "$HOME/.config/opencode/opencode.json" ] || cat > "$HOME/.config/opencode/opencode.json" <<'JSON'
+        ${local.opencode_config}
+        JSON
+
+        project="$HOME/${local.project}"
+        if [ ! -d "$project/.git" ]; then
+          git clone ${data.coder_parameter.repo.value} "$project" && [ -e "$project/.envrc" ] && direnv allow "$project"
+        fi
+
+        # A detached zellij session per project: `zellij attach ${local.project}`.
+        (cd "$project" 2>/dev/null || cd "$HOME"; zellij attach --create-background ${local.project} >/dev/null 2>&1 || true)
+      EOT
+    }
+
+    resource "coder_agent" "main" {
+      os             = "linux"
+      arch           = "amd64"
+      startup_script = local.startup_script
+
+      env = {
+        BIFROST_URL         = var.bifrost_url
+        GIT_AUTHOR_NAME     = local.git_name
+        GIT_AUTHOR_EMAIL    = data.coder_workspace_owner.me.email
+        GIT_COMMITTER_NAME  = local.git_name
+        GIT_COMMITTER_EMAIL = data.coder_workspace_owner.me.email
+      }
+
+      metadata {
+        display_name = "CPU"
+        key          = "cpu"
+        script       = "coder stat cpu"
+        interval     = 10
+        timeout      = 1
+      }
+      metadata {
+        display_name = "Memory"
+        key          = "mem"
+        script       = "coder stat mem"
+        interval     = 10
+        timeout      = 1
+      }
+      metadata {
+        display_name = "Home"
+        key          = "home"
+        script       = "coder stat disk --path /home/coder"
+        interval     = 60
+        timeout      = 1
+      }
+      metadata {
+        display_name = "Nix store"
+        key          = "nix"
+        script       = "coder stat disk --path /nix"
+        interval     = 60
+        timeout      = 1
+      }
+
+      display_apps {
+        vscode                 = false
+        vscode_insiders        = false
+        web_terminal           = true
+        ssh_helper             = true
+        port_forwarding_helper = true
+      }
+    }
+
+    # Opens the project in Zed over SSH (needs `coder config-ssh` on the client).
+    resource "coder_app" "zed" {
+      agent_id     = coder_agent.main.id
+      slug         = "zed"
+      display_name = "Zed"
+      icon         = "/icon/zed.svg"
+      external     = true
+      url          = "zed://ssh/coder.${data.coder_workspace.me.name}/home/coder/${local.project}"
+      order        = 1
+    }
+
+    resource "kubernetes_persistent_volume_claim_v1" "home" {
+      metadata {
+        name      = "${local.name}-home"
+        namespace = var.namespace
+        labels    = local.labels
+      }
+      wait_until_bound = false
+      spec {
+        access_modes       = ["ReadWriteOnce"]
+        storage_class_name = var.storage_class
+        resources {
+          requests = { storage = "${data.coder_parameter.home_size.value}Gi" }
+        }
+      }
+    }
+
+    resource "kubernetes_persistent_volume_claim_v1" "nix" {
+      metadata {
+        name      = "${local.name}-nix"
+        namespace = var.namespace
+        labels    = local.labels
+      }
+      wait_until_bound = false
+      spec {
+        access_modes       = ["ReadWriteOnce"]
+        storage_class_name = var.storage_class
+        resources {
+          requests = { storage = "${data.coder_parameter.nix_size.value}Gi" }
+        }
+      }
+    }
+
+    resource "kubernetes_deployment_v1" "main" {
+      count            = data.coder_workspace.me.start_count
+      wait_for_rollout = false
+      depends_on       = [kubernetes_persistent_volume_claim_v1.home, kubernetes_persistent_volume_claim_v1.nix]
+
+      metadata {
+        name      = local.name
+        namespace = var.namespace
+        labels    = local.labels
+      }
+
+      spec {
+        replicas = 1
+        selector {
+          match_labels = {
+            "app.kubernetes.io/name"     = "coder-workspace"
+            "app.kubernetes.io/instance" = local.name
+          }
+        }
+        strategy {
+          type = "Recreate"
+        }
+
+        template {
+          metadata {
+            labels = local.labels
+          }
+
+          spec {
+            automount_service_account_token = false
+            enable_service_links            = false
+
+            security_context {
+              run_as_user            = 1000
+              run_as_group           = 1000
+              run_as_non_root        = true
+              fs_group               = 1000
+              fs_group_change_policy = "OnRootMismatch"
+              seccomp_profile {
+                type = "RuntimeDefault"
+              }
+            }
+
+            affinity {
+              node_affinity {
+                required_during_scheduling_ignored_during_execution {
+                  node_selector_term {
+                    match_expressions {
+                      key      = "kubernetes.io/hostname"
+                      operator = "In"
+                      values   = local.nodes
+                    }
+                  }
+                }
+                preferred_during_scheduling_ignored_during_execution {
+                  weight = 100
+                  preference {
+                    match_expressions {
+                      key      = "kubernetes.io/hostname"
+                      operator = "In"
+                      values   = [local.nodes[0]]
+                    }
+                  }
+                }
+              }
+            }
+            # The desktops (falcon, axolotl) carry this soft taint.
+            toleration {
+              key      = "node.trdos.me/class"
+              operator = "Exists"
+            }
+
+            # Copies the image's Nix store into the store volume (new paths only).
+            init_container {
+              name    = "seed"
+              image   = var.image
+              command = ["/bin/workspace-seed"]
+              volume_mount {
+                name       = "nix"
+                mount_path = "/mnt/nix"
+              }
+              resources {
+                requests = { cpu = "100m", memory = "128Mi" }
+                limits   = { memory = "512Mi" }
+              }
+            }
+
+            container {
+              name              = "dev"
+              image             = var.image
+              image_pull_policy = "IfNotPresent"
+              command           = ["sh", "-c", coder_agent.main.init_script]
+              env {
+                name  = "CODER_AGENT_TOKEN"
+                value = coder_agent.main.token
+              }
+              resources {
+                requests = {
+                  cpu    = data.coder_parameter.cpu.value
+                  memory = "${data.coder_parameter.memory.value}Gi"
+                }
+                limits = {
+                  memory = "${data.coder_parameter.memory.value}Gi"
+                }
+              }
+              volume_mount {
+                name       = "home"
+                mount_path = "/home/coder"
+              }
+              volume_mount {
+                name       = "nix"
+                mount_path = "/nix"
+              }
+            }
+
+            volume {
+              name = "home"
+              persistent_volume_claim {
+                claim_name = kubernetes_persistent_volume_claim_v1.home.metadata[0].name
+              }
+            }
+            volume {
+              name = "nix"
+              persistent_volume_claim {
+                claim_name = kubernetes_persistent_volume_claim_v1.nix.metadata[0].name
+              }
+            }
+          }
+        }
+      }
+    }
+
+    resource "coder_metadata" "workspace" {
+      count       = data.coder_workspace.me.start_count
+      resource_id = kubernetes_deployment_v1.main[0].id
+      item {
+        key   = "repository"
+        value = data.coder_parameter.repo.value
+      }
+      item {
+        key   = "image"
+        value = var.image
+      }
+    }
+kind: ConfigMap
+metadata:
+  name: coder-template-devenv
+  namespace: development
