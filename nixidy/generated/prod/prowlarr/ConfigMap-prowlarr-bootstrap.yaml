@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
   image: harbor.trdos.me/library/app-bootstrap:0.22.0@sha256:54821207ee6084468b141d0241860900a0b8aa1d465cfde4769e529626aee9ac
-  spec: f996c5db286db7f4c4aba0d097d43bfd2fc6069d8d73f9fa15250ae112ce4ada
+  spec: e5e6cd3ec9616c76e631043be32011e0077891d9151b3abdef28c194fbb303a0
 kind: ConfigMap
 metadata:
   name: prowlarr-bootstrap
