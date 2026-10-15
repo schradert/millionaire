@@ -1,0 +1,77 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: tracearr-bootstrap
+  namespace: media
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - tracearr
+          env:
+            - name: ADMIN_EMAIL
+              value: t0rdos@pm.me
+            - name: ADMIN_PASSWORD_FILE
+              value: /secrets/admin/password
+            - name: ADMIN_USER
+              value: tristan
+            - name: CLAIM_CODE_FILE
+              value: /secrets/claim/code
+            - name: JELLYFIN_ADMIN_PASSWORD_FILE
+              value: /secrets/jellyfin/password
+            - name: JELLYFIN_PUBLIC_URL
+              value: https://jellyfin.trdos.me
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4318
+            - name: PYROSCOPE_SAMPLE_RATE
+              value: "1000"
+            - name: PYROSCOPE_SERVER_ADDRESS
+              value: http://pyroscope.observability.svc.cluster.local:4040
+            - name: TRACEARR_EXTERNAL_URL
+              value: https://tracearr.trdos.me
+          image: harbor.trdos.me/library/app-bootstrap:0.29.0@sha256:ffb0cc7e0188a481764d461b63aa282baab4bd7ce62cb76c0140a60fdbe98ce7
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /secrets/admin
+              name: admin
+              readOnly: true
+            - mountPath: /secrets/claim
+              name: claim
+              readOnly: true
+            - mountPath: /secrets/jellyfin
+              name: jellyfin
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - emptyDir: {}
+          name: tmp
+        - name: admin
+          secret:
+            secretName: tracearr-admin
+        - name: claim
+          secret:
+            secretName: tracearr-claim
+        - name: jellyfin
+          secret:
+            secretName: jellyfin-admin

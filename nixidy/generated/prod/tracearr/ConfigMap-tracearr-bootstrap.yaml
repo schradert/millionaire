@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  image: harbor.trdos.me/library/app-bootstrap:0.29.0@sha256:ffb0cc7e0188a481764d461b63aa282baab4bd7ce62cb76c0140a60fdbe98ce7
+  spec: 67fbd865ddeec3fcd40cba36d0d236d1bfaee4539449527c9b7de0ded972f4b6
+kind: ConfigMap
+metadata:
+  name: tracearr-bootstrap
+  namespace: media

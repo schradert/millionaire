@@ -1,0 +1,75 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: sportarr-bootstrap
+  namespace: media
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - sportarr
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4318
+            - name: PROWLARR_API_KEY_FILE
+              value: /secrets/prowlarr/apikey
+            - name: PYROSCOPE_SAMPLE_RATE
+              value: "1000"
+            - name: PYROSCOPE_SERVER_ADDRESS
+              value: http://pyroscope.observability.svc.cluster.local:4040
+            - name: QBITTORRENT_PASSWORD_FILE
+              value: /secrets/qbittorrent/password
+            - name: SPORTARR_API_KEY_FILE
+              value: /secrets/sportarr/apikey
+            - name: SPORTARR_LEAGUES
+              value: '[{"monitor":"Future","name":"English Premier League","sport":"Soccer"}]'
+            - name: SPORTARR_RETENTION_DAYS
+              value: "30"
+            - name: SPORTARR_TEAMS
+              value: '[{"name":"Wrexham","sport":"Soccer"}]'
+          image: harbor.trdos.me/library/app-bootstrap:0.29.0@sha256:ffb0cc7e0188a481764d461b63aa282baab4bd7ce62cb76c0140a60fdbe98ce7
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /secrets/prowlarr
+              name: prowlarr
+              readOnly: true
+            - mountPath: /secrets/qbittorrent
+              name: qbittorrent
+              readOnly: true
+            - mountPath: /secrets/sportarr
+              name: sportarr
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - emptyDir: {}
+          name: tmp
+        - name: prowlarr
+          secret:
+            secretName: prowlarr-apikey
+        - name: qbittorrent
+          secret:
+            secretName: qbittorrent-admin
+        - name: sportarr
+          secret:
+            secretName: sportarr-apikey
