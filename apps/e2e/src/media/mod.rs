@@ -4,6 +4,7 @@ pub mod apps;
 pub mod cleanup;
 pub mod content;
 mod flows_arr;
+mod flows_integrations;
 mod flows_media;
 mod flows_vpn;
 
@@ -63,5 +64,12 @@ fn flows() -> Vec<FlowDef> {
         d("lidarr", Offline, "Lidarr imports an album, Navidrome serves it", step!(flows_arr::lidarr)),
         d("prowlarr", Offline, "Prowlarr answers a search", step!(flows_arr::prowlarr)),
         d("bazarr", Offline, "Bazarr (skips until it has an API key and subtitle account)", step!(flows_media::bazarr)),
+        d("integrations-arr", Offline, "Sonarr, Radarr, Lidarr: root folder, qBittorrent client, health clean but for indexers", step!(flows_integrations::arr_apps)),
+        d("integrations-prowlarr", Offline, "Prowlarr: apps synced, qBittorrent and FlareSolverr wired, indexers pushed to the apps", step!(flows_integrations::prowlarr_links)),
+        d("integrations-qbittorrent", Offline, "qBittorrent saves to the shared downloads volume", step!(flows_integrations::qbittorrent_path)),
+        d("integrations-bazarr", Offline, "Bazarr: Sonarr and Radarr connected, English default profile, providers", step!(flows_integrations::bazarr)),
+        d("integrations-autobrr", Offline, "autobrr: download clients and a filter per arr app", step!(flows_integrations::autobrr)),
+        d("integrations-maintainerr", Offline, "Maintainerr: Jellyfin, Radarr, Sonarr, Seerr connected", step!(flows_integrations::maintainerr)),
+        d("integrations-seerr", Offline, "Seerr: Jellyfin libraries, Radarr, Sonarr", step!(flows_integrations::seerr)),
     ]
 }
