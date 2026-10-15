@@ -27,7 +27,7 @@
 //!   is updated only where a declared value differs (always, when it has secrets: Prowlarr masks them).
 //!   Indexers added in the UI and indexers dropped from the list are left alone.
 //!
-//! Port variables are `<APP>_PORT_NUMBER`, never `<APP>_PORT`: Kubernetes injects `<SERVICE>_PORT=tcp://ip:port`
+//! Port variables are `<APP>_PORT_NUMBER`, never `<APP>_PORT`: Kubernetes injects `<SERVICE>_PORT=tcp://<ip>:<port>`
 //! for every Service in the namespace.
 
 use crate::trace::SendTraced as _;
@@ -133,7 +133,7 @@ async fn ensure_provider(
 /// `ensure_provider`, matching existing providers by name only when `by_impl` is false (several of
 /// one implementation, like two Readarr instances in Prowlarr).
 #[allow(clippy::too_many_arguments)]
-async fn ensure_provider_by(
+pub(crate) async fn ensure_provider_by(
     http: &Client,
     s: &Servarr,
     collection: &str,
