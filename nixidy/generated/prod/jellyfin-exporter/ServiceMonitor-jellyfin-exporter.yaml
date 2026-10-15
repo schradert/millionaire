@@ -1,0 +1,23 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app.kubernetes.io/instance: jellyfin-exporter
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: jellyfin-exporter
+  name: jellyfin-exporter
+  namespace: media
+spec:
+  endpoints:
+    - interval: 30s
+      path: /metrics
+      port: metrics
+  jobLabel: app.kubernetes.io/name
+  namespaceSelector:
+    matchNames:
+      - media
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: jellyfin-exporter
+      app.kubernetes.io/name: jellyfin-exporter
+      app.kubernetes.io/service: jellyfin-exporter
