@@ -59,7 +59,7 @@ spec:
             - name: VPN_PORT_FORWARDING_PROVIDER
               value: protonvpn
             - name: VPN_PORT_FORWARDING_UP_COMMAND
-              value: /bin/sh -c 'wget -q -O /dev/null --retry-connrefused --post-data "json={\"current_network_interface\":\"{{VPN_INTERFACE}}\",\"listen_port\":{{PORT}},\"random_port\":false,\"upnp\":false}" http://127.0.0.1:8080/api/v2/app/setPreferences'
+              value: /bin/sh -c 'wget -q -O /dev/null --retry-connrefused --post-data "json={\"current_network_interface\":\"{{VPN_INTERFACE}}\",\"listen_port\":{{PORT}},\"random_port\":false,\"upnp\":false}" http://127.0.0.1:8080/api/v2/app/setPreferences; sleep 5; wget -q -O /dev/null --retry-connrefused --post-data "json={\"dht\":false}" http://127.0.0.1:8080/api/v2/app/setPreferences; sleep 2; wget -q -O /dev/null --retry-connrefused --post-data "json={\"dht\":true}" http://127.0.0.1:8080/api/v2/app/setPreferences'
             - name: VPN_SERVICE_PROVIDER
               value: protonvpn
             - name: VPN_TYPE
