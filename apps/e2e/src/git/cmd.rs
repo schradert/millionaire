@@ -14,7 +14,18 @@ pub async fn git(cwd: &Path, marker: &str, secret: &str, args: &[&str]) -> R<Str
         Duration::from_secs(120),
         tokio::process::Command::new("git")
             .current_dir(cwd)
-            .args(["-c", &format!("user.name={name}"), "-c", &format!("user.email={marker}@e2e.invalid"), "-c", "init.defaultBranch=main", "-c", "commit.gpgsign=false", "-c", "advice.detachedHead=false"])
+            .args([
+                "-c",
+                &format!("user.name={name}"),
+                "-c",
+                &format!("user.email={marker}@e2e.invalid"),
+                "-c",
+                "init.defaultBranch=main",
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                "advice.detachedHead=false",
+            ])
             .args(args)
             .env("GIT_TERMINAL_PROMPT", "0")
             .env("GIT_CONFIG_NOSYSTEM", "1")
@@ -67,7 +78,13 @@ mod tests {
         let a = root.join("a");
         std::fs::create_dir_all(&a).unwrap();
         std::fs::write(a.join("f"), "x\n").unwrap();
-        for args in [&["init", "--quiet"][..], &["add", "f"], &["commit", "--quiet", "-m", "first"], &["remote", "add", "origin", bare.to_str().unwrap()], &["push", "--quiet", "origin", "main"]] {
+        for args in [
+            &["init", "--quiet"][..],
+            &["add", "f"],
+            &["commit", "--quiet", "-m", "first"],
+            &["remote", "add", "origin", bare.to_str().unwrap()],
+            &["push", "--quiet", "origin", "main"],
+        ] {
             git(&a, m, "", args).await.unwrap();
         }
         git(&root, m, "", &["clone", "--quiet", bare.to_str().unwrap(), "b"]).await.unwrap();

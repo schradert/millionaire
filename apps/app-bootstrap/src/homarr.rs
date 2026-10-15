@@ -56,12 +56,7 @@ impl Homarr {
         if self.cookies.is_empty() {
             return b;
         }
-        let jar = self
-            .cookies
-            .iter()
-            .map(|(k, v)| format!("{k}={v}"))
-            .collect::<Vec<_>>()
-            .join("; ");
+        let jar = self.cookies.iter().map(|(k, v)| format!("{k}={v}")).collect::<Vec<_>>().join("; ");
         b.header(header::COOKIE, jar)
     }
 
@@ -93,10 +88,7 @@ impl Homarr {
     }
 
     async fn mutate(&mut self, path: &str, input: Value) -> Result<Value> {
-        let b = self
-            .http
-            .post(format!("{}/api/trpc/{path}", self.base))
-            .json(&json!({ "json": input }));
+        let b = self.http.post(format!("{}/api/trpc/{path}", self.base)).json(&json!({ "json": input }));
         let r = self.req(b).send_t().await?;
         self.keep_cookies(&r);
         data(ok(r, path).await?).await
@@ -104,20 +96,11 @@ impl Homarr {
 
     async fn step(&mut self) -> Result<String> {
         let v = self.query("onboard.currentStep", Value::Null).await?;
-        Ok(v["current"]
-            .as_str()
-            .ok_or("onboard.currentStep: no current")?
-            .to_string())
+        Ok(v["current"].as_str().ok_or("onboard.currentStep: no current")?.to_string())
     }
 
     async fn claim(&mut self) -> Result<()> {
-        let r = self
-            .req(
-                self.http
-                    .post(format!("{}/api/onboarding/claim", self.base)),
-            )
-            .send_t()
-            .await?;
+        let r = self.req(self.http.post(format!("{}/api/onboarding/claim", self.base))).send_t().await?;
         self.keep_cookies(&r);
         // 409 = onboarding already finished: nothing to claim.
         if r.status() == reqwest::StatusCode::CONFLICT {
@@ -129,32 +112,15 @@ impl Homarr {
 
     /// Auth.js credentials sign-in: CSRF token, then the callback form.
     async fn sign_in(&mut self, name: &str, password: &str) -> Result<()> {
-        let r = self
-            .req(self.http.get(format!("{}/api/auth/csrf", self.base)))
-            .send_t()
-            .await?;
+        let r = self.req(self.http.get(format!("{}/api/auth/csrf", self.base))).send_t().await?;
         self.keep_cookies(&r);
         let csrf: Value = ok(r, "GET /api/auth/csrf").await?.json().await?;
-        let token = csrf["csrfToken"]
-            .as_str()
-            .ok_or("no csrfToken")?
-            .to_string();
-        let form = [
-            ("csrfToken", token.as_str()),
-            ("name", name),
-            ("password", password),
-            ("callbackUrl", "/"),
-        ];
-        let b = self
-            .http
-            .post(format!("{}/api/auth/callback/credentials", self.base))
-            .form(&form);
+        let token = csrf["csrfToken"].as_str().ok_or("no csrfToken")?.to_string();
+        let form = [("csrfToken", token.as_str()), ("name", name), ("password", password), ("callbackUrl", "/")];
+        let b = self.http.post(format!("{}/api/auth/callback/credentials", self.base)).form(&form);
         let r = self.req(b).send_t().await?;
         self.keep_cookies(&r);
-        let r = self
-            .req(self.http.get(format!("{}/api/auth/session", self.base)))
-            .send_t()
-            .await?;
+        let r = self.req(self.http.get(format!("{}/api/auth/session", self.base))).send_t().await?;
         let session: Value = ok(r, "GET /api/auth/session").await?.json().await?;
         if session["user"].is_null() {
             return Err("credentials sign-in failed (wrong admin password?)".into());
@@ -184,34 +150,18 @@ pub async fn run() -> Result<()> {
     let admin = var("ADMIN_USERNAME", "admin");
     let password = secret("ADMIN_PASSWORD")?;
     let admin_group = var("ADMIN_GROUP", "admin");
-    let view_groups: Vec<String> = var("VIEW_GROUPS", "family")
-        .split(',')
-        .filter(|g| !g.is_empty())
-        .map(String::from)
-        .collect();
+    let view_groups: Vec<String> = var("VIEW_GROUPS", "family").split(',').filter(|g| !g.is_empty()).map(String::from).collect();
     let board = var("BOARD_NAME", "homelab");
     // portal.files."catalog.json" (nixidy/system/portal.nix)
-    let tiles: Vec<Tile> =
-        serde_json::from_str(&std::env::var("CATALOG_JSON").map_err(|_| "set CATALOG_JSON")?)?;
+    let tiles: Vec<Tile> = serde_json::from_str(&std::env::var("CATALOG_JSON").map_err(|_| "set CATALOG_JSON")?)?;
 
     let mut h = Homarr {
-        http: Client::builder()
-            .timeout(Duration::from_secs(60))
-            .redirect(redirect::Policy::none())
-            .build()?,
+        http: Client::builder().timeout(Duration::from_secs(60)).redirect(redirect::Policy::none()).build()?,
         base: base.trim_end_matches('/').to_string(),
         cookies: BTreeMap::new(),
     };
 
-    retry("waiting for homarr", 120, || async {
-        ok(
-            reqwest::get(format!("{}/api/health/ready", h.base)).await?,
-            "ready",
-        )
-        .await
-        .map(|_| ())
-    })
-    .await?;
+    retry("waiting for homarr", 120, || async { ok(reqwest::get(format!("{}/api/health/ready", h.base)).await?, "ready").await.map(|_| ()) }).await?;
 
     // Onboarding, one step at a time; each call moves the step forward.
     let mut signed_in = false;
@@ -242,19 +192,11 @@ pub async fn run() -> Result<()> {
             }
             "user" => {
                 println!("creating credentials admin {admin}");
-                h.mutate(
-                    "user.initUser",
-                    json!({ "username": admin, "password": password, "confirmPassword": password }),
-                )
-                .await?;
+                h.mutate("user.initUser", json!({ "username": admin, "password": password, "confirmPassword": password })).await?;
             }
             "group" => {
                 println!("creating external admin group {admin_group}");
-                h.mutate(
-                    "group.createInitialExternalGroup",
-                    json!({ "name": admin_group }),
-                )
-                .await?;
+                h.mutate("group.createInitialExternalGroup", json!({ "name": admin_group })).await?;
             }
             "setup" => {
                 println!("creating board {board} with {} apps", tiles.len());
@@ -294,21 +236,14 @@ pub async fn run() -> Result<()> {
     }
     println!("signed in as {admin}");
 
-    let board_v = h
-        .query("board.getBoardByName", json!({ "name": board }))
-        .await?;
+    let board_v = h.query("board.getBoardByName", json!({ "name": board })).await?;
     let board_id = board_v["id"].as_str().ok_or("board not found")?.to_string();
 
     // Groups: view groups exist and can see the board; every portal group
     // lands on it.
     let groups = h.query("group.getAll", Value::Null).await?;
     let find = |groups: &Value, name: &str| -> Option<String> {
-        groups
-            .as_array()?
-            .iter()
-            .find(|g| g["name"] == name)
-            .and_then(|g| g["id"].as_str())
-            .map(String::from)
+        groups.as_array()?.iter().find(|g| g["name"] == name).and_then(|g| g["id"].as_str()).map(String::from)
     };
     let mut perms = Vec::new();
     let mut homes = Vec::new();
@@ -317,30 +252,19 @@ pub async fn run() -> Result<()> {
             Some(id) => id,
             None => {
                 println!("creating group {g}");
-                h.mutate("group.createGroup", json!({ "name": g }))
-                    .await?
-                    .as_str()
-                    .ok_or("no group id")?
-                    .to_string()
+                h.mutate("group.createGroup", json!({ "name": g })).await?.as_str().ok_or("no group id")?.to_string()
             }
         };
         perms.push(json!({ "principalId": id, "permission": "view" }));
         homes.push(id);
     }
     homes.extend(find(&groups, &admin_group));
-    let current = h
-        .query("board.getBoardPermissions", json!({ "id": board_id }))
-        .await?;
+    let current = h.query("board.getBoardPermissions", json!({ "id": board_id })).await?;
     let mut have: Vec<(String, String)> = current["groups"]
         .as_array()
         .into_iter()
         .flatten()
-        .filter_map(|p| {
-            Some((
-                p["group"]["id"].as_str()?.into(),
-                p["permission"].as_str()?.into(),
-            ))
-        })
+        .filter_map(|p| Some((p["group"]["id"].as_str()?.into(), p["permission"].as_str()?.into())))
         .collect();
     let mut want: Vec<(String, String)> = have.clone();
     for p in &perms {
@@ -352,30 +276,15 @@ pub async fn run() -> Result<()> {
     have.sort();
     want.sort();
     if have != want {
-        let permissions: Vec<Value> = want
-            .iter()
-            .map(|(g, p)| json!({ "principalId": g, "permission": p }))
-            .collect();
-        h.mutate(
-            "board.saveGroupBoardPermissions",
-            json!({ "entityId": board_id, "permissions": permissions }),
-        )
-        .await?;
+        let permissions: Vec<Value> = want.iter().map(|(g, p)| json!({ "principalId": g, "permission": p })).collect();
+        h.mutate("board.saveGroupBoardPermissions", json!({ "entityId": board_id, "permissions": permissions })).await?;
         println!("board {board}: group permissions {want:?}");
     }
     let groups = h.query("group.getAll", Value::Null).await?;
     for id in &homes {
-        let g = groups
-            .as_array()
-            .into_iter()
-            .flatten()
-            .find(|g| g["id"] == id.as_str());
+        let g = groups.as_array().into_iter().flatten().find(|g| g["id"] == id.as_str());
         if g.is_some_and(|g| g["homeBoardId"] != board_id.as_str()) {
-            h.mutate(
-                "group.savePartialSettings",
-                json!({ "id": id, "settings": { "homeBoardId": board_id } }),
-            )
-            .await?;
+            h.mutate("group.savePartialSettings", json!({ "id": id, "settings": { "homeBoardId": board_id } })).await?;
             println!("group {id}: home board {board}");
         }
     }
@@ -386,9 +295,8 @@ pub async fn run() -> Result<()> {
         let want = app_input(t);
         match apps.iter().find(|a| a.name == want["name"]) {
             Some(a) => {
-                let same = a.href.as_deref() == Some(t.url.as_str())
-                    && a.icon_url == t.icon_url
-                    && a.description.as_deref().unwrap_or_default() == t.description;
+                let same =
+                    a.href.as_deref() == Some(t.url.as_str()) && a.icon_url == t.icon_url && a.description.as_deref().unwrap_or_default() == t.description;
                 if !same {
                     let mut input = want.clone();
                     input["id"] = json!(a.id);
@@ -398,15 +306,8 @@ pub async fn run() -> Result<()> {
             }
             None => {
                 let created = h.mutate("app.create", want.clone()).await?;
-                let id = created["appId"]
-                    .as_str()
-                    .ok_or("app.create: no appId")?
-                    .to_string();
-                h.mutate(
-                    "board.addItem",
-                    json!({ "boardId": board_id, "kind": "app", "options": { "appId": id } }),
-                )
-                .await?;
+                let id = created["appId"].as_str().ok_or("app.create: no appId")?.to_string();
+                h.mutate("board.addItem", json!({ "boardId": board_id, "kind": "app", "options": { "appId": id } })).await?;
                 println!("created app {} on board {board}", t.title);
             }
         }

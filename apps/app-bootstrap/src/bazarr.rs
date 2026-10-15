@@ -133,13 +133,8 @@ pub async fn run() -> Result<()> {
 
     // 1. language
     let languages = b.get("/api/system/languages").await?;
-    let enabled: Vec<String> = languages
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter(|l| l["enabled"] == json!(true))
-        .filter_map(|l| l["code2"].as_str().map(String::from))
-        .collect();
+    let enabled: Vec<String> =
+        languages.as_array().into_iter().flatten().filter(|l| l["enabled"] == json!(true)).filter_map(|l| l["code2"].as_str().map(String::from)).collect();
     if !enabled.contains(&language) {
         for code in enabled.iter().chain(std::iter::once(&language)) {
             form.push(("languages-enabled".into(), code.clone()));
@@ -194,7 +189,8 @@ pub async fn run() -> Result<()> {
     // 6. profile for what Sonarr/Radarr synced before the defaults existed
     for (kind, host, port, key) in linked {
         let arr = Servarr { base: format!("http://{host}:{port}"), key, api: "v3" };
-        let (list, id_field, post) = if kind == "sonarr" { ("/series", "sonarrSeriesId", ("/api/series", "seriesid")) } else { ("/movie", "radarrId", ("/api/movies", "radarrid")) };
+        let (list, id_field, post) =
+            if kind == "sonarr" { ("/series", "sonarrSeriesId", ("/api/series", "seriesid")) } else { ("/movie", "radarrId", ("/api/movies", "radarrid")) };
         let want = arr.get(&http, list).await?.as_array().map(Vec::len).unwrap_or(0);
         // Bazarr syncs in the background after the link is saved.
         let synced = retry(&format!("bazarr syncing {kind}"), 24, || async {
@@ -210,7 +206,8 @@ pub async fn run() -> Result<()> {
             eprintln!("bazarr: {kind} not synced yet, leaving the profile to the default for new items");
             continue;
         };
-        let unset: Vec<i64> = synced["data"].as_array().into_iter().flatten().filter(|i| i["profileId"].is_null()).filter_map(|i| i[id_field].as_i64()).collect();
+        let unset: Vec<i64> =
+            synced["data"].as_array().into_iter().flatten().filter(|i| i["profileId"].is_null()).filter_map(|i| i[id_field].as_i64()).collect();
         if unset.is_empty() {
             continue;
         }

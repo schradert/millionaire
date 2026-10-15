@@ -34,7 +34,12 @@ impl Hb {
 
     async fn projects(&self, ctx: &Ctx, scope: &Scope) -> R<Vec<(i64, String)>> {
         let v = get_json(self.api(ctx, Method::GET, "/projects?name=e2e-&page_size=100"), APP, "list projects").await?;
-        Ok(v.as_array().into_iter().flatten().filter_map(|p| Some((p["project_id"].as_i64()?, p["name"].as_str()?.to_string()))).filter(|(_, n)| scope.hit(n)).collect())
+        Ok(v.as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|p| Some((p["project_id"].as_i64()?, p["name"].as_str()?.to_string())))
+            .filter(|(_, n)| scope.hit(n))
+            .collect())
     }
 
     /// Delete a tagged project with everything in it: repositories, robots, then the project.

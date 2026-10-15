@@ -35,11 +35,7 @@ async fn post(http: &Client, base: &str, path: &str, body: &Value) -> Result<()>
 
 /// Does the server list `existing` already point at `url`?
 fn has_url(existing: &Value, url: &str) -> bool {
-    existing
-        .as_array()
-        .into_iter()
-        .flatten()
-        .any(|s| s["url"].as_str().is_some_and(|u| u.trim_end_matches('/') == url.trim_end_matches('/')))
+    existing.as_array().into_iter().flatten().any(|s| s["url"].as_str().is_some_and(|u| u.trim_end_matches('/') == url.trim_end_matches('/')))
 }
 
 /// Seerr's API key through an admin session.

@@ -35,6 +35,15 @@ pub fn family() -> Family {
 fn flows() -> Vec<FlowDef> {
     let mut v = flows::apps();
     v.push(FlowDef::new(NAME, "admin-gate", Tier::Offline, "no anonymous request reaches an admin app: every oauth2-proxy route sends it to Keycloak, every admin tile an app serves itself refuses it, and the family user is refused on each admin-only route", step!(flows::admin_gate)).setup(step!(flows::users)));
-    v.push(FlowDef::new(NAME, "portal-tiles", Tier::Offline, "every portal tile's URL answers; the portal's exports list exactly the declared tiles", step!(flows::portal_tiles)).setup(step!(flows::users)));
+    v.push(
+        FlowDef::new(
+            NAME,
+            "portal-tiles",
+            Tier::Offline,
+            "every portal tile's URL answers; the portal's exports list exactly the declared tiles",
+            step!(flows::portal_tiles),
+        )
+        .setup(step!(flows::users)),
+    );
     v
 }

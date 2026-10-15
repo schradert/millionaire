@@ -9,7 +9,7 @@ source type `url-set`).
 
 Layout (names must match the pin keys exactly):
 
-```
+```text
 roms/<console>/<title>/<files>   e.g. roms/PS1/Persona (USA)/Persona (USA).bin, ... .cue
 bios/<console>/<name>/<files>    e.g. bios/PS1/ps-41a/ps-41a.bin
 installers/<file>                e.g. installers/InstallWizard101.exe

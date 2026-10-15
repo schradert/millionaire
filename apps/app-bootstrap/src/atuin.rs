@@ -28,22 +28,14 @@ pub async fn run() -> Result<()> {
     })
     .await?;
 
-    let login = http
-        .post(format!("{base}/login"))
-        .json(&json!({ "username": user, "password": password }))
-        .send_t()
-        .await?;
+    let login = http.post(format!("{base}/login")).json(&json!({ "username": user, "password": password })).send_t().await?;
     if login.status().is_success() {
         println!("user {user} exists and the generated password works");
         return Ok(());
     }
 
     println!("registering {user}");
-    let r = http
-        .post(format!("{base}/register"))
-        .json(&json!({ "username": user, "email": email, "password": password }))
-        .send_t()
-        .await?;
+    let r = http.post(format!("{base}/register")).json(&json!({ "username": user, "email": email, "password": password })).send_t().await?;
     ok(r, "POST /register").await?;
     Ok(())
 }

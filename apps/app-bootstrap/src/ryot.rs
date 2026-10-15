@@ -24,11 +24,7 @@ use crate::{
 };
 
 async fn gql(http: &Client, url: &str, query: &str, variables: Value) -> Result<Value> {
-    let r = http
-        .post(url)
-        .json(&json!({ "query": query, "variables": variables }))
-        .send_t()
-        .await?;
+    let r = http.post(url).json(&json!({ "query": query, "variables": variables })).send_t().await?;
     let body: Value = ok(r, "ryot graphql").await?.json().await?;
     if let Some(errors) = body["errors"].as_array().filter(|e| !e.is_empty()) {
         let msg = errors.iter().filter_map(|e| e["message"].as_str()).collect::<Vec<_>>().join("; ");
@@ -47,13 +43,7 @@ pub async fn run() -> Result<()> {
     let email = kc.email.ok_or("keycloak user has no email (ryot names OIDC users by email)")?;
 
     let found = retry("waiting for ryot", 120, || async {
-        let d = gql(
-            &http,
-            &url,
-            "query($id: String!) { userByOidcIssuerId(oidcIssuerId: $id) }",
-            json!({ "id": kc.sub }),
-        )
-        .await?;
+        let d = gql(&http, &url, "query($id: String!) { userByOidcIssuerId(oidcIssuerId: $id) }", json!({ "id": kc.sub })).await?;
         Ok(d["userByOidcIssuerId"].as_str().map(str::to_string))
     })
     .await?;

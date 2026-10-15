@@ -142,40 +142,41 @@ in {
               ];
             };
           };
-          configMaps.navidrome.data = {
-            ND_DATAFOLDER = "/data";
-            ND_MUSICFOLDER = "/music";
-            ND_PORT = builtins.toString port;
-            ND_BASEURL = "https://${hostname}";
-            ND_LOGLEVEL = "info";
-            ND_PROMETHEUS_ENABLED = "true";
-            ND_SCANSCHEDULE = "@every 1h";
-            ND_SCANNER_GROUPALBUMRELEASES = "true";
-            ND_ENABLESHARING = "true";
-            ND_ENABLEDOWNLOADS = "true";
-            ND_ENABLETRANSCODINGCONFIG = "true";
-            # Trusted-header login, only reachable via oauth2-proxy: the route below strips
-            # the header from every direct (Subsonic/share) request, and the whitelist is
-            # pod IPs only. Pre-bootstrap there is no whitelist, so header auth is off.
-          }
-          // lib.optionalAttrs bootstrapped {
-            ND_REVERSEPROXYUSERHEADER = userHeader;
-            ND_REVERSEPROXYWHITELIST = "10.0.0.0/8";
-          }
-          // {
-            # ListenBrainz scrobble target points at Maloja's LB-compatible endpoint.
-            # Maloja then proxy-forwards to real (pseudonymous) ListenBrainz.
-            # Per-user LB tokens are configured in Navidrome's user UI; the token a user
-            # supplies is their Maloja API key (which Maloja in turn relays under the user's
-            # pseudonymous LB token, configured in Maloja).
-            ND_LASTFM_ENABLED = "false";
-            ND_LISTENBRAINZ_ENABLED = "true";
-            ND_LISTENBRAINZ_BASEURL = "http://maloja.media.svc.cluster.local:42010/apis/listenbrainz/1/";
-            # Smart playlists & similar-artist suggestions
-            ND_DEEZER_ENABLED = "false";
-            ND_SPOTIFY_ID = "";
-            ND_SPOTIFY_SECRET = "";
-          };
+          configMaps.navidrome.data =
+            {
+              ND_DATAFOLDER = "/data";
+              ND_MUSICFOLDER = "/music";
+              ND_PORT = builtins.toString port;
+              ND_BASEURL = "https://${hostname}";
+              ND_LOGLEVEL = "info";
+              ND_PROMETHEUS_ENABLED = "true";
+              ND_SCANSCHEDULE = "@every 1h";
+              ND_SCANNER_GROUPALBUMRELEASES = "true";
+              ND_ENABLESHARING = "true";
+              ND_ENABLEDOWNLOADS = "true";
+              ND_ENABLETRANSCODINGCONFIG = "true";
+              # Trusted-header login, only reachable via oauth2-proxy: the route below strips
+              # the header from every direct (Subsonic/share) request, and the whitelist is
+              # pod IPs only. Pre-bootstrap there is no whitelist, so header auth is off.
+            }
+            // lib.optionalAttrs bootstrapped {
+              ND_REVERSEPROXYUSERHEADER = userHeader;
+              ND_REVERSEPROXYWHITELIST = "10.0.0.0/8";
+            }
+            // {
+              # ListenBrainz scrobble target points at Maloja's LB-compatible endpoint.
+              # Maloja then proxy-forwards to real (pseudonymous) ListenBrainz.
+              # Per-user LB tokens are configured in Navidrome's user UI; the token a user
+              # supplies is their Maloja API key (which Maloja in turn relays under the user's
+              # pseudonymous LB token, configured in Maloja).
+              ND_LASTFM_ENABLED = "false";
+              ND_LISTENBRAINZ_ENABLED = "true";
+              ND_LISTENBRAINZ_BASEURL = "http://maloja.media.svc.cluster.local:42010/apis/listenbrainz/1/";
+              # Smart playlists & similar-artist suggestions
+              ND_DEEZER_ENABLED = "false";
+              ND_SPOTIFY_ID = "";
+              ND_SPOTIFY_SECRET = "";
+            };
           # Web UI via oauth2-proxy (trusted header). Client copies of the identity
           # headers are stripped before oauth2-proxy sets its own.
           route.navidrome = {
@@ -199,7 +200,12 @@ in {
               sectionName = "https";
             };
             rules = lib.toList {
-              matches = map (path: {path = {type = "PathPrefix"; value = path;};}) ["/rest" "/share" "/ping"];
+              matches = map (path: {
+                path = {
+                  type = "PathPrefix";
+                  value = path;
+                };
+              }) ["/rest" "/share" "/ping"];
               filters = [removeHeaders];
               backendRefs = [navidrome];
             };

@@ -28,13 +28,31 @@ pub fn family() -> Family {
 
 fn flows() -> Vec<FlowDef> {
     vec![
-        FlowDef::new(NAME, "shoko-user-filter", Tier::Offline, "a tagged Shoko user and filter; the user signs in, is refused admin calls; everything deleted", step!(shoko::user_and_filter)).cleanup(step!(shoko::cleanup)),
-        FlowDef::new(NAME, "ryot-tracking", Tier::Offline, "a tagged Ryot user (admin token), a collection it makes and deletes; the e2e admin deletes the user", step!(ryot::tracking)).cleanup(step!(ryot::cleanup)),
+        FlowDef::new(
+            NAME,
+            "shoko-user-filter",
+            Tier::Offline,
+            "a tagged Shoko user and filter; the user signs in, is refused admin calls; everything deleted",
+            step!(shoko::user_and_filter),
+        )
+        .cleanup(step!(shoko::cleanup)),
+        FlowDef::new(
+            NAME,
+            "ryot-tracking",
+            Tier::Offline,
+            "a tagged Ryot user (admin token), a collection it makes and deletes; the e2e admin deletes the user",
+            step!(ryot::tracking),
+        )
+        .cleanup(step!(ryot::cleanup)),
     ]
 }
 
 async fn passes(ctx: &Ctx, scope: &Scope, delete: bool) -> Vec<(&'static str, svc::Found)> {
-    vec![("shoko", shoko::sweep(ctx, scope, delete).await), ("ryot", ryot::sweep(ctx, scope, delete).await), ("keycloak", svc::kc_users(ctx, scope, delete).await)]
+    vec![
+        ("shoko", shoko::sweep(ctx, scope, delete).await),
+        ("ryot", ryot::sweep(ctx, scope, delete).await),
+        ("keycloak", svc::kc_users(ctx, scope, delete).await),
+    ]
 }
 
 async fn cleanup(ctx: &Ctx, scope: &Scope, dry: bool) -> Flow {

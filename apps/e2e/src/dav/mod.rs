@@ -25,7 +25,13 @@ pub fn family() -> Family {
 }
 
 fn flows() -> Vec<FlowDef> {
-    vec![FlowDef::new(NAME, "webdav", Tier::Offline, "dav.<domain>: no token redirects; a bearer token creates, reads, lists and deletes a tagged file", step!(flows::webdav))
-        .setup(step!(crate::proxy::users))
-        .cleanup(step!(flows::webdav_cleanup))]
+    vec![FlowDef::new(
+        NAME,
+        "webdav",
+        Tier::Offline,
+        "dav.<domain>: no token redirects; a bearer token creates, reads, lists and deletes a tagged file",
+        step!(flows::webdav),
+    )
+    .setup(step!(crate::proxy::users))
+    .cleanup(step!(flows::webdav_cleanup))]
 }

@@ -42,7 +42,14 @@ pub async fn arr_apps(ctx: &Ctx, f: &mut Flow) -> R<()> {
     for app in ["sonarr", "radarr", "lidarr"] {
         let a = Arr::new(app)?;
         let roots = names(&a.get(ctx, "/rootfolder").await?, "path");
-        let root = format!("/media/{}", match app { "sonarr" => "tv", "radarr" => "movies", _ => "music" });
+        let root = format!(
+            "/media/{}",
+            match app {
+                "sonarr" => "tv",
+                "radarr" => "movies",
+                _ => "music",
+            }
+        );
         require(app, "root folder", &roots, &[root.as_str()])?;
         let clients = a.get(ctx, "/downloadclient").await?;
         let q = clients.as_array().into_iter().flatten().find(|c| c["name"] == json!("qBittorrent")).at(app, "qBittorrent download client")?;
@@ -99,7 +106,8 @@ pub async fn qbittorrent_path(ctx: &Ctx, f: &mut Flow) -> R<()> {
 pub async fn bazarr(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let base = bazarr_url();
     let html = send(ctx.http.get(format!("{base}/")), "bazarr", "index page").await?.text().await.at("bazarr", "index page")?;
-    let key = html.split("\"apiKey\": \"").nth(1).and_then(|r| r.split('"').next()).filter(|k| !k.is_empty()).at("bazarr", "API key in the index page")?.to_string();
+    let key =
+        html.split("\"apiKey\": \"").nth(1).and_then(|r| r.split('"').next()).filter(|k| !k.is_empty()).at("bazarr", "API key in the index page")?.to_string();
     let get = |path: &str| ctx.http.get(format!("{base}{path}")).header("X-API-KEY", key.clone());
     let status = json(get("/api/system/status"), "bazarr", "status").await?;
     for (app, field) in [("sonarr", "sonarr_version"), ("radarr", "radarr_version")] {

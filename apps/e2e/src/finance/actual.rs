@@ -181,7 +181,11 @@ pub async fn budget(ctx: &Ctx, f: &mut Flow) -> R<()> {
     if !listed.iter().any(|x| x["fileId"].as_str() == Some(&file_id) && x["name"].as_str() == Some(m)) {
         return Err(Fail::new(APP, "list files", format!("the file is not listed: {}", excerpt(&json!(listed).to_string()))));
     }
-    let got = send(srv.req(ctx, Method::GET, "/sync/download-user-file").header("x-actual-file-id", &file_id), APP, "download file").await?.text().await.at(APP, "download")?;
+    let got = send(srv.req(ctx, Method::GET, "/sync/download-user-file").header("x-actual-file-id", &file_id), APP, "download file")
+        .await?
+        .text()
+        .await
+        .at(APP, "download")?;
     if got != blob {
         return Err(Fail::new(APP, "download file", format!("got {got:?}")));
     }
@@ -217,7 +221,13 @@ pub async fn cleanup(ctx: &Ctx, f: &mut Flow) -> R<()> {
 /// Family sweep and residue: tagged budget files.
 pub async fn sweep(ctx: &Ctx, scope: &Scope, delete: bool) -> R<Vec<String>> {
     let srv = Server::login(ctx).await?;
-    let found: Vec<(String, String)> = srv.files(ctx).await?.iter().filter_map(|x| Some((x["fileId"].as_str()?.to_string(), x["name"].as_str()?.to_string()))).filter(|(_, n)| scope.hit(n)).collect();
+    let found: Vec<(String, String)> = srv
+        .files(ctx)
+        .await?
+        .iter()
+        .filter_map(|x| Some((x["fileId"].as_str()?.to_string(), x["name"].as_str()?.to_string())))
+        .filter(|(_, n)| scope.hit(n))
+        .collect();
     if delete {
         for (id, name) in &found {
             tagged(APP, name)?;

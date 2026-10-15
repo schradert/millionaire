@@ -71,11 +71,14 @@ pub async fn config_secret(ctx: &Ctx, f: &mut Flow) -> R<()> {
     }
     f.ok(APP, "read back through the API", "ConfigMap data and Secret data (decoded) equal");
 
-    for (kind, source, volume, text, what) in
-        [("configmap", &cm, json!({ "configMap": { "name": cm } }), &note, "ConfigMap mounted in a Pod"), ("secret", &sec, json!({ "secret": { "secretName": sec } }), &value, "Secret mounted in a Pod")]
-    {
+    for (kind, source, volume, text, what) in [
+        ("configmap", &cm, json!({ "configMap": { "name": cm } }), &note, "ConfigMap mounted in a Pod"),
+        ("secret", &sec, json!({ "secret": { "secretName": sec } }), &value, "Secret mounted in a Pod"),
+    ] {
         let pod = n(ctx, &format!("{kind}-chk"));
-        let log = kube::run_manifest(ctx, &pod, &mount_pod(&pod, &image, volume, text)).await.map_err(|e| Fail::new(APP, &format!("{kind} mount: {source}"), e.msg))?;
+        let log = kube::run_manifest(ctx, &pod, &mount_pod(&pod, &image, volume, text))
+            .await
+            .map_err(|e| Fail::new(APP, &format!("{kind} mount: {source}"), e.msg))?;
         kube::delete(&[("pod".into(), pod)]).await?;
         f.ok(APP, what, if kind == "secret" { "content equal".to_string() } else { log });
     }
@@ -109,7 +112,10 @@ pub async fn external_secret(ctx: &Ctx, f: &mut Flow) -> R<()> {
 
     // Deleting the ExternalSecret removes the Secret it owns.
     kube::delete(&[("externalsecret".into(), es.clone())]).await?;
-    poll(APP, "target Secret is garbage-collected", Duration::from_secs(60), Duration::from_secs(3), || async { Ok(kube::get("secret", &out).await?.is_none().then_some(())) }).await?;
+    poll(APP, "target Secret is garbage-collected", Duration::from_secs(60), Duration::from_secs(3), || async {
+        Ok(kube::get("secret", &out).await?.is_none().then_some(()))
+    })
+    .await?;
     f.ok(APP, "target Secret removed with its ExternalSecret", out.clone());
 
     let store = kube::kubectl(&["get", "clustersecretstore", "bitwarden", "-o", "json"]).await?;
@@ -214,7 +220,11 @@ mod tests {
 
     #[test]
     fn manifests_are_tagged_in_e2e() {
-        for m in [configmap(&format!("{M}-cm"), "x"), secret(&format!("{M}-secret"), "y"), es_manifest(&format!("{M}-es"), &format!("{M}-es-out"), &format!("{M}-es-src"), FILE)] {
+        for m in [
+            configmap(&format!("{M}-cm"), "x"),
+            secret(&format!("{M}-secret"), "y"),
+            es_manifest(&format!("{M}-es"), &format!("{M}-es-out"), &format!("{M}-es-src"), FILE),
+        ] {
             assert_eq!(m["metadata"]["namespace"], "e2e");
             assert_eq!(m["metadata"]["labels"]["app.kubernetes.io/name"], "e2e-test");
             assert!(crate::ctx::find_marker(m["metadata"]["name"].as_str().unwrap()).is_some());

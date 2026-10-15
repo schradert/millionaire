@@ -106,7 +106,11 @@ pub async fn jellyfin(ctx: &Ctx, f: &mut Flow) -> R<()> {
         let plugins = ctx.http.get(format!("{base}/Plugins")).header("X-Emby-Token", &l.token).send_t().await.at("jellyfin", "list plugins")?;
         let want = if admin { 200 } else { 403 };
         if plugins.status().as_u16() != want {
-            return Err(Fail::new("jellyfin", "admin-only endpoint", format!("{} got HTTP {} from /Plugins, expected {want}", user.username, plugins.status())));
+            return Err(Fail::new(
+                "jellyfin",
+                "admin-only endpoint",
+                format!("{} got HTTP {} from /Plugins, expected {want}", user.username, plugins.status()),
+            ));
         }
         f.ok("jellyfin", &format!("{} signed in via Keycloak", user.username), format!("administrator={admin}"));
     }
@@ -155,7 +159,9 @@ pub async fn home_assistant(ctx: &Ctx, f: &mut Flow) -> R<()> {
         let mut sess = Session::new();
         let cb = login(ctx, &mut sess, &format!("{base}/auth/oidc/redirect"), user, &format!("{base}/auth/oidc/callback")).await?;
         let hop = sess.get(ctx, &cb).await?;
-        let code = hop.location.as_ref().and_then(finish_code).ok_or_else(|| Fail::new("home-assistant", "OIDC callback", format!("HTTP {} {:?} {}", hop.status, hop.location.as_ref().map(Url::as_str), excerpt(&hop.body))))?;
+        let code = hop.location.as_ref().and_then(finish_code).ok_or_else(|| {
+            Fail::new("home-assistant", "OIDC callback", format!("HTTP {} {:?} {}", hop.status, hop.location.as_ref().map(Url::as_str), excerpt(&hop.body)))
+        })?;
         let finish = sess.get(ctx, hop.location.as_ref().expect("checked above")).await?;
         if finish.status != 200 || !finish.body.contains(&code) {
             return Err(Fail::new("home-assistant", "finish page", format!("HTTP {} and it does not show the code {code}", finish.status)));
@@ -174,7 +180,8 @@ fn visible(html: &str) -> String {
     while let Some(i) = rest.find('<') {
         out.push_str(&rest[..i]);
         let lower = rest[i..].to_ascii_lowercase();
-        let skip = ["script", "style"].iter().find(|t| lower.starts_with(&format!("<{t}"))).and_then(|t| lower.find(&format!("</{t}>")).map(|e| e + t.len() + 3));
+        let skip =
+            ["script", "style"].iter().find(|t| lower.starts_with(&format!("<{t}"))).and_then(|t| lower.find(&format!("</{t}>")).map(|e| e + t.len() + 3));
         rest = match skip.or_else(|| lower.find('>').map(|e| e + 1)) {
             Some(n) => &rest[i + n..],
             None => "",
@@ -195,7 +202,10 @@ pub async fn sure(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let user = &u.family;
     let mut sess = Session::new();
     let page = sess.get(ctx, &Url::parse(&format!("{base}/sessions/new")).at("sure", "url")?).await?;
-    let button = web::forms(&page.body).into_iter().find(|fm| fm.action.as_deref() == Some("/auth/openid_connect")).at("sure", "OpenID Connect button on the sign-in page")?;
+    let button = web::forms(&page.body)
+        .into_iter()
+        .find(|fm| fm.action.as_deref() == Some("/auth/openid_connect"))
+        .at("sure", "OpenID Connect button on the sign-in page")?;
     let fields: Vec<(String, String)> = button.fields.into_iter().map(|(n, v, _)| (n, v)).collect();
     let post = sess.post_form(ctx, &page.url.join("/auth/openid_connect").at("sure", "url")?, &fields).await?;
     let stop = format!("{base}/auth/oidc/callback");
@@ -207,7 +217,15 @@ pub async fn sure(ctx: &Ctx, f: &mut Flow) -> R<()> {
     f.ok("keycloak", "login accepted for the Sure client", user.username.clone());
     let hop = sess.get(ctx, &cb).await?;
     let back = hop.location.clone().filter(|l| l.path().starts_with("/sessions/new")).ok_or_else(|| {
-        Fail::new("sure", "OIDC callback", format!("expected a redirect to the sign-in page (no account for an unlinked user), got HTTP {} {:?}", hop.status, hop.location.as_ref().map(Url::as_str)))
+        Fail::new(
+            "sure",
+            "OIDC callback",
+            format!(
+                "expected a redirect to the sign-in page (no account for an unlinked user), got HTTP {} {:?}",
+                hop.status,
+                hop.location.as_ref().map(Url::as_str)
+            ),
+        )
     })?;
     let login_page = sess.get(ctx, &back).await?;
     let text = visible(&login_page.body);
@@ -217,7 +235,11 @@ pub async fn sure(ctx: &Ctx, f: &mut Flow) -> R<()> {
     f.ok("sure", "unlinked Keycloak user refused", "AUTH_JIT_MODE=link_only: no account created");
     let home = sess.get(ctx, &Url::parse(&format!("{base}/")).at("sure", "url")?).await?;
     if !home.location.as_ref().is_some_and(|l| l.path().starts_with("/sessions/new")) {
-        return Err(Fail::new("sure", "no session", format!("GET / gave HTTP {} {:?}, expected a redirect to sign in", home.status, home.location.as_ref().map(Url::as_str))));
+        return Err(Fail::new(
+            "sure",
+            "no session",
+            format!("GET / gave HTTP {} {:?}, expected a redirect to sign in", home.status, home.location.as_ref().map(Url::as_str)),
+        ));
     }
     f.ok("sure", "no session after the refusal", "GET / redirects to sign in");
     Ok(())
@@ -250,13 +272,20 @@ pub async fn immich(ctx: &Ctx, f: &mut Flow) -> R<()> {
 async fn immich_full(ctx: &Ctx, f: &mut Flow, admin: &super::immich::Admin, user: &TestUser, base: &str) -> R<()> {
     let (sess, url) = super::immich::oauth_login(ctx, base, |url, redirect| async move {
         let parsed = Url::parse(&url).at("immich", "authorization url")?;
-        if !url.starts_with(&issuer()) || web::query(&parsed, "client_id").as_deref() != Some("immich") || web::query(&parsed, "redirect_uri").as_deref() != Some(redirect.as_str()) {
+        if !url.starts_with(&issuer())
+            || web::query(&parsed, "client_id").as_deref() != Some("immich")
+            || web::query(&parsed, "redirect_uri").as_deref() != Some(redirect.as_str())
+        {
             return Err(Fail::new("immich", "authorization url", format!("{url} does not point at Keycloak for client immich and {redirect}")));
         }
         Ok(login(ctx, &mut Session::new(), &url, user, &redirect).await?.to_string())
     })
     .await?;
-    f.ok("immich", "OIDC callback created the user", format!("{} ({}), authorization via {}", sess.email, sess.user_id, web::query(&Url::parse(&url).at("immich", "url")?, "client_id").unwrap_or_default()));
+    f.ok(
+        "immich",
+        "OIDC callback created the user",
+        format!("{} ({}), authorization via {}", sess.email, sess.user_id, web::query(&Url::parse(&url).at("immich", "url")?, "client_id").unwrap_or_default()),
+    );
     // Whatever happens next, the service admin removes the user.
     let checked: R<()> = async {
         if !sess.email.eq_ignore_ascii_case(&user.email) {
@@ -284,7 +313,10 @@ async fn immich_redirect_only(ctx: &Ctx, f: &mut Flow, user: &TestUser, base: &s
     let r: Value = json(ctx.http.post(format!("{base}/api/oauth/authorize")).json(&json!({ "redirectUri": redirect })), "immich", "oauth/authorize").await?;
     let url = r["url"].as_str().at("immich", "authorization url")?.to_string();
     let parsed = Url::parse(&url).at("immich", "authorization url")?;
-    if !url.starts_with(&issuer()) || web::query(&parsed, "client_id").as_deref() != Some("immich") || web::query(&parsed, "redirect_uri").as_deref() != Some(redirect.as_str()) {
+    if !url.starts_with(&issuer())
+        || web::query(&parsed, "client_id").as_deref() != Some("immich")
+        || web::query(&parsed, "redirect_uri").as_deref() != Some(redirect.as_str())
+    {
         return Err(Fail::new("immich", "authorization url", format!("{url} does not point at Keycloak for client immich and {redirect}")));
     }
     let state = web::query(&parsed, "state").at("immich", "state in the authorization url")?;
@@ -309,16 +341,28 @@ pub async fn bulwark(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let base = host("webmail");
     let cfg = json(ctx.http.get(format!("{base}/api/config")), "bulwark", "config").await?;
     if cfg["oauthEnabled"] != json!(true) || cfg["oauthClientId"] != json!("bulwark") || cfg["oauthIssuerUrl"] != json!(issuer()) {
-        return Err(Fail::new("bulwark", "OAuth config", format!("/api/config says oauthEnabled={}, client {}, issuer {}", cfg["oauthEnabled"], cfg["oauthClientId"], cfg["oauthIssuerUrl"])));
+        return Err(Fail::new(
+            "bulwark",
+            "OAuth config",
+            format!("/api/config says oauthEnabled={}, client {}, issuer {}", cfg["oauthEnabled"], cfg["oauthClientId"], cfg["oauthIssuerUrl"]),
+        ));
     }
     f.ok("bulwark", "OIDC enabled for client bulwark", "issuer is Keycloak's");
     let redirect = format!("{base}/en/auth/callback");
     // Bulwark checks the redirect's origin against the request's `Origin` (a browser sends it; behind the
     // gateway the server only knows `localhost`), and refuses cross-origin POSTs.
-    let r = json(ctx.http.post(format!("{base}/api/auth/sso/start")).header("Origin", &base).json(&json!({ "redirect_uri": redirect, "locale": "en" })), "bulwark", "sso/start").await?;
+    let r = json(
+        ctx.http.post(format!("{base}/api/auth/sso/start")).header("Origin", &base).json(&json!({ "redirect_uri": redirect, "locale": "en" })),
+        "bulwark",
+        "sso/start",
+    )
+    .await?;
     let url = r["authorize_url"].as_str().at("bulwark", "authorize_url")?.to_string();
     let parsed = Url::parse(&url).at("bulwark", "authorize_url")?;
-    if !url.starts_with(&issuer()) || web::query(&parsed, "client_id").as_deref() != Some("bulwark") || web::query(&parsed, "redirect_uri").as_deref() != Some(redirect.as_str()) {
+    if !url.starts_with(&issuer())
+        || web::query(&parsed, "client_id").as_deref() != Some("bulwark")
+        || web::query(&parsed, "redirect_uri").as_deref() != Some(redirect.as_str())
+    {
         return Err(Fail::new("bulwark", "authorize_url", format!("{url} does not point at Keycloak for client bulwark and {redirect}")));
     }
     let state = web::query(&parsed, "state").at("bulwark", "state in the authorization url")?;
@@ -342,7 +386,8 @@ async fn librechat_token(ctx: &Ctx, sess: &mut Session, base: &str) -> R<Option<
 /// Delete the LibreChat account of the session that just logged in (the user deletes itself).
 async fn librechat_delete_self(ctx: &Ctx, sess: &mut Session, base: &str) -> R<()> {
     let token = librechat_token(ctx, sess, base).await?.at("librechat", "token of the session")?;
-    let del = sess.json_request(ctx, reqwest::Method::DELETE, &Url::parse(&format!("{base}/api/user/delete")).at("librechat", "url")?, Some(&token), None).await?;
+    let del =
+        sess.json_request(ctx, reqwest::Method::DELETE, &Url::parse(&format!("{base}/api/user/delete")).at("librechat", "url")?, Some(&token), None).await?;
     if del.status / 100 != 2 {
         return Err(Fail::new("librechat", "delete user", format!("HTTP {} {}", del.status, excerpt(&del.body))));
     }
@@ -359,7 +404,11 @@ pub async fn librechat(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let base = host("chat");
     let cfg = json(ctx.http.get(format!("{base}/api/config")), "librechat", "config").await?;
     if cfg["openidLoginEnabled"] != json!(true) {
-        return Err(Fail::new("librechat", "OpenID enabled", format!("/api/config says openidLoginEnabled={} (the strategy needs OPENID_SESSION_SECRET)", cfg["openidLoginEnabled"])));
+        return Err(Fail::new(
+            "librechat",
+            "OpenID enabled",
+            format!("/api/config says openidLoginEnabled={} (the strategy needs OPENID_SESSION_SECRET)", cfg["openidLoginEnabled"]),
+        ));
     }
     f.ok("librechat", "OpenID login enabled", "");
     let user = &u.family;
@@ -372,7 +421,11 @@ pub async fn librechat(ctx: &Ctx, f: &mut Flow) -> R<()> {
         return Err(Fail::new(
             "librechat",
             "callback",
-            format!("LibreChat refused {} ({:?}); its registration.allowedDomains must include e2e.<domain> (nixidy/system/ai/librechat.nix)", user.email, hop.location.as_ref().map(Url::as_str)),
+            format!(
+                "LibreChat refused {} ({:?}); its registration.allowedDomains must include e2e.<domain> (nixidy/system/ai/librechat.nix)",
+                user.email,
+                hop.location.as_ref().map(Url::as_str)
+            ),
         ));
     }
     let checked: R<()> = async {

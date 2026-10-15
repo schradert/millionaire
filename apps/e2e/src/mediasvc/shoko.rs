@@ -83,9 +83,20 @@ pub async fn user_and_filter(ctx: &Ctx, f: &mut Flow) -> R<()> {
     f.ok(APP, "admin signs in", format!("device {m}"));
 
     let upw = format!("Aa1-{}", random_hex()?);
-    let user = get_json(sk.req(ctx, Method::POST, "/api/v3/User", Some(&admin)).json(&json!({ "Username": m, "Password": upw, "IsAdmin": false })), APP, "create user").await?;
+    let user = get_json(
+        sk.req(ctx, Method::POST, "/api/v3/User", Some(&admin)).json(&json!({ "Username": m, "Password": upw, "IsAdmin": false })),
+        APP,
+        "create user",
+    )
+    .await?;
     let uid = user["ID"].as_i64().at(APP, "user id")?;
-    let filter = get_json(sk.req(ctx, Method::POST, "/api/v3/Filter", Some(&admin)).json(&json!({ "Name": format!("{m}-filter"), "IsDirectory": false, "ApplyAtSeriesLevel": false })), APP, "create filter").await?;
+    let filter = get_json(
+        sk.req(ctx, Method::POST, "/api/v3/Filter", Some(&admin))
+            .json(&json!({ "Name": format!("{m}-filter"), "IsDirectory": false, "ApplyAtSeriesLevel": false })),
+        APP,
+        "create filter",
+    )
+    .await?;
     let fid = filter["IDs"]["ID"].as_i64().at(APP, "filter id")?;
     f.ok(APP, "tagged user and filter created", format!("user {uid}, filter {fid}"));
 
@@ -108,7 +119,8 @@ pub async fn user_and_filter(ctx: &Ctx, f: &mut Flow) -> R<()> {
     sk.drop_key(ctx, &ukey, m).await?;
     send(sk.req(ctx, Method::DELETE, &format!("/api/v3/Filter/{fid}"), Some(&admin)), APP, "delete filter").await?;
     send(sk.req(ctx, Method::DELETE, &format!("/api/v3/User/{uid}"), Some(&admin)), APP, "delete user").await?;
-    let gone = sk.req(ctx, Method::GET, &format!("/api/v3/Filter/{fid}"), Some(&admin)).send_t().await.map_err(|e| Fail::new(APP, "get deleted filter", chain(&e)))?;
+    let gone =
+        sk.req(ctx, Method::GET, &format!("/api/v3/Filter/{fid}"), Some(&admin)).send_t().await.map_err(|e| Fail::new(APP, "get deleted filter", chain(&e)))?;
     if gone.status().as_u16() != 404 || sk.users(ctx, &admin).await?.iter().any(|(_, n)| n == m) {
         return Err(Fail::new(APP, "deleted", "the filter or the user is still there"));
     }
@@ -136,7 +148,17 @@ pub async fn sweep(ctx: &Ctx, scope: &Scope, delete: bool) -> R<Vec<String>> {
         let users: Vec<_> = sk.users(ctx, &admin).await?.into_iter().filter(|(_, n)| scope.hit(n)).collect();
         let filters: Vec<_> = sk.filters(ctx, &admin).await?.into_iter().filter(|(_, n)| scope.hit(n)).collect();
         let keys = get_json(sk.req(ctx, Method::GET, "/api/auth", Some(&admin)), APP, "list api keys").await?;
-        let devices: Vec<String> = keys.as_array().into_iter().flatten().filter(|k| k["Username"].as_str() == Some("admin")).filter_map(|k| k["Device"].as_str()).filter(|d| scope.hit(d) && !d.contains("janitor")).map(String::from).collect::<std::collections::BTreeSet<_>>().into_iter().collect();
+        let devices: Vec<String> = keys
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|k| k["Username"].as_str() == Some("admin"))
+            .filter_map(|k| k["Device"].as_str())
+            .filter(|d| scope.hit(d) && !d.contains("janitor"))
+            .map(String::from)
+            .collect::<std::collections::BTreeSet<_>>()
+            .into_iter()
+            .collect();
         if delete {
             for (id, n) in &filters {
                 tagged(APP, n)?;

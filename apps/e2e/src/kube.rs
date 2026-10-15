@@ -53,7 +53,10 @@ pub async fn kubectl(args: &[&str]) -> R<String> {
 /// in its name, or outside the `e2e` namespace.
 pub async fn create(ctx: &Ctx, manifest: &Value) -> R<()> {
     let name = manifest["metadata"]["name"].as_str().at("kubernetes", "manifest name")?;
-    if find_marker(name).is_none() || manifest["metadata"]["labels"]["app.kubernetes.io/name"] != json!("e2e-test") || manifest["metadata"]["namespace"] != json!(NS) {
+    if find_marker(name).is_none()
+        || manifest["metadata"]["labels"]["app.kubernetes.io/name"] != json!("e2e-test")
+        || manifest["metadata"]["namespace"] != json!(NS)
+    {
         return Err(Fail::new("kubernetes", "create", format!("{name}: no run marker, test label or not in {NS}; refusing")));
     }
     let dir = std::env::temp_dir().join(&ctx.marker);
@@ -109,7 +112,10 @@ pub async fn delete(objects: &[(String, String)]) -> R<()> {
         kubectl(&["delete", kind, name, "--ignore-not-found", "--wait=false"]).await?;
     }
     for (kind, name) in objects {
-        poll("kubernetes", &format!("{kind}/{name} gone"), Duration::from_secs(180), Duration::from_secs(3), || async { Ok(get(kind, name).await?.is_none().then_some(())) }).await?;
+        poll("kubernetes", &format!("{kind}/{name} gone"), Duration::from_secs(180), Duration::from_secs(3), || async {
+            Ok(get(kind, name).await?.is_none().then_some(()))
+        })
+        .await?;
     }
     Ok(())
 }
@@ -207,7 +213,9 @@ pub async fn start_pod(ctx: &Ctx, name: &str, image: &str, args: &[&str], claims
         let p = get("pod", name).await?.at("kubernetes", "pod vanished")?;
         match p["status"]["phase"].as_str() {
             Some("Running") => Ok(Some(())),
-            Some(ph @ ("Succeeded" | "Failed")) => Err(Fail::new("kubernetes", &format!("pod {name}"), format!("ended as {ph} before the flow finished with it"))),
+            Some(ph @ ("Succeeded" | "Failed")) => {
+                Err(Fail::new("kubernetes", &format!("pod {name}"), format!("ended as {ph} before the flow finished with it")))
+            }
             _ => Ok(None),
         }
     })
@@ -254,7 +262,10 @@ mod tests {
 
     #[test]
     fn lists_only_tagged_names_in_scope() {
-        let items: Vec<Value> = [format!("{M}-blk"), "e2e-20260202-000000-bbbb-blk".into(), "real-data".into(), format!("{M}-fs")].iter().map(|n| json!({ "metadata": { "name": n } })).collect();
+        let items: Vec<Value> = [format!("{M}-blk"), "e2e-20260202-000000-bbbb-blk".into(), "real-data".into(), format!("{M}-fs")]
+            .iter()
+            .map(|n| json!({ "metadata": { "name": n } }))
+            .collect();
         let run = Scope::Run(M.into());
         assert_eq!(names(&items, &run, M), [format!("{M}-blk"), format!("{M}-fs")]);
         assert_eq!(names(&items, &run, &format!("{M}-fs")), [format!("{M}-fs")]);

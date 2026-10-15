@@ -105,4 +105,3 @@ pub async fn sweep(ctx: &Ctx, scope: &Scope, delete: bool) -> R<Vec<String>> {
     }
     Ok(found.into_iter().map(|t| format!("atuin record {t}")).collect())
 }
-

@@ -41,7 +41,8 @@ impl Served {
         let listener = TcpListener::bind("0.0.0.0:0").at("net", "listen")?;
         listener.set_nonblocking(true).at("net", "listen")?;
         let port = listener.local_addr().at("net", "port")?.port();
-        let (body, hits, stop, last) = (Arc::new(Mutex::new(body.to_string())), Arc::new(AtomicUsize::new(0)), Arc::new(AtomicBool::new(false)), Arc::new(Mutex::new(String::new())));
+        let (body, hits, stop, last) =
+            (Arc::new(Mutex::new(body.to_string())), Arc::new(AtomicUsize::new(0)), Arc::new(AtomicBool::new(false)), Arc::new(Mutex::new(String::new())));
         let (b, h, s, ct, l) = (body.clone(), hits.clone(), stop.clone(), content_type.to_string(), last.clone());
         thread::spawn(move || {
             while !s.load(Ordering::Relaxed) {

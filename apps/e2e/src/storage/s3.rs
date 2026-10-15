@@ -70,15 +70,35 @@ impl S3 {
         let mut q: Vec<(String, String)> = query.iter().map(|(k, v)| (enc(k), enc(v))).collect();
         q.sort();
         let query_string = q.iter().map(|(k, v)| format!("{k}={v}")).collect::<Vec<_>>().join("&");
-        let sig = signature(&self.secret_key, &self.region, (method.as_str(), path, &query_string), &[("host", &host), ("x-amz-content-sha256", &hash), ("x-amz-date", &date)], &hash, &date);
+        let sig = signature(
+            &self.secret_key,
+            &self.region,
+            (method.as_str(), path, &query_string),
+            &[("host", &host), ("x-amz-content-sha256", &hash), ("x-amz-date", &date)],
+            &hash,
+            &date,
+        );
         let auth = format!(
             "AWS4-HMAC-SHA256 Credential={}/{}/{}/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature={sig}",
             self.access_key,
             &date[..8],
             self.region
         );
-        let url = if query_string.is_empty() { format!("{}{path}", self.endpoint.trim_end_matches('/')) } else { format!("{}{path}?{query_string}", self.endpoint.trim_end_matches('/')) };
-        let r = ctx.http.request(method, url).header("x-amz-date", &date).header("x-amz-content-sha256", &hash).header("authorization", auth).body(body).send_t().await.at("rados", "S3 request")?;
+        let url = if query_string.is_empty() {
+            format!("{}{path}", self.endpoint.trim_end_matches('/'))
+        } else {
+            format!("{}{path}?{query_string}", self.endpoint.trim_end_matches('/'))
+        };
+        let r = ctx
+            .http
+            .request(method, url)
+            .header("x-amz-date", &date)
+            .header("x-amz-content-sha256", &hash)
+            .header("authorization", auth)
+            .body(body)
+            .send_t()
+            .await
+            .at("rados", "S3 request")?;
         let status = r.status().as_u16();
         Ok((status, r.text().await.at("rados", "S3 response")?))
     }

@@ -46,12 +46,7 @@ fn session_cookie(r: &Response) -> Option<String> {
 }
 
 fn ids(libs: &Value, only_enabled: bool) -> Vec<String> {
-    libs.as_array()
-        .into_iter()
-        .flatten()
-        .filter(|l| !only_enabled || l["enabled"] == json!(true))
-        .filter_map(|l| l["id"].as_str().map(String::from))
-        .collect()
+    libs.as_array().into_iter().flatten().filter(|l| !only_enabled || l["enabled"] == json!(true)).filter_map(|l| l["id"].as_str().map(String::from)).collect()
 }
 
 pub async fn run() -> Result<()> {
@@ -73,10 +68,7 @@ pub async fn run() -> Result<()> {
     if initialized {
         println!("seerr already initialised, skipping the wizard");
     } else {
-        println!(
-            "seerr not initialised (media server type {})",
-            public["mediaServerType"].as_i64().unwrap_or(-1)
-        );
+        println!("seerr not initialised (media server type {})", public["mediaServerType"].as_i64().unwrap_or(-1));
     }
 
     let login = |with_server: bool| {
@@ -101,11 +93,7 @@ pub async fn run() -> Result<()> {
         println!("jellyfin already linked, logging in without the address");
         r = login(false).await?;
     }
-    let r = ok(
-        r,
-        "POST /api/v1/auth/jellyfin (jellyfin admin login; the Jellyfin admin must exist with the jellyfin-admin password)",
-    )
-    .await?;
+    let r = ok(r, "POST /api/v1/auth/jellyfin (jellyfin admin login; the Jellyfin admin must exist with the jellyfin-admin password)").await?;
     let cookie = session_cookie(&r).ok_or("login did not set a session cookie")?;
     println!("seerr admin login ok");
 
@@ -138,19 +126,10 @@ pub async fn run() -> Result<()> {
     let enabled = get(format!("/api/v1/settings/jellyfin/library?enable={}", all.join(","))).await?;
     println!("enabled {} of {} libraries", ids(&enabled, true).len(), all.len());
 
-    let r = http
-        .post(format!("{base}/api/v1/settings/jellyfin/sync"))
-        .header("Cookie", &cookie)
-        .json(&json!({ "start": true }))
-        .send_t()
-        .await?;
+    let r = http.post(format!("{base}/api/v1/settings/jellyfin/sync")).header("Cookie", &cookie).json(&json!({ "start": true })).send_t().await?;
     ok(r, "POST /api/v1/settings/jellyfin/sync").await?;
 
-    let r = http
-        .post(format!("{base}/api/v1/settings/initialize"))
-        .header("Cookie", &cookie)
-        .send_t()
-        .await?;
+    let r = http.post(format!("{base}/api/v1/settings/initialize")).header("Cookie", &cookie).send_t().await?;
     ok(r, "POST /api/v1/settings/initialize").await?;
     println!("seerr initialised");
     wire_arr(&http, base, &cookie).await
@@ -187,12 +166,7 @@ async fn reconcile_libraries(http: &Client, base: &str, cookie: &str) -> Result<
     }
     let enabled = get(format!("/api/v1/settings/jellyfin/library?enable={}", all.join(","))).await?;
     println!("seerr: enabled jellyfin libraries, {} now on", ids(&enabled, true).len());
-    let r = http
-        .post(format!("{base}/api/v1/settings/jellyfin/sync"))
-        .header("Cookie", cookie)
-        .json(&json!({ "start": true }))
-        .send_t()
-        .await?;
+    let r = http.post(format!("{base}/api/v1/settings/jellyfin/sync")).header("Cookie", cookie).json(&json!({ "start": true })).send_t().await?;
     ok(r, "POST /api/v1/settings/jellyfin/sync").await?;
     Ok(())
 }
@@ -219,11 +193,7 @@ async fn wire_arr(http: &Client, base: &str, cookie: &str) -> Result<()> {
         let host = var(&format!("{up}_HOST"), &format!("{kind}.media.svc.cluster.local"));
         let port: i64 = var(&format!("{up}_PORT_NUMBER"), "80").parse()?;
         let root = var(&format!("{up}_ROOT"), if kind == "radarr" { "/media/movies" } else { "/media/tv" });
-        let s = Servarr {
-            base: format!("http://{host}:{port}"),
-            key: key.clone(),
-            api: "v3",
-        };
+        let s = Servarr { base: format!("http://{host}:{port}"), key: key.clone(), api: "v3" };
         s.wait(http, kind).await?;
         if ensure_root_folder(http, &s, &root).await? {
             println!("{kind}: added root folder {root}");
@@ -262,11 +232,7 @@ async fn wire_arr(http: &Client, base: &str, cookie: &str) -> Result<()> {
 
             let r = http.get(format!("{base}/api/v1/settings/{kind}")).header("Cookie", cookie).send_t().await?;
             let known: Value = ok(r, &format!("GET /api/v1/settings/{kind}")).await?.json().await?;
-            let have = known
-                .as_array()
-                .into_iter()
-                .flatten()
-                .find(|k| k["hostname"] == json!(host) && k["is4k"].as_bool().unwrap_or(false) == is4k);
+            let have = known.as_array().into_iter().flatten().find(|k| k["hostname"] == json!(host) && k["is4k"].as_bool().unwrap_or(false) == is4k);
             if let Some(have) = have {
                 if !server_differs(have, pid, &root) {
                     println!("seerr already has {kind} {host} ({label}, profile {pname})");

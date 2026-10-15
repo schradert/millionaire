@@ -38,7 +38,9 @@ impl Cf {
     /// A JSON-RPC call on a virtual server's MCP endpoint.
     async fn mcp(&self, ctx: &Ctx, server: &str, id: u32, method: &str, params: Value) -> R<Value> {
         let r = send(
-            self.req(ctx, Method::POST, &format!("/servers/{server}/mcp")).header("Accept", "application/json, text/event-stream").json(&json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params })),
+            self.req(ctx, Method::POST, &format!("/servers/{server}/mcp"))
+                .header("Accept", "application/json, text/event-stream")
+                .json(&json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params })),
             APP,
             method,
         )
@@ -72,7 +74,14 @@ pub async fn tool(ctx: &Ctx, f: &mut Flow) -> R<()> {
     )
     .await?;
     let tid = t["id"].as_str().at(APP, "tool id")?.to_string();
-    let s = get_json(cf.req(ctx, Method::POST, "/servers").json(&json!({ "server": { "name": format!("{m}-server"), "description": format!("e2e {m}"), "associated_tools": [tid] }, "visibility": "private" })), APP, "create virtual server").await?;
+    let s = get_json(
+        cf.req(ctx, Method::POST, "/servers").json(
+            &json!({ "server": { "name": format!("{m}-server"), "description": format!("e2e {m}"), "associated_tools": [tid] }, "visibility": "private" }),
+        ),
+        APP,
+        "create virtual server",
+    )
+    .await?;
     let sid = s["id"].as_str().at(APP, "server id")?.to_string();
     f.ok(APP, "tagged tool and virtual server registered", format!("{tool_name} on server {sid}"));
 

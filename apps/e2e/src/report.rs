@@ -29,29 +29,14 @@ pub struct Flow {
 impl Flow {
     pub fn new(name: &str) -> Self {
         let now = Instant::now();
-        Flow {
-            family: String::new(),
-            name: name.into(),
-            phase: "",
-            steps: Vec::new(),
-            started: now,
-            last: now,
-            ms: 0,
-            outcome: None,
-        }
+        Flow { family: String::new(), name: name.into(), phase: "", steps: Vec::new(), started: now, last: now, ms: 0, outcome: None }
     }
 
     /// Record a passed step.
     pub fn ok(&mut self, app: &str, name: &str, detail: impl Into<String>) {
         let detail = detail.into();
         println!("  [{}] {app}: {name} ok {detail}", self.name);
-        self.steps.push(Step {
-            phase: self.phase,
-            app: app.into(),
-            name: name.into(),
-            detail,
-            ms: self.last.elapsed().as_millis(),
-        });
+        self.steps.push(Step { phase: self.phase, app: app.into(), name: name.into(), detail, ms: self.last.elapsed().as_millis() });
         self.last = Instant::now();
     }
 

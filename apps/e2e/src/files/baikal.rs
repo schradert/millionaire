@@ -2,8 +2,8 @@
 //! tagged calendar and address book (never the `org` calendar org-bridge writes to), puts an
 //! event and a contact, finds them with REPORT queries, deletes them and checks they are gone.
 
-use crate::trace::SendTraced as _;
 use super::dav::{elements, unescape, Dav};
+use crate::trace::SendTraced as _;
 use crate::{
     ctx::{need_secret, Ctx, Fail, Scope, R},
     report::Flow,
@@ -36,19 +36,27 @@ pub fn contact_vcf(marker: &str) -> String {
 const XML: (&str, &str) = ("Content-Type", "application/xml; charset=utf-8");
 
 fn mkcalendar(marker: &str) -> String {
-    format!(r#"<?xml version="1.0" encoding="utf-8"?><c:mkcalendar xmlns:c="urn:ietf:params:xml:ns:caldav" xmlns:d="DAV:"><d:set><d:prop><d:displayname>{marker}-cal</d:displayname><c:supported-calendar-component-set><c:comp name="VEVENT"/></c:supported-calendar-component-set></d:prop></d:set></c:mkcalendar>"#)
+    format!(
+        r#"<?xml version="1.0" encoding="utf-8"?><c:mkcalendar xmlns:c="urn:ietf:params:xml:ns:caldav" xmlns:d="DAV:"><d:set><d:prop><d:displayname>{marker}-cal</d:displayname><c:supported-calendar-component-set><c:comp name="VEVENT"/></c:supported-calendar-component-set></d:prop></d:set></c:mkcalendar>"#
+    )
 }
 
 fn mkbook(marker: &str) -> String {
-    format!(r#"<?xml version="1.0" encoding="utf-8"?><d:mkcol xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav"><d:set><d:prop><d:resourcetype><d:collection/><card:addressbook/></d:resourcetype><d:displayname>{marker}-book</d:displayname></d:prop></d:set></d:mkcol>"#)
+    format!(
+        r#"<?xml version="1.0" encoding="utf-8"?><d:mkcol xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav"><d:set><d:prop><d:resourcetype><d:collection/><card:addressbook/></d:resourcetype><d:displayname>{marker}-book</d:displayname></d:prop></d:set></d:mkcol>"#
+    )
 }
 
 fn calendar_query(marker: &str) -> String {
-    format!(r#"<?xml version="1.0" encoding="utf-8"?><c:calendar-query xmlns:c="urn:ietf:params:xml:ns:caldav" xmlns:d="DAV:"><d:prop><d:getetag/><c:calendar-data/></d:prop><c:filter><c:comp-filter name="VCALENDAR"><c:comp-filter name="VEVENT"><c:prop-filter name="SUMMARY"><c:text-match collation="i;octet">{marker}</c:text-match></c:prop-filter></c:comp-filter></c:comp-filter></c:filter></c:calendar-query>"#)
+    format!(
+        r#"<?xml version="1.0" encoding="utf-8"?><c:calendar-query xmlns:c="urn:ietf:params:xml:ns:caldav" xmlns:d="DAV:"><d:prop><d:getetag/><c:calendar-data/></d:prop><c:filter><c:comp-filter name="VCALENDAR"><c:comp-filter name="VEVENT"><c:prop-filter name="SUMMARY"><c:text-match collation="i;octet">{marker}</c:text-match></c:prop-filter></c:comp-filter></c:comp-filter></c:filter></c:calendar-query>"#
+    )
 }
 
 fn addressbook_query(marker: &str) -> String {
-    format!(r#"<?xml version="1.0" encoding="utf-8"?><card:addressbook-query xmlns:card="urn:ietf:params:xml:ns:carddav" xmlns:d="DAV:"><d:prop><d:getetag/><card:address-data/></d:prop><card:filter><card:prop-filter name="FN"><card:text-match collation="i;unicode-casemap" match-type="contains">{marker}</card:text-match></card:prop-filter></card:filter></card:addressbook-query>"#)
+    format!(
+        r#"<?xml version="1.0" encoding="utf-8"?><card:addressbook-query xmlns:card="urn:ietf:params:xml:ns:carddav" xmlns:d="DAV:"><d:prop><d:getetag/><card:address-data/></d:prop><card:filter><card:prop-filter name="FN"><card:text-match collation="i;unicode-casemap" match-type="contains">{marker}</card:text-match></card:prop-filter></card:filter></card:addressbook-query>"#
+    )
 }
 
 const PROPFIND: &str = r#"<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:"><d:prop><d:displayname/></d:prop></d:propfind>"#;
@@ -112,7 +120,7 @@ pub async fn items_deleted(ctx: &Ctx, f: &mut Flow) -> R<()> {
     if found.contains("FN:") {
         return Err(Fail::new(APP, "contact deleted", "the REPORT still returns the contact"));
     }
-    f.ok(APP, "event and contact deleted", "REPORTs return nothing");
+    f.ok(APP, "event and contact deleted", "REPORT queries return nothing");
     Ok(())
 }
 

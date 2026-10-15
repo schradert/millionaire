@@ -25,22 +25,13 @@ use crate::common::{ok, retry, secret, var, Result};
 async fn link_listenbrainz(http: &Client, base: &str, login: &Value, token: &str) -> Result<()> {
     let jwt = login["token"].as_str().ok_or("login response has no token")?;
     let auth = format!("Bearer {jwt}");
-    let r = http
-        .get(format!("{base}/api/listenbrainz/link"))
-        .header("X-ND-Authorization", &auth)
-        .send_t()
-        .await?;
+    let r = http.get(format!("{base}/api/listenbrainz/link")).header("X-ND-Authorization", &auth).send_t().await?;
     let status: Value = ok(r, "GET /api/listenbrainz/link").await?.json().await?;
     if status["status"] == json!(true) {
         println!("listenbrainz already linked");
         return Ok(());
     }
-    let r = http
-        .put(format!("{base}/api/listenbrainz/link"))
-        .header("X-ND-Authorization", &auth)
-        .json(&json!({ "token": token }))
-        .send_t()
-        .await?;
+    let r = http.put(format!("{base}/api/listenbrainz/link")).header("X-ND-Authorization", &auth).json(&json!({ "token": token })).send_t().await?;
     ok(r, "PUT /api/listenbrainz/link (is the token registered as a Maloja API key?)").await?;
     println!("linked listenbrainz");
     Ok(())
@@ -55,11 +46,7 @@ async fn finish(http: &Client, base: &str, login: Value) -> Result<()> {
 }
 
 async fn login(http: &Client, base: &str, user: &str, password: &str) -> Result<Option<Value>> {
-    let r = http
-        .post(format!("{base}/auth/login"))
-        .json(&json!({ "username": user, "password": password }))
-        .send_t()
-        .await?;
+    let r = http.post(format!("{base}/auth/login")).json(&json!({ "username": user, "password": password })).send_t().await?;
     if r.status() == StatusCode::UNAUTHORIZED {
         return Ok(None);
     }
@@ -86,11 +73,7 @@ pub async fn run() -> Result<()> {
     }
 
     println!("login as {user} rejected, trying to create the first admin");
-    let r = http
-        .post(format!("{base}/auth/createAdmin"))
-        .json(&json!({ "username": user, "password": password }))
-        .send_t()
-        .await?;
+    let r = http.post(format!("{base}/auth/createAdmin")).json(&json!({ "username": user, "password": password })).send_t().await?;
     if r.status() == StatusCode::FORBIDDEN {
         return Err(format!(
             "users already exist and {user} cannot log in with the generated password; \

@@ -27,8 +27,22 @@ pub fn family() -> Family {
 
 fn flows() -> Vec<FlowDef> {
     vec![
-        FlowDef::new(NAME, "actual-budget", Tier::Offline, "a tagged budget file and a CRDT transaction through the sync server; a second client pulls it; file deleted", step!(actual::budget)).cleanup(step!(actual::cleanup)),
-        FlowDef::new(NAME, "firefly-ledger", Tier::Offline, "the e2e user's tagged asset account and withdrawal through the API; balance and search; deleted", step!(firefly::ledger)).cleanup(step!(firefly::cleanup)),
+        FlowDef::new(
+            NAME,
+            "actual-budget",
+            Tier::Offline,
+            "a tagged budget file and a CRDT transaction through the sync server; a second client pulls it; file deleted",
+            step!(actual::budget),
+        )
+        .cleanup(step!(actual::cleanup)),
+        FlowDef::new(
+            NAME,
+            "firefly-ledger",
+            Tier::Offline,
+            "the e2e user's tagged asset account and withdrawal through the API; balance and search; deleted",
+            step!(firefly::ledger),
+        )
+        .cleanup(step!(firefly::cleanup)),
     ]
 }
 

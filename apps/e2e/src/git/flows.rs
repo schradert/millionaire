@@ -26,7 +26,9 @@ fn remote(fj: &Forgejo, u: &User, token: &str, repo: &str) -> String {
 
 async fn create_repo(ctx: &Ctx, fj: &Forgejo, token: &str, name: &str) -> R<Value> {
     json(
-        fj.as_token(ctx, token, Method::POST, "/user/repos").json(&json!({ "name": name, "description": format!("e2e test repo {}", ctx.marker), "private": true, "auto_init": false, "default_branch": "main" })),
+        fj.as_token(ctx, token, Method::POST, "/user/repos").json(
+            &json!({ "name": name, "description": format!("e2e test repo {}", ctx.marker), "private": true, "auto_init": false, "default_branch": "main" }),
+        ),
         APP,
         "create repo",
     )
@@ -67,7 +69,12 @@ pub async fn repo_roundtrip(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let url = remote(&fj, &u, &token, &repo);
     let body = format!("run {} line one\n", ctx.marker);
     std::fs::write(a.join("data.txt"), &body).at("fs", "write file")?;
-    for args in [&["init", "--quiet"][..], &["add", "data.txt"], &["commit", "--quiet", "-m", &format!("e2e commit {}", ctx.marker)], &["remote", "add", "origin", &url]] {
+    for args in [
+        &["init", "--quiet"][..],
+        &["add", "data.txt"],
+        &["commit", "--quiet", "-m", &format!("e2e commit {}", ctx.marker)],
+        &["remote", "add", "origin", &url],
+    ] {
         git(&a, &ctx.marker, &token, args).await?;
     }
     git(&a, &ctx.marker, &token, &["push", "--quiet", "origin", "main"]).await?;
@@ -129,7 +136,11 @@ pub async fn floccus(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let base = format!("https://git.{}", domain());
     let r = browser_probe(ctx, &base, &format!("{real}.git")).await?;
     if r.status().as_u16() != 401 {
-        return Err(Fail::new("floccus route", "bookmarks route", format!("browser User-Agent on {real}.git answered HTTP {}, expected 401 from Forgejo (private repo, route past oauth2-proxy)", r.status())));
+        return Err(Fail::new(
+            "floccus route",
+            "bookmarks route",
+            format!("browser User-Agent on {real}.git answered HTTP {}, expected 401 from Forgejo (private repo, route past oauth2-proxy)", r.status()),
+        ));
     }
     f.ok("floccus route", "bookmarks route reaches Forgejo", "HTTP 401 without credentials (nothing read or written)");
 
@@ -138,14 +149,20 @@ pub async fn floccus(ctx: &Ctx, f: &mut Flow) -> R<()> {
     create_repo(ctx, &fj, &token, &repo).await?;
     let r = browser_probe(ctx, &base, &format!("{}/{repo}.git", u.name)).await?;
     if !r.status().is_redirection() {
-        return Err(Fail::new("floccus route", "other repos stay gated", format!("browser User-Agent on a non-bookmarks repo answered HTTP {}, expected an oauth2-proxy redirect", r.status())));
+        return Err(Fail::new(
+            "floccus route",
+            "other repos stay gated",
+            format!("browser User-Agent on a non-bookmarks repo answered HTTP {}, expected an oauth2-proxy redirect", r.status()),
+        ));
     }
     f.ok("floccus route", "other repos stay behind oauth2-proxy", format!("HTTP {}", r.status()));
 
     let (w1, w2) = (workdir(&ctx.marker, "browser1")?, workdir(&ctx.marker, "browser2")?);
     let url = remote(&fj, &u, &token, &repo);
     std::fs::write(w1.join("bookmarks.xbel"), xbel(&["one", "two"])).at("fs", "write xbel")?;
-    for args in [&["init", "--quiet"][..], &["add", "bookmarks.xbel"], &["commit", "--quiet", "-m", "Floccus: initial sync"], &["remote", "add", "origin", &url]] {
+    for args in
+        [&["init", "--quiet"][..], &["add", "bookmarks.xbel"], &["commit", "--quiet", "-m", "Floccus: initial sync"], &["remote", "add", "origin", &url]]
+    {
         git(&w1, &ctx.marker, &token, args).await?;
     }
     git(&w1, &ctx.marker, &token, &["push", "--quiet", "origin", "main"]).await?;

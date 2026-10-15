@@ -22,11 +22,6 @@ in {
       useEqualHeights = true;
       disableCollapse = false;
       headerStyle = "clean";
-      background = {
-        image = "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=1920";
-        blur = "sm";
-        opacity = 50;
-      };
       kubernetes = {
         mode = "cluster";
         gateway = true;

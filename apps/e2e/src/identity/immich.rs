@@ -35,7 +35,10 @@ impl Admin {
     /// removed by a queued job and may still be listed, marked `deletedAt`: that counts as gone.
     pub async fn tagged_users(&self, ctx: &Ctx, scope: &Scope) -> R<Vec<(String, String)>> {
         let v = get_json(self.req(ctx, Method::GET, "/admin/users"), APP, "list users").await?;
-        Ok(v.as_array().into_iter().flatten().filter(|u| u["deletedAt"].is_null())
+        Ok(v.as_array()
+            .into_iter()
+            .flatten()
+            .filter(|u| u["deletedAt"].is_null())
             .filter_map(|u| Some((u["id"].as_str()?.to_string(), u["email"].as_str()?.to_string())))
             .filter(|(_, e)| scope.hit(e))
             .collect())
@@ -158,10 +161,20 @@ where
     let redirect = format!("{base}/auth/login");
     let (verifier, challenge) = pkce()?;
     let state = random_hex()?;
-    let r: Value = get_json(ctx.http.post(format!("{base}/api/oauth/authorize")).json(&json!({ "redirectUri": redirect, "state": state, "codeChallenge": challenge })), APP, "oauth/authorize").await?;
+    let r: Value = get_json(
+        ctx.http.post(format!("{base}/api/oauth/authorize")).json(&json!({ "redirectUri": redirect, "state": state, "codeChallenge": challenge })),
+        APP,
+        "oauth/authorize",
+    )
+    .await?;
     let url = r["url"].as_str().at(APP, "authorization url")?.to_string();
     let back = login(url.clone(), redirect).await?;
-    let v = get_json(ctx.http.post(format!("{base}/api/oauth/callback")).json(&json!({ "url": back, "state": state, "codeVerifier": verifier })), APP, "oauth/callback").await?;
+    let v = get_json(
+        ctx.http.post(format!("{base}/api/oauth/callback")).json(&json!({ "url": back, "state": state, "codeVerifier": verifier })),
+        APP,
+        "oauth/callback",
+    )
+    .await?;
     let s = Session {
         token: v["accessToken"].as_str().at(APP, "accessToken")?.to_string(),
         user_id: v["userId"].as_str().at(APP, "userId")?.to_string(),
@@ -175,11 +188,22 @@ pub async fn asset_roundtrip(ctx: &Ctx, base: &str, s: &Session, marker: &str) -
     let bytes = png(64, 64, marker);
     let now = rfc3339(unix_now());
     let part = multipart::Part::bytes(bytes.clone()).file_name(format!("{marker}.png")).mime_str("image/png").at(APP, "multipart")?;
-    let form = multipart::Form::new().text("deviceAssetId", marker.to_string()).text("deviceId", "e2e").text("fileCreatedAt", now.clone()).text("fileModifiedAt", now).part("assetData", part);
+    let form = multipart::Form::new()
+        .text("deviceAssetId", marker.to_string())
+        .text("deviceId", "e2e")
+        .text("fileCreatedAt", now.clone())
+        .text("fileModifiedAt", now)
+        .part("assetData", part);
     let r = get_json(ctx.http.post(format!("{base}/api/assets")).bearer_auth(&s.token).multipart(form), APP, "upload asset").await?;
     let id = r["id"].as_str().at(APP, "asset id")?.to_string();
     let thumb = poll(APP, "thumbnail", Duration::from_secs(120), Duration::from_secs(3), || async {
-        let t = ctx.http.get(format!("{base}/api/assets/{id}/thumbnail?size=preview")).bearer_auth(&s.token).send_t().await.map_err(|e| Fail::new(APP, "thumbnail", chain(&e)))?;
+        let t = ctx
+            .http
+            .get(format!("{base}/api/assets/{id}/thumbnail?size=preview"))
+            .bearer_auth(&s.token)
+            .send_t()
+            .await
+            .map_err(|e| Fail::new(APP, "thumbnail", chain(&e)))?;
         if !t.status().is_success() {
             return Ok(None);
         }
