@@ -37,6 +37,7 @@
     ./identity/keycloak.nix
     ./identity/keycloak-operator.nix
     ./identity/keycloak-auth.nix
+    ./identity/keycloak-invite.nix
     ./identity/oauth2-proxy.nix
     ./media/maloja.nix
     ./media/multi-scrobbler.nix

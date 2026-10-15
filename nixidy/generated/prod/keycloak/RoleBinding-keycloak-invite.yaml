@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: keycloak-invite
+  namespace: identity
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: keycloak-invite
+subjects:
+  - kind: ServiceAccount
+    name: keycloak-invite
+    namespace: identity

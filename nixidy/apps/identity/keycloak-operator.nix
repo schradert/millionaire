@@ -46,6 +46,8 @@ in {
           # Fine-grained admin permissions v2 (keycloak-auth.nix groupAdmins).
           adminPermissionsEnabled = true;
           registrationAllowed = false;
+          # "Forgot password" on the login page: the way back in for a declared user (docs/invite.md).
+          resetPasswordAllowed = true;
           loginWithEmailAllowed = true;
           duplicateEmailsAllowed = false;
           ssoSessionIdleTimeout = 24 * 60 * 60;
