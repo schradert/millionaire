@@ -23,12 +23,20 @@
           # and as /dev/bus/0;megaraid,N. That duplicates every series and alert, so
           # sirver gets its own instance that skips the megaraid route. Everywhere else
           # (octopus) the megaraid route is the only one that reaches the real disks.
+          # VMs (node.trdos.me/class=vm) have no physical disks, and v0.14.0 is amd64-only.
           affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms = lib.toList {
-            matchExpressions = lib.toList {
-              key = "kubernetes.io/hostname";
-              operator = "NotIn";
-              values = ["sirver"];
-            };
+            matchExpressions = [
+              {
+                key = "kubernetes.io/hostname";
+                operator = "NotIn";
+                values = ["sirver"];
+              }
+              {
+                key = "node.trdos.me/class";
+                operator = "NotIn";
+                values = ["vm"];
+              }
+            ];
           };
           extraInstances = lib.toList {
             # Matched against the exporter's device label, not the /dev path.

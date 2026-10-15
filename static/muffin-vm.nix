@@ -16,6 +16,7 @@
 # hard stop (qemu gets SIGTERM, the guest sees power loss): drain the node first if it
 # matters, `kubectl drain muffin --ignore-daemonsets --delete-emptydir-data`.
 {
+  config,
   flake,
   lib,
   pkgs,
@@ -36,10 +37,20 @@
     exec ${vm}/bin/run-muffin-vm
   '';
 in {
-  launchd.daemons.muffin-vm.serviceConfig = {
+  options.muffinVm.autoStart = lib.mkOption {
+    type = lib.types.bool;
+    default = false;
+    description = ''
+      Start the VM at boot and keep it running. Off until the Mac's memory budget is proven
+      (a 16 GB Mac with the linux-builder VM and 8 GB for muffin ran out of RAM and took the
+      node down for an hour, 2026-10-15). Start it by hand: `sudo launchctl kickstart
+      system/org.nixos.muffin-vm` (`kill` the same label to stop it).
+    '';
+  };
+  config.launchd.daemons.muffin-vm.serviceConfig = {
     ProgramArguments = ["/bin/sh" "-c" "/bin/wait4path /nix/store && exec ${start}"];
-    RunAtLoad = true;
-    KeepAlive = true;
+    RunAtLoad = config.muffinVm.autoStart;
+    KeepAlive = config.muffinVm.autoStart;
     # A little under the interactive session: the Mac stays responsive while the VM is busy.
     Nice = 5;
     LowPriorityIO = true;
@@ -48,7 +59,7 @@ in {
     StandardErrorPath = "${state}/console.log";
   };
   # launchd does not create the working directory
-  system.activationScripts.preActivation.text = lib.mkAfter ''
+  config.system.activationScripts.preActivation.text = lib.mkAfter ''
     mkdir -p ${state}
     chmod 700 ${state}
   '';
