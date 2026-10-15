@@ -28,7 +28,7 @@ Run them from the devshell. Each runner is a Job created from its CronJob (which
 Both CronJobs run by themselves, `concurrencyPolicy: Forbid`, three finished Jobs of each kind kept (and every Job deleted a day after it finishes):
 
 | CronJob | When (UTC) | What |
-|---|---|---|
+| --- | --- | --- |
 | `e2e/e2e` | `15 3 * * *` | every `cluster` family, default tier |
 | `media/media-e2e` | `45 3 * * *` | the `media` family, default tier (not `--full`: the VPN tests stay manual) |
 
@@ -40,7 +40,7 @@ Both CronJobs run by themselves, `concurrencyPolicy: Forbid`, three finished Job
 A family belongs to one runner, set in the registry (`apps/e2e/src/flow.rs`); a Job with `E2E_RUNNER` set runs only its own families, and the devshell script starts the Jobs the requested families need.
 
 | Runner | CronJob | Families | Why |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `media` | `media/media-e2e` (`nixidy/apps/media/media-e2e.nix`) | `media`, `games` | mounts the media volumes and the arr/Jellyfin secrets; execs into qBittorrent for the VPN tests |
 | `cluster` | `e2e/e2e` (`nixidy/apps/e2e.nix`) | everything else | HTTP, plus `kubectl` in namespace `e2e` through the `e2e` ServiceAccount (a Role for pods, pod logs, PVCs, VolumeSnapshots, ConfigMaps, Secrets, ExternalSecrets and ObjectBucketClaims there; no other namespace; the one cluster-scoped grant is a read of ClusterSecretStores); no volumes |
 
@@ -73,7 +73,7 @@ The image is `harbor.trdos.me/library/e2e` (`image publish e2e`, then add `pkgs/
 ## Implemented flows
 
 | Family | Flow | Create | Propagate | Validate | Delete |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | identity | `keycloak-user` | test users (admin+family, family) | password grant | token issuer, subject, `groups`, audience `oauth2-proxy`; wrong password refused | sweep |
 | identity | `oidc-mealie` | both users' Mealie accounts (OIDC signup) | Keycloak login pages, Mealie callback | email linked, admin only from the `admin` group | the admin token deletes the family user, then the admin (a refused delete is checked against the user list; the sweep's janitor login is the fallback) |
 | identity | `oidc-jellyfin` | both users' Jellyfin accounts (SSO plugin, first login) | Keycloak login pages, `/sso/OID/redirect`, `/sso/OID/Auth` | name equals the username, administrator only from the `admin` group, token works, `/Plugins` admin-only | the admin token deletes the family user, then itself; both tokens must then get 401 (the sweep's janitor login is the fallback) |
@@ -99,6 +99,7 @@ The image is `harbor.trdos.me/library/e2e` (`image publish e2e`, then add `pkgs/
 | home | `spoolman-inventory` | vendor, filament and spool tagged `<tag>` (oauth2-proxy bearer) | read back, usage update | links, remaining weight | all three deleted, 404 |
 | finance | `actual-budget` | budget file `<tag>` (stand-in bytes) and a CRDT transaction through `/sync/sync` | a second sync from time zero | file listed and downloaded equal, the transaction comes back | file deleted, no longer listed (the server keeps the tiny emptied group database) |
 | proxy | `proxy-<app>` for chirpstack, excalidraw, frigate, logseq, rclone, siyuan, zigbee2mqtt, zwave-js-ui, music-assistant, mainsail, obico, promptfoo, argo-rollouts | none (the two Keycloak users) | `GET /` through the internal gateway | no token: redirect to Keycloak; each user admitted or refused (proxy 403) as the route's declared groups say; the app answers (an app that is down is a `skip` naming the 502/504) | the Keycloak users (sweep) |
+| proxy | `admin-gate` | none (the family Keycloak user) | `GET /` on every oauth2-proxy route; `GET` of a login-only path on each admin tile an app serves itself (`NATIVE_AUTH` in `apps/e2e/src/proxy/flows.rs`) | every route redirects an anonymous request to Keycloak; the family user gets the proxy's 403 on every admin-only route; each self-served admin tile refuses an anonymous request; an admin tile that is neither a proxy route nor in `NATIVE_AUTH` fails | the Keycloak users (sweep) |
 | proxy | `portal-tiles` | none | every tile URL; dashy's exports with the admin bearer | tiles answer; exports equal the declared catalog | nothing |
 | dav | `webdav` | hidden folder `.<tag>/` and a file in it on `dav.<domain>` | MKCOL, PUT, GET, PROPFIND, overwrite, DELETE with the admin bearer token | content equal each time; the unauthenticated MKCOL is refused; GET after DELETE is 404 | folder deleted and PROPFIND is 404; sweep deletes tagged root folders and users |
 | games | `games-webdav` | generated file in `.<tag>/` on the `media-games` volume (media runner) | GET, range GET, PROPFIND through `games.<domain>` | bytes equal, `206` with `Content-Range`, PUT and DELETE refused and the file unchanged | folder removed from the volume |
@@ -122,7 +123,7 @@ The image is `harbor.trdos.me/library/e2e` (`image publish e2e`, then add `pkgs/
 Every service in `docs/connections.md`. **Status:** implemented · planned · manual (not testable without a person or hardware). **Credential:** `K` = only the e2e Keycloak user (bearer token or Keycloak login pages), `S` = a service credential from the cluster that is not the owner's (an app-bootstrap-style secret: Bitwarden or a generated Kubernetes Secret), `SA` = a Kubernetes ServiceAccount with namespaced RBAC, `-` = none. Planned rows are intentions, not verified against the apps.
 
 | Service | Family | Create → propagate → validate → delete | Status | Cred. |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | keycloak | identity | test user → token and login pages → claims, wrong password → user deleted, login refused | implemented | K (client `e2e`) |
 | headscale | identity | tagged user and pre-auth key → register an ephemeral node → node visible, ping the hub → node, key, user deleted | blocked: headscale runs on hyena as a NixOS service (`static/hyena.nix`), and its API keys are made by `headscale apikeys create` on that host; no Secret the `e2e` namespace can read holds one. Unblock by creating an API key for a dedicated e2e account and storing it where an ExternalSecret in `e2e` can read it | S (headscale API key) |
 | mealie | identity | OIDC signup (done); then a tagged recipe through the API → read back, search → delete | login implemented; data planned | K |
