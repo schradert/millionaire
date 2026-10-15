@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: ombi
+    app.kubernetes.io/instance: ombi
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: ombi
+  name: ombi
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: ombi
+      app.kubernetes.io/instance: ombi
+      app.kubernetes.io/name: ombi
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: ombi
+        app.kubernetes.io/instance: ombi
+        app.kubernetes.io/name: ombi
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: PGID
+              value: "1000"
+            - name: PUID
+              value: "1000"
+          image: ghcr.io/linuxserver/ombi:v4.53.10-ls272@sha256:6e5ac438dccc199addaf72fdb868ff6631cc5a67f91ecc7f10be1d6b4283f1dc
+          livenessProbe:
+            httpGet:
+              path: /api/v1/Settings/baseurl
+              port: 3579
+          name: ombi
+          readinessProbe:
+            httpGet:
+              path: /api/v1/Settings/baseurl
+              port: 3579
+          startupProbe:
+            failureThreshold: 60
+            httpGet:
+              path: /api/v1/Settings/baseurl
+              port: 3579
+          volumeMounts:
+            - mountPath: /config
+              name: config
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostAliases:
+        - hostnames:
+            - ntfy.trdos.me
+          ip: 100.64.0.1
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: ombi
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: ombi

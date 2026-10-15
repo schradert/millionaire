@@ -1,0 +1,125 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: ombi-bootstrap
+  namespace: media
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - ombi
+          env:
+            - name: ADMIN_PASSWORD_FILE
+              value: /secrets/admin/password
+            - name: ADMIN_USER
+              value: ombi-admin
+            - name: AUTH_HEADER
+              value: X-Auth-Request-Preferred-Username
+            - name: JELLYFIN_ADMIN_PASSWORD_FILE
+              value: /secrets/jellyfin/password
+            - name: JELLYFIN_ADMIN_USER
+              value: admin
+            - name: JELLYFIN_PUBLIC_URL
+              value: https://jellyfin.trdos.me
+            - name: JELLYFIN_URL
+              value: http://jellyfin.media.svc.cluster.local:8096
+            - name: KEYCLOAK_PASSWORD_FILE
+              value: /secrets/keycloak/password
+            - name: LIDARR_API_KEY_FILE
+              value: /secrets/lidarr/apikey
+            - name: NTFY_PRIORITY
+              value: "2"
+            - name: NTFY_TOPIC
+              value: media
+            - name: NTFY_URL
+              value: https://ntfy.trdos.me
+            - name: OMBI_API_KEY_FILE
+              value: /secrets/apikey/apikey
+            - name: OMBI_URL
+              value: http://ombi.media.svc.cluster.local:3579
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4318
+            - name: PUBLIC_URL
+              value: https://ombi.trdos.me
+            - name: PYROSCOPE_SAMPLE_RATE
+              value: "1000"
+            - name: PYROSCOPE_SERVER_ADDRESS
+              value: http://pyroscope.observability.svc.cluster.local:4040
+            - name: RADARR_API_KEY_FILE
+              value: /secrets/radarr/apikey
+            - name: RADARR_PROFILE
+              value: HD-1080p
+            - name: SONARR_API_KEY_FILE
+              value: /secrets/sonarr/apikey
+            - name: SONARR_PROFILE
+              value: WEB-1080p
+          image: harbor.trdos.me/library/app-bootstrap:0.26.0@sha256:5a72edc35fb941e6ffff0700f83a7ed4c1fd3198d7bc88e9d395268c8e6ae2cc
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /secrets/admin
+              name: admin
+              readOnly: true
+            - mountPath: /secrets/apikey
+              name: apikey
+              readOnly: true
+            - mountPath: /secrets/jellyfin
+              name: jellyfin
+              readOnly: true
+            - mountPath: /secrets/keycloak
+              name: keycloak
+              readOnly: true
+            - mountPath: /secrets/lidarr
+              name: lidarr
+              readOnly: true
+            - mountPath: /secrets/radarr
+              name: radarr
+              readOnly: true
+            - mountPath: /secrets/sonarr
+              name: sonarr
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - emptyDir: {}
+          name: tmp
+        - name: admin
+          secret:
+            secretName: ombi-admin
+        - name: apikey
+          secret:
+            secretName: ombi-apikey
+        - name: jellyfin
+          secret:
+            secretName: jellyfin-admin
+        - name: keycloak
+          secret:
+            secretName: ombi-keycloak-admin
+        - name: lidarr
+          secret:
+            secretName: lidarr-apikey
+        - name: radarr
+          secret:
+            secretName: radarr-apikey
+        - name: sonarr
+          secret:
+            secretName: sonarr-apikey

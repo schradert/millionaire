@@ -22,17 +22,27 @@ spec:
               value: /secrets/jellyfin/password
             - name: JELLYFIN_ADMIN_USER
               value: admin
+            - name: NTFY_PRIORITY
+              value: "2"
+            - name: NTFY_TOPIC
+              value: media
+            - name: NTFY_URL
+              value: https://ntfy.trdos.me
+            - name: OMBI_API_KEY_FILE
+              value: /secrets/ombi/apikey
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: http://alloy.observability.svc.cluster.local:4318
             - name: PYROSCOPE_SAMPLE_RATE
               value: "1000"
             - name: PYROSCOPE_SERVER_ADDRESS
               value: http://pyroscope.observability.svc.cluster.local:4040
+            - name: QBITTORRENT_PASSWORD_FILE
+              value: /secrets/qbittorrent/password
             - name: RADARR_API_KEY_FILE
               value: /secrets/radarr/apikey
             - name: SONARR_API_KEY_FILE
               value: /secrets/sonarr/apikey
-          image: harbor.trdos.me/library/app-bootstrap:0.22.1@sha256:efcaab3b2ee14c6d12e21e323ee0c59948842dd9bf75a6f2de5f07ec590cde6f
+          image: harbor.trdos.me/library/app-bootstrap:0.26.0@sha256:5a72edc35fb941e6ffff0700f83a7ed4c1fd3198d7bc88e9d395268c8e6ae2cc
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
@@ -45,6 +55,12 @@ spec:
               name: tmp
             - mountPath: /secrets/jellyfin
               name: jellyfin
+              readOnly: true
+            - mountPath: /secrets/ombi
+              name: ombi
+              readOnly: true
+            - mountPath: /secrets/qbittorrent
+              name: qbittorrent
               readOnly: true
             - mountPath: /secrets/radarr
               name: radarr
@@ -65,6 +81,12 @@ spec:
         - name: jellyfin
           secret:
             secretName: jellyfin-admin
+        - name: ombi
+          secret:
+            secretName: ombi-apikey
+        - name: qbittorrent
+          secret:
+            secretName: qbittorrent-admin
         - name: radarr
           secret:
             secretName: radarr-apikey

@@ -16,6 +16,7 @@ spec:
           - jellystat
           - maintainerr
           - navidrome
+          - ombi
           - qbittorrent
           - seerr
           - tdarr
@@ -58,6 +59,8 @@ spec:
             - port: "8095"
               protocol: TCP
             - port: "4533"
+              protocol: TCP
+            - port: "3579"
               protocol: TCP
             - port: "8080"
               protocol: TCP

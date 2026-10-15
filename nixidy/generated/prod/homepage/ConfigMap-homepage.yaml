@@ -416,6 +416,10 @@ data:
           description: ''
           href: https://navidrome.trdos.me
           icon: navidrome
+      - ombi:
+          description: Request movies, shows and music
+          href: https://ombi.trdos.me
+          icon: ombi
       - owncast:
           description: ''
           href: https://owncast.trdos.me
