@@ -122,6 +122,24 @@ in {
           values = {
             controllers.oauth2-proxy = {
               annotations."reloader.stakater.com/auto" = "true";
+              # Every SSO-gated app goes through this pod: one replica meant a 503 for all of them on
+              # each config rollout. Sessions live in Dragonfly and the cookie secret is shared, so
+              # replicas are interchangeable; roll one at a time, never below one ready.
+              replicas = 2;
+              strategy = "RollingUpdate";
+              rollingUpdate = {
+                unavailable = 0;
+                surge = 1;
+              };
+              pod.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution = [
+                {
+                  weight = 100;
+                  podAffinityTerm = {
+                    topologyKey = "kubernetes.io/hostname";
+                    labelSelector.matchLabels."app.kubernetes.io/controller" = "oauth2-proxy";
+                  };
+                }
+              ];
               containers.oauth2-proxy = {
                 image = pinned.images.oauth2-proxy;
                 args = [
@@ -210,6 +228,11 @@ in {
             };
           };
         };
+        resources.podDisruptionBudgets.oauth2-proxy.spec = {
+          minAvailable = 1;
+          selector.matchLabels."app.kubernetes.io/controller" = "oauth2-proxy";
+        };
+
         # DragonflyDB for Redis session store
         resources.dragonflies.oauth2-proxy-dragonfly.spec = {
           replicas = 1;
