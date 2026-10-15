@@ -58,8 +58,9 @@ client ──tailnet──▶ AdGuard (*.trdos.me → relays 100.64.0.4/.5) ─�
   link (`zed://ssh/coder.<ws>/…`). Autostop 8h, bumped 1h per activity.
 - **Image** `harbor.trdos.me/library/workspace` (`apps/workspace/image.nix`,
   published by the in-cluster image-publish workflow): user `coder` (1000),
-  single-user Nix, git, gh, tea, nix, devenv, direnv, nix-direnv, zellij,
-  tmux, helix, lazygit, ripgrep/fd/fzf, claude-code, opencode. 1.8 GiB store.
+  single-user Nix (unsandboxed, `filter-syscalls = false`), git, gh, tea,
+  nix, devenv, direnv, nix-direnv, zellij, tmux, helix, lazygit,
+  ripgrep/fd/fzf, claude-code, opencode. 1.8 GiB store.
 - **Namespace `workspaces`**: ResourceQuota (24 CPU / 64 GiB requests, 1 TiB
   storage, 1 GPU, no LoadBalancers), LimitRange defaults, Cilium default-deny
   ingress (agents dial out; nothing dials in, workspaces cannot reach each
@@ -195,7 +196,7 @@ a terminal), or the browser.
 
 | Client | Connect |
 | --- | --- |
-| falcon, axolotl (NixOS) | `coder login https://coder.trdos.me`, `coder config-ssh`, then ssh/Zed. **Gap found**: both are now cluster nodes with `accept-dns=false`, so `*.trdos.me` does not resolve on them (falcon's resolver is 1.1.1.1); they need split DNS for `trdos.me` → 100.64.0.1 |
+| falcon, axolotl (NixOS) | `coder login https://coder.trdos.me`, then `ssh coder.<ws>` / Zed (`modules/coder.nix` writes the `coder.*` SSH block, so no `config-ssh`). **Gap found**: both are now cluster nodes with `accept-dns=false`, so `*.trdos.me` does not resolve on them (falcon's resolver is 1.1.1.1); they need split DNS for `trdos.me` → 100.64.0.1 |
 | morgenmuffel (personal Mac) | as above once its headscale tailscaled is deployed |
 | millionaire (work Mac) | headscale is a userspace tailscaled behind `trdos` (SOCKS 1055 / CONNECT 1056). The Go CLI honours `HTTPS_PROXY` (CONNECT), so `trdos coder …` and a ProxyCommand of `trdos coder ssh --stdio …` should work; unverified |
 | Pixel, Deck | §9 |
@@ -204,13 +205,13 @@ a terminal), or the browser.
 
 The darwin config already enables Zed, zellij (no auto-start), wezterm,
 opencode, claude-code and the userspace headscale tailscaled (`modules/tailnet.nix`).
-To add workspaces to it (next PR, not deployed here):
+Workspaces are added by `modules/coder.nix` (merged, not deployed):
 
-1. Home-manager module: the `coder` CLI (nixpkgs `coder`, stable channel to
-   match 2.36), an SSH match block for `coder.*` with
-   `ProxyCommand trdos coder ssh --stdio --ssh-host-prefix coder. %h` on work
-   Macs (plain `coder` elsewhere), and Zed `ssh_connections` for the
-   workspaces in use.
+1. The `coder` CLI (nixpkgs 2.36.6; server 2.36.7) and an SSH block for
+   `coder.*` with `ProxyCommand trdos coder ssh --stdio --ssh-host-prefix
+   coder. %h` on work Macs (plain `coder` elsewhere). Evaluated for
+   millionaire and morgenmuffel; falcon's home-manager path builds. Zed needs
+   no settings: `zed ssh://coder.<ws>/home/coder/<repo>` uses that block.
 2. Build without loading this Mac: evaluate and build the closure on
    morgenmuffel (same aarch64-darwin, already a builder), copy it over, then
    switch locally: `nix build .#darwinConfigurations.millionaire.system` on
@@ -220,12 +221,36 @@ To add workspaces to it (next PR, not deployed here):
 
 ## 12. Next steps
 
-1. Pin the workspace image and push the `devenv` template (this stack).
-2. Client module: `coder` CLI, ssh match block, Zed connections; split DNS for
+1. Deploy the client module with the next host deploys; split DNS for
    `trdos.me` on falcon/axolotl.
+2. Bifrost provider keys (docs/ai-guide.md), then `claude-bifrost` and
+   opencode's `bifrost` provider answer from workspaces.
 3. code-server or `opencode web` as a Coder app; a GPU parameter (falcon's A2000).
 4. Egress policy for `workspaces`; per-workspace Bifrost virtual keys.
 5. sshd + tailscale add-on for native tailnet SSH/mosh (Termux).
+
+## 13. Verification (2026-10-15)
+
+- `tristan/millionaire` created from `devenv` by the `admin` owner; pod on
+  falcon in under 2 minutes (image pull included), seed ≈12 s.
+- From falcon, plain OpenSSH with a `coder ssh --stdio` ProxyCommand (the CLI
+  in a container, since falcon cannot resolve `*.trdos.me` yet): login shell as
+  `coder`, nix 2.34.8, Claude Code 2.1.292, opencode 1.18.35, devenv 2.4.0,
+  the repository cloned, zellij session `millionaire` running, Bifrost
+  reachable in-cluster (answers; no provider keys), `/nix` 49 GiB and home
+  20 GiB volumes mounted.
+- This repository's devenv builds in the workspace (`direnv exec .`, 221 s
+  cold, store 8.8 GiB).
+- Fixed on the way (each its own PR): a user created before their first login
+  is dormant and its agents get 401 (bootstrap activates it); the agent's
+  resource monitor needs `/etc/os-release`; Cilium matches Bifrost's pod port
+  8080, not the Service's 8000; Nix's builder seccomp filter refuses chmods
+  that keep the setgid bit fsGroup puts on volume directories
+  (`filter-syscalls = false`).
+- Not verified: the Keycloak browser login (needs your password), Zed from a
+  desktop, the work Mac's `trdos` path, the phone paths. One container
+  connection through the bonobo relay (100.64.0.4) timed out while chinchilla
+  (100.64.0.5) answered; host curl through both worked.
 
 ## Evidence
 
