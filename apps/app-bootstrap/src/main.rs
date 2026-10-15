@@ -1,6 +1,6 @@
 //! Idempotent first-run bootstraps, run as ArgoCD PostSync Jobs.
 //!
-//! `app-bootstrap <app>` where app is `actual`, `arr`, `atuin`, `audiobookshelf`, `autobrr`, `bazarr`, `forgejo`, `homarr`, `immich`, `kapowarr`, `kavita`, `komga`, `maintainerr`, `mealie`, `miniflux`, `navidrome`, `ombi`, `openviking`, `ryot`, `seerr`, `shoko`, `sportarr`, `streamystats`, `syncthing`, `tracearr` or `contextforge`. Every step checks
+//! `app-bootstrap <app>` where app is `actual`, `arr`, `atuin`, `audiobookshelf`, `autobrr`, `bazarr`, `forgejo`, `homarr`, `immich`, `kapowarr`, `kavita`, `komga`, `maintainerr`, `mealie`, `miniflux`, `navidrome`, `ombi`, `openviking`, `ryot`, `seerr`, `shoko`, `sportarr`, `streamystats`, `syncthing`, `tracearr`, `contextforge` or `keycloak-invite` (Keycloak's set-your-password email for newly declared family users). Every step checks
 //! the current state first, so a rerun against a configured app changes nothing.
 
 mod actual;
@@ -73,7 +73,8 @@ async fn main() -> ExitCode {
         "tracearr" => tracearr::run().await,
         "contextforge" => contextforge::run().await,
         "homarr" => homarr::run().await,
-        other => Err(format!("usage: app-bootstrap <actual|arr|atuin|audiobookshelf|autobrr|bazarr|forgejo|immich|kapowarr|kavita|komga|maintainerr|mealie|miniflux|navidrome|ombi|openviking|ryot|seerr|shoko|sportarr|streamystats|syncthing|tracearr|contextforge|homarr> (got {other:?})").into()),
+        "keycloak-invite" => keycloak::invite().await,
+        other => Err(format!("usage: app-bootstrap <actual|arr|atuin|audiobookshelf|autobrr|bazarr|forgejo|immich|kapowarr|kavita|komga|maintainerr|mealie|miniflux|navidrome|ombi|openviking|ryot|seerr|shoko|sportarr|streamystats|syncthing|tracearr|contextforge|homarr|keycloak-invite> (got {other:?})").into()),
     };
     let code = match res {
         Ok(()) => {
