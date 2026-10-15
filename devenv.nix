@@ -478,6 +478,56 @@ in {
         syncthing device-id --home "$dir" 2>/dev/null || syncthing --device-id --home "$dir"
       '';
 
+      # `android <device> [apply]`: compares a phone with android.devices.<device> over adb on the
+      # tailnet (docs/android-fleet.md). adb runs on bonobo, which holds the paired key; apply opens
+      # Obtainium's import of the missing apps on the phone. It never uninstalls or changes settings.
+      scripts.android.exec = let
+        inherit ((import ./static/builders.nix).nodes) bonobo;
+      in ''
+        set -euo pipefail
+        dev=''${1:?Usage: android <device> [apply]}
+        mode=''${2:-status}
+        root="${config.devenv.root}"
+        want=$(nix eval --no-pure-eval --json "$root#legacyPackages.${system}.android.devices.$dev")
+        rev=$(jq -r .nodes.nixpkgs.locked.rev "$root/flake.lock")
+        key=(); [ -r "$HOME/.ssh/personal" ] && key=(-o IdentitiesOnly=yes -i "$HOME/.ssh/personal")
+        # LAN first, else the edge box (sirver) as a jump to bonobo's tailnet IP
+        via=(''${ANDROID_ADB_VIA:-tristan@${bonobo.lan}})
+        ssh "''${key[@]}" -o ConnectTimeout=5 "''${via[@]}" true 2>/dev/null \
+          || via=(-J tristan@192.184.168.248 tristan@${bonobo.tailnet})
+        remote() {
+          { [ -z "''${1:-}" ] || printf 'link=%q\n' "$1"; cat "$root/static/android-adb.sh"; } \
+            | ssh "''${key[@]}" "''${via[@]}" \
+              nix shell "github:NixOS/nixpkgs/$rev#android-tools" "github:NixOS/nixpkgs/$rev#nmap" \
+              -c bash -s -- "$(jq -r .hostname <<<"$want")"
+        }
+        have=$(remote)
+        report=$(jq -n --argjson want "$want" --arg have "$have" '
+          ($have | split("\n") | map(select(. != "") | capture("^(?<k>[a-z_]+) (?<v>.*)$"))) as $l
+          | ($l | map(select(.k != "pkg") | {key: .k, value: .v}) | from_entries) as $s
+          | ($l | map(select(.k == "pkg") | .v | split(" ")) | map({key: .[0], value: .[1]}) | from_entries) as $pkgs
+          | ($want.apps | map(.id)) as $ids
+          | {
+              device: $s, vpn: $want.vpn,
+              vpnDrift: (($s.vpn_app == "com.tailscale.ipn") != $want.vpn.alwaysOn
+                or ($want.vpn.alwaysOn and (($s.vpn_lockdown == "1") != $want.vpn.lockdown))),
+              missing: [$want.apps[] | select($pkgs[.id] == null)],
+              foreign: [$ids[] | select($pkgs[.] != null and $pkgs[.] != "dev.imranr.obtainium") | "\(.) (\($pkgs[.]))"],
+              extra: [$pkgs | to_entries[] | select(.value == "dev.imranr.obtainium" and (.key | IN($ids[]) | not)) | .key]
+            }')
+        jq -r --arg dev "$dev" '
+          "\($dev): \(.device.serial), Android \(.device.release)",
+          "vpn: always-on=\(.device.vpn_app) lockdown=\(.device.vpn_lockdown) (want alwaysOn=\(.vpn.alwaysOn) lockdown=\(.vpn.lockdown))\(if .vpnDrift then "  DRIFT: Settings > Network > VPN > Tailscale" else "" end)",
+          "missing (\(.missing | length)): \(.missing | map(.name) | join(", "))",
+          "installed outside Obtainium (\(.foreign | length)): \(.foreign | join(", "))",
+          "Obtainium installs not declared (\(.extra | length)): \(.extra | join(", "))"' <<<"$report"
+        if [ "$mode" = apply ] && [ "$(jq '.missing | length' <<<"$report")" -gt 0 ]; then
+          remote "obtainium://apps/$(jq -r '.missing | tojson | @uri' <<<"$report")" | grep -x 'opened import'
+          echo "confirm the import in Obtainium on the phone"
+        fi
+        jq -e '.vpnDrift or (.missing | length) > 0' <<<"$report" >/dev/null && exit 2 || exit 0
+      '';
+
       # Pulumi / Python
       enterShell = ''
                 # Bootstrap creds from SOPS — needed before bws can be queried
