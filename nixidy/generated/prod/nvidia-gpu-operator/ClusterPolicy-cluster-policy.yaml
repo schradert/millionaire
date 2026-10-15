@@ -66,7 +66,7 @@ spec:
       - name: DEVICE_LIST_STRATEGY
         value: envvar
       - name: DEVICE_ID_STRATEGY
-        value: uuid
+        value: index
       - name: NVIDIA_VISIBLE_DEVICES
         value: all
       - name: NVIDIA_DRIVER_CAPABILITIES
@@ -224,6 +224,10 @@ spec:
     repository: nvcr.io/nvidia/k8s
     version: v1.17.4-ubuntu20.04@sha256:83a9f9fe948bd82358e53ed09470e2500ff689ce26241d76b444ec6b71792dcc
   validator:
+    driver:
+      env:
+        - name: DISABLE_DEV_CHAR_SYMLINK_CREATION
+          value: "true"
     image: gpu-operator-validator
     imagePullPolicy: IfNotPresent
     plugin:
