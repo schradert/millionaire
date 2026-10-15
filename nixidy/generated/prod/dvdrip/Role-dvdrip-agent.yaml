@@ -1,0 +1,22 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dvdrip-agent
+  namespace: media
+rules:
+  - apiGroups:
+      - dvd.trdos.me
+    resources:
+      - discs
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+  - apiGroups:
+      - dvd.trdos.me
+    resources:
+      - discs/status
+    verbs:
+      - get
+      - patch

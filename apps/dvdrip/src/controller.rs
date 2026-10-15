@@ -16,6 +16,7 @@ use kube::{
     api::{DeleteParams, ListParams, ObjectMeta, PostParams, PropagationPolicy},
     runtime::{
         controller::{Action, Controller},
+        finalizer::{finalizer, Event as FinalizerEvent},
         watcher,
     },
     Api, Client, Resource, ResourceExt,
@@ -175,7 +176,33 @@ fn job_name(stage: &str, st: &DiscStatus, n: u32) -> String {
     format!("dvd-{stage}-{}-{n}", st.fingerprint)
 }
 
+pub const FINALIZER: &str = "dvd.trdos.me/work-dir";
+
+/// Deleting a Disc removes its work dir (masters, encodes, logs, review); what it published stays.
 async fn reconcile(disc: Arc<Disc>, ctx: Arc<Ctx>) -> Result<Action, Error> {
+    let ns = disc.namespace().unwrap_or_else(|| ctx.a.namespace.clone());
+    let discs: Api<Disc> = Api::namespaced(ctx.client.clone(), &ns);
+    finalizer(&discs, FINALIZER, disc, |event| async {
+        match event {
+            FinalizerEvent::Apply(d) => apply(d, ctx.clone()).await,
+            FinalizerEvent::Cleanup(d) => {
+                if let Some(fp) = d.status.as_ref().map(|s| s.fingerprint.clone()).filter(|f| !f.is_empty()) {
+                    let dir = ctx.a.work_root.join(&fp);
+                    info!(disc = d.name_any(), dir = %dir.display(), "disc deleted: removing its work dir");
+                    tokio::fs::remove_dir_all(&dir)
+                        .await
+                        .or_else(|e| if e.kind() == std::io::ErrorKind::NotFound { Ok(()) } else { Err(e) })
+                        .map_err(|e| Error(e.into()))?;
+                }
+                Ok(Action::await_change())
+            }
+        }
+    })
+    .await
+    .map_err(|e| Error(anyhow::anyhow!("{e}")))
+}
+
+async fn apply(disc: Arc<Disc>, ctx: Arc<Ctx>) -> Result<Action, Error> {
     let name = disc.name_any();
     let ns = disc.namespace().unwrap_or_else(|| ctx.a.namespace.clone());
     let discs: Api<Disc> = Api::namespaced(ctx.client.clone(), &ns);

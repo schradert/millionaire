@@ -229,6 +229,7 @@
           dvdbackup
           lsdvd
           cdrkit
+          dvdauthor # dvdrip synth (e2e)
           mkvtoolnix-cli
           ffmpeg-full
           util-linux

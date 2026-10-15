@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: dvdrip-agent
+  namespace: media
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: agent
+      app.kubernetes.io/name: dvdrip
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: agent
+        app.kubernetes.io/name: dvdrip
+    spec:
+      containers:
+        - args:
+            - agent
+          env:
+            - name: NTFY_URL
+              value: https://ntfy.trdos.me/dvd
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4318
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: OTEL_SERVICE_NAME
+              value: dvdrip-agent
+          image: harbor.trdos.me/library/dvdrip:0.1.1@sha256:448082bb823d5f4221c1d2a57fef09332a8ebfdb7844fc40fd142e3b9ae14c0b
+          name: agent
+          ports:
+            - containerPort: 9090
+              name: http
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /work
+              name: work
+              readOnly: false
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /var/lib/dvd-rip
+              name: staging
+            - mountPath: /dev
+              name: dev
+            - mountPath: /run/udev
+              name: udev
+              readOnly: true
+      hostAliases:
+        - hostnames:
+            - ntfy.trdos.me
+          ip: 100.64.0.1
+      nodeSelector:
+        dvd.trdos.me/drive: "true"
+      serviceAccountName: dvdrip-agent
+      terminationGracePeriodSeconds: 120
+      tolerations:
+        - effect: PreferNoSchedule
+          key: node.trdos.me/class
+          operator: Equal
+          value: desktop
+      volumes:
+        - name: work
+          persistentVolumeClaim:
+            claimName: dvd-rip-work
+        - emptyDir: {}
+          name: tmp
+        - hostPath:
+            path: /var/lib/dvd-rip
+            type: DirectoryOrCreate
+          name: staging
+        - hostPath:
+            path: /dev
+          name: dev
+        - hostPath:
+            path: /run/udev
+          name: udev

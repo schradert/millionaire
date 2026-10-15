@@ -1,0 +1,19 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dvdrip-job
+  namespace: media
+rules:
+  - apiGroups:
+      - dvd.trdos.me
+    resources:
+      - discs
+    verbs:
+      - get
+  - apiGroups:
+      - dvd.trdos.me
+    resources:
+      - discs/status
+    verbs:
+      - get
+      - patch

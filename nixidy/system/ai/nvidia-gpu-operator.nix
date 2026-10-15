@@ -91,6 +91,9 @@
           # The cluster's only Node Feature Discovery (all sources: pci, usb, system, ...).
           # A standalone NFD would collide with these CRDs and labels.
           nfd.enabled = true;
+          # Labels the chart's NFD may set besides its own: GFD's, and the optical-drive label NixOS
+          # writes as a local feature (modules/dvd-rip.nix).
+          node-feature-discovery.master.config.extraLabelNs = ["nvidia.com" "dvd.trdos.me"];
           # Disable GDS and GDRCopy (not needed for inference)
           gds.enabled = false;
           gdrcopy.enabled = false;

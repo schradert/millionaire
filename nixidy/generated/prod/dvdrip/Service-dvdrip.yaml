@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dvdrip
+  namespace: media
+spec:
+  ports:
+    - name: http
+      port: 9090
+  selector:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/name: dvdrip
