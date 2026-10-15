@@ -143,3 +143,11 @@ It has no Prometheus metrics.
 Streamystats signs people in with a Jellyfin username and password, and keeps no other identity. Its session is a cookie signed with `SESSION_SECRET`, plus the person's Jellyfin token. Jellyfin SSO users have no password, so the only way in left is the shared Jellyfin admin account, which breaks the per-user rule.
 
 A per-user path needs a sidecar behind oauth2-proxy. The sidecar would get that user's Jellyfin token without a password and mint Streamystats' session; neither part is available cleanly today. Enable Streamystats once that exists. The bootstrap mode `app-bootstrap streamystats` is already in place.
+
+### Subtitles for language practice
+
+Subtitles in English, Portuguese, Spanish, French and German, for every movie and series.
+
+- Bazarr (`nixidy/apps/media/arr/bazarr.nix`): the default profile `Language practice` holds `en`, `pt`, `pb`, `es`, `fr`, `de`. Bazarr keeps Portuguese (`pt`) and Brazilian Portuguese (`pb`) apart, so both are in the profile. The profile an earlier run named `English` is renamed in place, so the series and movies already on it follow.
+- Lingarr: source `en`, targets `pt`, `es`, `fr`, `de` (no `pb`: a Brazilian subtitle comes from Bazarr only). It compares the target languages with the subtitle files beside each video and only translates the ones that are missing, so a subtitle Bazarr found is never overwritten. Two limits keep it modest: 5 files per nightly run (each file yields up to 4 translations) and, for new files, a 72 hour wait (`LINGARR_MIN_AGE_HOURS`) so Bazarr gets the first chance. Files already in the library are older than that, so for them Lingarr and Bazarr work in parallel; a machine translation that lands first counts as present for Bazarr.
+- LibreTranslate loads only these five languages (`LT_LOAD_ONLY`, about 200 MB of models per pair on CPU, 4 GiB memory limit).

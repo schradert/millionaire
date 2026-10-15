@@ -17,14 +17,20 @@
     applications.bazarr = {
       namespace = "media";
       volsync.pvcs.bazarr.title = "bazarr";
-      # Idempotent post-sync bootstrap (apps/app-bootstrap bazarr): the English language profile as
-      # the default, Sonarr/Radarr links and the account-free subtitle providers. Bazarr only
+      # Idempotent post-sync bootstrap (apps/app-bootstrap bazarr): the language-practice profile
+      # (English, Portuguese, Spanish, French, German) as the default, Sonarr/Radarr links and the account-free subtitle providers. Bazarr only
       # manages what Sonarr and Radarr manage; the DVD rips they did not add (/media/movies,
       # /media/dvd) are out of its scope. The API key is read from Bazarr's own index page.
       bootstrap = lib.mkIf (pinned.images ? app-bootstrap-bazarr) {
         image = with pinned.images.app-bootstrap-bazarr; "${repository}:${tag}@${digest}";
         args = ["bazarr"];
         env = {
+          # Subtitles for language practice next to English. Bazarr keeps Portuguese (pt) and Brazilian
+          # Portuguese (pb) apart, so both are in the profile; Lingarr machine-translates what Bazarr
+          # cannot find (pb is not a Lingarr target, so a Brazilian subtitle comes from Bazarr only).
+          # The profile an earlier run named English is renamed, so the existing series and movies follow.
+          BAZARR_LANGUAGES = "en,pt,pb,es,fr,de";
+          BAZARR_PROFILE = "Language practice";
           SONARR_API_KEY_FILE = "/secrets/sonarr/apikey";
           RADARR_API_KEY_FILE = "/secrets/radarr/apikey";
         };

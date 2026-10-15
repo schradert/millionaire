@@ -6,9 +6,13 @@
 //! Every step reads the current state first and only adds what is missing, so a rerun changes
 //! nothing and whatever was tuned by hand (other profiles, providers with credentials) stays.
 //!
-//! 1. Enable the language `BAZARR_LANGUAGE` (default `en`) next to the already enabled ones.
-//! 2. Add the language profile `BAZARR_PROFILE` (default `English`) to the existing profiles
-//!    (the settings call replaces the whole set, so the others are sent back unchanged).
+//! 1. Enable the languages `BAZARR_LANGUAGES` (comma separated Bazarr codes, default `en`) next to the
+//!    already enabled ones. Bazarr lists Portuguese (`pt`) and Brazilian Portuguese (`pb`) apart.
+//! 2. Add the language profile `BAZARR_PROFILE` (default `English`), one item per language, to the existing
+//!    profiles (the settings call replaces the whole set, so the others are sent back unchanged). When no
+//!    profile of that name exists but one named `BAZARR_RENAME_FROM` (default `English`, the profile an
+//!    earlier run made) does, that profile is renamed and given the languages instead, so the series and
+//!    movies already on it (and the defaults pointing at it) follow.
 //! 3. Make that profile the default for new series and movies, unless a default is already on.
 //! 4. Link Sonarr and Radarr (`SONARR_API_KEY[_FILE]`/`RADARR_API_KEY[_FILE]`; host
 //!    `<app>.media.svc.cluster.local`, port 80), each only when its link is not up yet.
@@ -61,23 +65,33 @@ fn page_api_key(html: &str) -> Option<String> {
     (!key.is_empty()).then(|| key.to_string())
 }
 
-/// The profile as Bazarr's settings call wants it: one language, no cutoff, no filters.
-fn language_profile(id: i64, name: &str, language: &str) -> Value {
+/// The profile as Bazarr's settings call wants it: one item per language, no cutoff, no filters.
+fn language_profile(id: i64, name: &str, languages: &[String]) -> Value {
+    let items: Vec<Value> = languages
+        .iter()
+        .enumerate()
+        .map(|(i, l)| json!({ "id": i + 1, "language": l, "audio_exclude": "False", "hi": "False", "forced": "False", "audio_only_include": "False" }))
+        .collect();
     json!({
-        "profileId": id, "name": name, "cutoff": null,
-        "items": [{ "id": 1, "language": language, "audio_exclude": "False", "hi": "False", "forced": "False" }],
+        "profileId": id, "name": name, "cutoff": null, "items": items,
         "mustContain": [], "mustNotContain": [], "originalFormat": false, "tag": null,
     })
 }
 
-/// Existing profiles plus `name`, when it is not among them: `(profiles, id of name, added)`.
-fn with_profile(existing: &Value, name: &str, language: &str) -> (Vec<Value>, i64, bool) {
+/// Existing profiles with `name` among them: `(profiles, id of name, changed)`. A profile already called `name`
+/// is left alone; else the one called `rename_from` becomes `name` (keeping its id); else `name` is added.
+fn with_profile(existing: &Value, name: &str, rename_from: &str, languages: &[String]) -> (Vec<Value>, i64, bool) {
     let mut all: Vec<Value> = existing.as_array().cloned().unwrap_or_default();
     if let Some(id) = all.iter().find(|p| p["name"] == json!(name)).and_then(|p| p["profileId"].as_i64()) {
         return (all, id, false);
     }
+    if let Some(i) = all.iter().position(|p| p["name"] == json!(rename_from)) {
+        let id = all[i]["profileId"].as_i64().unwrap_or(1);
+        all[i] = language_profile(id, name, languages);
+        return (all, id, true);
+    }
     let id = all.iter().filter_map(|p| p["profileId"].as_i64()).max().unwrap_or(0) + 1;
-    all.push(language_profile(id, name, language));
+    all.push(language_profile(id, name, languages));
     (all, id, true)
 }
 
@@ -115,8 +129,9 @@ fn link_arr(form: &mut Vec<(String, String)>, settings: &Value, kind: &str, host
 
 pub async fn run() -> Result<()> {
     let base = var("BAZARR_URL", "http://bazarr.media.svc.cluster.local:6767");
-    let language = var("BAZARR_LANGUAGE", "en");
+    let wanted_languages: Vec<String> = var("BAZARR_LANGUAGES", "en").split(',').map(|l| l.trim().to_string()).filter(|l| !l.is_empty()).collect();
     let profile_name = var("BAZARR_PROFILE", "English");
+    let rename_from = var("BAZARR_RENAME_FROM", "English");
     let providers: Vec<String> = var("BAZARR_PROVIDERS", PROVIDERS).split(',').map(|p| p.trim().to_string()).filter(|p| !p.is_empty()).collect();
     let http = Client::builder().timeout(Duration::from_secs(60)).build()?;
 
@@ -135,14 +150,15 @@ pub async fn run() -> Result<()> {
     let languages = b.get("/api/system/languages").await?;
     let enabled: Vec<String> =
         languages.as_array().into_iter().flatten().filter(|l| l["enabled"] == json!(true)).filter_map(|l| l["code2"].as_str().map(String::from)).collect();
-    if !enabled.contains(&language) {
-        for code in enabled.iter().chain(std::iter::once(&language)) {
+    let add_languages = missing(&enabled, &wanted_languages);
+    if !add_languages.is_empty() {
+        for code in enabled.iter().chain(add_languages) {
             form.push(("languages-enabled".into(), code.clone()));
         }
     }
 
     // 2. profile
-    let (profiles, profile_id, added) = with_profile(&b.get("/api/system/languages/profiles").await?, &profile_name, &language);
+    let (profiles, profile_id, added) = with_profile(&b.get("/api/system/languages/profiles").await?, &profile_name, &rename_from, &wanted_languages);
     if added {
         form.push(("languages-profiles".into(), Value::Array(profiles).to_string()));
     }
@@ -236,13 +252,25 @@ mod tests {
 
     #[test]
     fn profile_is_added_once() {
-        let (all, id, added) = with_profile(&json!([]), "English", "en");
+        let langs = vec!["en".to_string(), "pt".to_string()];
+        let (all, id, added) = with_profile(&json!([]), "Practice", "English", &langs);
         assert!((all.len(), id, added) == (1, 1, true));
-        assert_eq!(all[0]["items"][0]["language"], "en");
-        let (all2, id2, added2) = with_profile(&Value::Array(all), "English", "en");
+        assert_eq!(all[0]["items"][1]["language"], "pt");
+        let (all2, id2, added2) = with_profile(&Value::Array(all), "Practice", "English", &langs);
         assert!((all2.len(), id2, added2) == (1, 1, false));
-        let (all3, id3, _) = with_profile(&json!([{ "profileId": 4, "name": "French" }]), "English", "en");
+        let (all3, id3, _) = with_profile(&json!([{ "profileId": 4, "name": "French" }]), "Practice", "English", &langs);
         assert!(all3.len() == 2 && id3 == 5);
+    }
+
+    #[test]
+    fn the_earlier_profile_is_renamed_keeping_its_id() {
+        let langs = vec!["en".to_string(), "es".to_string()];
+        let old = json!([{ "profileId": 3, "name": "English", "items": [{ "id": 1, "language": "en" }] }, { "profileId": 4, "name": "Other" }]);
+        let (all, id, changed) = with_profile(&old, "Practice", "English", &langs);
+        assert!((all.len(), id, changed) == (2, 3, true));
+        assert_eq!(all[0]["name"], "Practice");
+        assert_eq!(all[0]["items"].as_array().unwrap().len(), 2);
+        assert_eq!(all[1]["name"], "Other");
     }
 
     #[test]
