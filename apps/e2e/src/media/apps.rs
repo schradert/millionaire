@@ -21,7 +21,7 @@ pub struct Arr {
 
 impl Arr {
     pub fn new(app: &'static str) -> R<Self> {
-        let api = if matches!(app, "lidarr" | "prowlarr") { "v1" } else { "v3" };
+        let api = if matches!(app, "lidarr" | "prowlarr" | "bookshelf" | "bookshelf-audio") { "v1" } else { "v3" };
         Ok(Arr { app, base: url(app, &format!("http://{app}.media.svc.cluster.local")), key: need_secret(app, &format!("{app}-apikey"), "apikey")?, api })
     }
 
@@ -426,4 +426,33 @@ pub fn lingarr_url() -> String {
 
 pub fn cleanuparr_url() -> String {
     url("cleanuparr", "http://cleanuparr.media.svc.cluster.local:11011")
+}
+
+pub fn suwayomi_url() -> String {
+    url("suwayomi", "http://suwayomi.media.svc.cluster.local:4567")
+}
+
+/// Kapowarr (comics). It has no users (oauth2-proxy is the login), so with no password set `POST /api/auth`
+/// returns the API key; every other call carries it as `?api_key=`.
+pub struct Kapowarr {
+    base: String,
+    key: String,
+}
+
+impl Kapowarr {
+    pub async fn new(ctx: &Ctx) -> R<Self> {
+        let base = url("kapowarr", "http://kapowarr.media.svc.cluster.local:5656");
+        let r = json(ctx.http.post(format!("{base}/api/auth")).json(&json!({})), "kapowarr", "POST /api/auth (is a password set?)").await?;
+        let key = r["result"]["api_key"].as_str().at("kapowarr", "API key from POST /api/auth")?.to_string();
+        Ok(Kapowarr { base, key })
+    }
+
+    /// `result` of a GET.
+    pub async fn get(&self, ctx: &Ctx, path: &str) -> R<Value> {
+        let r = json(ctx.http.get(format!("{}/api{path}", self.base)).query(&[("api_key", &self.key)]), "kapowarr", &format!("GET {path}")).await?;
+        if !r["error"].is_null() {
+            return Err(Fail::new("kapowarr", &format!("GET {path}"), format!("error {}", r["error"])));
+        }
+        Ok(r["result"].clone())
+    }
 }

@@ -4,6 +4,7 @@ pub mod apps;
 pub mod cleanup;
 pub mod content;
 mod flows_arr;
+mod flows_books;
 mod flows_dvdrip;
 mod flows_integrations;
 mod flows_media;
@@ -85,6 +86,25 @@ fn flows() -> Vec<FlowDef> {
             Offline,
             "Prowlarr: apps synced, qBittorrent and FlareSolverr wired, indexers pushed to the apps",
             step!(flows_integrations::prowlarr_links),
+        ),
+        d(
+            "integrations-bookshelf",
+            Offline,
+            "Bookshelf and Bookshelf Audio: root folder, qBittorrent client, metadata source, health clean, synced into Prowlarr",
+            step!(flows_integrations::bookshelf),
+        ),
+        d(
+            "integrations-kapowarr",
+            Offline,
+            "Kapowarr: API key, comics root folder, qBittorrent client, download folder, FlareSolverr",
+            step!(flows_integrations::kapowarr),
+        ),
+        d("integrations-suwayomi", Offline, "Suwayomi: GraphQL aboutServer, CBZ downloads, FlareSolverr, sources", step!(flows_integrations::suwayomi)),
+        d(
+            "books-bookshelf",
+            Offline,
+            "Bookshelf and Bookshelf Audio add a public-domain author from the metadata source into a test root folder and list the works",
+            step!(flows_books::author),
         ),
         d("integrations-qbittorrent", Offline, "qBittorrent saves to the shared downloads volume", step!(flows_integrations::qbittorrent_path)),
         d("integrations-bazarr", Offline, "Bazarr: Sonarr and Radarr connected, English default profile, providers", step!(flows_integrations::bazarr)),
