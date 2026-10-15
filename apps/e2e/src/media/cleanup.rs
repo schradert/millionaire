@@ -6,7 +6,7 @@ use std::{fs, time::Duration};
 use reqwest::Method;
 use serde_json::{json, Value};
 
-use super::apps::{maintainerr_url, maloja_url, Abs, Arr, Jellyfin, Kavita, Komga, Navidrome, Ombi, Qbt, Seerr};
+use super::apps::{maintainerr_url, maloja_url, maloja_user_url, Abs, Arr, Jellyfin, Kavita, Komga, Navidrome, Ombi, Qbt, Seerr};
 use crate::{
     ctx::{enc, json, media_root, poll, secret, send, Ctx, Fail, Scope, R},
     report::Flow,
@@ -288,10 +288,17 @@ async fn qbittorrent(c: &mut Clean<'_>) -> R<()> {
     Ok(())
 }
 
+/// Both Malojas a run can write to: the owner's and the scrobbling fixture user's.
 async fn maloja(c: &mut Clean<'_>) -> R<()> {
+    for base in [maloja_url(), maloja_user_url()] {
+        maloja_at(c, &base).await?;
+    }
+    Ok(())
+}
+
+async fn maloja_at(c: &mut Clean<'_>, base: &str) -> R<()> {
     let ctx = c.ctx;
-    let base = maloja_url();
-    // delete_scrobble needs an admin session (an API key is refused): log in for the cookie.
+    // delete_scrobble needs an admin session (an API key is refused): log in for the cookie. Every Maloja has the same admin password.
     let pw = secret("maloja-admin", "password").ok_or_else(|| Fail::skip("maloja", "credentials", "maloja-admin not mounted"))?;
     let login = json(ctx.http.post(format!("{base}/auth/authenticate")).json(&json!({ "user": "admin", "password": pw })), "maloja", "admin login").await?;
     let cookie = format!("{}={}", login["cookie_name"].as_str().unwrap_or("maloja_sessiontoken"), login["token"].as_str().unwrap_or_default());
@@ -573,14 +580,18 @@ pub async fn residue(ctx: &Ctx, scope: &Scope) -> Flow {
     check!(
         "maloja",
         async {
-            let list = json(ctx.http.get(format!("{}/apis/mlj_1/scrobbles?perpage=1000", maloja_url())), "maloja", "scrobbles").await?;
-            let v: Vec<String> = list["list"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .filter(|s| scope.hit_v(&s["track"]["title"]))
-                .map(|s| format!("scrobble {}", s["track"]["title"]))
-                .collect();
+            let mut v: Vec<String> = vec![];
+            for base in [maloja_url(), maloja_user_url()] {
+                let list = json(ctx.http.get(format!("{base}/apis/mlj_1/scrobbles?perpage=1000")), "maloja", "scrobbles").await?;
+                v.extend(
+                    list["list"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter(|s| scope.hit_v(&s["track"]["title"]))
+                        .map(|s| format!("scrobble {} in {base}", s["track"]["title"])),
+                );
+            }
             Ok(v)
         }
         .await
