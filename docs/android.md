@@ -2,6 +2,8 @@
 
 Phones pull their app list. Nothing listens on a phone and nothing pushes to one.
 
+Why this design over an MDM or adb push, and `android <device>` (drift over adb): `docs/android-fleet.md`.
+
 - `modules/android.nix` holds the catalog. `android.apps` gives each app its Obtainium source, `android.sets` groups apps into named sets, and `android.devices` assigns owner, sets, and `deviceOwner` per device. `options/android.nix` renders the following for each device:
   - `<device>.json`, the Obtainium import (schemaVersion 2)
   - `<device>-bootstrap.json`, the same import plus Obtainium settings
