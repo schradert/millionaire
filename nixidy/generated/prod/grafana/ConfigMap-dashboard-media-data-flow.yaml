@@ -1195,9 +1195,27 @@ data:
                 "type": "prometheus",
                 "uid": "mimir"
               },
-              "expr": "max by (__name__)({__name__=~\"(sonarr|radarr|lidarr)_queue_total\"})",
-              "legendFormat": "{{__name__}}",
+              "expr": "sum(max by (status)(sonarr_queue_total)) or vector(0)",
+              "legendFormat": "sonarr",
               "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "mimir"
+              },
+              "expr": "sum(max by (status)(radarr_queue_total)) or vector(0)",
+              "legendFormat": "radarr",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "mimir"
+              },
+              "expr": "sum(max by (status)(lidarr_queue_total)) or vector(0)",
+              "legendFormat": "lidarr",
+              "refId": "C"
             }
           ],
           "fieldConfig": {
@@ -1222,7 +1240,7 @@ data:
               "sort": "desc"
             }
           },
-          "description": "Items in each arr app's download queue (exportarr ENABLE_ADDITIONAL_METRICS)."
+          "description": "Items in each arr app's download queue (exportarr; the series exist only while the queue is non-empty, so an empty queue reads 0)."
         },
         {
           "id": 22,
