@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: qbittorrent-exporter
+    app.kubernetes.io/instance: qbittorrent-exporter
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: qbittorrent-exporter
+  name: qbittorrent-exporter
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: qbittorrent-exporter
+      app.kubernetes.io/instance: qbittorrent-exporter
+      app.kubernetes.io/name: qbittorrent-exporter
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: qbittorrent-exporter
+        app.kubernetes.io/instance: qbittorrent-exporter
+        app.kubernetes.io/name: qbittorrent-exporter
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: EXPORTER_PORT
+              value: "8090"
+            - name: QBITTORRENT_BASE_URL
+              value: http://qbittorrent.media.svc.cluster.local:8080
+            - name: QBITTORRENT_COOKIE_NAME
+              value: QBT_SID_8080
+            - name: QBITTORRENT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: qbittorrent-admin
+            - name: QBITTORRENT_USERNAME
+              value: admin
+          image: ghcr.io/martabal/qbittorrent-exporter:v2.0.3@sha256:bc4fa09481634ee894ebfb4d47c8aa239a32a12567b043afa01fa42a3075d1a5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+          name: qbittorrent-exporter
+          ports:
+            - containerPort: 8090
+              name: metrics
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: qbittorrent-exporter

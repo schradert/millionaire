@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/controller: jellyfin-exporter
+    app.kubernetes.io/instance: jellyfin-exporter
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: jellyfin-exporter
+  name: jellyfin-exporter
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: jellyfin-exporter
+      app.kubernetes.io/instance: jellyfin-exporter
+      app.kubernetes.io/name: jellyfin-exporter
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: jellyfin-exporter
+        app.kubernetes.io/instance: jellyfin-exporter
+        app.kubernetes.io/name: jellyfin-exporter
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - command:
+            - sh
+            - -c
+            - read -r t < /key/token; exec /bin/jellyfin_exporter --jellyfin.token="$t" --collector.transcoding
+          env:
+            - name: JELLYFIN_ADDRESS
+              value: http://jellyfin.media.svc.cluster.local:8096
+          image: rebelcore/jellyfin-exporter:v1.5.2@sha256:8a1294b7fea80993e4ec18220e391578e0f9ca9e109294fd6a379d2cb5213c85
+          livenessProbe:
+            tcpSocket:
+              port: metrics
+          name: jellyfin-exporter
+          ports:
+            - containerPort: 9594
+              name: metrics
+          readinessProbe:
+            tcpSocket:
+              port: metrics
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /key
+              name: key
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      initContainers:
+        - command:
+            - sh
+            - -c
+            - |
+              set -eu
+              base=http://jellyfin.media.svc.cluster.local:8096
+              name=jellyfin-exporter
+              auth='MediaBrowser Client="jellyfin-exporter", Device="exporter", DeviceId="jellyfin-exporter", Version="1"'
+              pw=$(cat /secrets/admin/password)
+              tok=$(curl -fsS -H "X-Emby-Authorization: $auth" -H 'Content-Type: application/json' \
+                -d "{\"Username\":\"admin\",\"Pw\":\"$pw\"}" "$base/Users/AuthenticateByName" \
+                | grep -o '"AccessToken":"[^"]*"' | head -1 | cut -d'"' -f4)
+              authed="X-Emby-Authorization: $auth, Token=\"$tok\""
+              lookup() {
+                curl -fsS -H "$authed" "$base/Auth/Keys" | tr '{' '\n' | grep "\"AppName\":\"$name\"" \
+                  | grep -o '"AccessToken":"[^"]*"' | head -1 | cut -d'"' -f4
+              }
+              key=$(lookup || true)
+              if [ -z "$key" ]; then
+                curl -fsS -X POST -H "$authed" "$base/Auth/Keys?app=$name"
+                key=$(lookup)
+              fi
+              curl -fsS -X POST -H "$authed" "$base/Sessions/Logout" || true
+              [ -n "$key" ]
+              printf %s "$key" > /key/token
+          image: curlimages/curl:8.22.0@sha256:58adaa4e8dca9c988bae2aba4ab3434a0bb2da16bbe3f92dec39ec7785166777
+          name: token
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /secrets/admin
+              name: admin-secret
+            - mountPath: /key
+              name: key
+      securityContext:
+        fsGroup: 65534
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: jellyfin-exporter
+      volumes:
+        - name: admin-secret
+          secret:
+            secretName: jellyfin-admin
+        - emptyDir: {}
+          name: key

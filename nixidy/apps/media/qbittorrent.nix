@@ -107,7 +107,7 @@
         key = "password";
         bitwarden = "qbittorrent/admin-password";
       };
-      # WebUI only from oauth2-proxy, the arr apps, their bootstrap and the e2e Job.
+      # WebUI only from oauth2-proxy, the arr apps, the metrics exporter, their bootstrap and the e2e Job.
       # Peer traffic never touches eth0: it goes through gluetun's tunnel.
       resources.ciliumNetworkPolicies.qbittorrent.spec = {
         endpointSelector.matchLabels."app.kubernetes.io/name" = "qbittorrent";
@@ -127,7 +127,7 @@
                 {matchLabels."batch.kubernetes.io/job-name" = "kapowarr-bootstrap";}
                 {matchLabels."app.kubernetes.io/name" = "media-e2e";}
               ]
-              ++ map (app: {matchLabels."app.kubernetes.io/name" = app;}) ["radarr" "sonarr" "lidarr" "sportarr" "prowlarr" "autobrr" "maintainerr" "bookshelf" "bookshelf-audio" "kapowarr" "cleanuparr"];
+              ++ map (app: {matchLabels."app.kubernetes.io/name" = app;}) ["radarr" "sonarr" "lidarr" "sportarr" "prowlarr" "autobrr" "qbittorrent-exporter" "maintainerr" "bookshelf" "bookshelf-audio" "kapowarr" "cleanuparr"];
             toPorts = lib.toList {
               ports = lib.toList {
                 port = toString port;
@@ -316,6 +316,74 @@
               remoteRef.key = key;
             })
             provider.secrets;
+        };
+      };
+    };
+    # Transfer rates, totals, torrent states and per-category counts (media-data-flow dashboard).
+    # A pod of its own: the WebUI needs no extra port through gluetun's firewall.
+    applications.qbittorrent-exporter = {
+      namespace = "media";
+      helm.releases.qbittorrent-exporter = {
+        chart = charts.bjw-s-labs.app-template-patched;
+        values = {
+          controllers.qbittorrent-exporter = {
+            replicas =
+              if credentials
+              then 1
+              else 0;
+            annotations."reloader.stakater.com/auto" = "true";
+            pod.securityContext = {
+              runAsNonRoot = true;
+              runAsUser = 65534;
+              runAsGroup = 65534;
+              seccompProfile.type = "RuntimeDefault";
+            };
+            containers.qbittorrent-exporter = {
+              image = pinned.images.qbittorrent-exporter;
+              env = {
+                QBITTORRENT_BASE_URL = "http://qbittorrent.media.svc.cluster.local:${toString port}";
+                QBITTORRENT_USERNAME = "admin";
+                QBITTORRENT_PASSWORD.valueFrom.secretKeyRef = {
+                  name = "qbittorrent-admin";
+                  key = "password";
+                };
+                # qBittorrent 5.2+ names its session cookie after the WebUI port.
+                QBITTORRENT_COOKIE_NAME = "QBT_SID_${toString port}";
+                EXPORTER_PORT = "8090";
+              };
+              ports = lib.toList {
+                name = "metrics";
+                containerPort = 8090;
+              };
+              probes = let
+                healthz = {
+                  enabled = true;
+                  custom = true;
+                  spec.httpGet = {
+                    path = "/healthz";
+                    port = "metrics";
+                  };
+                };
+              in {
+                liveness = healthz;
+                readiness = healthz;
+              };
+              securityContext = {
+                allowPrivilegeEscalation = false;
+                readOnlyRootFilesystem = true;
+                capabilities.drop = ["ALL"];
+              };
+            };
+          };
+          service.qbittorrent-exporter.ports.metrics.port = 8090;
+          serviceMonitor.qbittorrent-exporter = {
+            serviceName = "qbittorrent-exporter";
+            endpoints = lib.toList {
+              port = "metrics";
+              path = "/metrics";
+              interval = "30s";
+            };
+          };
         };
       };
     };

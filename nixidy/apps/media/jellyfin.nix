@@ -289,5 +289,112 @@
         };
       };
     };
+    # Playback metrics (sessions, direct play vs transcode, bitrate) for the media-data-flow
+    # dashboard; Jellyfin's own /metrics has none. The exporter only takes an API key, so an
+    # init container signs in as admin, finds or creates the key `jellyfin-exporter` and
+    # hands it over in an emptyDir: no secret to create by hand.
+    applications.jellyfin-exporter = {
+      namespace = "media";
+      helm.releases.jellyfin-exporter = {
+        chart = charts.bjw-s-labs.app-template-patched;
+        values = {
+          controllers.jellyfin-exporter = {
+            pod.securityContext = {
+              runAsNonRoot = true;
+              runAsUser = 65534;
+              runAsGroup = 65534;
+              fsGroup = 65534;
+              seccompProfile.type = "RuntimeDefault";
+            };
+            initContainers.token = {
+              image = pinned.images.curl;
+              command = [
+                "sh"
+                "-c"
+                ''
+                  set -eu
+                  base=http://jellyfin.media.svc.cluster.local:8096
+                  name=jellyfin-exporter
+                  auth='MediaBrowser Client="jellyfin-exporter", Device="exporter", DeviceId="jellyfin-exporter", Version="1"'
+                  pw=$(cat /secrets/admin/password)
+                  tok=$(curl -fsS -H "X-Emby-Authorization: $auth" -H 'Content-Type: application/json' \
+                    -d "{\"Username\":\"admin\",\"Pw\":\"$pw\"}" "$base/Users/AuthenticateByName" \
+                    | grep -o '"AccessToken":"[^"]*"' | head -1 | cut -d'"' -f4)
+                  authed="X-Emby-Authorization: $auth, Token=\"$tok\""
+                  lookup() {
+                    curl -fsS -H "$authed" "$base/Auth/Keys" | tr '{' '\n' | grep "\"AppName\":\"$name\"" \
+                      | grep -o '"AccessToken":"[^"]*"' | head -1 | cut -d'"' -f4
+                  }
+                  key=$(lookup || true)
+                  if [ -z "$key" ]; then
+                    curl -fsS -X POST -H "$authed" "$base/Auth/Keys?app=$name"
+                    key=$(lookup)
+                  fi
+                  curl -fsS -X POST -H "$authed" "$base/Sessions/Logout" || true
+                  [ -n "$key" ]
+                  printf %s "$key" > /key/token
+                ''
+              ];
+              securityContext = {
+                allowPrivilegeEscalation = false;
+                readOnlyRootFilesystem = true;
+                capabilities.drop = ["ALL"];
+              };
+            };
+            containers.jellyfin-exporter = {
+              image = pinned.images.jellyfin-exporter;
+              env.JELLYFIN_ADDRESS = "http://jellyfin.media.svc.cluster.local:8096";
+              command = [
+                "sh"
+                "-c"
+                "read -r t < /key/token; exec /bin/jellyfin_exporter --jellyfin.token=\"$t\" --collector.transcoding"
+              ];
+              ports = lib.toList {
+                name = "metrics";
+                containerPort = 9594;
+              };
+              probes = let
+                port = {
+                  enabled = true;
+                  custom = true;
+                  spec.tcpSocket.port = "metrics";
+                };
+              in {
+                liveness = port;
+                readiness = port;
+              };
+              securityContext = {
+                allowPrivilegeEscalation = false;
+                readOnlyRootFilesystem = true;
+                capabilities.drop = ["ALL"];
+              };
+            };
+          };
+          service.jellyfin-exporter.ports.metrics.port = 9594;
+          serviceMonitor.jellyfin-exporter = {
+            serviceName = "jellyfin-exporter";
+            endpoints = lib.toList {
+              port = "metrics";
+              path = "/metrics";
+              interval = "30s";
+            };
+          };
+          persistence = {
+            admin-secret = {
+              type = "secret";
+              name = "jellyfin-admin";
+              advancedMounts.jellyfin-exporter.token = [{path = "/secrets/admin";}];
+            };
+            key = {
+              type = "emptyDir";
+              advancedMounts.jellyfin-exporter = {
+                token = [{path = "/key";}];
+                jellyfin-exporter = [{path = "/key";}];
+              };
+            };
+          };
+        };
+      };
+    };
   };
 }

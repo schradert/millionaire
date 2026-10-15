@@ -35,6 +35,8 @@ spec:
         - matchLabels:
             app.kubernetes.io/name: autobrr
         - matchLabels:
+            app.kubernetes.io/name: qbittorrent-exporter
+        - matchLabels:
             app.kubernetes.io/name: maintainerr
         - matchLabels:
             app.kubernetes.io/name: bookshelf

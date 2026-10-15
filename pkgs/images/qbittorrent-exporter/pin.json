@@ -1,0 +1,9 @@
+{
+  "version": "v2.0.3",
+  "digest": "sha256:bc4fa09481634ee894ebfb4d47c8aa239a32a12567b043afa01fa42a3075d1a5",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/martabal/qbittorrent-exporter",
+    "tagPattern": "v(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}
