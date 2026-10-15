@@ -47,15 +47,13 @@ spec:
               protocol: TCP
             - port: "6767"
               protocol: TCP
-            - port: "8787"
+            - port: "80"
               protocol: TCP
             - port: "11011"
               protocol: TCP
             - port: "3000"
               protocol: TCP
             - port: "5656"
-              protocol: TCP
-            - port: "80"
               protocol: TCP
             - port: "9876"
               protocol: TCP

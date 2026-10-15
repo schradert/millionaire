@@ -6,7 +6,7 @@ data:
   READARR__LOG__DBENABLED: "False"
   READARR__LOG__LEVEL: info
   READARR__SERVER__ALLOWEDHOSTS: bookshelf-audio.trdos.me,bookshelf-audio.media.svc.cluster.local,bookshelf-audio.media.svc,bookshelf-audio.media,bookshelf-audio,localhost
-  READARR__SERVER__PORT: "8787"
+  READARR__SERVER__PORT: "80"
 kind: ConfigMap
 metadata:
   labels:
