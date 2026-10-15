@@ -9,6 +9,7 @@ data:
   LIDARR__POSTGRES__LOGDB: lidarr-log
   LIDARR__POSTGRES__MAINDB: lidarr
   LIDARR__POSTGRES__USER: lidarr
+  LIDARR__SERVER__ALLOWEDHOSTS: lidarr.trdos.me,lidarr.media.svc.cluster.local,lidarr.media.svc,lidarr.media,lidarr,localhost
   LIDARR__SERVER__PORT: "80"
   LIDARR__UPDATE__BRANCH: develop
 kind: ConfigMap

@@ -9,6 +9,7 @@ data:
   PROWLARR__POSTGRES__LOGDB: prowlarr-log
   PROWLARR__POSTGRES__MAINDB: prowlarr
   PROWLARR__POSTGRES__USER: prowlarr
+  PROWLARR__SERVER__ALLOWEDHOSTS: prowlarr.trdos.me,prowlarr.media.svc.cluster.local,prowlarr.media.svc,prowlarr.media,prowlarr,localhost
   PROWLARR__SERVER__PORT: "80"
   PROWLARR__UPDATE__BRANCH: develop
 kind: ConfigMap

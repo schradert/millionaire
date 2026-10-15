@@ -98,6 +98,7 @@
             SONARR__LOG__DBENABLED = "False";
             SONARR__LOG__LEVEL = "info";
             SONARR__SERVER__PORT = builtins.toString port;
+            SONARR__SERVER__ALLOWEDHOSTS = lib.concatStringsSep "," [hostname "sonarr.media.svc.cluster.local" "sonarr.media.svc" "sonarr.media" "sonarr" "localhost"];
             SONARR__UPDATE__BRANCH = "develop";
             SONARR__POSTGRES__USER = "sonarr";
             SONARR__POSTGRES__MAINDB = "sonarr";

@@ -98,6 +98,7 @@
             LIDARR__LOG__DBENABLED = "False";
             LIDARR__LOG__LEVEL = "info";
             LIDARR__SERVER__PORT = builtins.toString port;
+            LIDARR__SERVER__ALLOWEDHOSTS = lib.concatStringsSep "," [hostname "lidarr.media.svc.cluster.local" "lidarr.media.svc" "lidarr.media" "lidarr" "localhost"];
             LIDARR__UPDATE__BRANCH = "develop";
             LIDARR__POSTGRES__USER = "lidarr";
             LIDARR__POSTGRES__MAINDB = "lidarr";
