@@ -45,6 +45,8 @@
               args = ["lidarr"];
               env = {
                 PORT = "9707";
+                # Adds the download queue (queue_total) to the base series.
+                ENABLE_ADDITIONAL_METRICS = "true";
                 URL = "http://localhost:${toString port}";
                 APIKEY.valueFrom.secretKeyRef = {
                   name = "lidarr";
