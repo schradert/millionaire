@@ -112,7 +112,13 @@ in {
                   database = db.database;
                   owner = db.owner;
                   postInitSQL =
-                    (map (ext: "CREATE EXTENSION IF NOT EXISTS ${ext};") db.extensions)
+                    # Quoted only when the name needs it (uuid-ossp has a hyphen), so the others render as before.
+                    (map (ext: "CREATE EXTENSION IF NOT EXISTS ${
+                        if builtins.match "[a-z0-9_]+" ext != null
+                        then ext
+                        else "\"${ext}\""
+                      };")
+                      db.extensions)
                     ++ db.initSQL;
                   postInitApplicationSQL = db.initApplicationSQL;
                 };
