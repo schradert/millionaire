@@ -58,6 +58,7 @@
     ./media/qbittorrent.nix
     ./media/media-e2e.nix
     ./media/seerr.nix
+    ./media/ombi.nix
     ./media/storage.nix
     ./media/audiobookshelf.nix
     ./media/immich.nix
