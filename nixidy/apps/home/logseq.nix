@@ -8,6 +8,7 @@
     inherit (config.canivete.meta) domain;
     hostname = "logseq.${domain}";
   in {
+    portal.apps.logseq.groups = ["admin"];
     gatus.endpoints.logseq = {
       url = "https://${hostname}";
       group = "internal";

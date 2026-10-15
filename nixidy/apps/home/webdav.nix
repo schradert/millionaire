@@ -8,6 +8,8 @@
     inherit (config.canivete.meta) domain;
     hostname = "dav.${domain}";
   in {
+    # Read-write on the org files with no login of its own: owner only.
+    portal.apps.webdav.groups = ["admin"];
     gatus.endpoints.webdav = {
       url = "https://${hostname}";
       group = "internal";

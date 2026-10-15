@@ -31,6 +31,7 @@ in {
       };
     };
 
+    portal.apps.bifrost.groups = ["admin"];
     gatus.endpoints.bifrost = {
       url = "https://${hostname}";
       group = "internal";

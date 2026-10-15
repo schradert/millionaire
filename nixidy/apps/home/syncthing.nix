@@ -70,6 +70,7 @@ in {
       syncthing.folders;
     bootstrapped = pinned.images ? app-bootstrap-syncthing;
   in {
+    portal.apps.syncthing.groups = ["admin"];
     gatus.endpoints.syncthing = {
       url = "https://${hostname}";
       group = "internal";

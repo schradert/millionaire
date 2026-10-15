@@ -8,6 +8,7 @@
     inherit (config.canivete.meta) domain;
     hostname = "siyuan.${domain}";
   in {
+    portal.apps.siyuan.groups = ["admin"];
     gatus.endpoints.siyuan = {
       url = "https://${hostname}";
       group = "internal";

@@ -27,6 +27,7 @@ in {
       };
     };
 
+    portal.apps.promptfoo.groups = ["admin"];
     gatus.endpoints.promptfoo = {
       url = "https://${hostname}";
       group = "internal";
