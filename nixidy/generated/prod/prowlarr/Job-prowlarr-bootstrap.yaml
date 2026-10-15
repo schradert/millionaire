@@ -20,6 +20,10 @@ spec:
               value: /secrets/bookshelf/apikey
             - name: BOOKSHELF_AUDIO_API_KEY_FILE
               value: /secrets/bookshelf-audio/apikey
+            - name: BOOKSHELF_AUDIO_URL
+              value: http://bookshelf-audio.media.svc.cluster.local:8787
+            - name: BOOKSHELF_URL
+              value: http://bookshelf.media.svc.cluster.local:8787
             - name: LIDARR_API_KEY_FILE
               value: /secrets/lidarr/apikey
             - name: NTFY_URL
@@ -40,7 +44,7 @@ spec:
               value: /secrets/radarr/apikey
             - name: SONARR_API_KEY_FILE
               value: /secrets/sonarr/apikey
-          image: harbor.trdos.me/library/app-bootstrap:0.28.0@sha256:695c3d142378f9284c1ed57f9d867873f61af8eea531e6a94ff6005d3bc8968a
+          image: harbor.trdos.me/library/app-bootstrap:0.33.0@sha256:943d36f34262c76aaaba4d271aed960e16b9068d5064f3cd3297ef1877ffdad5
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
