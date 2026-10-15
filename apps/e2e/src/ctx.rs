@@ -108,6 +108,8 @@ pub enum Scope {
     Run(String),
     /// Any run's marker (orphans from crashed runs).
     All,
+    /// Markers of runs that started before this Unix time: what a killed or evicted run left behind.
+    Stale(i64),
 }
 
 impl Scope {
@@ -115,6 +117,7 @@ impl Scope {
         match self {
             Scope::Run(m) => s.contains(m.as_str()),
             Scope::All => find_marker(s).is_some(),
+            Scope::Stale(before) => find_marker(s).and_then(marker_time).is_some_and(|t| t < *before),
         }
     }
     pub fn hit_v(&self, v: &Value) -> bool {
@@ -254,6 +257,24 @@ pub fn find_marker(s: &str) -> Option<&str> {
         i = start + 4;
     }
     None
+}
+
+/// Unix start time of the run a marker (`e2e-YYYYMMDD-HHMMSS-xxxx`) names.
+pub fn marker_time(m: &str) -> Option<i64> {
+    let n = |r: std::ops::Range<usize>| m.get(r)?.parse::<i64>().ok();
+    let (y, mo, d) = (n(4..8)?, n(8..10)?, n(10..12)?);
+    let (h, mi, sec) = (n(13..15)?, n(15..17)?, n(17..19)?);
+    Some(days_from_civil(y, mo, d) * 86400 + h * 3600 + mi * 60 + sec)
+}
+
+/// (year, month, day) to days since the epoch; the inverse of [`civil`].
+fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
+    let y = if m <= 2 { y - 1 } else { y };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let doy = (153 * (if m > 2 { m - 3 } else { m + 9 }) + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146097 + doe - 719468
 }
 
 /// `e2e-<id>` if that is, in full, a run marker (`id` may already carry the `e2e-` prefix).
@@ -463,6 +484,16 @@ pub fn ipv4s(s: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn stale_scope_reads_the_marker_time() {
+        let t = marker_time("e2e-20261015-053550-258f").unwrap();
+        assert_eq!(rfc3339(t), "2026-10-15T05:35:50Z");
+        assert_eq!(marker_time("e2e-19700101-000000-abcd"), Some(0));
+        assert!(Scope::Stale(t + 1).hit("/media/downloads/e2e-20261015-053550-258f/tv"));
+        assert!(!Scope::Stale(t).hit("/media/downloads/e2e-20261015-053550-258f/tv"));
+        assert!(!Scope::Stale(t + 1).hit("Movies"));
+    }
 
     #[test]
     fn markers() {

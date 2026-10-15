@@ -135,7 +135,8 @@ async fn jellyfin_devices_inner(c: &mut Clean<'_>) -> R<()> {
         }
         if own || c.scope.hit_v(&d["Id"]) {
             let path = format!("/Devices?id={}", enc(d["Id"].as_str().unwrap_or("")));
-            c.act(format!("jellyfin device/session {}", d["Id"]), async { send(jf.req(ctx, Method::DELETE, &path), "jellyfin", "delete device").await.map(|_| ()) }).await;
+            // A device whose session Jellyfin already expired answers 401: it is gone, which is the goal.
+            c.act(format!("jellyfin device/session {}", d["Id"]), async { send(jf.req(ctx, Method::DELETE, &path), "jellyfin", "delete device").await.map(|_| ()).or_else(|e| if e.msg.starts_with("HTTP 401") { Ok(()) } else { Err(e) }) }).await;
         }
     }
     Ok(())
