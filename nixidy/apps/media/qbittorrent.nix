@@ -56,11 +56,17 @@
     # on localhost (LocalHostAuth is off, and only this pod can reach 127.0.0.1).
     # The chart runs env values through `tpl`, so gluetun's {{PORT}} placeholders are escaped
     # as Go raw strings.
-    setPrefs = prefs: let
+    post = prefs: let
       json =
         builtins.replaceStrings [''"{{PORT}}"'' ''"'' "{{VPN_INTERFACE}}"] ["{{`{{PORT}}`}}" ''\"'' "{{`{{VPN_INTERFACE}}`}}"]
         (builtins.toJSON prefs);
-    in "/bin/sh -c 'wget -q -O /dev/null --retry-connrefused --post-data \"json=${json}\" http://127.0.0.1:${toString port}/api/v2/app/setPreferences'";
+    in "wget -q -O /dev/null --retry-connrefused --post-data \"json=${json}\" http://127.0.0.1:${toString port}/api/v2/app/setPreferences";
+    setPrefs = prefs: "/bin/sh -c '${post prefs}'";
+    # qBittorrent starts before the tunnel exists ("configured network interface is invalid"), and
+    # its DHT, started with no usable socket, stays at 0 nodes (firewalled) until it is restarted.
+    # After the bind to tun0, switch it off and on, once the listen sockets are up.
+    restartDht = lib.optionalString peerDiscovery "; sleep 5; ${post {dht = false;}}; sleep 2; ${post {dht = true;}}";
+    setPrefsAndRestartDht = prefs: "/bin/sh -c '${post prefs}${restartDht}'";
 
     # Applied to qBittorrent.conf by the init container on every start, before qBittorrent
     # reads it, so the config file can't drift from this.
@@ -238,7 +244,7 @@
                 }
                 // lib.optionalAttrs (vpn.countries != []) {SERVER_COUNTRIES = lib.concatStringsSep "," vpn.countries;}
                 // lib.optionalAttrs ((provider.env.VPN_PORT_FORWARDING or "off") == "on") {
-                  VPN_PORT_FORWARDING_UP_COMMAND = setPrefs {
+                  VPN_PORT_FORWARDING_UP_COMMAND = setPrefsAndRestartDht {
                     listen_port = "{{PORT}}";
                     current_network_interface = "{{VPN_INTERFACE}}";
                     random_port = false;
