@@ -53,15 +53,11 @@ spec:
         - ports:
             - port: "8080"
               protocol: TCP
-            - port: "8000"
-              protocol: TCP
     - fromEndpoints:
         - matchLabels:
             app.kubernetes.io/name: openclaw
             k8s:io.kubernetes.pod.namespace: ai-sandbox
       toPorts:
         - ports:
-            - port: "8000"
-              protocol: TCP
             - port: "8080"
               protocol: TCP

@@ -11,13 +11,6 @@ spec:
         - port: 53
           protocol: TCP
     - ports:
-        - port: 8000
-          protocol: TCP
-      to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: ai
-    - ports:
         - port: 8080
           protocol: TCP
       to:

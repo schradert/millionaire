@@ -173,9 +173,10 @@
     enforce = true;
     intraNamespace = true;
     cnpg = true;
-    # openclaw (ai-sandbox) reaches bifrost :8000 and contextforge :8080 (its own egress policy lists exactly these)
+    # openclaw (ai-sandbox) reaches bifrost and contextforge. Both pods listen on 8080 (Bifrost's Service
+    # is :8000, but Cilium matches the pod port, after DNAT), so 8080 is the only port to open.
     extraIngress = [
-      # the e2e harness calls ContextForge (:8080) and Bifrost (:8000) in-cluster: their public routes
+      # the e2e harness calls ContextForge and Bifrost (both pod port 8080) in-cluster: their public routes
       # are behind oauth2-proxy, which takes the Authorization header they use for their own
       # credentials: apps/e2e ai/contextforge-tool, ai/bifrost-chat
       {
@@ -194,10 +195,6 @@
                 port = "8080";
                 protocol = "TCP";
               }
-              {
-                port = "8000";
-                protocol = "TCP";
-              }
             ];
           }
         ];
@@ -214,10 +211,6 @@
         toPorts = [
           {
             ports = [
-              {
-                port = "8000";
-                protocol = "TCP";
-              }
               {
                 port = "8080";
                 protocol = "TCP";

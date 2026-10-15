@@ -66,17 +66,8 @@
               }
             ];
           }
-          # Bifrost (LLM gateway) in ai namespace
-          {
-            to = [{namespaceSelector.matchLabels."kubernetes.io/metadata.name" = "ai";}];
-            ports = [
-              {
-                port = 8000;
-                protocol = "TCP";
-              }
-            ];
-          }
-          # ContextForge (MCP gateway) in ai namespace
+          # Bifrost (LLM gateway) and ContextForge (MCP gateway) in ai namespace: both pods listen on 8080
+          # (Bifrost's Service is :8000; policies match the pod port, after DNAT)
           {
             to = [{namespaceSelector.matchLabels."kubernetes.io/metadata.name" = "ai";}];
             ports = [
