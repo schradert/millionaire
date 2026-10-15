@@ -14,6 +14,10 @@ spec:
       port: 5055
       protocol: TCP
       targetPort: 5055
+    - name: sso
+      port: 5056
+      protocol: TCP
+      targetPort: 5056
   selector:
     app.kubernetes.io/controller: seerr
     app.kubernetes.io/instance: seerr
