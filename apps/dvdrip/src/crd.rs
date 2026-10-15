@@ -10,6 +10,13 @@ use serde::{Deserialize, Serialize};
 use crate::classify::Role;
 
 pub const FINGERPRINT_LABEL: &str = "dvd.trdos.me/fingerprint";
+/// A test disc (`dvdrip synth`): its Jobs are named `e2e-...` so a failure alerts on the e2e
+/// topic, and it is left out of the discs-by-phase metric.
+pub const TEST_LABEL: &str = "dvd.trdos.me/test";
+
+pub fn is_test(d: &Disc) -> bool {
+    d.metadata.labels.as_ref().is_some_and(|l| l.get(TEST_LABEL).is_some_and(|v| v == "true"))
+}
 
 fn yes() -> bool {
     true

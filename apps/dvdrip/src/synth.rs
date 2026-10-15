@@ -91,7 +91,11 @@ pub async fn run(a: SynthArgs) -> Result<()> {
         let (ns, name) = kubeapi::split_ref(r, "media");
         let api = kubeapi::discs(ns).await?;
         let d = Disc {
-            metadata: ObjectMeta { name: Some(name.to_string()), labels: Some([(FINGERPRINT_LABEL.to_string(), fp.clone())].into()), ..Default::default() },
+            metadata: ObjectMeta {
+                name: Some(name.to_string()),
+                labels: Some([(FINGERPRINT_LABEL.to_string(), fp.clone()), (crate::crd::TEST_LABEL.to_string(), "true".to_string())].into()),
+                ..Default::default()
+            },
             spec: DiscSpec { name: a.name.clone().unwrap_or_else(|| crate::naming::label_to_name(&a.label)), disc: 1, ..Default::default() },
             status: None,
         };

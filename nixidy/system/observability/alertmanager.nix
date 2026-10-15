@@ -71,6 +71,12 @@
                   matchers = ["alertname = KubeJobFailed" "namespace =~ \"e2e|media\"" "job_name =~ \"(media-)?e2e.*\""];
                   receiver = "e2e-jobs-ntfy";
                 }
+                # A dvdrip encode/publish Job (apps/dvdrip; test discs' Jobs are `e2e-dvd-*`, above):
+                # the controller already reports the disc on ntfy `dvd`, so the Job failure goes there too.
+                {
+                  matchers = ["alertname = KubeJobFailed" "namespace = media" "job_name =~ \"dvd-.*\""];
+                  receiver = "dvd-ntfy";
+                }
                 # Watchdog always fires; its re-notification is a heartbeat for
                 # Gatus on hyena, which alerts via ntfy when it stops.
                 {
@@ -138,6 +144,15 @@
                 webhook_configs = [
                   {
                     url = "https://ntfy.${domain}/e2e?template=alertmanager&priority=2";
+                    send_resolved = true;
+                  }
+                ];
+              }
+              {
+                name = "dvd-ntfy";
+                webhook_configs = [
+                  {
+                    url = "https://ntfy.${domain}/dvd?template=alertmanager&priority=2";
                     send_resolved = true;
                   }
                 ];
