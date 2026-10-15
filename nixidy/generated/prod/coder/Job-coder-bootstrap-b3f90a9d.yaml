@@ -3,7 +3,7 @@ kind: Job
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "5"
-  name: coder-bootstrap-3688260e
+  name: coder-bootstrap-b3f90a9d
   namespace: development
 spec:
   activeDeadlineSeconds: 1200
@@ -34,7 +34,7 @@ spec:
               coder users edit-roles "$USER_NAME" --roles owner --yes
               # A user who has not logged in yet is dormant, and its workspaces' agents get 401.
               if coder users show "$USER_NAME" -o json | grep -q '"status": *"dormant"'; then
-                coder users activate "$USER_NAME"
+                coder users activate "$USER_NAME" <<<yes
               fi
               mkdir -p /tmp/templates/devenv
               cp -L /templates/devenv/.terraform.lock.hcl /tmp/templates/devenv/.terraform.lock.hcl
