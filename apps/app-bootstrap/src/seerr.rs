@@ -157,7 +157,8 @@ pub async fn run() -> Result<()> {
 }
 
 /// The Jellyfin libraries named in `JELLYFIN_LIBRARIES` (default Movies and TV Shows) are enabled, on top of
-/// whatever is enabled already (the selection may have been tuned by hand; `enable` replaces it).
+/// whatever is enabled already (the selection may have been tuned by hand; `enable` replaces it, and a call
+/// to the library endpoint without `enable` disables every library, so never read it bare).
 async fn reconcile_libraries(http: &Client, base: &str, cookie: &str) -> Result<()> {
     let names = var("JELLYFIN_LIBRARIES", "Movies,TV Shows");
     let names: Vec<&str> = names.split(',').map(str::trim).filter(|n| !n.is_empty()).collect();
@@ -272,6 +273,9 @@ async fn wire_arr(http: &Client, base: &str, cookie: &str) -> Result<()> {
                     continue;
                 }
                 let mut body = have.clone();
+                if let Some(o) = body.as_object_mut() {
+                    o.remove("id"); // read-only in the PUT schema
+                }
                 body["activeProfileId"] = json!(pid);
                 body["activeProfileName"] = json!(pname);
                 body["activeDirectory"] = json!(root);
