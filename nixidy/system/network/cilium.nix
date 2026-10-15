@@ -95,8 +95,31 @@
           operator = {
             dashboards.enabled = true;
             prometheus.enabled = true;
-            replicas = 1;
+            # Two (the chart spreads them across hosts): a standby takes the lease when the leader
+            # loses it. Off octopus when possible: its etcd disk is slow, its local apiserver times
+            # out, and the operator kept losing leader election there (11 restarts, routes stalled).
+            replicas = 2;
             rollOutPods = true;
+            affinity = {
+              podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution = [
+                {
+                  topologyKey = "kubernetes.io/hostname";
+                  labelSelector.matchLabels."io.cilium/app" = "operator";
+                }
+              ];
+              nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution = [
+                {
+                  weight = 100;
+                  preference.matchExpressions = [
+                    {
+                      key = "kubernetes.io/hostname";
+                      operator = "NotIn";
+                      values = ["octopus"];
+                    }
+                  ];
+                }
+              ];
+            };
           };
           prometheus.enabled = true;
           rollOutCiliumPods = true;

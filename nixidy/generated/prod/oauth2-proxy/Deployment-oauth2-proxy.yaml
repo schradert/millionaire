@@ -11,7 +11,7 @@ metadata:
   name: oauth2-proxy
   namespace: identity
 spec:
-  replicas: 1
+  replicas: 2
   revisionHistoryLimit: 3
   selector:
     matchLabels:
@@ -19,7 +19,10 @@ spec:
       app.kubernetes.io/instance: oauth2-proxy
       app.kubernetes.io/name: oauth2-proxy
   strategy:
-    type: Recreate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
   template:
     metadata:
       annotations:
@@ -29,6 +32,15 @@ spec:
         app.kubernetes.io/instance: oauth2-proxy
         app.kubernetes.io/name: oauth2-proxy
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/controller: oauth2-proxy
+                topologyKey: kubernetes.io/hostname
+              weight: 100
       automountServiceAccountToken: false
       containers:
         - args:
