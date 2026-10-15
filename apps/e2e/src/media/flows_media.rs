@@ -8,7 +8,7 @@ use reqwest::{header, Method, StatusCode};
 use serde_json::{json, Value};
 
 use super::{
-    apps::{maintainerr_url, maloja_url, Abs, Arr, Kavita, Komga, Navidrome},
+    apps::{maintainerr_url, maloja_url, maloja_user_url, scrobble_user, Abs, Arr, Kavita, Komga, Navidrome},
     content,
 };
 use crate::{
@@ -336,18 +336,36 @@ pub async fn music(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let id = song["id"].as_str().at("navidrome", "song id")?.to_string();
     f.ok("navidrome", "track scanned", format!("song {id}"));
 
+    // A person's plays go to that person's own Maloja: scrobble as the fixture user (never the owner), through its own
+    // Navidrome account and ListenBrainz link, multi-scrobbler and Maloja.
+    let who = scrobble_user();
+    if !nd.listenbrainz_linked(ctx, &who).await? {
+        return Err(Fail::new(
+            "navidrome",
+            "listenbrainz link",
+            format!("{who} has no ListenBrainz link (does the navidrome bootstrap list it in SCROBBLE_USERS?)"),
+        ));
+    }
+    f.ok("navidrome", "per-user ListenBrainz link", &who);
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis().to_string();
-    nd.sub(ctx, "scrobble", &[("id", &id), ("submission", "false")]).await?;
-    nd.sub(ctx, "scrobble", &[("id", &id), ("submission", "true"), ("time", &now)]).await?;
-    f.ok("navidrome", "Subsonic scrobble", "now playing + submission");
+    nd.sub_as(ctx, &who, "scrobble", &[("id", &id), ("submission", "false")]).await?;
+    nd.sub_as(ctx, &who, "scrobble", &[("id", &id), ("submission", "true"), ("time", &now)]).await?;
+    f.ok("navidrome", "Subsonic scrobble", format!("as {who}: now playing + submission"));
 
-    let base = maloja_url();
-    poll("maloja", "scrobble arrives", Duration::from_secs(180), Duration::from_secs(5), || async {
+    let base = maloja_user_url();
+    poll("maloja", "scrobble arrives in the user's Maloja", Duration::from_secs(180), Duration::from_secs(5), || async {
         let r = json(ctx.http.get(format!("{base}/apis/mlj_1/scrobbles?perpage=200")), "maloja", "list scrobbles").await?;
         Ok(r["list"].as_array().into_iter().flatten().any(|s| s["track"]["title"] == json!(title)).then_some(()))
     })
     .await?;
-    f.ok("maloja", "scrobble arrived (via Navidrome's ListenBrainz relay)", "");
+    f.ok("maloja", &format!("scrobble arrived in {who}'s Maloja (Navidrome, multi-scrobbler, Maloja)"), "");
+
+    // ... and only there: the owner's history must not have it.
+    let owner = json(ctx.http.get(format!("{}/apis/mlj_1/scrobbles?perpage=200", maloja_url())), "maloja", "list the owner's scrobbles").await?;
+    if owner["list"].as_array().into_iter().flatten().any(|s| s["track"]["title"] == json!(title)) {
+        return Err(Fail::new("maloja", "isolation", format!("{who}'s scrobble {title:?} also reached the owner's Maloja")));
+    }
+    f.ok("maloja", "not in the owner's Maloja", "");
 
     let base = var("MULTI_SCROBBLER_URL", "http://multi-scrobbler.media.svc.cluster.local:9078");
     // 0.19 lists sources and clients together at /api/components (it was /api/status before); a component whose

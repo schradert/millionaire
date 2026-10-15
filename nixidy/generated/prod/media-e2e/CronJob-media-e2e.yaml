@@ -33,12 +33,16 @@ spec:
                   value: media/media-e2e-last-report
                 - name: E2E_RUNNER
                   value: media
+                - name: MALOJA_E2E_URL
+                  value: http://maloja-e2e.media.svc.cluster.local:42011
                 - name: OTEL_EXPORTER_OTLP_ENDPOINT
                   value: http://alloy.observability.svc.cluster.local:4318
                 - name: PYROSCOPE_SAMPLE_RATE
                   value: "1000"
                 - name: PYROSCOPE_SERVER_ADDRESS
                   value: http://pyroscope.observability.svc.cluster.local:4040
+                - name: SCROBBLE_E2E_USER
+                  value: e2e
               image: harbor.trdos.me/library/e2e:0.15.0@sha256:17c6433b6e8bd178b4826c64f4d9cc64e09e00fc2878946515c908a0f801bf1a
               name: media-e2e
               resources:

@@ -14,7 +14,7 @@ Legend:
 
 | App | Auth | Per-user | Bootstrap | Data | Library | Acquisition | Requests | Tracking | Metrics / dash | E2E |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Jellyfin | OIDC (SSO plugin) | yes, roles from groups | jellyfin-bootstrap (wizard, libraries, SSO, plugins: TMDb Box Sets, Webhook) | PVC + VolSync | movies, tv, dvd (ro) | Radarr, Sonarr, Sportarr | Seerr, Ombi | → Ryot (Webhook sink, new) and → Maloja (multi-scrobbler); → Trakt behind `traktPlugin` | ServiceMonitor, dashboard | movie-chain, sonarr-chain, oidc-jellyfin |
+| Jellyfin | OIDC (SSO plugin) | yes, roles from groups | jellyfin-bootstrap (wizard, libraries, SSO, plugins: TMDb Box Sets, Webhook) | PVC + VolSync | movies, tv, dvd (ro) | Radarr, Sonarr, Sportarr | Seerr, Ombi | → Ryot (Webhook sink, new) and → each user's own Maloja (multi-scrobbler, one Jellyfin source per user); → Trakt behind `traktPlugin` | ServiceMonitor, dashboard | movie-chain, sonarr-chain, oidc-jellyfin |
 | Radarr / Sonarr | Gate (`AUTH__METHOD=External`) | no (admin tool) | `app-bootstrap arr` | CNPG + VolSync | movies / tv + downloads | Prowlarr, qBittorrent | Seerr, Ombi, Ryot "Request" (new) | n/a | exportarr, dashboard; ntfy `media` (new) | integrations-arr |
 | Bazarr | Gate | no | `app-bootstrap bazarr` | PVC + VolSync | movies, tv | OpenSubtitles (no account yet) | n/a | n/a | none (exportarr needs a key) | bazarr (skips) |
 | Seerr / Ombi | Header via sidecar / header | yes (seerr-sso, Ombi roles from groups) | yes | PVC + VolSync | none | Radarr, Sonarr | themselves | n/a | none | seerr, seerr-sso |
@@ -27,13 +27,13 @@ Legend:
 
 | App | Auth | Per-user | Bootstrap | Data | Library | Acquisition | Requests | Tracking | Metrics / dash | E2E |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Navidrome | Header (`preferred_username`); Subsonic API direct | by name (auto-creation of non-bootstrapped users unverified) | yes | PVC + VolSync | music | Lidarr | none | → Maloja (ListenBrainz API), linked for tristan only | ServiceMonitor, dashboard | music, lidarr |
+| Navidrome | Header (`preferred_username`); Subsonic API direct | by name; the bootstrap creates (non-admin) and links every scrobbling user through the trusted header | yes | PVC + VolSync | music | Lidarr | none | → multi-scrobbler's ListenBrainz endpoint with the user's own token → that user's Maloja | ServiceMonitor, dashboard | music (as the `e2e` user), lidarr |
 | Lidarr | Gate | no | `app-bootstrap arr` | CNPG + VolSync | music + downloads | Prowlarr, qBittorrent | none | n/a | exportarr; ntfy `media` (new) | lidarr |
 | Music Assistant | Gate (any signed-in user) | no | none | PVC + VolSync | music (ro) | n/a | n/a | none | none | proxy smoke |
-| Maloja | Gate (admin); scrobble API key-only | no (single-user) | init container (API keys) | PVC + VolSync | n/a | n/a | n/a | the scrobble sink; ListenBrainz forward is a TODO | none | music |
-| multi-scrobbler | Gate (admin) | no | none | PVC + VolSync | n/a | n/a | n/a | Jellyfin → Maloja for tristan only | none | music (components only) |
+| Maloja | Gate: the owner's for admins, `maloja-<user>` for that user and admins; scrobble API key-only | one Maloja per scrobbling user (sidecars, own data dir, port, key) | init container (API keys) | PVC + VolSync (all dirs) | n/a | n/a | n/a | the per-user scrobble sink; ListenBrainz forward is a TODO | none | music |
+| multi-scrobbler | Gate (admin) | yes: per user a Jellyfin source, a ListenBrainz-endpoint source and a Maloja client, each source tied to its user's client | files rendered from generated secrets | PVC + VolSync | n/a | n/a | n/a | Jellyfin and Navidrome → that user's Maloja | none | music (components, plus the `e2e` user's scrobble) |
 
-Ryot has a music type, but no integration reads Navidrome, Maloja or ListenBrainz. Music history stays in Maloja.
+Ryot has a music type, but no integration reads Navidrome, Maloja or ListenBrainz. Music history stays in each user's Maloja.
 
 ### Books, audiobooks, comics, manga, podcasts
 
@@ -79,11 +79,10 @@ How the bootstrap acts as tristan: impersonation links are a Ryot Pro feature, a
 3. **Plays into Ryot not exercised end to end.** The Jellyfin → Ryot sink and webhook are configured and idempotent, but no real play has gone through yet. Check Ryot's Jellyfin integration `triggerResult` after the first play.
 4. **e2e coverage for the new acquirers.** Add flows for Bookshelf (root folder and Prowlarr app present), Kapowarr (API key and root folder) and Suwayomi (GraphQL `aboutServer`), on the media runner.
 5. **Immich database backups. Done 2026-10-15.** CNPG barman stays off (the operand image lacks barman-cloud and the Barman Cloud plugin is not installed), so the backup is Immich's daily in-app dump on the VolSync-backed PVC (RPO ~1 day, no PITR). The restore is now verified: the newest dump was restored from B2 into a scratch cluster (72 tables, 233165 rows, identical to live) and `backup-verify-dump` repeats it weekly, with alerts. Procedure: `docs/pvc-and-postgres-restore.md`. Open: a barman-capable image or the plugin would give PITR.
-6. **Music tracking is single-user.**
-   - multi-scrobbler allows only tristan.
-   - Maloja has a single user.
-   - Navidrome's Maloja link exists only for tristan.
-   - The ListenBrainz forward is a TODO that needs a user token.
+6. **Music tracking per user. Done 2026-10-15** (see "Music scrobbling per user" below). Each declared family or admin user has their own Maloja, multi-scrobbler routes and Navidrome link. Open:
+   - The ListenBrainz forward (listenbrainz.org) is still a TODO and needs each person's own token, which only they can supply.
+   - Pano Scrobbler (phone) still uses the owner's Maloja route only.
+   - Jellyfin plays are matched by Jellyfin username, so a person whose Jellyfin name differs from their Keycloak username scrobbles nowhere until it matches.
 7. **Metrics gaps** (note: the apparent duplicate arr scrapes are not duplicates. Job `<app>` is exportarr on :9707 from the app ServiceMonitor; job `media/<app>` is the CNPG operator PodMonitor on the app's Postgres :9187. Checked 2026-10-15: 213 active Prometheus targets, none share a scrape URL, and each exportarr series exists once, so the dashboard `max()` is harmless and nothing needs removing):
    - ABS, Kavita, Komga, Maloja, multi-scrobbler, Seerr, Kapowarr and Suwayomi expose nothing.
    - Bazarr's exportarr needs a key that can't be set declaratively.
@@ -104,9 +103,20 @@ How the bootstrap acts as tristan: impersonation links are a Ryot Pro feature, a
 
 - **Next, small:** confirm gap 3 after a real play, and fix `docs/observability.md`. Each is a one-file change.
 - **Then:** gap 4 (e2e flows for the new apps, one e2e release). The Immich restore check (gap 5) is done.
-- **Bigger:** music multi-user scrobbling (Maloja is single-user by design, so move to ListenBrainz-compatible per-user sinks), request front ends for music and books, and the Letterboxd RSS job.
+- **Bigger:** request front ends for music and books, and the Letterboxd RSS job. Per-user music scrobbling (gap 6) is done.
 
 ## App notes
+
+### Music scrobbling per user (2026-10)
+
+Every person's plays go to that person's own history, and nothing is shared or admin-scoped.
+
+- **Who.** `nixidy/apps/media/scrobbling.nix` takes the declared Keycloak users in the `family` or `admin` group (`keycloakUsers`, docs/invite.md), plus the `e2e` fixture user the music e2e flow scrobbles as. Inviting someone adds their scrobbling setup in the same merge, with no other edit and no secret to create.
+- **Sinks.** Maloja has no accounts (one library per data directory), so a user's sink is a Maloja of their own. The owner keeps the original Maloja container; every other user is one more container of the same pod, with its own data directory (`/mljdata/users/<user>`, on the same PVC and backup), port (42011 and up, by name order), Service, API key and UI host `maloja-<user>.trdos.me` (that user and admins only, a new `users` option of `oauth2Proxy.upstreams`).
+- **Routing.** multi-scrobbler is the router. Per user it has a Jellyfin source (`usersAllow` = the username, polling Jellyfin as the admin account), a ListenBrainz-endpoint source whose token selects it, and a Maloja client for the user's Maloja; both sources list only that client, so a user's plays can only reach their own Maloja. The config files are rendered into a Secret from generated tokens and keys.
+- **Navidrome.** The ListenBrainz base URL is global and the token per user, so it points at multi-scrobbler's endpoint (`/1/`, which validates any configured token) and each user's token selects their source. The navidrome bootstrap (app-bootstrap 0.38+, `SCROBBLE_USERS`) acts as each user through the trusted header from a whitelisted pod IP: that creates the non-admin account the way their first sign-in would and links their token, with no per-user password.
+- **Why not the alternatives** (not all verified): a self-hosted ListenBrainz is a heavy stack and, from memory, signs people in through MusicBrainz rather than Keycloak; Koito's docs mention one username and key per instance (unconfirmed); one Maloja with a key per user would only label scrobbles (`origin: client:<key>`), not separate them; Navidrome's and Jellyfin's own per-user play counts stay as they are but give no cross-app history.
+- **Adding a user later** needs only the `keycloakUsers` entry. Removing the entry removes that user's Maloja container, Service and keys; the data directory stays on the PVC, and their Navidrome account stays like every per-app account.
 
 ### Acquisition choices (2026-10)
 

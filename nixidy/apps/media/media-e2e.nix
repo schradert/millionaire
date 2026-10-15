@@ -8,6 +8,7 @@
   nixidy = {
     lib,
     pinned,
+    scrobble,
     ...
   }: let
     inherit (config.canivete.meta) domain people;
@@ -138,6 +139,9 @@
                     E2E_REPORT_CONFIGMAP = "media/${name}-last-report";
                     DOMAIN = domain;
                     AUTOBRR_USER = people.me;
+                    # The music flow scrobbles as the fixture user into its own Maloja (scrobbling.nix).
+                    SCROBBLE_E2E_USER = "e2e";
+                    MALOJA_E2E_URL = scrobble.url "e2e";
                     ADMIN_EMAIL = people.my.profiles.personal.email;
                   };
                   resources = {

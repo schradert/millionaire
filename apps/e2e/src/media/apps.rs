@@ -313,6 +313,32 @@ impl Navidrome {
     pub fn native(&self, ctx: &Ctx, m: Method, path: &str) -> RequestBuilder {
         ctx.http.request(m, format!("{}{}", self.base, path)).header("X-ND-Authorization", format!("Bearer {}", self.jwt))
     }
+
+    /// Subsonic API call as `user`, addressed the way oauth2-proxy addresses a signed-in person: the trusted user
+    /// header (this pod's IP is whitelisted), so no password. The account must exist (the bootstrap creates it).
+    pub async fn sub_as(&self, ctx: &Ctx, user: &str, method: &str, params: &[(&str, &str)]) -> R<Value> {
+        let mut q: Vec<(&str, &str)> = vec![("v", "1.16.1"), ("c", "media-e2e"), ("f", "json")];
+        q.extend_from_slice(params);
+        let req = ctx.http.get(format!("{}/rest/{method}", self.base)).header(user_header(), user).query(&q);
+        let v = json(req, "navidrome", method).await?;
+        let r = &v["subsonic-response"];
+        if r["status"] != json!("ok") {
+            return Err(Fail::new("navidrome", method, format!("as {user}: {}", r["error"])));
+        }
+        Ok(r.clone())
+    }
+
+    /// Whether `user`'s ListenBrainz scrobbling is linked (the bootstrap does it for every scrobbling user).
+    pub async fn listenbrainz_linked(&self, ctx: &Ctx, user: &str) -> R<bool> {
+        let req = ctx.http.get(format!("{}/api/listenbrainz/link", self.base)).header(user_header(), user);
+        let v = json(req, "navidrome", &format!("listenbrainz link of {user}")).await?;
+        Ok(v["status"] == json!(true))
+    }
+}
+
+/// The header oauth2-proxy sets from the Keycloak username, which Navidrome trusts from whitelisted pod IPs.
+fn user_header() -> String {
+    var("NAVIDROME_USER_HEADER", "X-Auth-Request-Preferred-Username")
 }
 
 pub struct Seerr {
@@ -418,6 +444,16 @@ pub fn autobrr_url() -> String {
 
 pub fn maloja_url() -> String {
     url("maloja", "http://maloja.media.svc.cluster.local:42010")
+}
+
+/// The scrobbling fixture user (nixidy/apps/media/scrobbling.nix) and its own Maloja: everything the music flow
+/// scrobbles goes there, never to the owner's.
+pub fn scrobble_user() -> String {
+    var("SCROBBLE_E2E_USER", "e2e")
+}
+
+pub fn maloja_user_url() -> String {
+    url("maloja_e2e", "http://maloja-e2e.media.svc.cluster.local:42011")
 }
 
 pub fn lingarr_url() -> String {
