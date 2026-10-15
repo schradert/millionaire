@@ -30,6 +30,18 @@
     done
     exit $rc
   '';
+  # Git-hook entry: `cargo-hook <subcommand> [cargo args...] -- <files...>` → cargoEach for the
+  # crates (apps/<c>, tools/<c>) those files belong to.
+  cargoHook = pkgs.writeShellScript "cargo-hook" ''
+    set -euo pipefail
+    sub="$1"; shift
+    args=()
+    while [ $# -gt 0 ] && [[ "$1" == -* ]]; do args+=("$1"); shift; done
+    crates=$(printf '%s\n' "$@" | sed -nE 's#^(apps|tools)/([^/]+)/.*#\2#p' | sort -u)
+    [ -n "$crates" ] || exit 0
+    # shellcheck disable=SC2086
+    CARGO_ARGS="''${args[*]:-}" exec ${cargoEach} "$sub" $crates
+  '';
 in {
   imports = inputs.canivete.canivete.${system}.devenv.modules;
 
@@ -180,6 +192,21 @@ in {
         # refuses to parse the whole config, blocking every commit in the repo.
         ruff = onCommit // {excludes = ["pulumi/sdks/"];};
         ruff-format = onCommit;
+        # The stock clippy/rustfmt hooks run cargo at the repo root, which has no Cargo.toml
+        # (every push touching Rust failed). Run them per crate, only for the crates the pushed
+        # files belong to. embedded/ and org-bridge/ have their own toolchains and devenvs.
+        clippy = {
+          files = lib.mkForce "^(apps|tools)/[^/]+/.*\\.rs$";
+          pass_filenames = lib.mkForce true;
+          entry = lib.mkForce "${cargoHook} clippy --all-targets";
+        };
+        rustfmt = {
+          files = lib.mkForce "^(apps|tools)/[^/]+/.*\\.rs$";
+          pass_filenames = lib.mkForce true;
+          # Formats only the pushed files (not `cargo fmt --all`): most of the code predates the hook,
+          # so it gets formatted as it is touched rather than in one repo-wide churn.
+          entry = lib.mkForce "${lib.getExe' pkgs.rustfmt "rustfmt"} --config skip_children=true";
+        };
         trim-trailing-whitespace = onCommit;
         # sops files are ciphertext
         typos = onCommit // {excludes = ["^secrets/sops/"];};
