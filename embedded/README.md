@@ -36,6 +36,7 @@ ESP32-C3 (RISC-V), STM32 Nucleo + Teensy 4.1 (Cortex-M), and Arduino Uno R3
 ┌──────────────────────────────────────────────────────────────────────┐
 │ shared/ tiers                                                          │
 │   shared/wifi — ESP WiFi STA + embassy-net stack (ESP-only)            │
+│   shared/ota  — ESP A/B OTA over HTTP, trial boot + rollback           │
 │   (add more tiers as needed: shared/ble, shared/storage, …)            │
 └───────────────────────────┬────────────────────────────────────────────┘
                             ▼
@@ -68,18 +69,19 @@ embedded/
 │
 ├── shared/
 │   ├── base/           # homelab-shared — AVR-safe core
-│   └── wifi/           # homelab-shared-wifi — ESP WiFi + embassy-net stack
+│   ├── wifi/           # homelab-shared-wifi — ESP WiFi + embassy-net stack
+│   └── ota/            # homelab-shared-ota — A/B OTA (see ../docs/iot-ota.md)
 ├── apps/
 │   ├── hello-world/    # homelab-hello-world
 │   └── web-request/    # homelab-web-request — HTTP GET via reqwless
 ├── boards/
-│   ├── esp32-c3/       # homelab-esp32-c3       (member)
+│   ├── esp32-c3/       # homelab-esp32-c3       (member) — WiFi + OTA (A/B partitions.csv)
 │   ├── esp32-s3/       # homelab-esp32-s3       (member) — runs web-request over WiFi
 │   ├── stm32-nucleo/   # homelab-stm32-nucleo   (member)
 │   ├── teensy-4.1/     # homelab-teensy-4-1     (member)
 │   └── arduino-uno-r3/ # homelab-arduino-uno-r3 (EXCLUDED — AVR toolchain)
 ├── templates/          # cargo-generate templates (new-app/new-shared/new-board)
-└── bin/                # deploy-s3-wifi.sh, check.sh
+└── bin/                # deploy-s3-wifi.sh, check.sh, ota-test.sh (+ ota-falcon.sh)
 ```
 
 **Workspace membership:** only board (binary) crates that use the default

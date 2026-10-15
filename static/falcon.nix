@@ -168,6 +168,12 @@
       if platform == "esp32-c3" || platform == "esp32-s3"
       then let
         chip = builtins.replaceStrings ["-"] [""] platform;
+        # The C3 uses an A/B OTA layout (docs/iot-ota.md): a USB flash lands
+        # in ota_0 and clears otadata so it boots instead of a stale OTA slot.
+        otaArgs =
+          if platform == "esp32-c3"
+          then " --partition-table boards/esp32-c3/partitions.csv --target-app-partition ota_0 --erase-parts otadata"
+          else "";
       in ''
         PORT="/dev/serial/by-id/${cfg.usbSerial}"
         if [ ! -e "$PORT" ]; then
@@ -178,7 +184,7 @@
         (cd boards/${platform} && direnv exec . cargo build --release) >&2
         ESPFLASH=$(direnv exec . which espflash)
         echo "[${name}] flashing via $PORT"
-        ${sudo} -n "$ESPFLASH" flash --chip ${chip} --port "$PORT" ${workspaceBin}
+        ${sudo} -n "$ESPFLASH" flash --chip ${chip} --port "$PORT"${otaArgs} ${workspaceBin}
         echo "[${name}] flashed"
       ''
       else if platform == "arduino-uno-r3"
