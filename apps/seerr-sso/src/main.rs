@@ -266,7 +266,25 @@ impl App {
                 }
             }
         };
-        Ok(Session { sid, perms, at: Instant::now() })
+        // Seerr can answer 403 to the first calls after a login (the session is not stored yet): hand the session
+        // out only once it works.
+        for attempt in 0..8 {
+            let r = self
+                .http
+                .get(format!("{}/api/v1/auth/me", self.cfg.upstream))
+                .header("Cookie", format!("connect.sid={sid}"))
+                .header("X-Forwarded-Proto", "https")
+                .send()
+                .await
+                .or_else(|e| fail(502, format!("seerr auth/me: {e}")))?;
+            if r.status().as_u16() == 200 {
+                return Ok(Session { sid, perms, at: Instant::now() });
+            }
+            if attempt < 7 {
+                tokio::time::sleep(Duration::from_millis(400)).await;
+            }
+        }
+        fail(502, format!("Seerr user {uid}'s new session is not accepted"))
     }
 
     async fn drop_session(&self, key: &str) {

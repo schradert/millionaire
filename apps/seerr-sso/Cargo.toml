@@ -1,6 +1,6 @@
 [package]
 name = "seerr-sso"
-version = "0.1.0"
+version = "0.1.1"
 description = "Per-user single sign-on in front of Seerr: oauth2-proxy's identity becomes the person's own Seerr account"
 publish = false
 edition = "2021"
