@@ -98,6 +98,7 @@
             RADARR__LOG__DBENABLED = "False";
             RADARR__LOG__LEVEL = "info";
             RADARR__SERVER__PORT = builtins.toString port;
+            RADARR__SERVER__ALLOWEDHOSTS = lib.concatStringsSep "," [hostname "radarr.media.svc.cluster.local" "radarr.media.svc" "radarr.media" "radarr" "localhost"];
             RADARR__UPDATE__BRANCH = "develop";
             RADARR__POSTGRES__USER = "radarr";
             RADARR__POSTGRES__MAINDB = "radarr";

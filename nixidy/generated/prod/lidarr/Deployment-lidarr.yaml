@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 8ed17a10683eb387726ea88fd1f688fc173c0ab31b3529a9a65b11b1aa5247ee
+        checksum/configMaps: aeb9ad486408abfdc6fbef9ac2cb510e93330fb2dd883ea2dd87c5cd0e88abf0
       labels:
         app.kubernetes.io/controller: lidarr
         app.kubernetes.io/instance: lidarr

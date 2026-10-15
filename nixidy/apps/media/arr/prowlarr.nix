@@ -103,6 +103,7 @@
             PROWLARR__LOG__DBENABLED = "False";
             PROWLARR__LOG__LEVEL = "info";
             PROWLARR__SERVER__PORT = builtins.toString port;
+            PROWLARR__SERVER__ALLOWEDHOSTS = lib.concatStringsSep "," [hostname "prowlarr.media.svc.cluster.local" "prowlarr.media.svc" "prowlarr.media" "prowlarr" "localhost"];
             PROWLARR__UPDATE__BRANCH = "develop";
             PROWLARR__POSTGRES__USER = "prowlarr";
             PROWLARR__POSTGRES__MAINDB = "prowlarr";
