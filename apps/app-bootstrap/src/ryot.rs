@@ -11,27 +11,18 @@
 //! 3. Otherwise `registerUser(oidc: {email, issuerId: sub}, lot: ADMIN, adminAccessToken)`.
 //!    If a user with that name exists but is not linked (e.g. registered by a password), the
 //!    insert fails on the unique name and the job fails clearly: GraphQL cannot link users.
+//! 4. Wire that user's integrations and imports (`ryot_wire`).
 
-use crate::trace::SendTraced as _;
 use std::time::Duration;
 
 use reqwest::Client;
-use serde_json::{json, Value};
+use serde_json::json;
 
 use crate::{
-    common::{ok, retry, secret, var, Result},
+    common::{retry, secret, var, Result},
     keycloak,
+    ryot_wire::{self, gql},
 };
-
-async fn gql(http: &Client, url: &str, query: &str, variables: Value) -> Result<Value> {
-    let r = http.post(url).json(&json!({ "query": query, "variables": variables })).send_t().await?;
-    let body: Value = ok(r, "ryot graphql").await?.json().await?;
-    if let Some(errors) = body["errors"].as_array().filter(|e| !e.is_empty()) {
-        let msg = errors.iter().filter_map(|e| e["message"].as_str()).collect::<Vec<_>>().join("; ");
-        return Err(format!("ryot graphql: {msg}").into());
-    }
-    Ok(body["data"].clone())
-}
 
 pub async fn run() -> Result<()> {
     let base = var("RYOT_URL", "http://ryot.media.svc.cluster.local:8000");
@@ -43,18 +34,19 @@ pub async fn run() -> Result<()> {
     let email = kc.email.ok_or("keycloak user has no email (ryot names OIDC users by email)")?;
 
     let found = retry("waiting for ryot", 120, || async {
-        let d = gql(&http, &url, "query($id: String!) { userByOidcIssuerId(oidcIssuerId: $id) }", json!({ "id": kc.sub })).await?;
+        let d = gql(&http, &url, None, "query($id: String!) { userByOidcIssuerId(oidcIssuerId: $id) }", json!({ "id": kc.sub })).await?;
         Ok(d["userByOidcIssuerId"].as_str().map(str::to_string))
     })
     .await?;
     if let Some(id) = found {
         println!("ryot user {id} already linked to {email}");
-        return Ok(());
+        return ryot_wire::run(&http, &url, &id).await;
     }
 
     let d = gql(
         &http,
         &url,
+        None,
         "mutation($input: RegisterUserInput!) { registerUser(input: $input) { __typename ... on RegisterError { error } ... on StringIdObject { id } } }",
         json!({ "input": {
             "data": { "oidc": { "email": email, "issuerId": kc.sub } },
@@ -66,8 +58,11 @@ pub async fn run() -> Result<()> {
     .map_err(|e| format!("{e} (a user named {email} that is not linked to Keycloak? delete it or link it by hand)"))?;
     let r = &d["registerUser"];
     match r["__typename"].as_str() {
-        Some("StringIdObject") => println!("created admin {} for {email}", r["id"].as_str().unwrap_or("?")),
-        _ => return Err(format!("registerUser: {}", r["error"].as_str().unwrap_or("unexpected response")).into()),
+        Some("StringIdObject") => {
+            let id = r["id"].as_str().ok_or("registerUser: no id")?;
+            println!("created admin {id} for {email}");
+            ryot_wire::run(&http, &url, id).await
+        }
+        _ => Err(format!("registerUser: {}", r["error"].as_str().unwrap_or("unexpected response")).into()),
     }
-    Ok(())
 }
