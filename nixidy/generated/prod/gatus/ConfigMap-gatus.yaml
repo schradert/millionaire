@@ -218,6 +218,12 @@ data:
       name: jellyfin
       url: https://jellyfin.trdos.me
     - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: jellystat
+      url: https://jellystat.trdos.me
+    - conditions:
       - '[STATUS] == any(200, 302)'
       group: internal
       interval: 1m

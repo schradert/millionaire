@@ -1,0 +1,90 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: jellystat-bootstrap
+  namespace: media
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - sh
+            - -c
+            - |
+              set -eu
+              J=http://jellyfin.media.svc.cluster.local:8096
+              S=http://jellystat.media.svc.cluster.local:3000
+              i=0
+              until state=$(curl -fsS $S/auth/isConfigured | sed -n 's/.*"state":\([0-9]*\).*/\1/p') && [ -n "$state" ]; do
+                i=$((i+1)); [ $i -lt 90 ] || { echo "jellystat did not come up" >&2; exit 1; }
+                sleep 5
+              done
+              if [ "$state" = 2 ]; then echo "jellystat already configured"; exit 0; fi
+
+              tok=$(curl -fsS -X POST $J/Users/AuthenticateByName \
+                -H 'Authorization: MediaBrowser Client="jellystat-bootstrap", Device="job", DeviceId="jellystat-bootstrap", Version="1"' \
+                -H 'Content-Type: application/json' \
+                -d "{\"Username\":\"admin\",\"Pw\":\"$(cat /secrets/jellyfin/password)\"}" \
+                | sed -n 's/.*"AccessToken":"\([^"]*\)".*/\1/p')
+              [ -n "$tok" ] || { echo "jellyfin admin sign-in failed" >&2; exit 1; }
+              findkey() {
+                curl -fsS $J/Auth/Keys -H "X-Emby-Token: $tok" | sed 's/},{/}\n{/g' | grep '"AppName":"Jellystat"' \
+                  | sed -n 's/.*"AccessToken":"\([^"]*\)".*/\1/p' | head -n 1
+              }
+              key=$(findkey)
+              if [ -z "$key" ]; then
+                curl -fsS -X POST "$J/Auth/Keys?app=Jellystat" -H "X-Emby-Token: $tok"
+                key=$(findkey)
+              fi
+              [ -n "$key" ] || { echo "no Jellyfin API key for Jellystat" >&2; exit 1; }
+
+              # The local account's password is random and thrown away: nobody signs in with it.
+              pw=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
+              jwt=$(curl -fsS -X POST $S/auth/createuser -H 'Content-Type: application/json' \
+                -d "{\"username\":\"admin\",\"password\":\"$pw\"}" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+              [ -n "$jwt" ] || { echo "jellystat createuser returned no token" >&2; exit 1; }
+              curl -fsS -X POST $S/auth/configSetup -H 'Content-Type: application/json' \
+                -d "{\"JF_HOST\":\"$J\",\"JF_API_KEY\":\"$key\"}" > /dev/null
+              curl -fsS -X POST $S/api/setRequireLogin -H "Authorization: Bearer $jwt" \
+                -H 'Content-Type: application/json' -d '{"REQUIRE_LOGIN":false}' > /dev/null
+              echo "jellystat configured"
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4318
+            - name: PYROSCOPE_SAMPLE_RATE
+              value: "1000"
+            - name: PYROSCOPE_SERVER_ADDRESS
+              value: http://pyroscope.observability.svc.cluster.local:4040
+          image: curlimages/curl:8.22.0@sha256:58adaa4e8dca9c988bae2aba4ab3434a0bb2da16bbe3f92dec39ec7785166777
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /secrets/jellyfin
+              name: jellyfin
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - emptyDir: {}
+          name: tmp
+        - name: jellyfin
+          secret:
+            secretName: jellyfin-admin
