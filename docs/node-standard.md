@@ -56,6 +56,22 @@ if it does not, redo the anchor, `updatekeys` both sops files, and `hostKey` in 
 Applies to falcon first (axolotl identically). It wipes the host's root disk. Only the root disk is in disko, so a second disk (falcon's
 `data` pool) is never touched. Run by hand; pulumi never does this on its own.
 
+**Do not kexec these two.** Both have an onboard Intel I219 (`e1000e`) that does not come back after a kexec: the installer boots
+with no link and the host needs a power-button reset (axolotl, twice). What worked (both installed this way, 2026-10-14):
+
+1. Build on a native x86 host (falcon, with the nodes as `--builders`): `system.build.toplevel` and `system.build.diskoScript`
+   of the host, plus `inputs.nixos-anywhere`. axolotl's build needs the DisplayLink zip in that store (docs/displaylink.md).
+2. Copy the nixos-images kexec tarball's `kexec/` directory (bzImage, initrd, run) to `/root/installer/kexec` on the host and run
+   `static/installer-oneshot.sh` as root: it puts the installer on the ESP as a systemd-boot entry with the same payload kexec
+   would add (authorized keys, host keys, network state) and arms it with `bootctl set-oneshot`. Reboot: the NIC gets a cold
+   start and the installer comes up on the host's usual address. The ESP needs ~350M free (prune old generation entries).
+3. From another LAN host holding the closures: `nixos-anywhere --store-paths <diskoScript> <toplevel> --extra-files <dir>
+   --phases disko,install,reboot root@<host>`, where `<dir>` holds `root/.config/sops/age/keys.txt` (the `server` identity)
+   and the host's `etc/ssh/ssh_host_ed25519_key{,.pub}` (dirs 755 except `root/`, keys 600).
+4. After the first boot, set the login password (`passwd`): users are mutable and none is declared.
+
+The pulumi path below still kexecs and builds on the target (`--build-on remote`); it fits headless nodes, not these two.
+
 Before:
 
 1. Everything wanted from the root pool is somewhere else (falcon: `/home` 242G and `/` 641G on a 90%-full pool; axolotl: little).
