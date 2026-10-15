@@ -367,6 +367,17 @@
               in {
                 liveness = healthz;
                 readiness = healthz;
+                # It opens its port only after it has logged in to qBittorrent, which takes about 30 s.
+                startup =
+                  healthz
+                  // {
+                    spec =
+                      healthz.spec
+                      // {
+                        failureThreshold = 30;
+                        periodSeconds = 5;
+                      };
+                  };
               };
               securityContext = {
                 allowPrivilegeEscalation = false;

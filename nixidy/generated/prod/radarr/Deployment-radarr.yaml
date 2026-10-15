@@ -39,6 +39,8 @@ spec:
                 secretKeyRef:
                   key: RADARR__AUTH__APIKEY
                   name: radarr
+            - name: ENABLE_ADDITIONAL_METRICS
+              value: "true"
             - name: PORT
               value: "9707"
             - name: URL

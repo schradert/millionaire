@@ -62,6 +62,12 @@ spec:
               drop:
                 - ALL
             readOnlyRootFilesystem: true
+          startupProbe:
+            failureThreshold: 30
+            httpGet:
+              path: /healthz
+              port: metrics
+            periodSeconds: 5
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
       hostIPC: false
