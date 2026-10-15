@@ -29,7 +29,7 @@ spec:
       containers:
         - env:
             - name: KOMGA_OAUTH2_ACCOUNT_CREATION
-              value: "false"
+              value: "true"
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI
               value: https://keycloak.trdos.me/realms/default/protocol/openid-connect/auth
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWK_SET_URI
