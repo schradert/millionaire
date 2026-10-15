@@ -1,8 +1,9 @@
-//! Maintainerr: the Radarr, Sonarr and Seerr connections (Jellyfin is wired by jellyfin-bootstrap).
+//! Maintainerr: the Radarr, Sonarr, Seerr and Ombi connections, the download client, an ntfy
+//! notification and two disabled example rule groups (Jellyfin is wired by jellyfin-bootstrap).
 //!
-//! Each connection is added only when Maintainerr has none for that service, so a rerun changes
-//! nothing and hand edits stay. No rule group is created or enabled: Maintainerr's rules delete
-//! media, so those stay the user's decision.
+//! Each piece is added only when Maintainerr has none, so a rerun changes nothing and hand edits
+//! stay. No rule group is enabled: Maintainerr's rules delete or unmonitor media, so enabling one
+//! stays the user's decision. See the functions below for the settings each step reads.
 //!
 //! - Radarr and Sonarr, from `RADARR_API_KEY[_FILE]` / `SONARR_API_KEY[_FILE]`; URL
 //!   `<APP>_URL`, default `http://<app>.media.svc.cluster.local`.
@@ -84,12 +85,173 @@ pub async fn run() -> Result<()> {
         let seerr = var("SEERR_URL", "http://seerr.media.svc.cluster.local:5055");
         let seerr = seerr.trim_end_matches('/');
         let current = get(&http, base, "/api/settings/seerr").await?;
-        if current["url"].as_str().is_some_and(|u| !u.is_empty()) {
-            return Ok(());
+        if current["url"].as_str().is_none_or(str::is_empty) {
+            let key = seerr_api_key(&http, seerr).await?;
+            post(&http, base, "/api/settings/seerr", &json!({ "url": seerr, "api_key": key })).await?;
+            println!("maintainerr: added Seerr {seerr}");
         }
-        let key = seerr_api_key(&http, seerr).await?;
-        post(&http, base, "/api/settings/seerr", &json!({ "url": seerr, "api_key": key })).await?;
-        println!("maintainerr: added Seerr {seerr}");
+    }
+
+    ombi(&http, base).await?;
+    download_client(&http, base).await?;
+    let notification = ntfy(&http, base).await?;
+    examples(&http, base, notification).await
+}
+
+/// Ombi (for the per-rule "also remove the Ombi request" switch, off by default), from `OMBI_API_KEY[_FILE]`.
+async fn ombi(http: &Client, base: &str) -> Result<()> {
+    let Some(key) = optional_secret("OMBI_API_KEY")? else {
+        return Ok(());
+    };
+    if get(http, base, "/api/settings/ombi").await?["url"].as_str().is_some_and(|u| !u.is_empty()) {
+        return Ok(());
+    }
+    let url = var("OMBI_URL", "http://ombi.media.svc.cluster.local:3579");
+    post(http, base, "/api/settings/ombi", &json!({ "url": url, "api_key": key })).await?;
+    println!("maintainerr: added Ombi {url}");
+    Ok(())
+}
+
+/// The download client Maintainerr uses to remove the torrent of media a rule deletes, from
+/// `QBITTORRENT_PASSWORD[_FILE]` (user `QBITTORRENT_USER`, default `admin`; `QBITTORRENT_URL`). Added only
+/// while none is set. Non-destructive: removing a download keeps its files (`delete_data` false; Radarr and
+/// Sonarr decide what is deleted) and a download counts as seeded at ratio `DOWNLOAD_FALLBACK_RATIO` (default 1.0,
+/// used only when qBittorrent enforces no limit of its own).
+async fn download_client(http: &Client, base: &str) -> Result<()> {
+    let Some(password) = optional_secret("QBITTORRENT_PASSWORD")? else {
+        return Ok(());
+    };
+    if !get(http, base, "/api/settings/download-client").await?["download_client_type"].is_null() {
+        return Ok(());
+    }
+    let url = var("QBITTORRENT_URL", "http://qbittorrent.media.svc.cluster.local:8080");
+    let ratio: f64 = var("DOWNLOAD_FALLBACK_RATIO", "1.0").parse()?;
+    post(
+        http,
+        base,
+        "/api/settings/download-client",
+        &json!({
+            "download_client_type": "qbittorrent", "download_client_url": url,
+            "download_client_username": var("QBITTORRENT_USER", "admin"), "download_client_password": password,
+            "download_client_delete_data": false, "download_client_fallback_ratio": ratio,
+        }),
+    )
+    .await?;
+    println!("maintainerr: added the qBittorrent download client {url}");
+    Ok(())
+}
+
+/// Maintainerr's NotificationType values the ntfy agent subscribes to: media added to / removed from a
+/// collection, about to be handled, handled, rule and collection handling failed, update available.
+const NOTIFY_TYPES: [i64; 7] = [2, 4, 8, 16, 32, 64, 1024];
+
+/// The ntfy agent `NTFY_NAME` (default "ntfy media"), when `NTFY_URL` is set: topic `NTFY_TOPIC` (default
+/// `media`) at priority `NTFY_PRIORITY` (default 2, low; Maintainerr's agent sets no priority header, so it
+/// rides in the topic's query string). Added only when no configuration of that name exists. Returns its id.
+async fn ntfy(http: &Client, base: &str) -> Result<Option<i64>> {
+    let Ok(url) = std::env::var("NTFY_URL") else {
+        return Ok(None);
+    };
+    let name = var("NTFY_NAME", "ntfy media");
+    let find = || async {
+        let all = get(http, base, "/api/notifications/configurations").await?;
+        Ok::<_, Box<dyn std::error::Error>>(all.as_array().into_iter().flatten().find(|n| n["name"] == json!(name)).and_then(|n| n["id"].as_i64()))
+    };
+    if let Some(id) = find().await? {
+        return Ok(Some(id));
+    }
+    let topic = format!("{}?priority={}", var("NTFY_TOPIC", "media"), var("NTFY_PRIORITY", "2"));
+    let r = http
+        .post(format!("{base}/api/notifications/configuration/add"))
+        .json(&json!({
+            "name": name, "agent": "ntfy", "enabled": true, "types": NOTIFY_TYPES, "aboutScale": 3,
+            "options": { "agent": "ntfy", "url": url, "topic": topic },
+        }))
+        .send_t()
+        .await?;
+    let r: Value = ok(r, "POST /api/notifications/configuration/add").await?.json().await?;
+    if r["code"] != json!(1) {
+        return Err(format!("maintainerr refused the ntfy notification: {r}").into());
+    }
+    println!("maintainerr: added the ntfy notification {name:?}");
+    find().await
+}
+
+const EXAMPLE_AGE: &str = "63072000"; // two years, in seconds
+
+/// Disabled example rule groups, matched by name. Both only unmonitor (files stay) after 30 days in the
+/// collection, and neither asks Seerr or Ombi to drop the request.
+fn example_groups(movies: &str, shows: &str, radarr: Option<i64>, sonarr: Option<i64>) -> Vec<Value> {
+    let rules = |views: u64| {
+        json!([
+            // Jellyfin: date added (0) before two years ago ...
+            { "operator": null, "action": 5, "firstVal": [6, 0], "customVal": { "ruleTypeId": 0, "value": EXAMPLE_AGE }, "section": 0 },
+            // ... and Jellyfin: times viewed (5) / total views (17) equal to 0.
+            { "operator": 0, "action": 2, "firstVal": [6, views], "customVal": { "ruleTypeId": 0, "value": "0" }, "section": 0 },
+        ])
+    };
+    let common = |name: &str, description: &str, library: &str, kind: &str, views: u64| {
+        json!({
+            "name": name, "description": description, "libraryId": library, "dataType": kind,
+            "isActive": false, "useRules": true, "arrAction": 3, "listExclusions": false, "forceSeerr": false, "forceOmbi": false,
+            "collection": { "deleteAfterDays": 30, "visibleOnHome": false, "visibleOnRecommended": false, "manualCollection": false },
+            "rules": rules(views),
+        })
+    };
+    let mut movies_group = common(
+        "Example: movies nobody has watched in two years",
+        "Added more than 2 years ago and never watched. Disabled example: nothing runs until it is switched on. Action: unmonitor in Radarr, keep the files; items wait 30 days in the collection first.",
+        movies,
+        "movie",
+        5,
+    );
+    movies_group["radarrSettingsId"] = json!(radarr);
+    let mut shows_group = common(
+        "Example: shows nobody has watched in two years",
+        "Added more than 2 years ago and never watched. Disabled example: nothing runs until it is switched on. Action: unmonitor in Sonarr, keep the files; items wait 30 days in the collection first.",
+        shows,
+        "show",
+        17,
+    );
+    shows_group["sonarrSettingsId"] = json!(sonarr);
+    vec![movies_group, shows_group]
+}
+
+/// Create the disabled example groups that do not exist yet and connect the ntfy notification to them.
+/// `EXAMPLE_RULES=false` skips it. Existing groups (enabled or edited by hand) are never touched.
+async fn examples(http: &Client, base: &str, notification: Option<i64>) -> Result<()> {
+    if var("EXAMPLE_RULES", "true") != "true" {
+        return Ok(());
+    }
+    let libs = get(http, base, "/api/media-server/libraries").await?;
+    let lib = |kind: &str| libs.as_array().into_iter().flatten().find(|l| l["type"] == json!(kind)).and_then(|l| l["id"].as_str().map(String::from));
+    let (Some(movies), Some(shows)) = (lib("movie"), lib("show")) else {
+        println!("maintainerr: no movie and show libraries yet, skipping the example rules");
+        return Ok(());
+    };
+    let first_id = |l: Value| l.as_array().and_then(|a| a.first()).and_then(|s| s["id"].as_i64());
+    let radarr = first_id(get(http, base, "/api/settings/radarr").await?);
+    let sonarr = first_id(get(http, base, "/api/settings/sonarr").await?);
+    for group in example_groups(&movies, &shows, radarr, sonarr) {
+        let name = group["name"].clone();
+        let find = || async {
+            let all = get(http, base, "/api/rules").await?;
+            Ok::<_, Box<dyn std::error::Error>>(all.as_array().into_iter().flatten().find(|g| g["name"] == name).cloned())
+        };
+        let existing = match find().await? {
+            Some(g) => g,
+            None => {
+                let r = http.post(format!("{base}/api/rules")).json(&group).send_t().await?;
+                ok(r, "POST /api/rules").await?;
+                println!("maintainerr: added the disabled example rule group {name}");
+                find().await?.ok_or("the new rule group is not listed")?
+            }
+        };
+        let connected = existing["notifications"].as_array().into_iter().flatten().any(|n| n["id"].as_i64() == notification);
+        if let (Some(group_id), Some(notification_id), false) = (existing["id"].as_i64(), notification, connected) {
+            post(http, base, "/api/notifications/configuration/connect", &json!({ "rulegroupId": group_id, "notificationId": notification_id })).await?;
+            println!("maintainerr: connected the ntfy notification to {name}");
+        }
     }
     Ok(())
 }
@@ -97,6 +259,17 @@ pub async fn run() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn example_groups_are_disabled_and_keep_files() {
+        for g in example_groups("m", "s", Some(1), Some(2)) {
+            assert_eq!(g["isActive"], json!(false));
+            assert_eq!(g["arrAction"], json!(3), "UNMONITOR_NO_DELETE");
+            assert_eq!(g["forceSeerr"], json!(false));
+            assert_eq!(g["forceOmbi"], json!(false));
+            assert_eq!(g["rules"].as_array().unwrap().len(), 2);
+        }
+    }
 
     #[test]
     fn matches_servers_by_url() {
