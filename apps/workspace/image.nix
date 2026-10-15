@@ -112,6 +112,13 @@
     coder:x:1000:
     nobody:x:65534:
     EOF
+    # the Coder agent's resource monitor refuses to start without it
+    cat > $out/etc/os-release <<EOF
+    ID=nixos
+    NAME=NixOS
+    PRETTY_NAME="Coder workspace (Nix)"
+    VERSION_ID=${pkgs.lib.trivial.release}
+    EOF
     # copies, not store links: the workspace's store only keeps the toolchain
     cp ${nixConf} $out/etc/nix/nix.conf
     cp ${profile} $out/etc/profile
@@ -123,7 +130,7 @@
 in
   n2c.buildImage {
     name = "${registry}/library/workspace";
-    tag = "0.1.0";
+    tag = "0.1.1";
     arch = "amd64";
     # Also usable without a /nix volume (the store and its database as user coder).
     initializeNixDatabase = true;
