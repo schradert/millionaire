@@ -46,7 +46,7 @@ spec:
               port: 8096
             timeoutSeconds: 1
           startupProbe:
-            failureThreshold: 3
+            failureThreshold: 60
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
