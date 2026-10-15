@@ -393,11 +393,11 @@ fn stage_all(ctx: &Ctx, files: &[PathBuf], release: &str) -> R<PathBuf> {
     Ok(dir)
 }
 
-/// The 10 mp3s of "The Slip": a torrent through the VPN (full suite) or direct downloads.
+/// The 10 mp3s of "The Slip", always direct downloads. Its torrent cannot finish: every mp3
+/// shares pieces with a derived .png/.ogg that archive.org regenerates, so those pieces never
+/// verify from the web seeds and the swarm has no seeds (the VPN download is covered by the
+/// Big Buck Bunny, Sintel and Pioneer One flows).
 async fn slip_files(ctx: &Ctx, f: &mut Flow) -> R<Vec<PathBuf>> {
-    if ctx.full {
-        return torrent_files(ctx, f, &content::slip_torrent(), &|n| n.ends_with(".mp3")).await;
-    }
     let dir = ctx.dir("downloads").join("placed").join("slip");
     let mut out = Vec::new();
     let mut bytes = 0;
