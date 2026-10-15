@@ -1,0 +1,31 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: tdarr
+  namespace: media
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: tdarr
+  ingress:
+    - fromEntities:
+        - host
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: oauth2-proxy
+            k8s:io.kubernetes.pod.namespace: identity
+        - matchLabels:
+            batch.kubernetes.io/job-name: tdarr-bootstrap
+        - matchLabels:
+            app.kubernetes.io/name: media-e2e
+      toPorts:
+        - ports:
+            - port: "8265"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/controller: tdarr-node
+      toPorts:
+        - ports:
+            - port: "8266"
+              protocol: TCP

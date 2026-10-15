@@ -1,0 +1,18 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: volsync--tdarr--tdarr-configs-src
+  namespace: media
+spec:
+  restic:
+    copyMethod: Direct
+    pruneIntervalDays: 8
+    repository: volsync--tdarr--tdarr-configs
+    retain:
+      daily: 1
+      monthly: 1
+      weekly: 1
+      yearly: 1
+  sourcePVC: tdarr-configs
+  trigger:
+    schedule: 0 4 * * *
