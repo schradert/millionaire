@@ -17,6 +17,8 @@ spec:
         - matchLabels:
             batch.kubernetes.io/job-name: jellyfin-bootstrap
         - matchLabels:
+            batch.kubernetes.io/job-name: maintainerr-bootstrap
+        - matchLabels:
             app.kubernetes.io/name: media-e2e
       toPorts:
         - ports:

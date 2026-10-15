@@ -1,6 +1,6 @@
 //! Idempotent first-run bootstraps, run as ArgoCD PostSync Jobs.
 //!
-//! `app-bootstrap <app>` where app is `actual`, `arr`, `atuin`, `audiobookshelf`, `autobrr`, `bazarr`, `forgejo`, `homarr`, `immich`, `kavita`, `komga`, `mealie`, `miniflux`, `navidrome`, `openviking`, `ryot`, `seerr`, `shoko`, `syncthing` or `contextforge`. Every step checks
+//! `app-bootstrap <app>` where app is `actual`, `arr`, `atuin`, `audiobookshelf`, `autobrr`, `bazarr`, `forgejo`, `homarr`, `immich`, `kavita`, `komga`, `maintainerr`, `mealie`, `miniflux`, `navidrome`, `openviking`, `ryot`, `seerr`, `shoko`, `syncthing` or `contextforge`. Every step checks
 //! the current state first, so a rerun against a configured app changes nothing.
 
 mod actual;
@@ -17,6 +17,7 @@ mod immich;
 mod kavita;
 mod keycloak;
 mod komga;
+mod maintainerr;
 mod mealie;
 mod miniflux;
 mod navidrome;
@@ -49,6 +50,7 @@ async fn main() -> ExitCode {
         "immich" => immich::run().await,
         "kavita" => kavita::run().await,
         "komga" => komga::run().await,
+        "maintainerr" => maintainerr::run().await,
         "mealie" => mealie::run().await,
         "miniflux" => miniflux::run().await,
         "navidrome" => navidrome::run().await,
@@ -59,7 +61,7 @@ async fn main() -> ExitCode {
         "syncthing" => syncthing::run().await,
         "contextforge" => contextforge::run().await,
         "homarr" => homarr::run().await,
-        other => Err(format!("usage: app-bootstrap <actual|arr|atuin|audiobookshelf|autobrr|bazarr|forgejo|immich|kavita|komga|mealie|miniflux|navidrome|openviking|ryot|seerr|shoko|syncthing|contextforge|homarr> (got {other:?})").into()),
+        other => Err(format!("usage: app-bootstrap <actual|arr|atuin|audiobookshelf|autobrr|bazarr|forgejo|immich|kavita|komga|maintainerr|mealie|miniflux|navidrome|openviking|ryot|seerr|shoko|syncthing|contextforge|homarr> (got {other:?})").into()),
     };
     let code = match res {
         Ok(()) => {
