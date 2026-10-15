@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: streamystats
+    app.kubernetes.io/instance: streamystats
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: streamystats
+  name: streamystats
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: streamystats
+      app.kubernetes.io/instance: streamystats
+      app.kubernetes.io/name: streamystats
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: e99928e5781a2643a5305430dc6c68fc86551d3f67503aaa9849df056755bf8e
+      labels:
+        app.kubernetes.io/controller: streamystats
+        app.kubernetes.io/instance: streamystats
+        app.kubernetes.io/name: streamystats
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - envFrom:
+            - secretRef:
+                name: streamystats
+            - configMapRef:
+                name: streamystats
+          image: ghcr.io/fredrikburmester/streamystats-nextjs:v2.20.0@sha256:45f93e6233eac3802d056c237293482704ae5dd9502a2566f6df5aa8a4fa214c
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+          name: streamystats
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+          startupProbe:
+            failureThreshold: 60
+            httpGet:
+              path: /api/health
+              port: 3000
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmpfs
+              subPath: tmp
+            - mountPath: /app/apps/nextjs-app/.next/cache
+              name: tmpfs
+              subPath: next-cache
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      securityContext:
+        runAsGroup: 65534
+        runAsUser: 65534
+      serviceAccountName: streamystats
+      volumes:
+        - emptyDir: {}
+          name: tmpfs

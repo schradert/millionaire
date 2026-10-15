@@ -42,6 +42,14 @@ spec:
               value: /secrets/radarr/apikey
             - name: SONARR_API_KEY_FILE
               value: /secrets/sonarr/apikey
+            - name: SPORTARR_API_KEY_FILE
+              value: /secrets/sportarr/apikey
+            - name: STREAMYSTATS_URL
+              value: http://streamystats.media.svc.cluster.local:3000
+            - name: TRACEARR_PASSWORD_FILE
+              value: /secrets/tracearr/password
+            - name: TRACEARR_USER
+              value: tristan
           image: harbor.trdos.me/library/app-bootstrap:0.26.0@sha256:5a72edc35fb941e6ffff0700f83a7ed4c1fd3198d7bc88e9d395268c8e6ae2cc
           name: bootstrap
           securityContext:
@@ -68,6 +76,12 @@ spec:
             - mountPath: /secrets/sonarr
               name: sonarr
               readOnly: true
+            - mountPath: /secrets/sportarr
+              name: sportarr
+              readOnly: true
+            - mountPath: /secrets/tracearr
+              name: tracearr
+              readOnly: true
       restartPolicy: OnFailure
       securityContext:
         runAsGroup: 65534
@@ -93,3 +107,9 @@ spec:
         - name: sonarr
           secret:
             secretName: sonarr-apikey
+        - name: sportarr
+          secret:
+            secretName: sportarr-apikey
+        - name: tracearr
+          secret:
+            secretName: tracearr-admin

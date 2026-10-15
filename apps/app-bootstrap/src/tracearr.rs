@@ -58,6 +58,30 @@ impl Api<'_> {
     }
 }
 
+/// The owner's public API token (`trr_pub_...`), for apps that read Tracearr (Maintainerr): sign in as the owner and
+/// read it, generating it when the owner has none yet. A token that exists is never rotated.
+pub async fn public_api_token(http: &Client, base: &str, username: &str, password: &str) -> Result<String> {
+    let r = http
+        .post(format!("{base}/api/v1/auth/sign-in/username"))
+        .header("Origin", base)
+        .json(&json!({ "username": username, "password": password }))
+        .send_t()
+        .await?;
+    let r = ok(r, &format!("POST /api/v1/auth/sign-in/username (the Tracearr owner {username} with the tracearr-admin password?)")).await?;
+    let api = Api { http, cookie: cookies(r.headers()), base: base.to_string() };
+    if let Some(token) = token_of(&api.get("/api/v1/settings/api-key").await?) {
+        return Ok(token);
+    }
+    let r = api.req(http.post(format!("{base}/api/v1/settings/api-key/regenerate"))).json(&json!({})).send_t().await?;
+    let made: Value = ok(r, "POST /api/v1/settings/api-key/regenerate").await?.json().await?;
+    println!("tracearr: generated the owner's public API token");
+    token_of(&made).ok_or_else(|| "tracearr returned no API token".into())
+}
+
+fn token_of(v: &Value) -> Option<String> {
+    v["token"].as_str().filter(|t| !t.is_empty()).map(String::from)
+}
+
 pub async fn run() -> Result<()> {
     let base = var("TRACEARR_URL", "http://tracearr.media.svc.cluster.local:3000").trim_end_matches('/').to_string();
     let http = Client::builder().timeout(Duration::from_secs(120)).build()?;
@@ -138,6 +162,13 @@ mod tests {
         h.append("set-cookie", "b=2; Path=/".parse().unwrap());
         assert_eq!(cookies(&h), "a=1; b=2");
         assert_eq!(cookies(&HeaderMap::new()), "");
+    }
+
+    #[test]
+    fn token_only_when_set() {
+        assert_eq!(token_of(&json!({ "token": "trr_pub_x" })).as_deref(), Some("trr_pub_x"));
+        assert_eq!(token_of(&json!({ "token": null })), None);
+        assert_eq!(token_of(&json!({ "token": "" })), None);
     }
 
     #[test]

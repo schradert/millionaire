@@ -57,7 +57,7 @@
         };
       };
       # Header auth (config.xml) trusts X-Auth-Request-User from whoever sets it, so only oauth2-proxy
-      # (UI), the apps that use the API key (Prowlarr's sync, the bootstrap Job, the e2e Job) and
+      # (UI), the apps that use the API key (Prowlarr's sync, Maintainerr, the bootstrap Job, the e2e Job) and
       # the kubelet/Prometheus may reach it.
       resources.ciliumNetworkPolicies.sportarr.spec = {
         endpointSelector.matchLabels."app.kubernetes.io/name" = "sportarr";
@@ -72,6 +72,7 @@
                 };
               }
               {matchLabels."app.kubernetes.io/name" = "prowlarr";}
+              {matchLabels."app.kubernetes.io/name" = "maintainerr";}
               {matchLabels."batch.kubernetes.io/job-name" = "sportarr-bootstrap";}
               {matchLabels."app.kubernetes.io/name" = "media-e2e";}
               {

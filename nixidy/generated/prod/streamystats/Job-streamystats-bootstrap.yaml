@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: streamystats-bootstrap
+  namespace: media
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - streamystats
+          env:
+            - name: JELLYFIN_ADMIN_PASSWORD_FILE
+              value: /secrets/jellyfin/password
+            - name: JELLYFIN_PUBLIC_URL
+              value: https://jellyfin.trdos.me
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4318
+            - name: PYROSCOPE_SAMPLE_RATE
+              value: "1000"
+            - name: PYROSCOPE_SERVER_ADDRESS
+              value: http://pyroscope.observability.svc.cluster.local:4040
+          image: harbor.trdos.me/library/app-bootstrap:0.36.0@sha256:7ec41124e8eac97fef3773a40cc4adb35b4d61117755cadc905c72229a7452ea
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /secrets/jellyfin
+              name: jellyfin
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - emptyDir: {}
+          name: tmp
+        - name: jellyfin
+          secret:
+            secretName: jellyfin-admin

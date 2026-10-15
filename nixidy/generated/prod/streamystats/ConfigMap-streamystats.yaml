@@ -1,0 +1,15 @@
+apiVersion: v1
+data:
+  HOSTNAME: 0.0.0.0
+  JOB_SERVER_URL: http://streamystats-job-server.media.svc.cluster.local:3005
+  NEXT_TELEMETRY_DISABLED: "1"
+  NODE_ENV: production
+  PORT: "3000"
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: streamystats
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: streamystats
+  name: streamystats
+  namespace: media

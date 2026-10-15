@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: streamystats
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: streamystats
+    app.kubernetes.io/service: streamystats
+  name: streamystats
+  namespace: media
+spec:
+  ports:
+    - name: http
+      port: 3000
+      protocol: TCP
+      targetPort: 3000
+  selector:
+    app.kubernetes.io/controller: streamystats
+    app.kubernetes.io/instance: streamystats
+    app.kubernetes.io/name: streamystats
+  type: ClusterIP

@@ -1,0 +1,29 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: streamystats
+  namespace: media
+spec:
+  bootstrap:
+    initdb:
+      database: streamystats
+      owner: streamystats
+      postInitApplicationSQL: []
+      postInitSQL:
+        - CREATE EXTENSION IF NOT EXISTS vector;
+        - CREATE EXTENSION IF NOT EXISTS uuid-ossp;
+        - CREATE EXTENSION IF NOT EXISTS pg_trgm;
+  imageName: ghcr.io/immich-app/postgres:17-vectorchord0.4.3-pgvectors0.3.0@sha256:6b725ce331a1db016c75ca13e4cfc35435718f3fe975ff75a9c11debebbe21d7
+  instances: 1
+  monitoring:
+    enablePodMonitor: true
+  postgresGID: 999
+  postgresUID: 999
+  postgresql:
+    shared_preload_libraries: []
+  serviceAccountTemplate:
+    metadata:
+      name: streamystats-pg
+  storage:
+    size: 5Gi
+    storageClass: ceph-block
