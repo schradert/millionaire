@@ -4,7 +4,7 @@
 use reqwest::Method;
 use serde_json::{json, Value};
 
-use super::apps::{autobrr_url, bazarr_url, cleanuparr_url, lingarr_url, maintainerr_url, Arr, Ombi, Qbt, Seerr, OMBI_USER_HEADER};
+use super::apps::{autobrr_url, bazarr_url, cleanuparr_url, lingarr_url, maintainerr_url, suwayomi_url, Arr, Kapowarr, Ombi, Qbt, Seerr, OMBI_USER_HEADER};
 use crate::{
     ctx::{json, need_secret, send, var, At, Ctx, Fail, R},
     report::Flow,
@@ -309,6 +309,115 @@ pub async fn cleanuparr(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let providers = json(get("/api/configuration/notification_providers"), "cleanuparr", "notifications").await?;
     require("cleanuparr", "notifications", &names(&providers["providers"], "name"), &["ntfy"])?;
     f.ok("cleanuparr", "integrations", format!("arr apps and qBittorrent connected, cleaning on, seeker on {searching} instance(s), ntfy"));
+    Ok(())
+}
+
+/// The two Bookshelf instances: (service, Prowlarr's name for it, root folder).
+pub const BOOKSHELVES: [(&str, &str, &str); 2] = [("bookshelf", "Bookshelf", "/media/books"), ("bookshelf-audio", "Bookshelf Audio", "/media/audiobooks")];
+
+/// Bookshelf (ebooks) and Bookshelf Audio (audiobooks): API up, root folder, qBittorrent client, a metadata source,
+/// health clean, and the instance synced into Prowlarr as an application (its "Readarr" apps are matched by name).
+pub async fn bookshelf(ctx: &Ctx, f: &mut Flow) -> R<()> {
+    let prowlarr = Arr::new("prowlarr")?;
+    let apps = prowlarr.get(ctx, "/applications").await?;
+    for (app, display, root) in BOOKSHELVES {
+        let a = Arr::new(app)?;
+        let status = a.get(ctx, "/system/status").await?;
+        let version = status["version"].as_str().at(app, "system status")?;
+        require(app, "root folder", &names(&a.get(ctx, "/rootfolder").await?, "path"), &[root])?;
+        let clients = a.get(ctx, "/downloadclient").await?;
+        let q = clients.as_array().into_iter().flatten().find(|c| c["name"] == json!("qBittorrent")).at(app, "qBittorrent download client")?;
+        if q["enable"] != json!(true) {
+            return Err(Fail::new(app, "qBittorrent download client", "disabled"));
+        }
+        let meta = a.get(ctx, "/config/development").await?;
+        let source = meta["metadataSource"].as_str().filter(|s| !s.is_empty()).at(app, "metadata source (config/development)")?;
+        let bad = real_problems(&a.get(ctx, "/health").await?);
+        if !bad.is_empty() {
+            return Err(Fail::new(app, "health", bad.join("; ")));
+        }
+        let sync = apps.as_array().into_iter().flatten().find(|x| x["name"] == json!(display)).at("prowlarr", &format!("application {display}"))?;
+        if sync["syncLevel"] != json!("fullSync") {
+            return Err(Fail::new("prowlarr", &format!("application {display}"), format!("syncLevel {}, want fullSync", sync["syncLevel"])));
+        }
+        f.ok(app, "integrations", format!("v{version}, root {root}, qBittorrent client, metadata {source}, health clean, synced from Prowlarr (full)"));
+    }
+    Ok(())
+}
+
+/// Kapowarr: API key (no password is set, see `Kapowarr`), the comics root folder, an enabled qBittorrent client,
+/// the download folder on the shared volume and FlareSolverr. The ComicVine key is the user's: reported, not required.
+pub async fn kapowarr(ctx: &Ctx, f: &mut Flow) -> R<()> {
+    let k = Kapowarr::new(ctx).await?;
+    let about = k.get(ctx, "/system/about").await?;
+    let folders: Vec<String> = k
+        .get(ctx, "/rootfolder")
+        .await?
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|r| r["folder"].as_str().map(|p| p.trim_end_matches('/').to_string()))
+        .collect();
+    require("kapowarr", "root folder", &folders, &["/media/comics"])?;
+    let clients = k.get(ctx, "/externalclients").await?;
+    let q = clients.as_array().into_iter().flatten().find(|c| c["client_type"] == json!("qBittorrent")).at("kapowarr", "qBittorrent client")?;
+    if q["enabled"] != json!(true) {
+        return Err(Fail::new("kapowarr", "qBittorrent client", "disabled"));
+    }
+    let s = k.get(ctx, "/settings").await?;
+    let dl = s["download_folder"].as_str().unwrap_or("");
+    if !dl.starts_with("/media/downloads/") {
+        return Err(Fail::new("kapowarr", "download folder", format!("{dl:?}, want a folder on the shared /media/downloads volume")));
+    }
+    if s["flaresolverr_base_url"].as_str().unwrap_or("").is_empty() {
+        return Err(Fail::new("kapowarr", "FlareSolverr", "not set"));
+    }
+    let cv = if s["comicvine_api_key"].as_str().unwrap_or("").is_empty() {
+        "no ComicVine key (searching off until the user supplies one)"
+    } else {
+        "ComicVine key set"
+    };
+    f.ok(
+        "kapowarr",
+        "integrations",
+        format!("{}, root /media/comics, qBittorrent client, download folder {dl}, FlareSolverr, {cv}", about["version"].as_str().unwrap_or("?")),
+    );
+    Ok(())
+}
+
+/// Suwayomi: GraphQL `aboutServer`, CBZ downloads, FlareSolverr, and the source list (only the built-in Local
+/// source until the user configures an extension store).
+pub async fn suwayomi(ctx: &Ctx, f: &mut Flow) -> R<()> {
+    let base = suwayomi_url();
+    let q = json!({ "query": "{ aboutServer { name version buildType } settings { downloadAsCbz flareSolverrEnabled flareSolverrUrl extensionRepos } sources { nodes { name } } }" });
+    let r = json(ctx.http.post(format!("{base}/api/graphql")).json(&q), "suwayomi", "GraphQL aboutServer").await?;
+    if !r["errors"].is_null() {
+        return Err(Fail::new("suwayomi", "GraphQL", format!("errors: {}", r["errors"])));
+    }
+    let d = &r["data"];
+    if d["aboutServer"]["name"] != json!("Suwayomi-Server") {
+        return Err(Fail::new("suwayomi", "aboutServer", format!("unexpected server {}", d["aboutServer"])));
+    }
+    let s = &d["settings"];
+    if s["downloadAsCbz"] != json!(true) {
+        return Err(Fail::new("suwayomi", "settings", "downloadAsCbz is off (Komga and Kavita read CBZ)"));
+    }
+    if s["flareSolverrEnabled"] != json!(true) || s["flareSolverrUrl"].as_str().unwrap_or("").is_empty() {
+        return Err(Fail::new("suwayomi", "settings", "FlareSolverr not enabled with a URL"));
+    }
+    let sources = names(&d["sources"]["nodes"], "name");
+    require("suwayomi", "sources", &sources, &["Local source"])?;
+    let repos = s["extensionRepos"].as_array().map(Vec::len).unwrap_or(0);
+    f.ok(
+        "suwayomi",
+        "integrations",
+        format!(
+            "{} {}, CBZ downloads, FlareSolverr, {} source(s), {repos} extension store(s)",
+            d["aboutServer"]["name"].as_str().unwrap_or("?"),
+            d["aboutServer"]["version"].as_str().unwrap_or("?"),
+            sources.len()
+        ),
+    );
     Ok(())
 }
 

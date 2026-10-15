@@ -88,6 +88,12 @@ spec:
                 - mountPath: /secrets/prowlarr-apikey
                   name: prowlarr-apikey
                   readOnly: true
+                - mountPath: /secrets/bookshelf-apikey
+                  name: bookshelf-apikey
+                  readOnly: true
+                - mountPath: /secrets/bookshelf-audio-apikey
+                  name: bookshelf-audio-apikey
+                  readOnly: true
                 - mountPath: /secrets/jellyfin-admin
                   name: jellyfin-admin
                   readOnly: true
@@ -177,6 +183,14 @@ spec:
               secret:
                 optional: true
                 secretName: prowlarr-apikey
+            - name: bookshelf-apikey
+              secret:
+                optional: true
+                secretName: bookshelf-apikey
+            - name: bookshelf-audio-apikey
+              secret:
+                optional: true
+                secretName: bookshelf-audio-apikey
             - name: jellyfin-admin
               secret:
                 optional: true

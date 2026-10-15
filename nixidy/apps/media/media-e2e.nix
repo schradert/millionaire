@@ -20,6 +20,8 @@
       "sonarr-apikey"
       "lidarr-apikey"
       "prowlarr-apikey"
+      "bookshelf-apikey"
+      "bookshelf-audio-apikey"
       "jellyfin-admin"
       "kavita-admin"
       "komga-admin"

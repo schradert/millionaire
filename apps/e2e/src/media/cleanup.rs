@@ -61,7 +61,7 @@ async fn arr(c: &mut Clean<'_>, app: &'static str, collection: &str) -> R<()> {
             let what = format!(
                 "{app} {} {:?} ({})",
                 &collection[1..],
-                item["title"].as_str().or(item["artistName"].as_str()).unwrap_or("?"),
+                item["title"].as_str().or(item["artistName"].as_str()).or(item["authorName"].as_str()).unwrap_or("?"),
                 item["path"].as_str().unwrap_or("")
             );
             let path = format!("{collection}/{id}?deleteFiles=true&addImportExclusion=false&addImportListExclusion=false");
@@ -389,6 +389,8 @@ pub async fn cleanup(ctx: &Ctx, scope: &Scope, dry: bool) -> Flow {
     step!("radarr", arr(&mut c, "radarr", "/movie").await);
     step!("sonarr", arr(&mut c, "sonarr", "/series").await);
     step!("lidarr", arr(&mut c, "lidarr", "/artist").await);
+    step!("bookshelf", arr(&mut c, "bookshelf", "/author").await);
+    step!("bookshelf-audio", arr(&mut c, "bookshelf-audio", "/author").await);
     step!("maintainerr", maintainerr(&mut c).await);
     step!("jellyfin", jellyfin(&mut c).await);
     step!("kavita", kavita(&mut c).await);
@@ -437,7 +439,7 @@ pub async fn residue(ctx: &Ctx, scope: &Scope) -> Flow {
             }
         }};
     }
-    for (app, coll) in [("radarr", "/movie"), ("sonarr", "/series"), ("lidarr", "/artist")] {
+    for (app, coll) in [("radarr", "/movie"), ("sonarr", "/series"), ("lidarr", "/artist"), ("bookshelf", "/author"), ("bookshelf-audio", "/author")] {
         check!(
             app,
             async {
