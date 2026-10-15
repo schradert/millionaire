@@ -6,6 +6,7 @@ mod controller;
 mod crd;
 mod damage;
 mod encode;
+mod import;
 mod inspect;
 mod job;
 mod kubeapi;
@@ -50,6 +51,8 @@ enum Command {
     Crds,
     /// Make a synthetic DVD as a backed-up master (and Disc), for end-to-end tests.
     Synth(synth::SynthArgs),
+    /// Disc objects for discs ripped before dvdrip (media-dvd, the bash pipeline's rips).
+    Import(import::ImportArgs),
     /// Inspect, encode, mark damage, make review sheets and summarise one disc (the encode Job).
     Encode(job::EncodeArgs),
     /// Put a disc's ISO and encodes in the libraries as its spec says (the publish Job).
@@ -90,6 +93,7 @@ async fn run() -> anyhow::Result<()> {
         Command::Probe(a) => agent::probe(a).await?,
         Command::Controller(a) => controller::run(a).await?,
         Command::Encode(a) => job::encode_cmd(a).await?,
+        Command::Import(a) => import::run(a).await?,
         Command::Synth(a) => synth::run(a).await?,
         Command::Publish(a) => job::publish_cmd(a).await?,
     }

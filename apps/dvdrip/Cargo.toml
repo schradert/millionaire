@@ -1,6 +1,6 @@
 [package]
 name = "dvdrip"
-version = "0.1.2"
+version = "0.1.3"
 description = "DVD ripping on Kubernetes: per-drive agents, a controller, encode and publish Jobs (docs/dvd-rip.md)"
 publish = false
 edition = "2021"

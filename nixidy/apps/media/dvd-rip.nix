@@ -322,6 +322,61 @@
             };
           };
 
+          # One-off, by hand (docs/dvd-rip.md): `kubectl -n media create job --from=cronjob/dvdrip-import dvdrip-import`.
+          # Records the ISOs already in media-dvd as Done Discs (duplicate detection) and brings over the
+          # bash pipeline's finished rips on falcon that never reached the cluster.
+          cronJobs.dvdrip-import.spec = {
+            suspend = true;
+            schedule = "0 0 1 1 *";
+            jobTemplate.spec = {
+              backoffLimit = 0;
+              ttlSecondsAfterFinished = 604800;
+              template = {
+                metadata.labels = labels "import";
+                spec = {
+                  restartPolicy = "Never";
+                  serviceAccountName = "dvdrip-agent";
+                  nodeSelector."kubernetes.io/hostname" = "falcon";
+                  tolerations = [desktop];
+                  containers = lib.toList {
+                    name = "import";
+                    inherit image;
+                    args = ["import" "--dvd-root" "/media/dvd" "--rips" "/rips"];
+                    volumeMounts = [
+                      (work false).mount
+                      tmp.mount
+                      {
+                        name = "dvd";
+                        mountPath = "/media/dvd";
+                        readOnly = true;
+                      }
+                      {
+                        name = "rips";
+                        mountPath = "/rips";
+                        readOnly = true;
+                      }
+                    ];
+                  };
+                  volumes = [
+                    (work false).volume
+                    tmp.volume
+                    {
+                      name = "dvd";
+                      persistentVolumeClaim = {
+                        claimName = "media-dvd";
+                        readOnly = true;
+                      };
+                    }
+                    {
+                      name = "rips";
+                      hostPath.path = "/data/dvd-rips";
+                    }
+                  ];
+                };
+              };
+            };
+          };
+
           httpRoutes.dvdrip.spec = {
             hostnames = [hostname];
             parentRefs = lib.toList {

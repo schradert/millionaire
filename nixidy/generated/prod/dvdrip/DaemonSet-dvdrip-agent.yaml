@@ -28,7 +28,7 @@ spec:
                   fieldPath: spec.nodeName
             - name: OTEL_SERVICE_NAME
               value: dvdrip-agent
-          image: harbor.trdos.me/library/dvdrip:0.1.2@sha256:c76a8ac1cf7ef994d359155e76b796a415adcc7183e3f6cc3d62f24b0cd7c47d
+          image: harbor.trdos.me/library/dvdrip:0.1.3@sha256:1fd286350acf5f02c58ea484581c24d1dd7f16c4e3be4a8ba7ab028fa14618ff
           name: agent
           ports:
             - containerPort: 9090

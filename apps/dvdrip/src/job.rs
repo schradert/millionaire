@@ -117,7 +117,7 @@ pub async fn encode_cmd(a: EncodeArgs) -> Result<()> {
             kubeapi::patch_disc_status(
                 &api,
                 name,
-                json!({"titles": s.titles, "warnings": s.warnings, "message": s.message, "protected": s.protected, "encodedGeneration": disc.metadata.generation}),
+                json!({"titles": s.titles, "warnings": s.warnings, "message": s.message, "summary": s.message, "protected": s.protected, "encodedGeneration": disc.metadata.generation}),
             )
             .await?;
             Ok(())
