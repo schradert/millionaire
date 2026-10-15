@@ -3,7 +3,7 @@ kind: Job
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "5"
-  name: coder-bootstrap-b3f90a9d
+  name: coder-bootstrap-322d9d1d
   namespace: development
 spec:
   activeDeadlineSeconds: 1200
@@ -40,12 +40,12 @@ spec:
               cp -L /templates/devenv/.terraform.lock.hcl /tmp/templates/devenv/.terraform.lock.hcl
               cp -L /templates/devenv/main.tf /tmp/templates/devenv/main.tf
               : > /tmp/variables-devenv.yaml
-              echo 'image: "harbor.trdos.me/library/workspace:0.1.0@sha256:da1cbd9cc152beeff663bd83b5a178574ff275b037bf1a8601b311670410f61f"' >> /tmp/variables-devenv.yaml
-              if coder templates versions list devenv -o json 2>/dev/null | grep -qF '"789482af4d73"'; then
-                echo "devenv: 789482af4d73 already pushed"
+              echo 'image: "harbor.trdos.me/library/workspace:0.1.1@sha256:e53a8c0d026dcfc9a31e80b29349524be3c47b926d21ac4fa91d76b9701d1c3e"' >> /tmp/variables-devenv.yaml
+              if coder templates versions list devenv -o json 2>/dev/null | grep -qF '"dd6f0801b0ce"'; then
+                echo "devenv: dd6f0801b0ce already pushed"
               else
-                coder templates push devenv --directory /tmp/templates/devenv --name 789482af4d73 \
-                  --variables-file /tmp/variables-devenv.yaml --message 'nixidy 789482af4d73' --yes
+                coder templates push devenv --directory /tmp/templates/devenv --name dd6f0801b0ce \
+                  --variables-file /tmp/variables-devenv.yaml --message 'nixidy dd6f0801b0ce' --yes
               fi
               coder templates edit devenv --display-name 'devenv project' --description 'One repository with its devenv, a persistent home and Nix store, Claude Code and opencode.' \
                 --icon /emojis/2744.png --default-ttl 8h --activity-bump 1h --yes
