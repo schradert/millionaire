@@ -22,7 +22,13 @@
       namespace = "media";
       volsync.pvcs = {
         jibri.title = "jitsi-jitsi-meet-jibri";
-        prosody.title = "prosody-data";
+        # The chart's StatefulSet claim (prosody-data-<pod>); "prosody-data" never existed, so this
+        # source failed silently from 2026-06-25 (found by the docs/media-stack.md audit).
+        prosody = {
+          title = "prosody-data-jitsi-prosody-0";
+          # Its restore never ran (the PVC name was wrong); a pending one must not land on the live volume.
+          restore = false;
+        };
       };
       helm.releases.jitsi = {
         chart = pinned.charts.jitsi-meet;
