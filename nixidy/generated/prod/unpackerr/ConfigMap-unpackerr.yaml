@@ -1,0 +1,33 @@
+apiVersion: v1
+data:
+  TZ: Etc/UTC
+  UN_INTERVAL: 2m
+  UN_LIDARR_0_DELETE_DELAY: 5m
+  UN_LIDARR_0_DELETE_ORIG: "false"
+  UN_LIDARR_0_PATHS_0: /media/downloads
+  UN_LIDARR_0_PROTOCOLS: torrent
+  UN_LIDARR_0_URL: http://lidarr.media.svc.cluster.local
+  UN_MAX_RETRIES: "2"
+  UN_RADARR_0_DELETE_DELAY: 5m
+  UN_RADARR_0_DELETE_ORIG: "false"
+  UN_RADARR_0_PATHS_0: /media/downloads
+  UN_RADARR_0_PROTOCOLS: torrent
+  UN_RADARR_0_URL: http://radarr.media.svc.cluster.local
+  UN_REMNANT_ACTION: rename
+  UN_RETRY_DELAY: 5m
+  UN_SONARR_0_DELETE_DELAY: 5m
+  UN_SONARR_0_DELETE_ORIG: "false"
+  UN_SONARR_0_PATHS_0: /media/downloads
+  UN_SONARR_0_PROTOCOLS: torrent
+  UN_SONARR_0_URL: http://sonarr.media.svc.cluster.local
+  UN_START_DELAY: 1m
+  UN_WEBSERVER_LISTEN_ADDR: 0.0.0.0:5656
+  UN_WEBSERVER_METRICS: "true"
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: unpackerr
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: unpackerr
+  name: unpackerr
+  namespace: media

@@ -196,6 +196,7 @@ default on, nixidy/system/storage/postgres.nix), so every database is scraped; t
 | tempo | ServiceMonitor |  |
 | toolhive | PodMonitor (operator) |  |
 | toolhive-crds | CRDs only | none needed |
+| unpackerr | ServiceMonitor (:5656 /metrics) |  |
 | volsync | ServiceMonitor (TLS + token, :8443) |  |
 | volsync-crds | CRDs only | none needed |
 | webdav | none | WebDAV server; no metrics |
