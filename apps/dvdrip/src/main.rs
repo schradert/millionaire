@@ -1,7 +1,9 @@
 //! dvdrip: DVD ripping on Kubernetes (docs/dvd-rip.md).
-// The agent and controller modes (later in the stack) use what is not called yet.
+// The controller (next in the stack) uses what is not called yet.
 #![allow(dead_code)]
 
+mod agent;
+mod backup;
 mod classify;
 mod crd;
 mod damage;
@@ -12,13 +14,16 @@ mod kubeapi;
 mod layout;
 mod lsdvd;
 mod makemkv;
+mod metrics;
 mod naming;
+mod notify;
 mod publish;
 mod review;
 #[cfg(test)]
 mod testutil;
 mod tool;
 mod tracks;
+mod web;
 
 use std::io::IsTerminal;
 
@@ -33,6 +38,12 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Back up discs from this node's drives (the DaemonSet).
+    Agent(agent::AgentArgs),
+    /// Back up a disc (drive or image) into a directory, no API involved (formerly dvd-backup).
+    Backup(agent::BackupArgs),
+    /// Print a disc's label and fingerprint (drive or image).
+    Probe(agent::ProbeArgs),
     /// Print the CustomResourceDefinitions (crds/dvd.trdos.me.yaml).
     Crds,
     /// Inspect, encode, mark damage, make review sheets and summarise one disc (the encode Job).
@@ -55,7 +66,7 @@ fn init_logging() {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
-    if !matches!(cli.command, Command::Crds) {
+    if !matches!(cli.command, Command::Crds | Command::Probe(_)) {
         init_logging();
     }
     // Library files must stay group-writable for the other media apps (setgid dirs, group 101).
@@ -65,6 +76,9 @@ async fn main() -> anyhow::Result<()> {
     }
     match cli.command {
         Command::Crds => print!("{}", crd::crds_yaml()?),
+        Command::Agent(a) => agent::run(a).await?,
+        Command::Backup(a) => agent::backup_cmd(a).await?,
+        Command::Probe(a) => agent::probe(a).await?,
         Command::Encode(a) => job::encode_cmd(a).await?,
         Command::Publish(a) => job::publish_cmd(a).await?,
     }
