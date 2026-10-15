@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 8f9aadc830065ceb9be960e0a5406dddfeef671d1adeee7fa695245c04dfb091
+        checksum/configMaps: 16550d0dece30d763c8407216693fbfbfcff7023dacbf852a51df9309804108d
       labels:
         app.kubernetes.io/controller: multi-scrobbler
         app.kubernetes.io/instance: multi-scrobbler
@@ -34,10 +34,6 @@ spec:
         - envFrom:
             - configMapRef:
                 name: multi-scrobbler
-            - secretRef:
-                name: multi-scrobbler
-            - secretRef:
-                name: multi-scrobbler-jellyfin
           image: ghcr.io/foxxmd/multi-scrobbler:0.19.2@sha256:449274cb8b5b855cc361056862aed6a11e5dcc0a72e2acb279ac78edf834a1c7
           livenessProbe:
             failureThreshold: 3
@@ -64,6 +60,18 @@ spec:
           volumeMounts:
             - mountPath: /config
               name: config
+            - mountPath: /config/endpointlz.json
+              name: sources
+              readOnly: true
+              subPath: endpointlz.json
+            - mountPath: /config/jellyfin.json
+              name: sources
+              readOnly: true
+              subPath: jellyfin.json
+            - mountPath: /config/maloja.json
+              name: sources
+              readOnly: true
+              subPath: maloja.json
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
       hostIPC: false
@@ -74,3 +82,6 @@ spec:
         - name: config
           persistentVolumeClaim:
             claimName: multi-scrobbler
+        - name: sources
+          secret:
+            secretName: multi-scrobbler-config

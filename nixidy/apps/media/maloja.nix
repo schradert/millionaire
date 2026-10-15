@@ -151,7 +151,7 @@
           service =
             {maloja.ports.http.port = port;}
             // lib.listToAttrs (map (u:
-              lib.nameValuePair (scrobble.service u) {
+              lib.nameValuePair (scrobble.slug u) {
                 controller = "maloja";
                 ports.http.port = scrobble.port u;
               })
@@ -209,7 +209,7 @@
                 };
               };
             }
-            // lib.listToAttrs (map (u: lib.nameValuePair (scrobble.service u) (uiRoute (scrobble.host u))) scrobble.others);
+            // lib.listToAttrs (map (u: lib.nameValuePair (scrobble.slug u) (uiRoute (scrobble.host u))) scrobble.others);
         };
       };
       # Random once, never refreshed: the admin password lives only in this secret.

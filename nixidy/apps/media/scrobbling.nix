@@ -32,10 +32,12 @@ in {
         if isMe u
         then base
         else base + 1 + lib.lists.findFirstIndex (x: x == u) null others;
+      # DNS-safe form of the username for Service, container, host and Secret names.
+      slug = u: lib.replaceStrings ["_" "."] ["-" "-"] (lib.toLower u);
       service = u:
         if isMe u
         then "maloja"
-        else "maloja-${u}";
+        else "maloja-${slug u}";
       url = u: "http://${service u}.media.svc.cluster.local:${toString (port u)}";
       host = u: "${service u}.${domain}";
       dataDir = u:
@@ -44,8 +46,8 @@ in {
         else "/mljdata/users/${u}";
       # Generated once in-cluster, key `token` in each: what Navidrome presents to multi-scrobbler
       # (the user's "ListenBrainz token"), and what multi-scrobbler presents to the user's Maloja.
-      ingressSecret = u: "scrobble-lz-${u}";
-      malojaSecret = u: "scrobble-maloja-${u}";
+      ingressSecret = u: "scrobble-lz-${slug u}";
+      malojaSecret = u: "scrobble-maloja-${slug u}";
       # Names inside multi-scrobbler. The owner keeps the ids it had before this was per user.
       sourceId = kind: u:
         if isMe u

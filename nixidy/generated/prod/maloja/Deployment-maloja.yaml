@@ -42,7 +42,7 @@ spec:
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
-              port: 42010
+              port: 42011
             timeoutSeconds: 1
           name: maloja
           readinessProbe:
@@ -50,15 +50,44 @@ spec:
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
-              port: 42010
+              port: 42011
             timeoutSeconds: 1
           startupProbe:
             failureThreshold: 3
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
-              port: 42010
+              port: 42011
             timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /mljdata
+              name: data
+            - mountPath: /tmp
+              name: tmpfs
+              subPath: tmp
+        - env:
+            - name: MALOJA_DATA_DIRECTORY
+              value: /mljdata/users/e2e
+            - name: MALOJA_NAME
+              value: e2e
+            - name: MALOJA_PORT
+              value: "42011"
+          envFrom:
+            - configMapRef:
+                name: maloja
+            - secretRef:
+                name: maloja
+          image: krateng/maloja:3.2.7@sha256:8864145b0107f9edfdd6672b366deb84378f4b20ea48730206bc5a56e3f82460
+          livenessProbe:
+            tcpSocket:
+              port: 42011
+          name: maloja-e2e
+          readinessProbe:
+            tcpSocket:
+              port: 42011
+          startupProbe:
+            tcpSocket:
+              port: 42011
           volumeMounts:
             - mountPath: /mljdata
               name: data
@@ -76,22 +105,30 @@ spec:
             - -c
             - |
               import os
-              f = "/mljdata/apikeys.yml"
-              try:
-                  lines = [l for l in open(f).read().splitlines() if l.strip() and l.strip() != "{}"]
-              except FileNotFoundError:
-                  lines = []
-              for name, var in (("multi-scrobbler", "MULTI_SCROBBLER_KEY"), ("navidrome", "NAVIDROME_KEY")):
-                  want = name + ": " + os.environ[var]
-                  if want not in lines:
-                      lines = [l for l in lines if not l.startswith(name + ":")] + [want]
-              open(f, "w").write("\n".join(lines) + "\n")
+              for d, keys in [("/mljdata", {"scrobbler": "KEY_0", "navidrome": "NAVIDROME_KEY"}), ("/mljdata/users/e2e", {"scrobbler": "KEY_1"})]:
+                  os.makedirs(d, exist_ok=True)
+                  f = d + "/apikeys.yml"
+                  try:
+                      lines = [l for l in open(f).read().splitlines() if l.strip() and l.strip() != "{}"]
+                  except FileNotFoundError:
+                      lines = []
+                  for name, var in keys.items():
+                      want = name + ": " + os.environ[var]
+                      if want not in lines:
+                          lines = [l for l in lines if not l.startswith(name + ":")] + [want]
+                  lines = [l for l in lines if not l.startswith("multi-scrobbler:")]
+                  open(f, "w").write("\n".join(lines) + "\n")
           env:
-            - name: MULTI_SCROBBLER_KEY
+            - name: KEY_0
               valueFrom:
                 secretKeyRef:
-                  key: MALOJA_API_KEY
-                  name: multi-scrobbler
+                  key: token
+                  name: scrobble-maloja-tristan
+            - name: KEY_1
+              valueFrom:
+                secretKeyRef:
+                  key: token
+                  name: scrobble-maloja-e2e
             - name: NAVIDROME_KEY
               valueFrom:
                 secretKeyRef:
