@@ -148,7 +148,6 @@ fn free_gb(p: &Path) -> Option<u64> {
 type Reported = (DriveState, Option<String>, Option<String>);
 
 struct DriveTask {
-    client: Client,
     a: AgentArgs,
     dev: String,
     name: String,
@@ -165,7 +164,6 @@ impl DriveTask {
         DriveTask {
             drives: Api::all(client.clone()),
             discs: Api::namespaced(client.clone(), &a.namespace),
-            client,
             a,
             dev,
             name,
@@ -427,6 +425,7 @@ impl DriveTask {
         tokio::fs::create_dir_all(st.dir.join("logs")).await?;
         let limits = Limits::default();
         let start = Instant::now();
+        let wall = std::time::SystemTime::now();
         self.state(DriveState::BackingUp, Some(name.to_string()), None).await;
         let outcome = if resume {
             for f in ["raw.iso", "raw.map"] {
@@ -445,6 +444,9 @@ impl DriveTask {
         self.metrics.backup(outcome.method, bytes, seconds, outcome.read_errors);
         info!(method = outcome.method, mb = bytes / 1_000_000, seconds, "backed up");
 
+        let attrs = [("disc", name.to_string()), ("drive", self.name.clone()), ("method", outcome.method.to_string())];
+        crate::otel::span(fp, "backup", wall, true, &attrs).await;
+        let upload_start = std::time::SystemTime::now();
         self.state(DriveState::Uploading, Some(name.to_string()), None).await;
         let (src, dst) = (st.master(), work.join("master.iso"));
         let sha = tokio::task::spawn_blocking(move || copy_verified(&src, &dst, None)).await??;
@@ -471,6 +473,7 @@ impl DriveTask {
         if !work.join("master.iso").exists() {
             bail!("upload vanished");
         }
+        crate::otel::span(fp, "upload", upload_start, true, &attrs).await;
         let message = format!("{} MB in {} ({})", bytes / 1_000_000, crate::naming::dur(seconds as f64), outcome.method);
         Ok((Backup { method: outcome.method.into(), bytes, seconds, read_errors: outcome.read_errors, sha256: sha }, outcome.damage, message))
     }

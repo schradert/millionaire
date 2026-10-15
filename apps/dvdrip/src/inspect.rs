@@ -144,11 +144,6 @@ pub fn write_json<T: serde::Serialize>(path: &Path, v: &T) -> Result<()> {
     Ok(())
 }
 
-pub fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T> {
-    let bytes = std::fs::read(path).with_context(|| format!("reading {}", path.display()))?;
-    serde_json::from_slice(&bytes).with_context(|| format!("parsing {}", path.display()))
-}
-
 /// Log the classification as the script's table did.
 pub fn log_table(titles: &[Title]) {
     for t in titles {

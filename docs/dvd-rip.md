@@ -86,7 +86,7 @@ status:
   conditions: […]                 # BackedUp, Encoded, Published (Kubernetes-style)
 ```
 
-Phases: `Detected → BackingUp → BackedUp → Encoding → Encoded → Publishing → Done`, plus `Held`, `Failed` (reason in `message`, a `Failed` event and an ntfy message) and `RescuePending` (damaged disc, encoded from what was recovered, waiting for a better read). Editing `spec.name`, `spec.disc` or `spec.titles` on a `Done` disc re-runs only `publish`, which moves files inside the media volumes (renames are cheap on CephFS); editing `mainTitle`/`protected`, or bumping `retry`, re-runs `encode`.
+Phases: `Detected → BackingUp → BackedUp → Encoding → Encoded → Publishing → Done`, plus `Held` and `Failed` (reason in `message` and an ntfy message). A damaged disc goes all the way to `Done` from what was recovered, with `status.damage.rescuePending` set until a better read fills the gaps. Editing `spec.name`, `spec.disc` or `spec.titles` on a `Done` disc re-runs only `publish`, which moves files inside the media volumes (renames are cheap on CephFS); editing `mainTitle`/`protected`, or bumping `retry`, re-runs `encode`.
 
 `kubectl -n media get discs` shows name, phase, drive and age (printer columns); `kubectl get drives` shows node, state and disc.
 
@@ -97,7 +97,7 @@ Phases: `Detected → BackingUp → BackedUp → Encoding → Encoded → Publis
 - Scheduling: NixOS writes the NFD local feature `dvd.trdos.me/drive=true` (`/etc/kubernetes/node-feature-discovery/features.d/dvd`) from a udev rule whenever a node has an optical drive (`/sys/class/block/sr*`), and removes it when the last one goes (USB drives come and go). NFD (installed by the GPU operator; `dvd.trdos.me` added to its `extraLabelNs`) turns it into a node label within a minute; the DaemonSet's `nodeSelector` is that label. Only hosts that opt in (`services.dvd-rip.mode = "cluster"`) get the rule, so falcon can stay on the units until the cutover.
 - Device access: the container is privileged with `/dev` and `/sys` mounted. MakeMKV talks to the SCSI-generic node (`/dev/sgN`, whose number varies and sits beside the disks' sg nodes) and eject/tray state need ioctls on the block node; a device plugin can't name "the sg node that belongs to this sr" statically. Considered: `generic-device-plugin` with `/dev/sr*` (no sg node, so no MakeMKV) and a bespoke device plugin (more code than the agent itself for one node). The agent never touches block devices other than `sr*` and their sg siblings.
 - One task per drive: poll media state (CDROM_DRIVE_STATUS / udev `ID_CDROM_MEDIA*`), check the drive toggle and `.pause`, read the label and fingerprint, look the fingerprint up (Disc with that label), and then:
-  - known and backed up → eject (`duplicate` event, as today); known with `RescuePending` → resume the rescue; known but master gone (`KEEP_MASTERS=0` era) → back up again; being backed up on another drive right now (fresh lease in status) → eject;
+  - known and backed up → eject (`duplicate` event, as today); known with `damage.rescuePending` → resume the rescue; being backed up on another drive right now (fresh lease in status) → eject;
   - new → create the Disc (create is the lock: a conflict means another drive got there first), back up into `/var/lib/dvd-rip/<fingerprint>/` (hostPath) with the existing method chain, upload, record status, eject.
 - Backup chain (ported from `dvd-backup`): MakeMKV `backup --decrypt disc:N` (index resolved from the device); on `MEDIUM ERROR` → ddrescue rescue (pass 1 time-boxed, trim pass) then decrypt the image (MakeMKV, dvdbackup + genisoimage as second decrypter); on other MakeMKV failures → dvdbackup mirror with the read-error and 12 GB mirror guards → raw ddrescue image as last resort (home-burned discs). `lsdvd` must read the result. The rescue map and raw image are uploaded too, so a reinsert on any node resumes the rescue.
 - Upload: stream `master.iso` from staging to `dvd-rip-work/<fingerprint>/master.iso.part` while hashing, fsync, rename, re-read and compare the sha256, then delete the staging copy. Free space on staging (DVD-9 + 20 % headroom) and on the work volume is checked before reading a disc; when short the drive goes `Paused` with the reason (today's 20 GB rule).
@@ -107,7 +107,7 @@ Phases: `Detected → BackingUp → BackedUp → Encoding → Encoded → Publis
 
 - Watches Discs, Drives and its Jobs (`kube::runtime::Controller`), drives the phase machine, owns retries and policy:
   - `BackedUp` (not held) → `Encoding`: create Job `dvd-encode-<disc>-<attempt>`; at most `maxEncodes` (default 2) at once, oldest backup first (the worker's order).
-  - Encode Job failed → retry once with `protected` forced (the worker's MakeMKV remux retry), then `Failed`.
+  - Encode Job failed → `Failed` (the Job itself already retried the disc once via MakeMKV's analysis and remux, as the worker did).
   - `Encoded` → `Publishing`: Job `dvd-publish-<disc>-<generation>`; also on any spec change that affects the layout.
   - `BackingUp` with a stale lease → `Failed` (`interrupted`; reinserting the disc retries).
 - Notifications: ntfy topic `dvd` on `https://ntfy.trdos.me` (pods resolve it through `hostAliases` → hyena, like the other in-cluster publishers): new disc, backed up (drive free), done (with the summary line), duplicate, failed, rescue pending. Failures also surface as Kubernetes events and the `DvdRipFailed` alert.
@@ -148,7 +148,7 @@ Reading locally first keeps the slow, error-prone part (the drive) independent o
 
 | Failure | Handling |
 | --- | --- |
-| Scratched disc | ddrescue rescue as today; Disc `RescuePending` with recovered %, encoded from what was read; reinserting it on any drive resumes from the uploaded map. |
+| Scratched disc | ddrescue rescue as today; `status.damage` with recovered % and `rescuePending`, encoded from what was read; reinserting it on any drive resumes from the uploaded map. |
 | Copy protection (structure protection, bad navigation) | MakeMKV backup; MakeMKV title analysis when lsdvd fails or lists ≥90 titles; encode retry with MakeMKV remux; per-title repair. |
 | Drive/region refuses encrypted sectors | dvdbackup fallback; `RPC` hint in the Failed message (`regionset` via `kubectl exec` into the agent). |
 | Not a video DVD (CD, Blu-ray, game DVD) | Ejected with an event (`ejectUnknown: false` leaves it); disable the drive for game discs. |
@@ -166,7 +166,7 @@ Reading locally first keeps the slow, error-prone part (the drive) independent o
 
 - Metrics (PodMonitors): `dvdrip_drive_state{drive,state}`, `dvdrip_backup_bytes_total`, `dvdrip_backup_seconds` (histogram, by method), `dvdrip_read_errors_total`, `dvdrip_discs{phase}`, `dvdrip_encode_seconds`, `dvdrip_encode_fps`, `dvdrip_publish_bytes_total`, `dvdrip_failures_total{stage}`. Alerts: `DvdRipFailed`, `DvdRipDriveError`, `DvdRipStorageLow`, `DvdRipStuck` (a phase older than its budget).
 - Logs: JSON lines on stdout (Loki via Alloy), every line carrying `disc` and `drive`; tool output (MakeMKV, HandBrake, ddrescue) stays in the work dir's `logs/` and is linked from the review view.
-- Traces (OTLP/HTTP to Alloy): one trace per disc; the agent starts it and stores the `traceparent` in an annotation, the controller and the Jobs continue it, so a disc's whole life (backup, upload, encode per title, publish) is one Tempo trace.
+- Traces (OTLP/HTTP JSON to Alloy, no SDK): one trace per disc, its id derived from the fingerprint, so the agent (backup, upload spans) and the controller (encode, publish and the whole-disc span, with their real start and end from `status.since`) add to the same Tempo trace without passing context around.
 - Profiles: Alloy's eBPF profiler covers the pods without code.
 
 ## Performance

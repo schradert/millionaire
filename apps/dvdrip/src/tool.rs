@@ -80,10 +80,3 @@ pub async fn duration(file: &Path) -> f64 {
         .and_then(|o| String::from_utf8_lossy(&o).trim().parse().ok())
         .unwrap_or(0.0)
 }
-
-/// The last lines of a log mentioning an error, for a status message.
-pub fn reason(log: &Path) -> String {
-    let text = std::fs::read(log).map(|b| String::from_utf8_lossy(&b).into_owned()).unwrap_or_default();
-    let lines: Vec<&str> = text.lines().filter(|l| l.to_lowercase().contains("error") || l.to_lowercase().contains("fail")).collect();
-    lines[lines.len().saturating_sub(3)..].join(" | ").chars().take(400).collect()
-}
