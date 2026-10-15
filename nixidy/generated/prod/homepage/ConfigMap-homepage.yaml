@@ -452,10 +452,18 @@ data:
           description: ''
           href: https://sonarr.trdos.me
           icon: sonarr
+      - sportarr:
+          description: ''
+          href: https://sportarr.trdos.me
+          icon: sportarr
       - tdarr:
           description: Library health checks and transcoding
           href: https://tdarr.trdos.me
           icon: tdarr
+      - tracearr:
+          description: ''
+          href: https://tracearr.trdos.me
+          icon: tracearr
     - Observability:
       - Alertmanager:
           description: Alert routing

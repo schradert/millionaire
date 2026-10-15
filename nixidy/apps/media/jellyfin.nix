@@ -173,6 +173,16 @@
                 }
               ];
             };
+            media-sports = {
+              type = "persistentVolumeClaim";
+              existingClaim = "media-sports";
+              advancedMounts.jellyfin.jellyfin = [
+                {
+                  path = "/media/sports";
+                  readOnly = true;
+                }
+              ];
+            };
             # Not a library: media-e2e's test libraries live under /media/downloads/e2e-<run>,
             # outside every real library and not hidden (Jellyfin skips dot-folders).
             media-downloads = {

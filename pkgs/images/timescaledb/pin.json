@@ -1,0 +1,10 @@
+{
+  "version": "pg18.4-ts2.29.1",
+  "digest": "sha256:26a7598a17939878a388864a8faea56f4b90558163b28cfa0e73600091689c82",
+  "source": {
+    "type": "oci-tag",
+    "repository": "timescale/timescaledb-ha",
+    "tagPattern": "pg(18\\.\\d+)-ts(\\d+\\.\\d+\\.\\d+)"
+  },
+  "hold": "restarts the only database instance, and TimescaleDB updates are one-way; bump in a maintenance window, and a new PostgreSQL major needs a dump and restore"
+}

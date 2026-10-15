@@ -1,0 +1,12 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--tracearr--tracearr-backup-dst
+  namespace: media
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: tracearr-backup
+    repository: volsync--tracearr--tracearr-backup
+  trigger:
+    manual: "1"

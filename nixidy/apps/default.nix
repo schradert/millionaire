@@ -51,6 +51,7 @@
     ./media/arr/recyclarr.nix
     ./media/arr/sabnzbd.nix
     ./media/arr/sonarr.nix
+    ./media/arr/sportarr.nix
     ./media/flaresolverr.nix
     ./media/maintainerr.nix
     ./media/jellystat.nix
@@ -76,6 +77,9 @@
     ./media/owncast.nix
     ./media/ryot.nix
     ./media/shoko.nix
+    # Disabled: no per-user sign-in without a Jellyfin password, see docs/media-stack.md.
+    # ./media/streamystats.nix
+    ./media/tracearr.nix
     ./printing/mainsail.nix
     ./printing/spoolman.nix
     ./printing/obico.nix

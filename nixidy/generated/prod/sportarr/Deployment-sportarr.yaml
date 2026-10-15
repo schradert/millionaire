@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: sportarr
+    app.kubernetes.io/instance: sportarr
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: sportarr
+  name: sportarr
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: sportarr
+      app.kubernetes.io/instance: sportarr
+      app.kubernetes.io/name: sportarr
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 9284b46f023881c34401686fee0739dea0eefbe27eac9e4877c991f12bb01aca
+      labels:
+        app.kubernetes.io/controller: sportarr
+        app.kubernetes.io/instance: sportarr
+        app.kubernetes.io/name: sportarr
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - envFrom:
+            - secretRef:
+                name: sportarr
+            - configMapRef:
+                name: sportarr
+          image: sportarr/sportarr:4.1.9.1119@sha256:15f05b0e541adac3d8404b24bdfdc3210a8605969ec0765a180cca77b94ee3ef
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 1867
+          name: sportarr
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 1867
+          startupProbe:
+            failureThreshold: 60
+            httpGet:
+              path: /ping
+              port: 1867
+          volumeMounts:
+            - mountPath: /config
+              name: config
+            - mountPath: /media/downloads
+              name: media-downloads
+            - mountPath: /media/sports
+              name: media-sports
+            - mountPath: /tmp
+              name: tmpfs
+              subPath: tmp
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      initContainers:
+        - args:
+            - |
+              set -eu
+              f=/config/config.xml
+              if [ ! -f "$f" ]; then
+                printf '<?xml version="1.0" encoding="utf-8"?>\n<Config>\n  <ApiKey>%s</ApiKey>\n  <AuthenticationMethod>External</AuthenticationMethod>\n  <AuthenticationRequired>Enabled</AuthenticationRequired>\n</Config>\n' "$Sportarr__ApiKey" > "$f"
+              else
+                sed -i -E \
+                  -e "s|<ApiKey>[^<]*</ApiKey>|<ApiKey>$Sportarr__ApiKey</ApiKey>|" \
+                  -e 's|<AuthenticationMethod>[^<]*</AuthenticationMethod>|<AuthenticationMethod>External</AuthenticationMethod>|' \
+                  -e 's|<AuthenticationRequired>[^<]*</AuthenticationRequired>|<AuthenticationRequired>Enabled</AuthenticationRequired>|' "$f"
+              fi
+          command:
+            - bash
+            - -c
+          envFrom:
+            - secretRef:
+                name: sportarr
+          image: sportarr/sportarr:4.1.9.1119@sha256:15f05b0e541adac3d8404b24bdfdc3210a8605969ec0765a180cca77b94ee3ef
+          name: config
+          volumeMounts:
+            - mountPath: /config
+              name: config
+            - mountPath: /tmp
+              name: tmpfs
+              subPath: tmp
+      securityContext:
+        fsGroup: 65534
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 65534
+        runAsUser: 65534
+      serviceAccountName: sportarr
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: sportarr
+        - name: media-downloads
+          persistentVolumeClaim:
+            claimName: media-downloads
+        - name: media-sports
+          persistentVolumeClaim:
+            claimName: media-sports
+        - emptyDir: {}
+          name: tmpfs

@@ -1,0 +1,8 @@
+{
+  "version": "v2.20.0",
+  "digest": "sha256:45f93e6233eac3802d056c237293482704ae5dd9502a2566f6df5aa8a4fa214c",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/fredrikburmester/streamystats-nextjs"
+  }
+}

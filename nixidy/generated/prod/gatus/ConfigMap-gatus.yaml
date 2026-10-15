@@ -428,6 +428,12 @@ data:
       name: spoolman
       url: https://spoolman.trdos.me
     - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: sportarr
+      url: https://sportarr.trdos.me
+    - conditions:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
@@ -445,6 +451,12 @@ data:
       interval: 1m
       name: syncthing
       url: https://sync.trdos.me
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: tracearr
+      url: https://tracearr.trdos.me/health
     - conditions:
       - '[STATUS] == any(200, 302, 401)'
       group: internal

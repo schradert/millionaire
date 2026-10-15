@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: tracearr
+    app.kubernetes.io/instance: tracearr
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: tracearr
+  name: tracearr
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: tracearr
+      app.kubernetes.io/instance: tracearr
+      app.kubernetes.io/name: tracearr
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 52cdb5e94292111a40f44c2994cad1856cb77496ad3301915462967740373225
+      labels:
+        app.kubernetes.io/controller: tracearr
+        app.kubernetes.io/instance: tracearr
+        app.kubernetes.io/name: tracearr
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - envFrom:
+            - secretRef:
+                name: tracearr
+            - configMapRef:
+                name: tracearr
+          image: ghcr.io/connorgallopo/tracearr:2.8.3@sha256:df06e1a22b7eda67929a3076c5fe4ad2e03df8f92324ab09c2f3b18137a82c83
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+          name: tracearr
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+          startupProbe:
+            failureThreshold: 60
+            httpGet:
+              path: /health
+              port: 3000
+          volumeMounts:
+            - mountPath: /data/backup
+              name: backup
+            - mountPath: /data/tracearr/image-cache
+              name: image-cache
+            - mountPath: /tmp
+              name: tmpfs
+              subPath: tmp
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      securityContext:
+        fsGroup: 1001
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 1001
+        runAsUser: 1001
+      serviceAccountName: tracearr
+      volumes:
+        - name: backup
+          persistentVolumeClaim:
+            claimName: tracearr-backup
+        - emptyDir: {}
+          name: image-cache
+        - emptyDir: {}
+          name: tmpfs

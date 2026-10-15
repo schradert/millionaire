@@ -1,0 +1,27 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: tracearr
+  namespace: identity
+spec:
+  clientSecretRef:
+    create: true
+    name: tracearr
+  definition:
+    clientId: tracearr
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Tracearr
+    protocol: openid-connect
+    publicClient: false
+    redirectUris:
+      - https://tracearr.trdos.me/api/v1/auth/oauth2/callback/oidc
+    standardFlowEnabled: true
+    webOrigins:
+      - https://tracearr.trdos.me
+  realmRef:
+    name: default

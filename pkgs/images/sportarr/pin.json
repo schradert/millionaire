@@ -1,0 +1,9 @@
+{
+  "version": "4.1.9.1119",
+  "digest": "sha256:15f05b0e541adac3d8404b24bdfdc3210a8605969ec0765a180cca77b94ee3ef",
+  "source": {
+    "type": "oci-tag",
+    "repository": "sportarr/sportarr",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}
