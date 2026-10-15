@@ -73,7 +73,12 @@ pub async fn run() -> Result<()> {
 
     let (path, body) = if status["needsSetup"] == json!(true) {
         println!("tracearr: creating the owner {username}");
-        ("/api/v1/auth/sign-up/email", json!({ "name": username, "username": username, "email": email, "password": password }))
+        let mut body = json!({ "name": username, "username": username, "email": email, "password": password });
+        // The claim code Tracearr requires for the first owner (CLAIM_CODE in its env).
+        if let Some(code) = crate::arr::optional_secret("CLAIM_CODE")? {
+            body["claimCode"] = json!(code);
+        }
+        ("/api/v1/auth/sign-up/email", body)
     } else {
         ("/api/v1/auth/sign-in/username", json!({ "username": username, "password": password }))
     };

@@ -75,12 +75,14 @@ in {
           ADMIN_USER = people.me;
           ADMIN_EMAIL = people.my.profiles.personal.email;
           ADMIN_PASSWORD_FILE = "/secrets/admin/password";
+          CLAIM_CODE_FILE = "/secrets/claim/code";
           JELLYFIN_ADMIN_PASSWORD_FILE = "/secrets/jellyfin/password";
           JELLYFIN_PUBLIC_URL = "https://jellyfin.${domain}";
           TRACEARR_EXTERNAL_URL = "https://${hostname}";
         };
         secrets = {
           admin = "tracearr-admin";
+          claim = "tracearr-claim";
           jellyfin = "jellyfin-admin";
         };
       };
@@ -89,6 +91,9 @@ in {
         tracearr-jwt.key = "secret";
         tracearr-cookie.key = "secret";
         tracearr-auth.key = "secret";
+        # First-time setup claim code: until the owner exists, creating one (password or OIDC) needs it,
+        # so nobody can claim an unbootstrapped instance. The bootstrap passes it.
+        tracearr-claim.key = "code";
         # Owner break-glass login (Bitwarden tracearr/admin-password).
         tracearr-admin = {
           key = "password";
@@ -102,6 +107,7 @@ in {
           (fromMediaStore "jwt" "tracearr-jwt" "secret")
           (fromMediaStore "cookie" "tracearr-cookie" "secret")
           (fromMediaStore "auth" "tracearr-auth" "secret")
+          (fromMediaStore "claim" "tracearr-claim" "code")
           {
             secretKey = "oidc";
             remoteRef.key = "tracearr";
@@ -116,6 +122,7 @@ in {
           COOKIE_SECRET = "{{ .cookie }}";
           BETTER_AUTH_SECRET = "{{ .auth }}";
           OIDC_CLIENT_SECRET = "{{ .oidc }}";
+          CLAIM_CODE = "{{ .claim }}";
         };
       };
       resources.externalSecrets.tracearr-postgres.spec = {
@@ -138,6 +145,11 @@ in {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.tracearr = {
+            # Off until the bootstrap pin lands and carries the claim code: raise to 1 with it.
+            replicas =
+              if pinned.images ? app-bootstrap-tracearr
+              then 1
+              else 0;
             annotations."reloader.stakater.com/auto" = "true";
             # RWO backup volume: a rolling update deadlocks on Multi-Attach.
             strategy = "Recreate";
