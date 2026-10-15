@@ -1,8 +1,9 @@
 {config, ...}: let
   inherit (config.canivete.meta) people;
   # Trakt history import (docs/manual-steps.md "Ryot: Trakt and Letterboxd"): a public Trakt
-  # profile, imported once by the bootstrap. Needs a Trakt API app's client id in Bitwarden
-  # `ryot/trakt/client-id` (Ryot's SERVER_IMPORTER_TRAKT_CLIENT_ID).
+  # profile, imported once by the bootstrap and then followed by the `ryot-trakt` CronJob below.
+  # Needs a Trakt API app's client id in Bitwarden `ryot/trakt/client-id` (Ryot's
+  # SERVER_IMPORTER_TRAKT_CLIENT_ID).
   trakt = {
     enable = false;
     username = "";
@@ -163,6 +164,94 @@ in {
             apiVersion = "generators.external-secrets.io/v1alpha1";
             kind = "Password";
             name = "ryot-admin-token";
+          };
+        };
+      };
+      # Ryot follows Trakt (Trakt is the hub; Jellyfin's Trakt plugin and the streaming-service
+      # scrobbler feed it). Ryot's Trakt import does not de-duplicate and cannot read only what is new, so
+      # this reads the newest watch on the public profile, imports only when there is something newer (or
+      # the last import is a week old, for ratings and lists) and removes what the import duplicated
+      # (apps/app-bootstrap/src/ryot_trakt.rs, >= 0.39.0). It reads Ryot's database and acts as the user
+      # through a one-use access link; the Trakt client id is the only secret it needs.
+      resources.externalSecrets.ryot-trakt = lib.mkIf (bootstrapped && trakt.enable) {
+        spec.data = lib.toList {
+          secretKey = "client-id";
+          remoteRef.key = "ryot/trakt/client-id";
+          sourceRef.storeRef.name = "bitwarden";
+          sourceRef.storeRef.kind = "ClusterSecretStore";
+        };
+      };
+      resources.cronJobs.ryot-trakt = lib.mkIf (bootstrapped && trakt.enable) {
+        spec = let
+          secretDirs = {
+            trakt = "ryot-trakt";
+            db = "ryot-app";
+          };
+        in {
+          schedule = "17 * * * *";
+          concurrencyPolicy = "Forbid";
+          successfulJobsHistoryLimit = 1;
+          failedJobsHistoryLimit = 3;
+          jobTemplate.spec = {
+            backoffLimit = 0;
+            # The import itself is given up to 30 minutes.
+            activeDeadlineSeconds = 2400;
+            ttlSecondsAfterFinished = 86400;
+            template = {
+              metadata.labels."app.kubernetes.io/name" = "ryot-trakt";
+              spec = {
+                restartPolicy = "Never";
+                automountServiceAccountToken = false;
+                securityContext = {
+                  runAsNonRoot = true;
+                  runAsUser = 65534;
+                  runAsGroup = 65534;
+                  seccompProfile.type = "RuntimeDefault";
+                };
+                containers = lib.toList {
+                  name = "ryot-trakt";
+                  image = with pinned.images.app-bootstrap-ryot; "${repository}:${tag}@${digest}";
+                  args = ["ryot-trakt"];
+                  env = lib.mapAttrsToList (name: value: {inherit name value;}) {
+                    RYOT_URL = "http://ryot.media.svc.cluster.local:8000";
+                    ADMIN_EMAIL = people.my.profiles.personal.email;
+                    TRAKT_USERNAME = trakt.username;
+                    TRAKT_CLIENT_ID_FILE = "/secrets/trakt/client-id";
+                    RYOT_DB_PASSWORD_FILE = "/secrets/db/password";
+                  };
+                  volumeMounts =
+                    [
+                      {
+                        name = "tmp";
+                        mountPath = "/tmp";
+                      }
+                    ]
+                    ++ lib.mapAttrsToList (dir: _: {
+                      name = dir;
+                      mountPath = "/secrets/${dir}";
+                      readOnly = true;
+                    })
+                    secretDirs;
+                  securityContext = {
+                    allowPrivilegeEscalation = false;
+                    readOnlyRootFilesystem = true;
+                    capabilities.drop = ["ALL"];
+                  };
+                };
+                volumes =
+                  [
+                    {
+                      name = "tmp";
+                      emptyDir = {};
+                    }
+                  ]
+                  ++ lib.mapAttrsToList (dir: secretName: {
+                    name = dir;
+                    secret.secretName = secretName;
+                  })
+                  secretDirs;
+              };
+            };
           };
         };
       };

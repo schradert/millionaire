@@ -169,12 +169,14 @@ The Macs are the root of trust: they decrypt `secrets/sops/*.yaml` with tristan'
 
 Everything else in Ryot is bootstrapped: Jellyfin plays (sink plus the Jellyfin Webhook plugin), Audiobookshelf and Komga progress (yank), Radarr and Sonarr pushes from the Ryot collection "Request", and a one-time Audiobookshelf import. These steps only cover the parts that need your accounts.
 
-Trakt into Ryot (one-time history import from a public profile):
+Trakt is the hub (Jellyfin's Trakt plugin and the streaming-service scrobbler write to it) and Ryot follows it: a first import by the bootstrap, then the `ryot-trakt` CronJob, from a public profile:
 
-1. Create an API app at <https://trakt.tv/oauth/applications/new>. Use any name; the redirect URI can be `urn:ietf:wg:oauth:2.0:oob`, since Ryot does not use it. Copy the **Client ID**.
+1. Create an API app at <https://trakt.tv/oauth/applications/new>. Use any name; **Redirect URI** `urn:ietf:wg:oauth:2.0:oob`; leave **Javascript (cors) origins** empty. Ryot only sends the app's **Client ID** to Trakt's public API (a `trakt-api-key` header, no OAuth login), so the redirect URI is never used and no origin is needed. Copy the **Client ID**.
 2. Store it in Bitwarden as `ryot/trakt/client-id`.
-3. Make the Trakt profile public (Settings → Privacy) at least until the import finishes.
-4. In `nixidy/apps/media/ryot.nix`, set `trakt.enable = true` and `trakt.username = "<your trakt slug>"`. Render, commit and sync. The Ryot bootstrap starts the import once and skips it after any report that didn't fail (Ryot → Settings → Imports shows it).
+3. Make the Trakt profile public (Settings → Privacy) **and keep it public**: the recurring import reads it with the client ID only, so a private profile makes every run fail.
+4. In `nixidy/apps/media/ryot.nix`, set `trakt.enable = true` and `trakt.username = "<your trakt slug>"`. Render, commit and sync. The Ryot bootstrap starts the first import and skips it after any report that didn't fail (Ryot → Settings → Imports shows it). The `ryot-trakt` CronJob then runs hourly: it looks at the newest watch on the profile and imports again only when there is a newer one than the last successful import (or that import is a week old, to pick up ratings and lists).
+
+Why a job and not just a repeated import: Ryot (v10.5.3) does not de-duplicate imports, so every run adds each watch again as a new entry and each rating as a new review, and its Trakt importer has no "only since" option. After each import the job therefore deletes the duplicates through Ryot's own API: a Trakt watch of the same item and episode within 6 hours of another watch (the one Ryot's Jellyfin sink recorded, or an earlier Trakt one) and identical reviews. Removals on Trakt do not propagate to Ryot, and neither do Trakt list entries you remove.
 
 Jellyfin plays out to Trakt:
 

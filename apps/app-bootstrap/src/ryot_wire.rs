@@ -51,14 +51,14 @@ pub async fn gql(http: &Client, url: &str, key: Option<&str>, query: &str, varia
     Ok(body["data"].clone())
 }
 
-struct Ryot {
+pub struct Ryot {
     http: Client,
     url: String,
     key: String,
 }
 
 impl Ryot {
-    async fn q(&self, query: &str, variables: Value) -> Result<Value> {
+    pub async fn q(&self, query: &str, variables: Value) -> Result<Value> {
         gql(&self.http, &self.url, Some(&self.key), query, variables).await
     }
 
@@ -431,11 +431,11 @@ async fn wire(ry: &Ryot) -> Result<()> {
     Ok(())
 }
 
-/// Wire `user_id`'s integrations when the database password is given (`RYOT_DB_PASSWORD[_FILE]`).
-pub async fn run(http: &Client, url: &str, user_id: &str) -> Result<()> {
+/// Connect to Ryot's database when its password is given (`RYOT_DB_PASSWORD[_FILE]`; host `RYOT_DB_HOST`, user
+/// `RYOT_DB_USER`, database `RYOT_DB_NAME`).
+pub async fn connect_db() -> Result<Option<tokio_postgres::Client>> {
     let Some(password) = optional_secret("RYOT_DB_PASSWORD")? else {
-        println!("RYOT_DB_PASSWORD unset: not wiring integrations");
-        return Ok(());
+        return Ok(None);
     };
     let mut cfg = tokio_postgres::Config::new();
     cfg.host(var("RYOT_DB_HOST", "ryot-rw.media.svc.cluster.local"))
@@ -449,6 +449,24 @@ pub async fn run(http: &Client, url: &str, user_id: &str) -> Result<()> {
             eprintln!("ryot database connection: {e}");
         }
     });
+    Ok(Some(db))
+}
+
+/// A task run as the user: it gets the Ryot session and the database.
+pub type Task<'a> = Box<dyn for<'r> FnOnce(&'r Ryot, &'r tokio_postgres::Client) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + 'r>> + 'a>;
+
+/// Wire `user_id`'s integrations when the database password is given (`RYOT_DB_PASSWORD[_FILE]`).
+pub async fn run(http: &Client, url: &str, user_id: &str) -> Result<()> {
+    let Some(db) = connect_db().await? else {
+        println!("RYOT_DB_PASSWORD unset: not wiring integrations");
+        return Ok(());
+    };
+    with_session(http, url, &db, user_id, Box::new(|ry, _| Box::pin(wire(ry)))).await
+}
+
+/// Run `task` as `user_id`: a one-use, one-hour access link is inserted, exchanged for an API key, and the session
+/// is logged out and the link deleted afterwards.
+pub async fn with_session(http: &Client, url: &str, db: &tokio_postgres::Client, user_id: &str, task: Task<'_>) -> Result<()> {
     // Leftovers of an interrupted run.
     db.execute("DELETE FROM access_link WHERE name = $1 AND user_id = $2", &[&LINK_NAME, &user_id]).await?;
     let link = format!("acl_{}", &random_password()?[2..14]);
@@ -472,7 +490,7 @@ pub async fn run(http: &Client, url: &str, user_id: &str) -> Result<()> {
     let res = match key {
         Ok(key) => {
             let ry = Ryot { http: http.clone(), url: url.to_string(), key };
-            let res = wire(&ry).await;
+            let res = task(&ry, db).await;
             if let Err(e) = ry.q("mutation { logoutUser }", json!({})).await {
                 eprintln!("ryot logout: {e}");
             }

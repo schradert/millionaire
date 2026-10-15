@@ -1,6 +1,6 @@
 //! Idempotent first-run bootstraps, run as ArgoCD PostSync Jobs.
 //!
-//! `app-bootstrap <app>` where app is `actual`, `arr`, `atuin`, `audiobookshelf`, `autobrr`, `bazarr`, `cleanuparr`, `forgejo`, `homarr`, `immich`, `kapowarr`, `kavita`, `komga`, `lingarr`, `maintainerr`, `mealie`, `miniflux`, `navidrome`, `ombi`, `openviking`, `ryot`, `seerr`, `shoko`, `sportarr`, `streamystats`, `syncthing`, `tracearr`, `contextforge` or `keycloak-invite` (Keycloak's set-your-password email for newly declared family users). Every step checks
+//! `app-bootstrap <app>` where app is `actual`, `arr`, `atuin`, `audiobookshelf`, `autobrr`, `bazarr`, `cleanuparr`, `forgejo`, `homarr`, `immich`, `kapowarr`, `kavita`, `komga`, `lingarr`, `maintainerr`, `mealie`, `miniflux`, `navidrome`, `ombi`, `openviking`, `ryot`, `ryot-trakt` (the recurring Trakt import), `seerr`, `shoko`, `sportarr`, `streamystats`, `syncthing`, `tracearr`, `contextforge` or `keycloak-invite` (Keycloak's set-your-password email for newly declared family users). Every step checks
 //! the current state first, so a rerun against a configured app changes nothing.
 
 mod actual;
@@ -29,6 +29,7 @@ mod ombi;
 mod openviking;
 mod profile;
 mod ryot;
+mod ryot_trakt;
 mod ryot_wire;
 mod seerr;
 mod shoko;
@@ -69,6 +70,7 @@ async fn main() -> ExitCode {
         "ombi" => ombi::run().await,
         "openviking" => openviking::run().await,
         "ryot" => ryot::run().await,
+        "ryot-trakt" => ryot_trakt::run().await,
         "seerr" => seerr::run().await,
         "shoko" => shoko::run().await,
         "sportarr" => sportarr::run().await,
