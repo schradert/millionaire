@@ -62,7 +62,7 @@ You watch on an Android TV, so the browser is not where most plays happen. What 
 - **Trakt's own Streaming Scrobbler** (Trakt VIP, in the Trakt mobile apps, via the third-party Younify service) links to the streaming account and imports viewing history, with a first sync about ten minutes after linking and one about every 24 hours after ([AlternativeTo, Dec 2024](https://alternativeto.net/news/2024/12/trakt-tv-launches-streaming-scrobbler-to-sync-viewing-history-across-streaming-platforms/)). A review at launch listed Netflix, Hulu, Disney+, Max, Amazon Prime and Apple TV+ ([PCWorld](https://www.pcworld.com/article/2607062/trakt-helps-you-keep-track-of-your-streaming-shows.html)). Because it reads the account, it should also see TV plays and it is the only route found that covers Disney+, Hulu and Apple TV+. Unverified: current service list, whether it still works, and TV plays specifically. It costs a VIP plan and uses Trakt's own app (Play Store), so Obtainium cannot track it.
 - **Kodi on Android TV** with the Trakt add-on ([script.trakt](https://github.com/razzeee/script.trakt), last pushed 2026-07-28) scrobbles what Kodi plays. It does not see Netflix or other apps.
 - **Jellyfin on Android TV**: covered by the Jellyfin Trakt plugin, server side.
-- **Stremio** on Android TV has its own Trakt link, but a January 2024 user report says it stopped scrobbling ([Reddit](https://lr.ggtyler.dev/r/Stremio/comments/190mb1z/stremio_is_not_scrobbling_to_trakt_again)). Unverified now.
+- **Stremio** on Android TV has its own Trakt link, but a January 2024 user report says it stopped scrobbling (an r/Stremio thread, "Stremio is not scrobbling to Trakt again"). Unverified now.
 
 ### Automating the history sync headlessly: not built
 
