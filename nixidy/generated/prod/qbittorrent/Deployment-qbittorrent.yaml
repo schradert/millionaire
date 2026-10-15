@@ -45,7 +45,7 @@ spec:
             - name: FIREWALL_INPUT_PORTS
               value: "8080"
             - name: FIREWALL_OUTBOUND_SUBNETS
-              value: 10.0.0.0/8
+              value: 10.0.0.0/16,10.43.0.0/16
             - name: HEALTH_RESTART_VPN
               value: "on"
             - name: PORT_FORWARD_ONLY

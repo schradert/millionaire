@@ -221,9 +221,11 @@
                   FIREWALL_ENABLED_DISABLING_IT_SHOOTS_YOU_IN_YOUR_FOOT = "on";
                   # The WebUI, for the Service. Nothing else comes in on eth0.
                   FIREWALL_INPUT_PORTS = toString port;
-                  # Replies to in-cluster WebUI clients (Cilium pool 10.0.0.0/8, services
-                  # included) must leave via eth0, not the tunnel.
-                  FIREWALL_OUTBOUND_SUBNETS = "10.0.0.0/8";
+                  # Replies to in-cluster WebUI clients must leave via eth0, not the tunnel: pods
+                  # (Cilium hands each node a /24 from 10.0.0.0/8, sequentially from 10.0.0.0) and
+                  # services (10.43.0.0/16). NOT all of 10.0.0.0/8: ProtonVPN's gateway is 10.2.0.1,
+                  # and routing it out eth0 made every NAT-PMP port-forward request time out.
+                  FIREWALL_OUTBOUND_SUBNETS = "10.0.0.0/16,10.43.0.0/16";
                   # DNS over TLS through the tunnel; no plaintext DNS, no IPv6 upstreams.
                   DNS_SERVER = "on";
                   DNS_UPSTREAM_RESOLVER_TYPE = "DoT";
