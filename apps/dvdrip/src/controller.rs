@@ -55,9 +55,12 @@ pub struct ControllerArgs {
     pub movies_pvc: String,
     #[arg(long, env = "DVDRIP_JOB_SERVICE_ACCOUNT", default_value = "dvdrip-job")]
     pub job_service_account: String,
-    /// Secret with JELLYFIN_URL / JELLYFIN_API_KEY for the publish Job (optional).
-    #[arg(long, env = "DVDRIP_JELLYFIN_SECRET")]
-    pub jellyfin_secret: Option<String>,
+    /// Jellyfin, for a library rescan after publishing (optional).
+    #[arg(long, env = "DVDRIP_JELLYFIN_URL")]
+    pub jellyfin_url: Option<String>,
+    /// Secret (key `password`) with the Jellyfin admin password.
+    #[arg(long, env = "DVDRIP_JELLYFIN_SECRET", default_value = "jellyfin-admin")]
+    pub jellyfin_secret: String,
     #[arg(long, env = "DVDRIP_METRICS_ADDR", default_value = "0.0.0.0:9090")]
     pub listen: String,
     #[arg(long, env = "DVDRIP_WORK_ROOT", default_value = "/work")]
@@ -336,16 +339,19 @@ pub fn job_spec(a: &ControllerArgs, disc: &Disc, st: &DiscStatus, stage: &str, n
         }
     }
     env.push(json!({"name": "DVDRIP_ENCODER", "value": encoder}));
-    let mut volumes = vec![json!({"name": "work", "persistentVolumeClaim": {"claimName": a.work_pvc}})];
-    let mut mounts = vec![json!({"name": "work", "mountPath": "/work"})];
+    // The image has no /tmp (HOME, MakeMKV's settings, HandBrake's temp files).
+    let mut volumes = vec![json!({"name": "work", "persistentVolumeClaim": {"claimName": a.work_pvc}}), json!({"name": "tmp", "emptyDir": {}})];
+    let mut mounts = vec![json!({"name": "work", "mountPath": "/work"}), json!({"name": "tmp", "mountPath": "/tmp"})];
     volumes.push(json!({"name": "dvd", "persistentVolumeClaim": {"claimName": a.dvd_pvc, "readOnly": stage == "e"}}));
     mounts.push(json!({"name": "dvd", "mountPath": "/media/dvd", "readOnly": stage == "e"}));
-    let mut env_from = vec![];
     if stage == "p" {
         volumes.push(json!({"name": "movies", "persistentVolumeClaim": {"claimName": a.movies_pvc}}));
         mounts.push(json!({"name": "movies", "mountPath": "/media/movies"}));
-        if let Some(s) = &a.jellyfin_secret {
-            env_from.push(json!({"secretRef": {"name": s, "optional": true}}));
+        if let Some(u) = &a.jellyfin_url {
+            env.push(json!({"name": "JELLYFIN_URL", "value": u}));
+            env.push(
+                json!({"name": "JELLYFIN_ADMIN_PASSWORD", "valueFrom": {"secretKeyRef": {"name": a.jellyfin_secret, "key": "password", "optional": true}}}),
+            );
         }
     }
     let command = if stage == "e" { "encode" } else { "publish" };
@@ -388,7 +394,6 @@ pub fn job_spec(a: &ControllerArgs, disc: &Disc, st: &DiscStatus, stage: &str, n
                     "image": a.image,
                     "args": [command, "--disc", disc_ref],
                     "env": env,
-                    "envFrom": env_from,
                     "resources": resources,
                     "securityContext": {"allowPrivilegeEscalation": false},
                     "volumeMounts": mounts,
@@ -530,7 +535,8 @@ mod tests {
             dvd_pvc: "d".into(),
             movies_pvc: "m".into(),
             job_service_account: "sa".into(),
-            jellyfin_secret: None,
+            jellyfin_url: None,
+            jellyfin_secret: "j".into(),
             listen: String::new(),
             work_root: "/work".into(),
         };
@@ -546,6 +552,6 @@ mod tests {
         assert!(cpu["spec"]["template"]["spec"]["containers"][0]["resources"].get("limits").is_none());
         let publ = serde_json::to_value(job_spec(&a, &disc, &s, "p", 3, false)).unwrap();
         let vols: Vec<&str> = publ["spec"]["template"]["spec"]["volumes"].as_array().unwrap().iter().map(|v| v["name"].as_str().unwrap()).collect();
-        assert_eq!(vols, ["work", "dvd", "movies"]);
+        assert_eq!(vols, ["work", "tmp", "dvd", "movies"]);
     }
 }

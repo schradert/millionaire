@@ -64,8 +64,13 @@ fn init_logging() {
     }
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
+    // Environment first, while there is only one thread.
+    tool::nvidia_libs();
+    tokio::runtime::Builder::new_multi_thread().enable_all().build()?.block_on(run())
+}
+
+async fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
     if !matches!(cli.command, Command::Crds | Command::Probe(_)) {
         init_logging();

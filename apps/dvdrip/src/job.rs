@@ -241,10 +241,35 @@ pub async fn publish_cmd(a: PublishArgs) -> Result<()> {
     }
 }
 
-/// Ask Jellyfin to rescan (JELLYFIN_URL + JELLYFIN_API_KEY); best effort.
+/// Ask Jellyfin to rescan its libraries: JELLYFIN_URL, JELLYFIN_ADMIN_PASSWORD (the bootstrap's
+/// admin, user JELLYFIN_ADMIN_USER or "admin"). Best effort: the scheduled scan catches up anyway.
 async fn jellyfin_refresh() {
-    let (Ok(url), Ok(key)) = (std::env::var("JELLYFIN_URL"), std::env::var("JELLYFIN_API_KEY")) else { return };
-    let r = reqwest::Client::new().post(format!("{}/Library/Refresh", url.trim_end_matches('/'))).header("X-Emby-Token", key).send().await;
+    let (Ok(url), Ok(pw)) = (std::env::var("JELLYFIN_URL"), std::env::var("JELLYFIN_ADMIN_PASSWORD")) else { return };
+    let user = std::env::var("JELLYFIN_ADMIN_USER").unwrap_or_else(|_| "admin".into());
+    let base = url.trim_end_matches('/');
+    let client = r#"MediaBrowser Client="dvdrip", Device="dvdrip", DeviceId="dvdrip-publish", Version="1""#;
+    let http = reqwest::Client::new();
+    let token = async {
+        let r = http
+            .post(format!("{base}/Users/AuthenticateByName"))
+            .header("X-Emby-Authorization", client)
+            .json(&json!({"Username": user, "Pw": pw}))
+            .send()
+            .await?
+            .error_for_status()?;
+        let v: serde_json::Value = r.json().await?;
+        anyhow::Ok(v["AccessToken"].as_str().unwrap_or_default().to_string())
+    }
+    .await;
+    let r = match token {
+        Ok(t) => http
+            .post(format!("{base}/Library/Refresh"))
+            .header("X-Emby-Authorization", format!(r#"{client}, Token="{t}""#))
+            .send()
+            .await
+            .map_err(anyhow::Error::from),
+        Err(e) => Err(e),
+    };
     match r {
         Ok(r) if r.status().is_success() => info!("Jellyfin library refresh started"),
         Ok(r) => warn!(status = %r.status(), "Jellyfin refresh refused"),

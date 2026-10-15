@@ -201,6 +201,61 @@
           ];
         };
 
+      # DVD ripping (apps/dvdrip, docs/dvd-rip.md): agent, controller, encode and publish Jobs, with
+      # the media tools on PATH. Stock nixpkgs: NVENC needs no CUDA build (HandBrake dlopens the
+      # driver the GPU pod gets from the container toolkit).
+      dvdrip = let
+        amd64Pkgs = import inputs.nixpkgs {
+          system = "x86_64-linux";
+          config.allowUnfreePredicate = p: lib.getName p == "makemkv";
+        };
+        src = ../apps/dvdrip;
+        pkg = amd64Pkgs.rustPlatform.buildRustPackage {
+          pname = "dvdrip";
+          version = (builtins.fromTOML (builtins.readFile "${src}/Cargo.toml")).package.version;
+          inherit src;
+          cargoLock.lockFile = "${src}/Cargo.lock";
+          # The parity tests read the recorded discs in tests/fixtures.
+          doCheck = true;
+        };
+        tools = with amd64Pkgs; [
+          bashInteractive
+          coreutils
+          findutils
+          gnugrep
+          handbrake
+          makemkv
+          ddrescue
+          dvdbackup
+          lsdvd
+          cdrkit
+          mkvtoolnix-cli
+          ffmpeg-full
+          util-linux
+          systemd
+          regionset
+          cacert
+        ];
+      in
+        n2c.buildImage {
+          name = "${registry}/library/dvdrip";
+          tag = pkg.version;
+          arch = "amd64";
+          config = {
+            Entrypoint = ["${pkg}/bin/dvdrip"];
+            Env = [
+              "PATH=${lib.makeBinPath tools}"
+              "LD_LIBRARY_PATH=${amd64Pkgs.libdvdcss}/lib"
+              "HOME=/tmp"
+              "SSL_CERT_FILE=${amd64Pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+            ];
+          };
+          layers = [
+            (n2c.buildLayer {deps = tools ++ [amd64Pkgs.libdvdcss];})
+            (n2c.buildLayer {deps = [pkg];})
+          ];
+        };
+
       # Monthly backup verification (apps/backup-verify, nixidy/system/storage/backup-verify.nix):
       # restic check, scratch VolSync + CNPG restores, etcd snapshot age. Bump the tag with the script.
       backup-verify = let
