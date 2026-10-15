@@ -22,12 +22,7 @@ pub struct Arr {
 impl Arr {
     pub fn new(app: &'static str) -> R<Self> {
         let api = if matches!(app, "lidarr" | "prowlarr") { "v1" } else { "v3" };
-        Ok(Arr {
-            app,
-            base: url(app, &format!("http://{app}.media.svc.cluster.local")),
-            key: need_secret(app, &format!("{app}-apikey"), "apikey")?,
-            api,
-        })
+        Ok(Arr { app, base: url(app, &format!("http://{app}.media.svc.cluster.local")), key: need_secret(app, &format!("{app}-apikey"), "apikey")?, api })
     }
 
     pub fn req(&self, ctx: &Ctx, m: Method, path: &str) -> RequestBuilder {
@@ -72,14 +67,20 @@ impl Arr {
     pub async fn command(&self, ctx: &Ctx, body: Value) -> R<Value> {
         let c = self.post(ctx, "/command", &body).await?;
         let id = c["id"].as_i64().at(self.app, "command id")?;
-        crate::ctx::poll(self.app, &format!("command {}", body["name"]), std::time::Duration::from_secs(600), std::time::Duration::from_secs(5), || async move {
-            let c = self.get(ctx, &format!("/command/{id}")).await?;
-            match c["status"].as_str() {
-                Some("completed") => Ok(Some(c)),
-                Some("failed") | Some("aborted") | Some("cancelled") => Err(Fail::new(self.app, "command", format!("{}: {}", c["status"], c["message"]))),
-                _ => Ok(None),
-            }
-        })
+        crate::ctx::poll(
+            self.app,
+            &format!("command {}", body["name"]),
+            std::time::Duration::from_secs(600),
+            std::time::Duration::from_secs(5),
+            || async move {
+                let c = self.get(ctx, &format!("/command/{id}")).await?;
+                match c["status"].as_str() {
+                    Some("completed") => Ok(Some(c)),
+                    Some("failed") | Some("aborted") | Some("cancelled") => Err(Fail::new(self.app, "command", format!("{}: {}", c["status"], c["message"]))),
+                    _ => Ok(None),
+                }
+            },
+        )
         .await
     }
 
@@ -145,9 +146,7 @@ impl Jellyfin {
     }
 
     pub fn req(&self, ctx: &Ctx, m: Method, path: &str) -> RequestBuilder {
-        ctx.http
-            .request(m, format!("{}{}", self.base, path))
-            .header("X-Emby-Authorization", Self::header(&self.device, Some(&self.token)))
+        ctx.http.request(m, format!("{}{}", self.base, path)).header("X-Emby-Authorization", Self::header(&self.device, Some(&self.token)))
     }
 
     pub async fn get(&self, ctx: &Ctx, path: &str) -> R<Value> {
@@ -194,10 +193,7 @@ impl Qbt {
     }
 
     pub fn req(&self, ctx: &Ctx, m: Method, path: &str) -> RequestBuilder {
-        ctx.http
-            .request(m, format!("{}/api/v2{}", self.base, path))
-            .header("Cookie", &self.sid)
-            .header("Referer", &self.base)
+        ctx.http.request(m, format!("{}/api/v2{}", self.base, path)).header("Cookie", &self.sid).header("Referer", &self.base)
     }
 
     pub async fn post_form(&self, ctx: &Ctx, path: &str, form: &[(&str, &str)]) -> R<String> {
@@ -231,7 +227,11 @@ impl Kavita {
         let mut api_key: String = r["apiKey"].as_str().unwrap_or_default().into();
         if api_key.is_empty() {
             // 0.8.9+: per-user auth keys; the OPDS one is in the OPDS URL.
-            let url = send(ctx.http.get(format!("{base}/api/Account/opds-url")).bearer_auth(&token), "kavita", "OPDS URL").await?.text().await.at("kavita", "OPDS URL")?;
+            let url = send(ctx.http.get(format!("{base}/api/Account/opds-url")).bearer_auth(&token), "kavita", "OPDS URL")
+                .await?
+                .text()
+                .await
+                .at("kavita", "OPDS URL")?;
             api_key = url.trim().trim_matches('"').rsplit("api/opds/").next().unwrap_or_default().trim_end_matches('/').to_string();
         }
         Ok(Kavita { token, api_key, base })
@@ -251,11 +251,7 @@ pub struct Komga {
 impl Komga {
     pub fn new() -> R<Self> {
         let user = std::env::var("ADMIN_EMAIL").map_err(|_| Fail::skip("komga", "credentials", "ADMIN_EMAIL unset"))?;
-        Ok(Komga {
-            base: url("komga", "http://komga.media.svc.cluster.local:25600"),
-            pw: need_secret("komga", "komga-admin", "password")?,
-            user,
-        })
+        Ok(Komga { base: url("komga", "http://komga.media.svc.cluster.local:25600"), pw: need_secret("komga", "komga-admin", "password")?, user })
     }
 
     pub fn req(&self, ctx: &Ctx, m: Method, path: &str) -> RequestBuilder {
@@ -272,12 +268,9 @@ impl Abs {
     pub async fn login(ctx: &Ctx) -> R<Self> {
         let base = url("audiobookshelf", "http://audiobookshelf.media.svc.cluster.local:13378");
         let pw = need_secret("audiobookshelf", "audiobookshelf-admin", "password")?;
-        let r = json(
-            ctx.http.post(format!("{base}/login")).json(&json!({ "username": var("ABS_USER", "tristan"), "password": pw })),
-            "audiobookshelf",
-            "login",
-        )
-        .await?;
+        let r =
+            json(ctx.http.post(format!("{base}/login")).json(&json!({ "username": var("ABS_USER", "tristan"), "password": pw })), "audiobookshelf", "login")
+                .await?;
         let token = r["user"]["accessToken"].as_str().or(r["user"]["token"].as_str()).at("audiobookshelf", "login token")?.to_string();
         Ok(Abs { base, token })
     }
@@ -372,6 +365,42 @@ impl Seerr {
 
     pub fn req(&self, ctx: &Ctx, m: Method, path: &str) -> RequestBuilder {
         ctx.http.request(m, format!("{}/api/v1{}", self.base, path)).header("Cookie", &self.cookie)
+    }
+}
+
+/// The header oauth2-proxy's router sets from the verified Keycloak token and Ombi signs the user in by.
+pub const OMBI_USER_HEADER: &str = "X-Auth-Request-Preferred-Username";
+
+pub struct Ombi {
+    pub base: String,
+    key: String,
+    admin: String,
+}
+
+impl Ombi {
+    pub fn new() -> R<Self> {
+        Ok(Ombi {
+            base: url("ombi", "http://ombi.media.svc.cluster.local:3579"),
+            key: need_secret("ombi", "ombi-apikey", "apikey")?,
+            admin: var("OMBI_ADMIN_USER", "ombi-admin"),
+        })
+    }
+
+    /// As the break-glass admin: the API key plus Ombi's own `UserName` impersonation header.
+    pub fn admin(&self, ctx: &Ctx, m: Method, path: &str) -> RequestBuilder {
+        ctx.http.request(m, format!("{}/api/v1{}", self.base, path)).header("ApiKey", &self.key).header("UserName", &self.admin)
+    }
+
+    /// As a person signed in by `login_as`.
+    pub fn as_user(&self, ctx: &Ctx, m: Method, path: &str, jwt: &str) -> RequestBuilder {
+        ctx.http.request(m, format!("{}/api/v1{}", self.base, path)).bearer_auth(jwt)
+    }
+
+    /// The call the browser makes behind oauth2-proxy: the user named in the header gets a token
+    /// (and an account on first use).
+    pub async fn login_as(&self, ctx: &Ctx, user: &str) -> R<String> {
+        let v = json(ctx.http.post(format!("{}/api/v1/token/header_auth", self.base)).header(OMBI_USER_HEADER, user), "ombi", "header login").await?;
+        v["access_token"].as_str().map(String::from).at("ombi", "header login access token")
     }
 }
 

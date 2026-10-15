@@ -30,6 +30,7 @@
       "dvd-webdav"
       "qbittorrent-admin"
       "autobrr-admin"
+      "ombi-apikey"
     ];
   in {
     applications.${name} = lib.mkIf (image != null) {

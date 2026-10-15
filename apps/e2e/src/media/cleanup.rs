@@ -6,7 +6,7 @@ use std::{fs, time::Duration};
 use reqwest::Method;
 use serde_json::{json, Value};
 
-use super::apps::{maintainerr_url, maloja_url, Abs, Arr, Jellyfin, Kavita, Komga, Navidrome, Qbt, Seerr};
+use super::apps::{maintainerr_url, maloja_url, Abs, Arr, Jellyfin, Kavita, Komga, Navidrome, Ombi, Qbt, Seerr};
 use crate::{
     ctx::{enc, json, media_root, poll, secret, send, Ctx, Fail, Scope, R},
     report::Flow,
@@ -107,6 +107,39 @@ async fn seerr(c: &mut Clean<'_>) -> R<()> {
             })
             .await;
         }
+    }
+    Ok(())
+}
+
+/// Ombi accounts the header login made for the run (their name carries the marker) and the requests
+/// made by or on behalf of them, requests first.
+async fn ombi(c: &mut Clean<'_>) -> R<()> {
+    let ctx = c.ctx;
+    let o = Ombi::new()?;
+    let users = json(o.admin(ctx, Method::GET, "/Identity/Users"), "ombi", "list users").await?;
+    let mine: Vec<(String, String)> = users
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|u| c.scope.hit_v(&u["userName"]))
+        .filter_map(|u| Some((u["id"].as_str()?.to_string(), u["userName"].as_str()?.to_string())))
+        .collect();
+    for kind in ["movie", "music"] {
+        let reqs = json(o.admin(ctx, Method::GET, &format!("/request/{kind}")), "ombi", "list requests").await?;
+        for r in reqs.as_array().cloned().unwrap_or_default() {
+            let by = r["requestedUserId"].as_str().unwrap_or("");
+            if mine.iter().any(|(id, _)| id == by) {
+                let path = format!("/request/{kind}/{}", r["id"]);
+                c.act(format!("ombi {kind} request {} ({})", r["id"], r["title"]), async {
+                    send(o.admin(ctx, Method::DELETE, &path), "ombi", "delete request").await.map(|_| ())
+                })
+                .await;
+            }
+        }
+    }
+    for (id, name) in mine {
+        c.act(format!("ombi user {name}"), async { send(o.admin(ctx, Method::DELETE, &format!("/Identity/{id}")), "ombi", "delete user").await.map(|_| ()) })
+            .await;
     }
     Ok(())
 }
@@ -352,6 +385,7 @@ pub async fn cleanup(ctx: &Ctx, scope: &Scope, dry: bool) -> Flow {
     }
     step!("qbittorrent", qbittorrent(&mut c).await);
     step!("seerr", seerr(&mut c).await);
+    step!("ombi", ombi(&mut c).await);
     step!("radarr", arr(&mut c, "radarr", "/movie").await);
     step!("sonarr", arr(&mut c, "sonarr", "/series").await);
     step!("lidarr", arr(&mut c, "lidarr", "/artist").await);
@@ -439,6 +473,15 @@ pub async fn residue(ctx: &Ctx, scope: &Scope) -> Flow {
             let s = Seerr::session(ctx).await?;
             let reqs = json(s.req(ctx, Method::GET, "/request?take=200&skip=0&filter=all"), "seerr", "list requests").await?;
             Ok(reqs["results"].as_array().into_iter().flatten().filter(|r| scope.hit_v(&r["rootFolder"])).map(|r| format!("request {}", r["id"])).collect())
+        }
+        .await
+    );
+    check!(
+        "ombi",
+        async {
+            let o = Ombi::new()?;
+            let users = json(o.admin(ctx, Method::GET, "/Identity/Users"), "ombi", "list users").await?;
+            Ok(users.as_array().into_iter().flatten().filter(|u| scope.hit_v(&u["userName"])).map(|u| format!("user {}", u["userName"])).collect())
         }
         .await
     );

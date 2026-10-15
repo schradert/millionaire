@@ -4,7 +4,7 @@
 use reqwest::Method;
 use serde_json::{json, Value};
 
-use super::apps::{autobrr_url, bazarr_url, maintainerr_url, Arr, Qbt, Seerr};
+use super::apps::{autobrr_url, bazarr_url, maintainerr_url, Arr, Ombi, Qbt, Seerr, OMBI_USER_HEADER};
 use crate::{
     ctx::{json, need_secret, send, var, At, Ctx, Fail, R},
     report::Flow,
@@ -184,7 +184,54 @@ pub async fn maintainerr(ctx: &Ctx, f: &mut Flow) -> R<()> {
     if seerr["url"].as_str().unwrap_or("").is_empty() {
         return Err(Fail::new("maintainerr", "seerr", "not connected"));
     }
-    f.ok("maintainerr", "integrations", "Jellyfin, Radarr, Sonarr, Seerr connected");
+    let ombi = json(get("/api/settings/ombi"), "maintainerr", "ombi").await?;
+    if ombi["url"].as_str().unwrap_or("").is_empty() {
+        return Err(Fail::new("maintainerr", "ombi", "not connected"));
+    }
+    let dl = json(get("/api/settings/download-client"), "maintainerr", "download client").await?;
+    if dl["download_client_type"] != json!("qbittorrent") || dl["download_client_url"].as_str().unwrap_or("").is_empty() {
+        return Err(Fail::new("maintainerr", "download client", "qBittorrent not connected"));
+    }
+    let notes = json(get("/api/notifications/configurations"), "maintainerr", "notifications").await?;
+    if !notes.as_array().into_iter().flatten().any(|n| n["agent"] == json!("ntfy") && n["enabled"] == json!(true)) {
+        return Err(Fail::new("maintainerr", "notifications", "no enabled ntfy configuration"));
+    }
+    f.ok("maintainerr", "integrations", "Jellyfin, Radarr, Sonarr, Seerr, Ombi, qBittorrent, ntfy connected");
+    Ok(())
+}
+
+/// Ombi: header login on (users created at first login), Jellyfin with libraries, Sonarr, Radarr and Lidarr
+/// with a quality profile and root folder, ntfy on.
+pub async fn ombi(ctx: &Ctx, f: &mut Flow) -> R<()> {
+    let o = Ombi::new()?;
+    let get = |path: &str| o.admin(ctx, Method::GET, path);
+    let auth = json(get("/Settings/authentication"), "ombi", "authentication").await?;
+    if auth["enableHeaderAuth"] != json!(true) || auth["headerAuthVariable"] != json!(OMBI_USER_HEADER) || auth["headerAuthCreateUser"] != json!(true) {
+        return Err(Fail::new("ombi", "authentication", format!("header login not as declared: {auth}")));
+    }
+    let jf = json(get("/Settings/jellyfin"), "ombi", "jellyfin").await?;
+    let libs = jf["servers"][0]["jellyfinSelectedLibraries"].as_array().into_iter().flatten().filter(|l| l["enabled"] == json!(true)).count();
+    if jf["enable"] != json!(true) || libs == 0 {
+        return Err(Fail::new("ombi", "jellyfin", format!("enabled {} with {libs} libraries", jf["enable"])));
+    }
+    let ready = |app: &str, s: &Value, profile: &str, root: &str| -> R<()> {
+        if s["enabled"] != json!(true)
+            || s["apiKey"].as_str().unwrap_or("").is_empty()
+            || s[profile].as_str().unwrap_or("").is_empty()
+            || s[root].as_str().unwrap_or("").is_empty()
+        {
+            return Err(Fail::new("ombi", app, "not enabled with an API key, quality profile and root folder"));
+        }
+        Ok(())
+    };
+    ready("sonarr", &json(get("/Settings/sonarr"), "ombi", "sonarr").await?, "qualityProfile", "rootPath")?;
+    ready("radarr", &json(get("/Settings/radarr"), "ombi", "radarr").await?["radarr"], "defaultQualityProfile", "defaultRootPath")?;
+    ready("lidarr", &json(get("/Settings/lidarr"), "ombi", "lidarr").await?, "defaultQualityProfile", "defaultRootPath")?;
+    let ntfy = json(get("/Settings/notifications/ntfy"), "ombi", "ntfy").await?;
+    if ntfy["enabled"] != json!(true) || ntfy["topic"].as_str().unwrap_or("").is_empty() {
+        return Err(Fail::new("ombi", "ntfy", "not enabled with a topic"));
+    }
+    f.ok("ombi", "integrations", format!("header login, Jellyfin ({libs} libraries), Sonarr, Radarr, Lidarr, ntfy topic {}", ntfy["topic"]));
     Ok(())
 }
 

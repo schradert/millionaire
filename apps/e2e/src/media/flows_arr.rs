@@ -8,11 +8,11 @@ use std::{
     time::Duration,
 };
 
-use reqwest::{header, multipart, Method};
+use reqwest::{header, multipart, Method, StatusCode};
 use serde_json::{json, Value};
 
 use super::{
-    apps::{Arr, Jellyfin, Navidrome, Qbt, Seerr},
+    apps::{Arr, Jellyfin, Navidrome, Ombi, Qbt, Seerr},
     content,
 };
 use crate::{
@@ -65,7 +65,14 @@ pub async fn torrent_files(ctx: &Ctx, f: &mut Flow, url: &str, keep: &dyn Fn(&st
     let save_s = save.to_string_lossy().to_string();
     let _ = q.post_form(ctx, "/torrents/createCategory", &[("category", &ctx.marker), ("savePath", &save_s)]).await;
     q.post_form(ctx, "/torrents/createTags", &[("tags", &ctx.marker)]).await?;
-    let before: Vec<String> = q.get(ctx, &format!("/torrents/info?tag={}", enc(&ctx.marker))).await?.as_array().into_iter().flatten().filter_map(|t| t["hash"].as_str().map(String::from)).collect();
+    let before: Vec<String> = q
+        .get(ctx, &format!("/torrents/info?tag={}", enc(&ctx.marker)))
+        .await?
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|t| t["hash"].as_str().map(String::from))
+        .collect();
     let form = multipart::Form::new()
         .text("urls", url.to_string())
         .text("savepath", save_s.clone())
@@ -120,19 +127,27 @@ pub async fn torrent_files(ctx: &Ctx, f: &mut Flow, url: &str, keep: &dyn Fn(&st
     let want: Vec<i64> = keep.iter().filter_map(|v| v["index"].as_i64()).collect();
     f.ok("qbittorrent", "torrent added", format!("{hash}, downloading {} (+{} boundary neighbours) of {} files", names.len(), extra.len(), files.len()));
     let start = std::time::Instant::now();
-    poll("qbittorrent", "download completes", Duration::from_secs(var("E2E_TORRENT_TIMEOUT", "2700").parse().unwrap_or(2700)), Duration::from_secs(10), || async {
-        let t = q.get(ctx, &format!("/torrents/info?hashes={hash}")).await?;
-        let t = t.as_array().and_then(|a| a.first()).cloned().unwrap_or_default();
-        if t["state"] == json!("error") || t["state"] == json!("missingFiles") {
-            return Err(Fail::new("qbittorrent", "download", format!("state {}", t["state"])));
-        }
-        // Done when the wanted files are: the neighbours only help their shared pieces complete,
-        // and a piece shared with a file archive.org serves differently (a .URL, an .nfo) may
-        // never finish.
-        let fl = q.get(ctx, &format!("/torrents/files?hash={hash}")).await?;
-        let done = fl.as_array().is_some_and(|a| a.iter().filter(|x| want.contains(&x["index"].as_i64().unwrap_or(-1))).all(|x| x["progress"].as_f64().unwrap_or(0.0) >= 1.0));
-        Ok(done.then_some(()))
-    })
+    poll(
+        "qbittorrent",
+        "download completes",
+        Duration::from_secs(var("E2E_TORRENT_TIMEOUT", "2700").parse().unwrap_or(2700)),
+        Duration::from_secs(10),
+        || async {
+            let t = q.get(ctx, &format!("/torrents/info?hashes={hash}")).await?;
+            let t = t.as_array().and_then(|a| a.first()).cloned().unwrap_or_default();
+            if t["state"] == json!("error") || t["state"] == json!("missingFiles") {
+                return Err(Fail::new("qbittorrent", "download", format!("state {}", t["state"])));
+            }
+            // Done when the wanted files are: the neighbours only help their shared pieces complete,
+            // and a piece shared with a file archive.org serves differently (a .URL, an .nfo) may
+            // never finish.
+            let fl = q.get(ctx, &format!("/torrents/files?hash={hash}")).await?;
+            let done = fl
+                .as_array()
+                .is_some_and(|a| a.iter().filter(|x| want.contains(&x["index"].as_i64().unwrap_or(-1))).all(|x| x["progress"].as_f64().unwrap_or(0.0) >= 1.0));
+            Ok(done.then_some(()))
+        },
+    )
     .await?;
     let paths: Vec<PathBuf> = names.iter().map(|n| save.join(n)).collect();
     f.ok("qbittorrent", "download complete over the VPN", format!("{} file(s) in {}s", paths.len(), start.elapsed().as_secs()));
@@ -171,13 +186,20 @@ async fn jellyfin_import(ctx: &Ctx, f: &mut Flow, suffix: &str, kind: &str, path
     if !jf.virtual_folders(ctx).await?.iter().any(|v| v["Name"] == json!(name)) {
         let q = format!("/Library/VirtualFolders?name={}&collectionType={kind}&refreshLibrary=true&paths={}", enc(&name), enc(path));
         send(
-            jf.req(ctx, Method::POST, &q).json(&json!({ "LibraryOptions": { "EnableRealtimeMonitor": false, "EnableChapterImageExtraction": false, "PathInfos": [{ "Path": path }] } })),
+            jf.req(ctx, Method::POST, &q)
+                .json(&json!({ "LibraryOptions": { "EnableRealtimeMonitor": false, "EnableChapterImageExtraction": false, "PathInfos": [{ "Path": path }] } })),
             "jellyfin",
             "create test library",
         )
         .await?;
     }
-    let lib = jf.virtual_folders(ctx).await?.into_iter().find(|v| v["Name"] == json!(name)).and_then(|v| v["ItemId"].as_str().map(String::from)).at("jellyfin", "find test library")?;
+    let lib = jf
+        .virtual_folders(ctx)
+        .await?
+        .into_iter()
+        .find(|v| v["Name"] == json!(name))
+        .and_then(|v| v["ItemId"].as_str().map(String::from))
+        .at("jellyfin", "find test library")?;
     f.ok("jellyfin", "create test library", format!("{name} ({kind})"));
     let marker = ctx.marker.clone();
     let item = poll("jellyfin", "item appears", Duration::from_secs(300), Duration::from_secs(5), || async {
@@ -207,7 +229,12 @@ async fn playback(ctx: &Ctx, f: &mut Flow, jf: &Jellyfin, item: &Value) -> R<()>
     .await?;
     let info = json(jf.req(ctx, Method::POST, &format!("/Items/{id}/PlaybackInfo?UserId={}", jf.user)).json(&json!({})), "jellyfin", "PlaybackInfo").await?;
     let src = info["MediaSources"][0]["Id"].as_str().at("jellyfin", "media source")?.to_string();
-    let r = send(jf.req(ctx, Method::GET, &format!("/Videos/{id}/stream?static=true&mediaSourceId={src}")).header(header::RANGE, "bytes=0-65535"), "jellyfin", "direct stream").await?;
+    let r = send(
+        jf.req(ctx, Method::GET, &format!("/Videos/{id}/stream?static=true&mediaSourceId={src}")).header(header::RANGE, "bytes=0-65535"),
+        "jellyfin",
+        "direct stream",
+    )
+    .await?;
     let status = r.status();
     let head = r.bytes().await.at("jellyfin", "direct stream")?;
     if head.len() < 12 {
@@ -240,7 +267,11 @@ async fn playback(ctx: &Ctx, f: &mut Flow, jf: &Jellyfin, item: &Value) -> R<()>
     .at("jellyfin", "HLS playlist")?;
     let seg = m3u8.lines().find(|l| !l.starts_with('#') && !l.trim().is_empty()).ok_or_else(|| Fail::new("jellyfin", "HLS playlist", excerpt(&m3u8)))?;
     let seg_url = if seg.starts_with("http") { seg.to_string() } else { format!("/Videos/{id}/{seg}") };
-    let bytes = send(jf.req(ctx, Method::GET, &seg_url.replace(&jf.base, "")).timeout(Duration::from_secs(180)), "jellyfin", "HLS transcode segment").await?.bytes().await.at("jellyfin", "HLS segment")?;
+    let bytes = send(jf.req(ctx, Method::GET, &seg_url.replace(&jf.base, "")).timeout(Duration::from_secs(180)), "jellyfin", "HLS transcode segment")
+        .await?
+        .bytes()
+        .await
+        .at("jellyfin", "HLS segment")?;
     let _ = jf.req(ctx, Method::DELETE, &format!("/Videos/ActiveEncodings?deviceId={sess}&playSessionId={sess}")).send_t().await;
     if bytes.is_empty() {
         return Err(Fail::new("jellyfin", "HLS transcode segment", "empty segment"));
@@ -293,12 +324,23 @@ pub async fn seerr(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let s = Seerr::session(ctx).await?;
     f.ok("seerr", "login (Jellyfin admin)", "");
     let media = json(s.req(ctx, Method::GET, &format!("/movie/{SINTEL_TMDB}")), "seerr", "movie details").await?;
-    let real: Vec<&Value> = media["mediaInfo"]["requests"].as_array().into_iter().flatten().filter(|r| !r["rootFolder"].as_str().is_some_and(|p| p.contains(&ctx.marker))).collect();
+    let real: Vec<&Value> = media["mediaInfo"]["requests"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|r| !r["rootFolder"].as_str().is_some_and(|p| p.contains(&ctx.marker)))
+        .collect();
     if !real.is_empty() {
         return Err(Fail::new("seerr", "precondition", "Sintel already has a real request; not touching it"));
     }
     let servers = json(s.req(ctx, Method::GET, "/settings/radarr"), "seerr", "radarr servers").await?;
-    let server = servers.as_array().into_iter().flatten().find(|v| v["isDefault"] == json!(true) && v["is4k"] != json!(true)).cloned().at("seerr", "default radarr server")?;
+    let server = servers
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|v| v["isDefault"] == json!(true) && v["is4k"] != json!(true))
+        .cloned()
+        .at("seerr", "default radarr server")?;
     let req = json(
         s.req(ctx, Method::POST, "/request").json(&json!({
             "mediaType": "movie", "mediaId": SINTEL_TMDB, "is4k": false,
@@ -336,6 +378,141 @@ pub async fn seerr(ctx: &Ctx, f: &mut Flow) -> R<()> {
     Ok(())
 }
 
+/// Roles a person Ombi signed in by header has enabled.
+fn ombi_roles(user: &Value) -> Vec<String> {
+    user["claims"].as_array().into_iter().flatten().filter(|c| c["enabled"] == json!(true)).filter_map(|c| c["value"].as_str().map(String::from)).collect()
+}
+
+/// A request in an Ombi list (`/request/movie`, `/request/music`) for `key` = `id`.
+fn ombi_request<'a>(list: &'a Value, key: &str, id: &Value) -> Option<&'a Value> {
+    list.as_array()?.iter().find(|r| &r[key] == id)
+}
+
+/// Ombi, per user. The header login (what oauth2-proxy's router sends) makes a family account: request
+/// roles, no admin, no settings. Its movie request waits for approval and reaches nothing. An admin's request
+/// for the same movie lands in Radarr's test root; a music request for The Slip (already in Lidarr, test root,
+/// unmonitored) is approved and Lidarr monitors the album. Cleanup removes the requests and the account.
+pub async fn ombi(ctx: &Ctx, f: &mut Flow) -> R<()> {
+    let ombi = Ombi::new()?;
+    let user = format!("{}-ombi", ctx.marker);
+
+    let r = ctx.http.post(format!("{}/api/v1/token/header_auth", ombi.base)).send_t().await.at("ombi", "header login without the header")?;
+    if r.status() != StatusCode::UNAUTHORIZED {
+        return Err(Fail::new("ombi", "header login without the header", format!("HTTP {} (want 401)", r.status())));
+    }
+    let jwt = ombi.login_as(ctx, &user).await?;
+    let me = json(ombi.as_user(ctx, Method::GET, "/Identity", &jwt), "ombi", "current user").await?;
+    let roles = ombi_roles(&me);
+    for want in ["RequestMovie", "RequestMusic"] {
+        if !roles.iter().any(|r| r == want) {
+            return Err(Fail::new("ombi", "roles", format!("{user} lacks {want}: {roles:?}")));
+        }
+    }
+    if roles.iter().any(|r| r == "Admin" || r == "PowerUser") {
+        return Err(Fail::new("ombi", "roles", format!("a header-created account must not be admin: {roles:?}")));
+    }
+    let denied = send(ombi.as_user(ctx, Method::GET, "/Settings/ombi", &jwt), "ombi", "settings as a family user").await;
+    if !denied.as_ref().err().is_some_and(|e| e.msg.starts_with("HTTP 403")) {
+        return Err(Fail::new("ombi", "roles", "a family account can read Ombi's settings"));
+    }
+    f.ok("ombi", "header login: own account, request roles only", format!("{user}: {roles:?}"));
+    let user_id = me["id"].as_str().at("ombi", "user id")?.to_string();
+
+    // The movie.
+    let radarr = Arr::new("radarr")?;
+    let (_tag, root) = radarr_setup(ctx, &radarr).await?;
+    refuse_existing("radarr", &radarr.get(ctx, &format!("/movie?tmdbId={SINTEL_TMDB}")).await?, ctx, "Sintel")?;
+    let list = json(ombi.admin(ctx, Method::GET, "/request/movie"), "ombi", "list movie requests").await?;
+    if let Some(r) = ombi_request(&list, "theMovieDbId", &json!(SINTEL_TMDB)) {
+        if !r["requestedUser"]["userName"].as_str().is_some_and(|n| n.contains(&ctx.marker)) {
+            return Err(Fail::new("ombi", "precondition", "Sintel already has a real request; not touching it"));
+        }
+    }
+    let res = json(
+        ombi.as_user(ctx, Method::POST, "/request/movie", &jwt).json(&json!({ "theMovieDbId": SINTEL_TMDB, "languageCode": "en" })),
+        "ombi",
+        "movie request as the user",
+    )
+    .await?;
+    if res["result"] != json!(true) {
+        return Err(Fail::new("ombi", "movie request as the user", format!("{} {}", res["message"], res["errorMessage"])));
+    }
+    let list = json(ombi.admin(ctx, Method::GET, "/request/movie"), "ombi", "list movie requests").await?;
+    let waiting = ombi_request(&list, "theMovieDbId", &json!(SINTEL_TMDB)).cloned().at("ombi", "the user's request is listed")?;
+    if waiting["approved"] == json!(true) || waiting["requestedUserId"] != json!(user_id) {
+        return Err(Fail::new(
+            "ombi",
+            "approval",
+            format!("the family request is not waiting for approval for {user}: approved {} by {}", waiting["approved"], waiting["requestedUserId"]),
+        ));
+    }
+    if radarr.get(ctx, &format!("/movie?tmdbId={SINTEL_TMDB}")).await?.as_array().is_some_and(|a| !a.is_empty()) {
+        return Err(Fail::new("radarr", "approval", "an unapproved Ombi request already reached Radarr"));
+    }
+    f.ok("ombi", "family movie request waits for approval", format!("request {}", waiting["id"]));
+    send(ombi.admin(ctx, Method::DELETE, &format!("/request/movie/{}", waiting["id"])), "ombi", "delete the waiting request").await?;
+
+    // The admin sends it to Radarr's test root (overrides need admin), on the user's behalf.
+    let root_id = radarr
+        .get(ctx, "/rootfolder")
+        .await?
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|r| r["path"].as_str().map(|p| p.trim_end_matches('/')) == Some(root.as_str()))
+        .and_then(|r| r["id"].as_i64())
+        .at("radarr", "test root folder id")?;
+    let profile = radarr.profile_allowing(ctx, "1080p").await?;
+    let res = json(
+        ombi.admin(ctx, Method::POST, "/request/movie").json(&json!({
+            "theMovieDbId": SINTEL_TMDB, "languageCode": "en", "rootFolderOverride": root_id, "qualityPathOverride": profile, "requestOnBehalf": user_id,
+        })),
+        "ombi",
+        "movie request as admin",
+    )
+    .await?;
+    if res["result"] != json!(true) {
+        return Err(Fail::new("ombi", "movie request as admin", format!("{} {}", res["message"], res["errorMessage"])));
+    }
+    let list = json(ombi.admin(ctx, Method::GET, "/request/movie"), "ombi", "list movie requests").await?;
+    let req = ombi_request(&list, "theMovieDbId", &json!(SINTEL_TMDB)).cloned().at("ombi", "the admin request is listed")?;
+    if req["approved"] != json!(true) {
+        send(ombi.admin(ctx, Method::POST, "/request/movie/approve").json(&json!({ "id": req["id"] })), "ombi", "approve the movie request").await?;
+    }
+    let movie = poll("radarr", "Ombi request reaches Radarr", Duration::from_secs(180), Duration::from_secs(5), || async {
+        let list = radarr.get(ctx, &format!("/movie?tmdbId={SINTEL_TMDB}")).await?;
+        Ok(list.as_array().and_then(|a| a.first()).cloned())
+    })
+    .await?;
+    if !has_marker(&movie, ctx) {
+        return Err(Fail::new("radarr", "Ombi request reaches Radarr", format!("movie added outside the test root: {}", movie["path"])));
+    }
+    f.ok("radarr", "Ombi request reached Radarr (test root)", format!("{}", movie["path"]));
+
+    // The album.
+    let (lidarr, album_id, _root) = lidarr_slip(ctx, f).await?;
+    let res = json(
+        ombi.as_user(ctx, Method::POST, "/request/music", &jwt).json(&json!({ "foreignAlbumId": content::SLIP_RELEASE_GROUP })),
+        "ombi",
+        "music request as the user",
+    )
+    .await?;
+    if res["result"] != json!(true) {
+        return Err(Fail::new("ombi", "music request as the user", format!("{} {}", res["message"], res["errorMessage"])));
+    }
+    let list = json(ombi.admin(ctx, Method::GET, "/request/music"), "ombi", "list music requests").await?;
+    let album = ombi_request(&list, "foreignAlbumId", &json!(content::SLIP_RELEASE_GROUP)).cloned().at("ombi", "the music request is listed")?;
+    if album["approved"] != json!(true) {
+        send(ombi.admin(ctx, Method::POST, "/request/music/approve").json(&json!({ "id": album["id"] })), "ombi", "approve the music request").await?;
+    }
+    poll("lidarr", "Ombi approval monitors the album", Duration::from_secs(120), Duration::from_secs(5), || async {
+        Ok((lidarr.get(ctx, &format!("/album/{album_id}")).await?["monitored"] == json!(true)).then_some(()))
+    })
+    .await?;
+    f.ok("lidarr", "Ombi music request approved, album monitored", format!("album {album_id}"));
+    Ok(())
+}
+
 /// Sonarr add, import of a CC-licensed episode, Jellyfin scan.
 pub async fn sonarr_chain(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let sonarr = Arr::new("sonarr")?;
@@ -368,7 +545,9 @@ pub async fn sonarr_chain(ctx: &Ctx, f: &mut Flow) -> R<()> {
 
     let file = source(ctx, f, content::pioneer_one_torrent(), content::pioneer_one()).await?;
     let dir = stage(ctx, &file, "Pioneer.One.S01E01.720p.WEB.x264-E2E")?;
-    sonarr.command(ctx, json!({ "name": "DownloadedEpisodesScan", "path": dir.to_string_lossy(), "importMode": if ctx.full { "Copy" } else { "Move" } })).await?;
+    sonarr
+        .command(ctx, json!({ "name": "DownloadedEpisodesScan", "path": dir.to_string_lossy(), "importMode": if ctx.full { "Copy" } else { "Move" } }))
+        .await?;
     poll("sonarr", "import", Duration::from_secs(300), Duration::from_secs(5), || async {
         let s = sonarr.get(ctx, &format!("/series/{id}")).await?;
         Ok((s["statistics"]["episodeFileCount"].as_i64().unwrap_or(0) >= 1).then_some(()))
@@ -410,15 +589,22 @@ async fn slip_files(ctx: &Ctx, f: &mut Flow) -> R<Vec<PathBuf>> {
     Ok(out)
 }
 
-/// Lidarr: add an album (and its artist, unmonitored, run tag, test root), import its files,
-/// then Navidrome serves them from the test root.
-pub async fn lidarr(ctx: &Ctx, f: &mut Flow) -> R<()> {
+/// Lidarr's test root folder and run tag, and The Slip (artist and album, unmonitored) added under them;
+/// refuses when the artist is already in Lidarr as real data. Returns Lidarr, the album id and the test root.
+async fn lidarr_slip(ctx: &Ctx, f: &mut Flow) -> R<(Arr, i64, String)> {
     let lidarr = Arr::new("lidarr")?;
     let tag = lidarr.ensure_tag(ctx).await?;
     ctx.st().lidarr_tag = Some(tag);
     let quality = lidarr.get(ctx, "/qualityprofile").await?[0]["id"].as_i64().at("lidarr", "quality profile")?;
     let metadata = lidarr.get(ctx, "/metadataprofile").await?;
-    let meta = metadata.as_array().into_iter().flatten().find(|m| m["name"] == json!("None")).or(metadata.as_array().and_then(|a| a.first())).and_then(|m| m["id"].as_i64()).at("lidarr", "metadata profile")?;
+    let meta = metadata
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|m| m["name"] == json!("None"))
+        .or(metadata.as_array().and_then(|a| a.first()))
+        .and_then(|m| m["id"].as_i64())
+        .at("lidarr", "metadata profile")?;
     // Visible (Navidrome skips dot-folders), outside Jellyfin's music library via `.ignore`.
     let root = format!("{}/music/{}-lidarr", media_root(), ctx.marker);
     lidarr
@@ -431,6 +617,14 @@ pub async fn lidarr(ctx: &Ctx, f: &mut Flow) -> R<()> {
     if let Some(e) = existing.as_array().into_iter().flatten().find(|x| x["foreignArtistId"] == json!(content::SLIP_ARTIST_MBID)) {
         if !has_marker(e, ctx) {
             return Err(Fail::new("lidarr", "precondition", format!("Nine Inch Nails is already in Lidarr at {} (real data); not touching it", e["path"])));
+        }
+        // This run's earlier flow added it: reuse the album.
+        let albums = lidarr.get(ctx, &format!("/album?artistId={}", e["id"])).await?;
+        if let Some(id) =
+            albums.as_array().into_iter().flatten().find(|a| a["foreignAlbumId"] == json!(content::SLIP_RELEASE_GROUP)).and_then(|a| a["id"].as_i64())
+        {
+            f.ok("lidarr", "album already added by this run", format!("album {id}"));
+            return Ok((lidarr, id, root));
         }
     }
     let found = lidarr.get(ctx, &format!("/album/lookup?term=lidarr:{}", content::SLIP_RELEASE_GROUP)).await?;
@@ -448,7 +642,13 @@ pub async fn lidarr(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let added = lidarr.post(ctx, "/album", &album).await?;
     let album_id = added["id"].as_i64().at("lidarr", "add album")?;
     f.ok("lidarr", "add album (unmonitored, tagged)", format!("{} / {} -> {}", added["artist"]["artistName"], added["title"], added["artist"]["path"]));
+    Ok((lidarr, album_id, root))
+}
 
+/// Lidarr: add an album (and its artist, unmonitored, run tag, test root), import its files,
+/// then Navidrome serves them from the test root.
+pub async fn lidarr(ctx: &Ctx, f: &mut Flow) -> R<()> {
+    let (lidarr, album_id, root) = lidarr_slip(ctx, f).await?;
     let files = slip_files(ctx, f).await?;
     let dir = stage_all(ctx, &files, "Nine Inch Nails - The Slip (2008) [MP3]-E2E")?;
     lidarr.command(ctx, json!({ "name": "DownloadedAlbumsScan", "path": dir.to_string_lossy(), "importMode": if ctx.full { "Copy" } else { "Move" } })).await?;
@@ -478,7 +678,12 @@ pub async fn lidarr(ctx: &Ctx, f: &mut Flow) -> R<()> {
         let mut mine: Vec<Value> = Vec::new();
         for al in r["searchResult3"]["album"].as_array().into_iter().flatten().filter(|a| a["name"] == json!("The Slip")) {
             let Some(id) = al["id"].as_str() else { continue };
-            let songs = json(nd.native(ctx, Method::GET, &format!("/api/song?_start=0&_end=100&_sort=trackNumber&_order=ASC&album_id={id}")), "navidrome", "list album songs").await?;
+            let songs = json(
+                nd.native(ctx, Method::GET, &format!("/api/song?_start=0&_end=100&_sort=trackNumber&_order=ASC&album_id={id}")),
+                "navidrome",
+                "list album songs",
+            )
+            .await?;
             mine.extend(songs.as_array().into_iter().flatten().filter(|s| s["path"].as_str().is_some_and(|p| p.contains(&marker))).cloned());
         }
         Ok((mine.len() >= want).then_some(mine))
