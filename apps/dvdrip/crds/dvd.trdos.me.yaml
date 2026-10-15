@@ -1,0 +1,486 @@
+---
+{
+  "apiVersion": "apiextensions.k8s.io/v1",
+  "kind": "CustomResourceDefinition",
+  "metadata": {
+    "name": "drives.dvd.trdos.me"
+  },
+  "spec": {
+    "group": "dvd.trdos.me",
+    "names": {
+      "kind": "Drive",
+      "plural": "drives",
+      "shortNames": [
+        "drv"
+      ],
+      "singular": "drive"
+    },
+    "scope": "Cluster",
+    "versions": [
+      {
+        "additionalPrinterColumns": [
+          {
+            "jsonPath": ".status.node",
+            "name": "Node",
+            "type": "string"
+          },
+          {
+            "jsonPath": ".spec.enabled",
+            "name": "Enabled",
+            "type": "boolean"
+          },
+          {
+            "jsonPath": ".status.state",
+            "name": "State",
+            "type": "string"
+          },
+          {
+            "jsonPath": ".status.disc",
+            "name": "Disc",
+            "type": "string"
+          },
+          {
+            "jsonPath": ".status.message",
+            "name": "Message",
+            "priority": 1,
+            "type": "string"
+          }
+        ],
+        "name": "v1alpha1",
+        "schema": {
+          "openAPIV3Schema": {
+            "description": "Auto-generated derived type for DriveSpec via `CustomResource`",
+            "properties": {
+              "spec": {
+                "description": "An optical drive on a node. The agent creates it and owns `status`; people own `spec`.",
+                "properties": {
+                  "ejectUnknown": {
+                    "default": true,
+                    "description": "Eject discs that are not video DVDs (CDs, Blu-rays, data discs).",
+                    "type": "boolean"
+                  },
+                  "enabled": {
+                    "default": true,
+                    "description": "false: the agent never opens the drive (a game disc can sit in it).",
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              },
+              "status": {
+                "nullable": true,
+                "properties": {
+                  "device": {
+                    "type": "string"
+                  },
+                  "disc": {
+                    "description": "The Disc being read, if any.",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "heartbeat": {
+                    "description": "RFC 3339; renewed every 30 s while the agent runs.",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "message": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "model": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "node": {
+                    "type": "string"
+                  },
+                  "serial": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "state": {
+                    "enum": [
+                      "Waiting",
+                      "Disabled",
+                      "Paused",
+                      "Reading",
+                      "BackingUp",
+                      "Uploading",
+                      "Ejecting",
+                      "Error"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "device",
+                  "node",
+                  "state"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "spec"
+            ],
+            "title": "Drive",
+            "type": "object"
+          }
+        },
+        "served": true,
+        "storage": true,
+        "subresources": {
+          "status": {}
+        }
+      }
+    ]
+  }
+}
+---
+{
+  "apiVersion": "apiextensions.k8s.io/v1",
+  "kind": "CustomResourceDefinition",
+  "metadata": {
+    "name": "discs.dvd.trdos.me"
+  },
+  "spec": {
+    "group": "dvd.trdos.me",
+    "names": {
+      "kind": "Disc",
+      "plural": "discs",
+      "singular": "disc"
+    },
+    "scope": "Namespaced",
+    "versions": [
+      {
+        "additionalPrinterColumns": [
+          {
+            "jsonPath": ".spec.name",
+            "name": "Name",
+            "type": "string"
+          },
+          {
+            "jsonPath": ".spec.disc",
+            "name": "Disc",
+            "type": "integer"
+          },
+          {
+            "jsonPath": ".status.phase",
+            "name": "Phase",
+            "type": "string"
+          },
+          {
+            "jsonPath": ".status.drive",
+            "name": "Drive",
+            "type": "string"
+          },
+          {
+            "jsonPath": ".status.message",
+            "name": "Message",
+            "priority": 1,
+            "type": "string"
+          },
+          {
+            "jsonPath": ".metadata.creationTimestamp",
+            "name": "Age",
+            "type": "date"
+          }
+        ],
+        "name": "v1alpha1",
+        "schema": {
+          "openAPIV3Schema": {
+            "description": "Auto-generated derived type for DiscSpec via `CustomResource`",
+            "properties": {
+              "spec": {
+                "description": "One physical disc. The agent creates it; the agent and the Jobs own `status`, people own `spec`.",
+                "properties": {
+                  "disc": {
+                    "default": 1,
+                    "description": "Disc number within `name`: 2+ is a bonus disc, published as \"Disc N - ...\" extras.",
+                    "format": "uint32",
+                    "minimum": 0.0,
+                    "type": "integer"
+                  },
+                  "hold": {
+                    "default": false,
+                    "description": "Back up, but don't encode or publish yet.",
+                    "type": "boolean"
+                  },
+                  "mainTitle": {
+                    "description": "Override HandBrake's main-feature pick.",
+                    "format": "uint32",
+                    "minimum": 0.0,
+                    "nullable": true,
+                    "type": "integer"
+                  },
+                  "name": {
+                    "description": "Library name, e.g. \"Beetlejuice (1988)\"; defaults to the label in title case.",
+                    "type": "string"
+                  },
+                  "protected": {
+                    "default": false,
+                    "description": "Force MakeMKV's title analysis and remux (copy-protected discs).",
+                    "type": "boolean"
+                  },
+                  "retry": {
+                    "default": 0,
+                    "description": "Bump to retry a Failed disc.",
+                    "format": "uint32",
+                    "minimum": 0.0,
+                    "type": "integer"
+                  },
+                  "titles": {
+                    "additionalProperties": {
+                      "description": "Where an extra goes in the library: a Jellyfin extras folder, or `junk` (not published).",
+                      "properties": {
+                        "folder": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "name": {
+                          "description": "File name (without .mkv) instead of \"Title N - XmYYs\".",
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "default": {},
+                    "description": "Per title number: library folder and name (sorting extras).",
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "status": {
+                "nullable": true,
+                "properties": {
+                  "attempts": {
+                    "default": 0,
+                    "format": "uint32",
+                    "minimum": 0.0,
+                    "type": "integer"
+                  },
+                  "backup": {
+                    "nullable": true,
+                    "properties": {
+                      "bytes": {
+                        "format": "uint64",
+                        "minimum": 0.0,
+                        "type": "integer"
+                      },
+                      "method": {
+                        "description": "makemkv | dvdbackup | rescue | raw",
+                        "type": "string"
+                      },
+                      "readErrors": {
+                        "default": 0,
+                        "format": "uint32",
+                        "minimum": 0.0,
+                        "type": "integer"
+                      },
+                      "seconds": {
+                        "format": "uint64",
+                        "minimum": 0.0,
+                        "type": "integer"
+                      },
+                      "sha256": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "bytes",
+                      "method",
+                      "seconds",
+                      "sha256"
+                    ],
+                    "type": "object"
+                  },
+                  "damage": {
+                    "nullable": true,
+                    "properties": {
+                      "missingBytes": {
+                        "format": "uint64",
+                        "minimum": 0.0,
+                        "type": "integer"
+                      },
+                      "recoveredPercent": {
+                        "format": "double",
+                        "type": "number"
+                      },
+                      "rescuePending": {
+                        "description": "raw image + map kept: reinsert the disc (cleaned, or another copy) to re-read the gaps.",
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "missingBytes",
+                      "recoveredPercent",
+                      "rescuePending"
+                    ],
+                    "type": "object"
+                  },
+                  "drive": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "encodedGeneration": {
+                    "description": "The spec generation the last encode used (a change to mainTitle/protected re-encodes).",
+                    "format": "int64",
+                    "nullable": true,
+                    "type": "integer"
+                  },
+                  "fingerprint": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "observedRetry": {
+                    "default": 0,
+                    "format": "uint32",
+                    "minimum": 0.0,
+                    "type": "integer"
+                  },
+                  "phase": {
+                    "default": "Detected",
+                    "enum": [
+                      "Detected",
+                      "BackingUp",
+                      "BackedUp",
+                      "Held",
+                      "Encoding",
+                      "Encoded",
+                      "Publishing",
+                      "Done",
+                      "RescuePending",
+                      "Failed"
+                    ],
+                    "type": "string"
+                  },
+                  "protected": {
+                    "default": false,
+                    "description": "The disc was encoded via MakeMKV (detected or forced copy protection).",
+                    "type": "boolean"
+                  },
+                  "published": {
+                    "nullable": true,
+                    "properties": {
+                      "files": {
+                        "default": [],
+                        "description": "Paths relative to media-movies.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "generation": {
+                        "description": "The Disc generation these paths were published from.",
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      "iso": {
+                        "description": "Paths relative to media-dvd.",
+                        "nullable": true,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "generation"
+                    ],
+                    "type": "object"
+                  },
+                  "since": {
+                    "description": "RFC 3339 time of the last phase change.",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "titles": {
+                    "default": [],
+                    "items": {
+                      "properties": {
+                        "aspect": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "encodedSeconds": {
+                          "description": "Encoded runtime, when it differs much from the title's (still-frame galleries).",
+                          "format": "double",
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "output": {
+                          "description": "Encoded file in the work dir (`encodes/<title>.mkv`), once it exists.",
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "role": {
+                          "enum": [
+                            "main",
+                            "alt",
+                            "dup",
+                            "playall",
+                            "part",
+                            "stub",
+                            "short",
+                            "extra"
+                          ],
+                          "type": "string"
+                        },
+                        "seconds": {
+                          "format": "double",
+                          "type": "number"
+                        },
+                        "title": {
+                          "format": "uint32",
+                          "minimum": 0.0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "role",
+                        "seconds",
+                        "title"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "warnings": {
+                    "default": [],
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "fingerprint",
+                  "label"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "spec"
+            ],
+            "title": "Disc",
+            "type": "object"
+          }
+        },
+        "served": true,
+        "storage": true,
+        "subresources": {
+          "status": {}
+        }
+      }
+    ]
+  }
+}
