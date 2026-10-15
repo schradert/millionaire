@@ -1,16 +1,22 @@
 [package]
 name = "e2e"
-version = "0.7.1"
+version = "0.7.2"
 description = "Platform end-to-end tests: tagged test data through real requests, then cleanup and a residue check"
 publish = false
 edition = "2021"
 
 [dependencies]
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "multipart"] }
+reqwest = { version = "0.12", default-features = false, features = [
+  "json",
+  "rustls-tls",
+  "multipart",
+] }
 serde_json = "1"
 sha2 = "0.10"
 hmac = "0.12"
-pyroscope = { version = "2", default-features = false, features = ["backend-pprof-rs"] }
+pyroscope = { version = "2", default-features = false, features = [
+  "backend-pprof-rs",
+] }
 tokio = { version = "1", features = ["macros", "rt", "time", "process"] }
 
 [dev-dependencies]
