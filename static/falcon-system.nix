@@ -66,6 +66,9 @@ in {
     '')
     dataDatasets);
 
+  # The only optical drive (LG DH50N, DVD only); rips land on the data pool.
+  services.dvd-rip.enable = true;
+
   boot.binfmt.emulatedSystems = ["aarch64-linux"];
   boot.initrd.availableKernelModules = ["sr_mod"];
   # NIC keeps getting stuck in ULP mode, dropping the network
