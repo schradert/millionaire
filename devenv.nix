@@ -181,7 +181,8 @@ in {
         ruff = onCommit // {excludes = ["pulumi/sdks/"];};
         ruff-format = onCommit;
         trim-trailing-whitespace = onCommit;
-        typos = onCommit;
+        # sops files are ciphertext
+        typos = onCommit // {excludes = ["^secrets/sops/"];};
         # Hashes, revs and image digests live in pkgs/**/pin.json only.
         pin-lint =
           onCommit
@@ -441,6 +442,34 @@ in {
         echo "Password reset email sent to $email"
       '';
 
+      # A Syncthing device ID is the hash of the device's TLS certificate, so a device's identity is
+      # declared like any config: the key pair is generated once here, encrypted to the host
+      # (.sops.yaml: secrets/sops/syncthing-<host>.yaml) and installed by modules/syncthing.nix; the ID is
+      # public and goes in `syncthing.devices.<host>.id`. Never regenerate for a host in use (its ID changes).
+      scripts.syncthing-identity.exec = ''
+        set -euo pipefail
+        host="''${1:?Usage: syncthing-identity <host> [--force]}"
+        file="${config.devenv.root}/secrets/sops/syncthing-$host.yaml"
+        if [ -e "$file" ] && [ "''${2:-}" != "--force" ]; then
+          echo "$file exists: showing its ID (--force replaces the identity, and the ID changes)" >&2
+          dir=$(mktemp -d); trap 'rm -rf "$dir"' EXIT
+          sops --decrypt --extract '["cert"]' "$file" > "$dir/cert.pem"
+          sops --decrypt --extract '["key"]' "$file" > "$dir/key.pem"
+          syncthing device-id --home "$dir" 2>/dev/null || syncthing --device-id --home "$dir"
+          exit 0
+        fi
+        dir=$(mktemp -d); trap 'rm -rf "$dir"' EXIT
+        syncthing generate --home "$dir" >/dev/null 2>&1
+        {
+          echo "cert: |"; sed 's/^/    /' "$dir/cert.pem"
+          echo "key: |"; sed 's/^/    /' "$dir/key.pem"
+        } > "$file"
+        # encrypt in place; the creation rule in .sops.yaml picks the recipients (the host and tristan)
+        sops --encrypt --in-place "$file"
+        echo "wrote $file" >&2
+        syncthing device-id --home "$dir" 2>/dev/null || syncthing --device-id --home "$dir"
+      '';
+
       # Pulumi / Python
       enterShell = ''
                 # Bootstrap creds from SOPS — needed before bws can be queried
@@ -537,6 +566,7 @@ in {
         hcloud
         hcloud-upload-image
         android-tools # adb for the Android fleet (docs/android.md)
+        syncthing # `syncthing-identity` generates device certificates
       ];
 
       images.ha = "Home Assistant with custom components";
