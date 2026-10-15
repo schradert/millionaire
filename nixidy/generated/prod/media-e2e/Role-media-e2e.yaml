@@ -26,6 +26,28 @@ rules:
   - apiGroups:
       - ""
     resources:
+      - pods
+    verbs:
+      - create
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - pods/log
+    verbs:
+      - get
+  - apiGroups:
+      - dvd.trdos.me
+    resources:
+      - discs
+    verbs:
+      - get
+      - list
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
       - configmaps
     verbs:
       - create

@@ -53,6 +53,23 @@
             resources = ["cronjobs"];
             verbs = ["get"];
           }
+          # dvd-rip flow: a synth Pod (dvdrip image) registers a Disc; the flow watches, edits and
+          # deletes it (apps/e2e/src/media/flows_dvdrip.rs).
+          {
+            apiGroups = [""];
+            resources = ["pods"];
+            verbs = ["create" "delete"];
+          }
+          {
+            apiGroups = [""];
+            resources = ["pods/log"];
+            verbs = ["get"];
+          }
+          {
+            apiGroups = ["dvd.trdos.me"];
+            resources = ["discs"];
+            verbs = ["get" "list" "patch" "delete"];
+          }
           # The latest report is kept in one ConfigMap (`kubectl apply`: get, patch, create).
           {
             apiGroups = [""];
@@ -110,6 +127,7 @@
                   args = ["run" "--family" "media"];
                   env = lib.mapAttrsToList (name: value: {inherit name value;}) {
                     E2E_RUNNER = "media";
+                    DVDRIP_IMAGE = lib.optionalString (pinned.images ? dvdrip) (with pinned.images.dvdrip; "${repository}:${tag}@${digest}");
                     OTEL_EXPORTER_OTLP_ENDPOINT = "http://alloy.observability.svc.cluster.local:4318";
                     # CPU profiles (apps/e2e/src/profile.rs, e2e >= 0.7), tagged family/flow/phase.
                     PYROSCOPE_SERVER_ADDRESS = "http://pyroscope.observability.svc.cluster.local:4040";
