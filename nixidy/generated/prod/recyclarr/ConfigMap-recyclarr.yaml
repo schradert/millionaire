@@ -10,6 +10,11 @@ data:
         custom_format_groups:
           add:
           - trash_id: 15b1cf0b6f1a1493856a4355907affee
+        media_naming:
+          folder: jellyfin-imdb
+          movie:
+            rename: true
+            standard: jellyfin-imdb
         quality_definition:
           type: sqp-streaming
         quality_profiles:
@@ -24,6 +29,14 @@ data:
           add:
           - trash_id: 85fae4a2294965b75710ef2989c850eb
           - trash_id: 59c3af66780d08332fdc64e68297098f
+        media_naming:
+          episodes:
+            anime: default
+            daily: default
+            rename: true
+            standard: default
+          season: default
+          series: jellyfin-tvdb
         quality_definition:
           type: series
         quality_profiles:

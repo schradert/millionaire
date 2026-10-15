@@ -22,6 +22,8 @@ spec:
               value: http://alloy.observability.svc.cluster.local:4318
             - name: PROWLARR_API_KEY_FILE
               value: /secrets/prowlarr/apikey
+            - name: PROWLARR_INDEXERS
+              value: '[{"definition":"internetarchive","name":"Internet Archive","secrets":{}}]'
             - name: PYROSCOPE_SAMPLE_RATE
               value: "1000"
             - name: PYROSCOPE_SERVER_ADDRESS

@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 8d6c90582116c11185de2dd7e588988c4ba00b861725cf4f27fde45523508a25
+        checksum/configMaps: 014dca03c2888498aa996472db7cfd5ed72b68752aedeb5a9288a23c08170fb5
       labels:
         app.kubernetes.io/controller: sonarr
         app.kubernetes.io/instance: sonarr
