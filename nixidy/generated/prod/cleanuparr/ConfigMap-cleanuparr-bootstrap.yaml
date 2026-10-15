@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  image: harbor.trdos.me/library/app-bootstrap:0.32.0@sha256:d176aaba96dd6df583ad95f131d0cf04488f28522a045bb20a707addd8e5382f
+  spec: 1dcd45efeb455990dd0f20494d3e7fe105c974810467abf79a69f27ae48fb1bb
+kind: ConfigMap
+metadata:
+  name: cleanuparr-bootstrap
+  namespace: media
