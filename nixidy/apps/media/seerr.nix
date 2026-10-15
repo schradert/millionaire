@@ -9,6 +9,48 @@ in {
   }: let
     inherit (config.canivete.meta) domain;
     hostname = "seerr.${domain}";
+    # Single sign-on in front of Seerr. oauth2-proxy has already admitted a Keycloak `admin`
+    # user; when the browser has no Seerr session this signs in as the Jellyfin admin account
+    # (Seerr user 1, admin) and sets the session cookie, so the user lands signed in. A
+    # session Seerr no longer accepts sends /login back through the same step.
+    ssoConf = ''
+      map $http_cookie $seerr_no_session { default 1; "~(^|;\s*)connect\.sid=" 0; }
+      map $arg_next $seerr_next { default /; "~^/([^/\\\\]|$)" $arg_next; }
+      server {
+        listen 5056;
+        absolute_redirect off;
+        location = /_login {
+          internal;
+          proxy_pass http://127.0.0.1:5055/api/v1/auth/jellyfin;
+          proxy_method POST;
+          proxy_pass_request_body off;
+          proxy_set_header Content-Type application/json;
+          proxy_set_header X-Forwarded-Proto https;
+          proxy_set_body '{"username":"admin","password":"{{ .password }}"}';
+        }
+        # `return` runs before the access phase, so the redirect is a named location
+        # reached from try_files, after auth_request has made the session.
+        location = /_sso {
+          auth_request /_login;
+          auth_request_set $seerr_cookie $upstream_http_set_cookie;
+          try_files /_none @seerr_signed_in;
+        }
+        location @seerr_signed_in {
+          add_header Set-Cookie $seerr_cookie always;
+          return 302 $seerr_next;
+        }
+        location = /login { return 302 /_sso?next=/; }
+        location / {
+          if ($seerr_no_session) { return 302 /_sso?next=$uri; }
+          proxy_pass http://127.0.0.1:5055;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto https;
+          proxy_http_version 1.1;
+        }
+      }
+    '';
   in {
     portal.apps.seerr.groups = ["admin"];
     gatus.endpoints.seerr = {
@@ -18,8 +60,9 @@ in {
     };
     applications.seerr = {
       namespace = "media";
-      # Seerr has no native OIDC (checked at the pinned develop commit 25e376c: no
-      # OIDC code in auth or settings routes), so it stays behind oauth2-proxy. Its
+      # Seerr has no native OIDC in any release (v3.5.0 and develop; the OIDC pull
+      # request #2715 is open and its preview image has no group-to-role mapping), so it
+      # stays behind oauth2-proxy (admin) and the `sso` sidecar below signs the user in. Its
       # only admin path is the setup wizard's Jellyfin sign-in, which makes the
       # Jellyfin admin Seerr user 1. This job does that with the bootstrapped
       # Jellyfin `admin` account and tristan's email, enables all libraries and
@@ -58,18 +101,44 @@ in {
             fsGroup = 1000;
             fsGroupChangePolicy = "OnRootMismatch";
           };
+          controllers.seerr.annotations."reloader.stakater.com/auto" = "true";
           controllers.seerr.containers.seerr = {
             image = pinned.images.seerr;
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
             probes.startup.enabled = true;
           };
-          service.seerr.ports.http.port = 5055;
+          controllers.seerr.containers.sso = {
+            image = pinned.images.nginx;
+            ports = lib.toList {
+              name = "sso";
+              containerPort = 5056;
+            };
+            # The default probes check the Service's first port, which is Seerr's.
+            probes = lib.genAttrs ["liveness" "readiness" "startup"] (_: {
+              enabled = true;
+              custom = true;
+              spec.tcpSocket.port = 5056;
+            });
+          };
+          service.seerr.ports = {
+            http.port = 5055;
+            sso.port = 5056;
+          };
           persistence.config = {
             type = "persistentVolumeClaim";
             accessMode = "ReadWriteOnce";
             size = "1Gi";
-            globalMounts = [{path = "/app/config";}];
+            advancedMounts.seerr.seerr = [{path = "/app/config";}];
+          };
+          persistence.sso = {
+            type = "secret";
+            name = "seerr-sso";
+            advancedMounts.seerr.sso = lib.toList {
+              path = "/etc/nginx/conf.d/default.conf";
+              subPath = "default.conf";
+              readOnly = true;
+            };
           };
           route.seerr = {
             hostnames = [hostname];
@@ -88,9 +157,20 @@ in {
           };
         };
       };
+      # The sidecar's config holds the Jellyfin admin password, so it is a Secret.
+      resources.externalSecrets.seerr-sso.spec = {
+        secretStoreRef.name = "kubernetes-media";
+        secretStoreRef.kind = "ClusterSecretStore";
+        target.template.data."default.conf" = ssoConf;
+        data = lib.toList {
+          secretKey = "password";
+          remoteRef.key = "jellyfin-admin";
+          remoteRef.property = "password";
+        };
+      };
     };
     oauth2Proxy.upstreams."${hostname}" = {
-      url = "http://seerr.media.svc.cluster.local:5055";
+      url = "http://seerr.media.svc.cluster.local:5056";
       namespace = "media";
     };
   };
