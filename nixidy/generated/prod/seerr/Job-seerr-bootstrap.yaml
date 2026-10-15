@@ -46,7 +46,7 @@ spec:
               value: /secrets/sonarr/apikey
             - name: SONARR_PROFILE
               value: WEB-1080p
-          image: harbor.trdos.me/library/app-bootstrap:0.22.2@sha256:328a87b67f85d5b42bff086b51d497c64d729dde4c1aca4cc5b3c2e8a6a7c113
+          image: harbor.trdos.me/library/app-bootstrap:0.22.3@sha256:aafd93839736ce8462f9837d58ca47d9326d7e2b8f9d7fd9740e10c9f5c95b4a
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
