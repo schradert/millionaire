@@ -266,6 +266,13 @@
                   value = "http://maintainerr.media.svc.cluster.local:6246";
                 }
                 {
+                  # Stable-repository plugins (name|guid|version, jellyfin-bootstrap >= 0.4.0).
+                  # TMDb Box Sets groups movies into their franchise collections; it is the
+                  # Jellyfin-native stand-in for Kometa, which only drives Plex.
+                  name = "PLUGINS";
+                  value = "TMDb Box Sets|bc4aad2e-d3d0-4725-a5e2-fd07949e5b42|13.0.0.0";
+                }
+                {
                   name = "ADMIN_PASSWORD_FILE";
                   value = "/secrets/admin/password";
                 }
