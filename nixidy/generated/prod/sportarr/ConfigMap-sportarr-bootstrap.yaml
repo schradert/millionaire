@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  image: harbor.trdos.me/library/app-bootstrap:0.29.0@sha256:ffb0cc7e0188a481764d461b63aa282baab4bd7ce62cb76c0140a60fdbe98ce7
+  spec: 3eee5cb022115d867e3263bf1f063a81ff537ceb8f9869db398b8beb03a46b1f
+kind: ConfigMap
+metadata:
+  name: sportarr-bootstrap
+  namespace: media
