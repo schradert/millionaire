@@ -59,7 +59,11 @@
               image = pinned.images.jellyfin;
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
-              probes.startup.enabled = true;
+              # Plugins and libraries have made first start take over 30s; the default (3 x 10s) killed it in a loop.
+              probes.startup = {
+                enabled = true;
+                spec.failureThreshold = 60;
+              };
             };
           };
           service.jellyfin.ports.http.port = 8096;
