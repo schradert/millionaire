@@ -200,7 +200,7 @@
               spec = {
                 serviceAccountName = "dvdrip-controller";
                 inherit hostAliases;
-                tolerations = [desktop];
+                # No desktop toleration: the headless nodes are the steadier home for it.
                 containers = lib.toList {
                   name = "controller";
                   inherit image;

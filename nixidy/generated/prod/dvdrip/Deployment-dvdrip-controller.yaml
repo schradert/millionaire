@@ -58,11 +58,6 @@ spec:
             - ntfy.trdos.me
           ip: 100.64.0.1
       serviceAccountName: dvdrip-controller
-      tolerations:
-        - effect: PreferNoSchedule
-          key: node.trdos.me/class
-          operator: Equal
-          value: desktop
       volumes:
         - name: work
           persistentVolumeClaim:
