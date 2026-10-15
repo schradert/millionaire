@@ -58,6 +58,9 @@ fn flag(args: &[String], name: &str, envvar: &str) -> bool {
     args.iter().any(|a| a == name) || env::var(envvar).is_ok_and(|v| v == "1" || v == "true")
 }
 
+/// How old a run's marker must be before the next run sweeps its leftovers.
+const STALE_SECS: i64 = 6 * 3600;
+
 /// `--flag a,b` (or `$envvar`) as a list.
 fn list(args: &[String], names: &[&str], envvar: &str) -> Vec<String> {
     let raw = names.iter().find_map(|n| arg(args, n)).or_else(|| env::var(envvar).ok());
@@ -208,11 +211,23 @@ async fn run() -> ExitCode {
             let kind = if full { "full" } else { "offline" };
             println!("e2e run {} ({kind} suite), marker {}", ctx.run, ctx.marker);
             let mut flows = Vec::new();
+            // A run that was killed or evicted never reached its own cleanup: sweep what runs older than
+            // STALE_SECS left before starting, so test data can never outlive the next run. `--keep` runs
+            // are left alone for that long.
+            let used: Vec<&str> = fams.iter().map(|f| f.name).filter(|n| selected.iter().any(|d| d.family == *n)).collect();
+            let stale = Scope::Stale(ctx::unix_now() - STALE_SECS);
+            for fam in chosen(&used) {
+                if let Some(sweep) = fam.cleanup {
+                    let mut f = sweep(&ctx, &stale, false).await;
+                    f.family = fam.name.into();
+                    f.name = "stale cleanup".into();
+                    flows.push(f);
+                }
+            }
             for d in &selected {
                 flows.push(run_def(&ctx, d).await);
                 trace::flush().await;
             }
-            let used: Vec<&str> = fams.iter().map(|f| f.name).filter(|n| selected.iter().any(|d| d.family == *n)).collect();
             let scope = Scope::Run(ctx.marker.clone());
             if flag(&args, "--keep", "E2E_KEEP") {
                 println!("--keep: test data left in place; remove it with: e2e cleanup --run {}", ctx.run);
