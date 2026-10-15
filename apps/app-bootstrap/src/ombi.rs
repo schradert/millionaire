@@ -18,7 +18,7 @@
 //!    analytics Ombi switches on at first start is turned off.
 //! 3. Authentication: header login on, header `AUTH_HEADER`, create users on first login. Default
 //!    roles `FAMILY_ROLES`; import Jellyfin users. `PUBLIC_URL` is the application URL.
-//! 4. Jellyfin (`JELLYFIN_URL`, admin `JELLYFIN_ADMIN_USER`/`_PASSWORD[_FILE]` to mint an API key
+//! 4. Jellyfin (`JELLYFIN_URL`, libraries read from Jellyfin, admin `JELLYFIN_ADMIN_USER`/`_PASSWORD[_FILE]` to mint an API key
 //!    "Ombi"; `JELLYFIN_PUBLIC_URL` for links), with the movie and TV libraries enabled.
 //! 5. Sonarr, Radarr and Lidarr, when `<APP>_API_KEY[_FILE]` is set: host `<APP>_HOST`, quality
 //!    profile named `<APP>_PROFILE` (else the lowest id), root folder `<APP>_ROOT`; Lidarr also
@@ -240,14 +240,19 @@ async fn wire_jellyfin(http: &Client, api: &Api) -> Result<()> {
     let public = url_parts(&var("JELLYFIN_PUBLIC_URL", &url)).map(|(_, h, _)| h)?;
     let probe = json!({ "ip": host, "port": port, "ssl": ssl, "subDir": "", "apiKey": key });
     let info = api.post("/api/v1/Jellyfin/info", &probe).await?;
-    let libs = api.post("/api/v1/Jellyfin/Library", &probe).await?;
-    let selected: Vec<Value> = libs["items"]
+    // Ombi's own library listing drops libraries whose type options Jellyfin leaves empty (all of ours), so ask Jellyfin.
+    let r = http.get(format!("{}/Library/VirtualFolders", url.trim_end_matches('/'))).header("X-Emby-Token", &key).send_t().await?;
+    let libs: Value = ok(r, "GET /Library/VirtualFolders").await?.json().await?;
+    let selected: Vec<Value> = libs
         .as_array()
         .into_iter()
         .flatten()
-        .filter(|l| matches!(l["collectionType"].as_str(), Some("movies" | "tvshows" | "mixed")))
-        .map(|l| json!({ "key": l["id"], "title": l["name"], "collectionType": l["collectionType"], "enabled": true }))
+        .filter(|l| matches!(l["CollectionType"].as_str(), Some("movies" | "tvshows")))
+        .map(|l| json!({ "key": l["ItemId"], "title": l["Name"], "collectionType": l["CollectionType"], "enabled": true }))
         .collect();
+    if selected.is_empty() {
+        return Err("jellyfin has no movie or TV library to enable".into());
+    }
     api.ensure("/api/v1/Settings/jellyfin", "/api/v1/Settings/jellyfin", "Jellyfin", |s| {
         s["enable"] = json!(true);
         if s["servers"].as_array().is_none_or(Vec::is_empty) {
