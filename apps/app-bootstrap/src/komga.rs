@@ -19,7 +19,7 @@ use serde_json::{json, Value};
 use crate::common::{ok, retry, secret, var, Result};
 
 /// (name, root).
-const LIBRARIES: &[(&str, &str)] = &[("Comics", "/media/comics")];
+const LIBRARIES: &[(&str, &str)] = &[("Comics", "/media/comics"), ("Manga", "/media/manga")];
 
 fn missing<'a>(existing: &[(String, String)], wanted: &'a [(&'a str, &'a str)]) -> Vec<&'a (&'a str, &'a str)> {
     wanted.iter().filter(|(name, root)| !existing.iter().any(|(n, r)| n.eq_ignore_ascii_case(name) || r.trim_end_matches('/') == *root)).collect()
@@ -81,8 +81,8 @@ mod tests {
 
     #[test]
     fn creates_only_missing() {
-        assert!(missing(&[("comics".into(), "/x".into())], LIBRARIES).is_empty(), "by name");
-        assert!(missing(&[("Other".into(), "/media/comics/".into())], LIBRARIES).is_empty(), "by root");
-        assert_eq!(missing(&[], LIBRARIES).len(), 1);
+        assert_eq!(missing(&[("comics".into(), "/x".into())], LIBRARIES).len(), 1, "by name");
+        assert_eq!(missing(&[("Other".into(), "/media/comics/".into())], LIBRARIES).len(), 1, "by root");
+        assert_eq!(missing(&[], LIBRARIES).len(), 2);
     }
 }
