@@ -54,6 +54,7 @@
     ./media/arr/unpackerr.nix
     ./media/arr/sportarr.nix
     ./media/flaresolverr.nix
+    ./media/lingarr.nix
     ./media/maintainerr.nix
     ./media/jellystat.nix
     ./media/tdarr.nix

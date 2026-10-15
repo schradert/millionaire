@@ -4,7 +4,7 @@
 use reqwest::Method;
 use serde_json::{json, Value};
 
-use super::apps::{autobrr_url, bazarr_url, maintainerr_url, Arr, Ombi, Qbt, Seerr, OMBI_USER_HEADER};
+use super::apps::{autobrr_url, bazarr_url, lingarr_url, maintainerr_url, Arr, Ombi, Qbt, Seerr, OMBI_USER_HEADER};
 use crate::{
     ctx::{json, need_secret, send, var, At, Ctx, Fail, R},
     report::Flow,
@@ -251,6 +251,33 @@ pub async fn seerr(ctx: &Ctx, f: &mut Flow) -> R<()> {
         return Err(Fail::new("seerr", "jellyfin", "no enabled library"));
     }
     f.ok("seerr", "integrations", format!("Jellyfin ({libs} libraries), Radarr, Sonarr"));
+    Ok(())
+}
+
+/// Lingarr: onboarding done, Sonarr and Radarr linked, scheduled translation on, and the self-hosted
+/// LibreTranslate serves the configured target languages.
+pub async fn lingarr(ctx: &Ctx, f: &mut Flow) -> R<()> {
+    let base = lingarr_url();
+    let keys = ["sonarr_url", "sonarr_api_key", "radarr_url", "radarr_api_key", "automation_enabled", "service_type", "target_languages", "libretranslate_url"];
+    let s = json(ctx.http.post(format!("{base}/api/setting/multiple/get")).json(&keys), "lingarr", "settings").await?;
+    for k in ["sonarr_url", "sonarr_api_key", "radarr_url", "radarr_api_key"] {
+        if s[k].as_str().unwrap_or("").is_empty() {
+            return Err(Fail::new("lingarr", k, "not set"));
+        }
+    }
+    if s["automation_enabled"] != json!("true") {
+        return Err(Fail::new("lingarr", "automation", "scheduled translation is off"));
+    }
+    if !s["service_type"].as_str().unwrap_or("").contains("libretranslate") {
+        return Err(Fail::new("lingarr", "translation service", format!("libretranslate not configured: {}", s["service_type"])));
+    }
+    let lt = s["libretranslate_url"].as_str().filter(|u| !u.is_empty()).at("lingarr", "LibreTranslate URL")?;
+    let langs = json(ctx.http.get(format!("{}/languages", lt.trim_end_matches('/'))), "libretranslate", "languages").await?;
+    let codes = names(&langs, "code");
+    let targets: Vec<String> = serde_json::from_str::<Value>(s["target_languages"].as_str().unwrap_or("[]")).map(|v| names(&v, "code")).unwrap_or_default();
+    let want: Vec<&str> = targets.iter().map(String::as_str).collect();
+    require("libretranslate", "languages", &codes, &want)?;
+    f.ok("lingarr", "integrations", format!("Sonarr and Radarr linked, scheduled translation on, LibreTranslate serves {}", targets.join(", ")));
     Ok(())
 }
 

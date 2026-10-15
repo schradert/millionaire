@@ -287,6 +287,12 @@ data:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
+      name: lingarr
+      url: https://lingarr.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
       name: logseq
       url: https://logseq.trdos.me
     - conditions:

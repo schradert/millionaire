@@ -1,0 +1,8 @@
+{
+  "version": "1.4.0",
+  "digest": "sha256:8f392cf1efe718e0fcbc735d6d82df0b0bf86594bf64998aad85e8f306263774",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/lingarr-translate/lingarr"
+  }
+}
