@@ -1,0 +1,9 @@
+{
+  "version": "1.1.12",
+  "digest": "sha256:e61c759ec706da378bc8374e797da1dfd298ab30f804cefd82d192c301a888c7",
+  "source": {
+    "type": "oci-tag",
+    "repository": "cyfershepard/jellystat",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}

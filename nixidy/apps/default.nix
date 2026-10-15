@@ -53,6 +53,7 @@
     ./media/arr/sonarr.nix
     ./media/flaresolverr.nix
     ./media/maintainerr.nix
+    ./media/jellystat.nix
     ./media/qbittorrent.nix
     ./media/media-e2e.nix
     ./media/seerr.nix

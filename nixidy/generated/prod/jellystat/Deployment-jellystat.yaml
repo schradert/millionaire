@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: jellystat
+    app.kubernetes.io/instance: jellystat
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: jellystat
+  name: jellystat
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: jellystat
+      app.kubernetes.io/instance: jellystat
+      app.kubernetes.io/name: jellystat
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: jellystat
+        app.kubernetes.io/instance: jellystat
+        app.kubernetes.io/name: jellystat
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: TZ
+              value: Etc/UTC
+          envFrom:
+            - secretRef:
+                name: jellystat
+          image: cyfershepard/jellystat:1.1.12@sha256:e61c759ec706da378bc8374e797da1dfd298ab30f804cefd82d192c301a888c7
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 3000
+            timeoutSeconds: 1
+          name: jellystat
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 3000
+            timeoutSeconds: 1
+          resources:
+            limits:
+              memory: 768Mi
+            requests:
+              cpu: 25m
+              memory: 256Mi
+          startupProbe:
+            failureThreshold: 60
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 3000
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /app/backend/backup-data
+              name: backup-data
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: jellystat
+      volumes:
+        - emptyDir: {}
+          name: backup-data

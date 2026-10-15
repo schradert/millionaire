@@ -376,6 +376,10 @@ data:
           description: ''
           href: https://jellyfin.trdos.me
           icon: jellyfin
+      - jellystat:
+          description: Jellyfin watch statistics
+          href: https://jellystat.trdos.me
+          icon: jellystat
       - jitsi:
           description: ''
           href: https://jitsi.trdos.me
