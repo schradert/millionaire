@@ -88,6 +88,12 @@ fn flows() -> Vec<FlowDef> {
         ),
         d("integrations-qbittorrent", Offline, "qBittorrent saves to the shared downloads volume", step!(flows_integrations::qbittorrent_path)),
         d("integrations-bazarr", Offline, "Bazarr: Sonarr and Radarr connected, English default profile, providers", step!(flows_integrations::bazarr)),
+        d(
+            "integrations-lingarr",
+            Offline,
+            "Lingarr: Sonarr and Radarr linked, scheduled translation on, LibreTranslate serves the languages",
+            step!(flows_integrations::lingarr),
+        ),
         d("integrations-autobrr", Offline, "autobrr: download clients and a filter per arr app", step!(flows_integrations::autobrr)),
         d(
             "integrations-maintainerr",

@@ -408,6 +408,10 @@ data:
           description: ''
           href: https://lidarr.trdos.me
           icon: lidarr
+      - lingarr:
+          description: Subtitle translation for Sonarr and Radarr media
+          href: https://lingarr.trdos.me
+          icon: mdi-subtitles
       - maintainerr:
           description: ''
           href: https://maintainerr.trdos.me

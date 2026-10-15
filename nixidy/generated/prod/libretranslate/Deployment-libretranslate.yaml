@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/controller: libretranslate
+    app.kubernetes.io/instance: libretranslate
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: libretranslate
+  name: libretranslate
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: libretranslate
+      app.kubernetes.io/instance: libretranslate
+      app.kubernetes.io/name: libretranslate
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: libretranslate
+        app.kubernetes.io/instance: libretranslate
+        app.kubernetes.io/name: libretranslate
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: LT_DISABLE_WEB_UI
+              value: "true"
+            - name: LT_LOAD_ONLY
+              value: en,es
+            - name: LT_UPDATE_MODELS
+              value: "false"
+          image: libretranslate/libretranslate:v1.9.6@sha256:1de2d7056bb8ad607a412f4563d9abe324ff632b43b5be9428bcc8e213aebb32
+          livenessProbe:
+            httpGet:
+              path: /languages
+              port: 5000
+            periodSeconds: 30
+            timeoutSeconds: 10
+          name: libretranslate
+          readinessProbe:
+            httpGet:
+              path: /languages
+              port: 5000
+          resources:
+            limits:
+              memory: 2Gi
+            requests:
+              cpu: 50m
+              memory: 768Mi
+          startupProbe:
+            failureThreshold: 90
+            httpGet:
+              path: /languages
+              port: 5000
+            periodSeconds: 10
+          volumeMounts:
+            - mountPath: /app/db
+              name: db
+            - mountPath: /home/libretranslate/.local
+              name: models
+            - mountPath: /tmp
+              name: tmpfs
+              subPath: tmp
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      securityContext:
+        fsGroup: 1032
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 1032
+        runAsUser: 1032
+      serviceAccountName: libretranslate
+      volumes:
+        - emptyDir: {}
+          name: db
+        - name: models
+          persistentVolumeClaim:
+            claimName: libretranslate
+        - emptyDir: {}
+          name: tmpfs

@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: lingarr
+    app.kubernetes.io/instance: lingarr
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: lingarr
+  name: lingarr
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: lingarr
+      app.kubernetes.io/instance: lingarr
+      app.kubernetes.io/name: lingarr
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 35cfa3ad7317202a6b2cdb259df4545f59611ceecd5cf75ecba8804a234524e4
+      labels:
+        app.kubernetes.io/controller: lingarr
+        app.kubernetes.io/instance: lingarr
+        app.kubernetes.io/name: lingarr
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - envFrom:
+            - secretRef:
+                name: lingarr
+            - configMapRef:
+                name: lingarr
+          image: ghcr.io/lingarr-translate/lingarr:1.4.0@sha256:8f392cf1efe718e0fcbc735d6d82df0b0bf86594bf64998aad85e8f306263774
+          livenessProbe:
+            tcpSocket:
+              port: 9876
+          name: lingarr
+          readinessProbe:
+            tcpSocket:
+              port: 9876
+          resources:
+            requests:
+              cpu: 20m
+              memory: 192Mi
+          startupProbe:
+            failureThreshold: 60
+            tcpSocket:
+              port: 9876
+          volumeMounts:
+            - mountPath: /app/config
+              name: config
+            - mountPath: /media/movies
+              name: media-movies
+            - mountPath: /media/tv
+              name: media-tv
+            - mountPath: /tmp
+              name: tmpfs
+              subPath: tmp
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      securityContext:
+        fsGroup: 65534
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 65534
+        runAsUser: 65534
+      serviceAccountName: lingarr
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: lingarr
+        - name: media-movies
+          persistentVolumeClaim:
+            claimName: media-movies
+        - name: media-tv
+          persistentVolumeClaim:
+            claimName: media-tv
+        - emptyDir: {}
+          name: tmpfs

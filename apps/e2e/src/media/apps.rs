@@ -419,3 +419,7 @@ pub fn autobrr_url() -> String {
 pub fn maloja_url() -> String {
     url("maloja", "http://maloja.media.svc.cluster.local:42010")
 }
+
+pub fn lingarr_url() -> String {
+    url("lingarr", "http://lingarr.media.svc.cluster.local:9876")
+}

@@ -137,6 +137,8 @@ default on, nixidy/system/storage/postgres.nix), so every database is scraped; t
 | librechat | none | no metrics endpoint upstream (MongoDB sidecar has no exporter) |
 | lidarr | ServiceMonitor (exportarr sidecar) + CNPG |  |
 | logseq | none | static app; no metrics |
+| libretranslate | none | no metrics endpoint upstream |
+| lingarr | none | no metrics endpoint upstream |
 | loki | PodMonitor (store, canary, memcached exporters) |  |
 | mainsail | none | static UI; printer metrics come from prometheus-klipper-exporter |
 | maintainerr | none | no metrics endpoint upstream |
