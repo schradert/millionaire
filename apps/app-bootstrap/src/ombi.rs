@@ -28,7 +28,9 @@
 //! 7. Accounts: every member of the Keycloak groups `ADMIN_GROUP` (default `admin`) and
 //!    `FAMILY_GROUP` (default `family`) gets an Ombi account (created when missing) with
 //!    `ADMIN_ROLES` or `FAMILY_ROLES`; a Keycloak user in neither group, with an Ombi account, is
-//!    set to the `Disabled` role. Ombi accounts Keycloak does not know (the break-glass admin,
+//!    set to the `Disabled` role. Ombi's sign-in token carries its roles for up to a year, so a person
+//!    who loses a privileged role (admin, power user, auto-approve) has the account deleted (requests
+//!    included) and recreated; other role changes are made in place. Ombi accounts Keycloak does not know (the break-glass admin,
 //!    imported Jellyfin users) are left alone. Needs `KEYCLOAK_PASSWORD[_FILE]`.
 
 use crate::trace::SendTraced as _;
@@ -124,6 +126,13 @@ fn wanted_roles(admin: bool, family: bool, admin_roles: &[String], family_roles:
 /// The roles an Ombi user view model has switched on.
 fn enabled_roles(user: &Value) -> BTreeSet<String> {
     user["claims"].as_array().into_iter().flatten().filter(|c| c["enabled"] == json!(true)).filter_map(|c| c["value"].as_str().map(String::from)).collect()
+}
+
+/// Roles whose removal must end the person's existing sessions: admin and everything that approves or edits.
+const PRIVILEGED: [&str; 7] = ["Admin", "PowerUser", "AutoApproveMovie", "AutoApproveTv", "AutoApproveMusic", "AutoApprove4KMovie", "EditCustomPage"];
+
+fn lost_privilege(current: &BTreeSet<String>, want: &BTreeSet<String>) -> bool {
+    PRIVILEGED.iter().any(|r| current.contains(*r) && !want.contains(*r))
 }
 
 fn claims(roles: &BTreeSet<String>) -> Value {
@@ -438,11 +447,25 @@ async fn sync_users(api: &Api) -> Result<()> {
             continue;
         }
         let want = wanted_roles(admins.contains(&name), family.contains(&name), &admin_roles, &family_roles);
-        let existing = ombi_users.as_array().into_iter().flatten().find(|u| u["userName"].as_str().is_some_and(|n| n.to_lowercase() == name));
+        let mut existing = ombi_users.as_array().into_iter().flatten().find(|u| u["userName"].as_str().is_some_and(|n| n.to_lowercase() == name)).cloned();
+        if let Some(u) = &existing {
+            if lost_privilege(&enabled_roles(u), &want) {
+                // Ombi's sign-in token carries the roles for up to a year and is checked only against the account's
+                // existence, so the roles of a signed-in person cannot be reduced in place: delete the account (its
+                // requests go with it) and let the next sign-in, or the create below, start it afresh.
+                let id = u["id"].as_str().ok_or("ombi user without an id")?;
+                let r = api.call(Method::DELETE, &format!("/api/v1/Identity/{id}"), None).await?;
+                if r["successful"] != json!(true) {
+                    return Err(format!("deleting {name}: {}", r["errors"]).into());
+                }
+                println!("ombi: {name} lost privileged roles; account deleted so its token stops working");
+                existing = None;
+            }
+        }
         match existing {
-            Some(u) if enabled_roles(u) == want => {}
+            Some(u) if enabled_roles(&u) == want => {}
             Some(u) => {
-                let mut body = u.clone();
+                let mut body = u;
                 body["claims"] = claims(&want);
                 let r = api.put("/api/v1/Identity", &body).await?;
                 if r["successful"] != json!(true) {
@@ -509,6 +532,15 @@ mod tests {
         assert_eq!(wanted_roles(true, true, &a, &f).len(), 2);
         assert_eq!(wanted_roles(false, true, &a, &f), BTreeSet::from(["RequestMovie".to_string()]));
         assert_eq!(wanted_roles(false, false, &a, &f), BTreeSet::from(["Disabled".to_string()]));
+    }
+
+    #[test]
+    fn demotion_is_a_lost_privilege_but_a_new_role_is_not() {
+        let set = |r: &[&str]| r.iter().map(|x| x.to_string()).collect::<BTreeSet<_>>();
+        assert!(lost_privilege(&set(&["Admin", "RequestMovie"]), &set(&["RequestMovie"])));
+        assert!(lost_privilege(&set(&["Admin"]), &set(&["Disabled"])));
+        assert!(!lost_privilege(&set(&["RequestMovie", "ManageOwnRequests"]), &set(&["RequestMovie"])));
+        assert!(!lost_privilege(&set(&["RequestMovie"]), &set(&["Admin", "RequestMovie"])));
     }
 
     #[test]
