@@ -44,11 +44,11 @@ in {
       profiles = ["workstation"];
     };
     falcon = {
-      id = "WXQNXWB-T2DU7FN-FFWIFYN-EPWICPJ-SDGDPO4-EB73EEG-5IOQV7F-HGWLJQ5";
+      id = "ILNWTY6-I2B6YWV-27IZOEN-JYWZSHN-OWAXB4N-2MDJGAT-KZNILKL-CJPPYAR";
       profiles = ["workstation" "gaming"];
     };
     systeamadeck = {
-      id = "WYLPTZF-BM3N2VJ-QE3WGYS-UGWUSRR-ASUX6LI-CEYXFUO-PCPIY53-BGV2FAJ";
+      id = "H7OCLG5-D3EMV3Z-PMVEMKT-VLL5YGJ-EPDO6HL-HK27L3L-QVBPY63-VST4UAN";
       profiles = ["gaming"];
     };
     # The phone's Syncthing-Fork carries only the notes. Its identity is made by the app: record
