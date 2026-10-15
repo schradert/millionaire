@@ -21,6 +21,7 @@ spec:
     otpPolicyType: totp
     realm: default
     registrationAllowed: false
+    resetPasswordAllowed: true
     smtpServer:
       auth: "false"
       from: noreply@trdos.me

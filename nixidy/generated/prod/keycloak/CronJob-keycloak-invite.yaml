@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: keycloak-invite
+  namespace: identity
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 300
+      backoffLimit: 0
+      template:
+        spec:
+          automountServiceAccountToken: true
+          containers:
+            - args:
+                - keycloak-invite
+              env:
+                - name: KEYCLOAK_PASSWORD_FILE
+                  value: /secrets/keycloak/KC_BOOTSTRAP_ADMIN_PASSWORD
+              image: harbor.trdos.me/library/app-bootstrap:0.30.0@sha256:0f29e7fa83b47c7e80ac0821e71c6773d8d7cc68eaef7ae3de18074c4a64575b
+              name: keycloak-invite
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - mountPath: /secrets/keycloak
+                  name: keycloak
+                  readOnly: true
+          restartPolicy: Never
+          securityContext:
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          serviceAccountName: keycloak-invite
+          volumes:
+            - name: keycloak
+              secret:
+                secretName: keycloak
+      ttlSecondsAfterFinished: 3600
+  schedule: '*/10 * * * *'
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 1
