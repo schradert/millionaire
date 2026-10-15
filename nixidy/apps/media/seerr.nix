@@ -83,8 +83,11 @@ in {
           # Radarr/Sonarr as default servers (>= 0.15.0); the profiles are Recyclarr's.
           RADARR_API_KEY_FILE = "/secrets/radarr/apikey";
           SONARR_API_KEY_FILE = "/secrets/sonarr/apikey";
-          RADARR_PROFILE = "[SQP] SQP-1 WEB (2160p)";
+          # Default servers request 1080p; the separate 4K servers (>= 0.22.2) use Recyclarr's 2160p profiles.
+          RADARR_PROFILE = "HD-1080p";
           SONARR_PROFILE = "WEB-1080p";
+          RADARR_4K_PROFILE = "[SQP] SQP-1 WEB (2160p)";
+          SONARR_4K_PROFILE = "WEB-2160p";
         };
         secrets = {
           jellyfin = "jellyfin-admin";
