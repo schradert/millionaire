@@ -175,9 +175,12 @@ in {
         };
       };
       # Idempotent post-sync bootstrap: first admin (first registered user is
-      # admin), the Books/Comics libraries, and Keycloak OIDC in the server
+      # admin), the Books/Comics/Manga libraries, and Keycloak OIDC in the server
       # settings (apps/app-bootstrap). Reruns after every sync: must stay a no-op.
       # Image: `image publish app-bootstrap` (modules/images.nix) -> Harbor.
+      # Hooks are not live resources, so a new pin alone never syncs; this tracked ConfigMap makes
+      # it a diff, hence a sync, hence a rerun (the `bootstrap` option does the same).
+      resources.configMaps.kavita-bootstrap.data.image = with pinned.images.app-bootstrap-kavita; "${repository}:${tag}@${digest}";
       resources.jobs.kavita-bootstrap = {
         metadata.annotations = {
           "argocd.argoproj.io/hook" = "PostSync";
