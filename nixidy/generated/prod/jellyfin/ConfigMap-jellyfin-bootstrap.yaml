@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  image: harbor.trdos.me/library/jellyfin-bootstrap:0.4.0@sha256:ee8c49ea1d60dce53c705e937b1fe152f5cee19661f8da91233ea2a1dcbe3a5e
+  spec: 5e36afd3b7306ab94fdab2810a32c939c22acd602837bfe3f3f1393bff5f25a3
+kind: ConfigMap
+metadata:
+  name: jellyfin-bootstrap
+  namespace: media

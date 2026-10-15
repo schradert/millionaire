@@ -164,3 +164,25 @@ The Macs are the root of trust: they decrypt `secrets/sops/*.yaml` with tristan'
 - Lock down ntfy on hyena (README todo 16).
 - ContextForge: check whether its native OIDC is active behind oauth2-proxy (a double login prompt means it is).
 - Stalwart admin UI: it has no route yet, so use `kubectl -n mail port-forward svc/stalwart 8080` with Bitwarden `stalwart/admin/password`.
+
+## 13. Ryot: Trakt and Letterboxd
+
+Everything else in Ryot is bootstrapped: Jellyfin plays (sink plus the Jellyfin Webhook plugin), Audiobookshelf and Komga progress (yank), Radarr and Sonarr pushes from the Ryot collection "Request", and a one-time Audiobookshelf import. These steps only cover the parts that need your accounts.
+
+Trakt into Ryot (one-time history import from a public profile):
+
+1. Create an API app at <https://trakt.tv/oauth/applications/new>. Use any name; the redirect URI can be `urn:ietf:wg:oauth:2.0:oob`, since Ryot does not use it. Copy the **Client ID**.
+2. Store it in Bitwarden as `ryot/trakt/client-id`.
+3. Make the Trakt profile public (Settings → Privacy) at least until the import finishes.
+4. In `nixidy/apps/media/ryot.nix`, set `trakt.enable = true` and `trakt.username = "<your trakt slug>"`. Render, commit and sync. The Ryot bootstrap starts the import once and skips it after any report that didn't fail (Ryot → Settings → Imports shows it).
+
+Jellyfin plays out to Trakt:
+
+1. Flip `traktPlugin = true` in `nixidy/apps/media/jellyfin.nix`. Render, commit and sync. The Jellyfin bootstrap installs the Trakt plugin.
+2. In Jellyfin, go to Dashboard → Plugins → Trakt, pick your user and click **Authorize Device**. Enter the code at <https://trakt.tv/activate>. This device-code login is per Jellyfin user and is the one step that can't be automated: the plugin only accepts tokens issued to its own client ID. The token stays in Jellyfin's config volume, which VolSync backs up.
+
+Letterboxd: there is no public write API, and Ryot (v10.5) has no Letterboxd importer. What works today:
+
+- Letterboxd into Ryot, once: export at Letterboxd → Settings → Data → Export. If Trakt's own importer accepts that CSV, import it into Trakt and let the Trakt import above carry it into Ryot. That Trakt feature is unverified.
+- Ryot or Jellyfin out to Letterboxd: upload a CSV by hand at <https://letterboxd.com/import/>. Letterboxd matches rows by `tmdbID`, and Ryot's JSON export holds TMDB ids.
+- Ongoing Letterboxd → Ryot is not built. The scoped follow-up is a CronJob that reads the public diary RSS (`https://letterboxd.com/<user>/rss/`, which carries `tmdb:movieId`) and posts new entries to a Ryot "Generic JSON" sink. Ryot doesn't de-duplicate seen entries (upstream issue 1611), so that job would keep state.

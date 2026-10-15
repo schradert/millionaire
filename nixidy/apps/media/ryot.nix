@@ -1,5 +1,12 @@
 {config, ...}: let
   inherit (config.canivete.meta) people;
+  # Trakt history import (docs/manual-steps.md "Ryot: Trakt and Letterboxd"): a public Trakt
+  # profile, imported once by the bootstrap. Needs a Trakt API app's client id in Bitwarden
+  # `ryot/trakt/client-id` (Ryot's SERVER_IMPORTER_TRAKT_CLIENT_ID).
+  trakt = {
+    enable = false;
+    username = "";
+  };
 in {
   nixidy = {
     charts,
@@ -100,15 +107,35 @@ in {
       bootstrap = lib.mkIf bootstrapped {
         image = with pinned.images.app-bootstrap-ryot; "${repository}:${tag}@${digest}";
         args = ["ryot"];
-        env = {
-          RYOT_URL = "http://ryot.media.svc.cluster.local:8000";
-          OIDC_USERNAME = people.me;
-          ADMIN_ACCESS_TOKEN_FILE = "/secrets/token/password";
-          KEYCLOAK_PASSWORD_FILE = "/secrets/keycloak/password";
-        };
+        # Also wires tristan's integrations (apps/app-bootstrap/src/ryot_wire.rs, >= 0.25.0): Jellyfin
+        # sink + the Webhook plugin's destination, Audiobookshelf and Komga yank, Radarr/Sonarr push
+        # from the "Request" collection, one-time Audiobookshelf (and Trakt) imports.
+        env =
+          {
+            RYOT_URL = "http://ryot.media.svc.cluster.local:8000";
+            OIDC_USERNAME = people.me;
+            ADMIN_ACCESS_TOKEN_FILE = "/secrets/token/password";
+            KEYCLOAK_PASSWORD_FILE = "/secrets/keycloak/password";
+            RYOT_DB_PASSWORD_FILE = "/secrets/db/password";
+            JELLYFIN_ADMIN_PASSWORD_FILE = "/secrets/jellyfin/password";
+            AUDIOBOOKSHELF_PASSWORD_FILE = "/secrets/audiobookshelf/password";
+            KOMGA_EMAIL = people.my.profiles.personal.email;
+            KOMGA_PASSWORD_FILE = "/secrets/komga/password";
+            RADARR_API_KEY_FILE = "/secrets/radarr/apikey";
+            SONARR_API_KEY_FILE = "/secrets/sonarr/apikey";
+            RADARR_PROFILE = "HD-1080p";
+            SONARR_PROFILE = "WEB-1080p";
+          }
+          // lib.optionalAttrs trakt.enable {TRAKT_USERNAME = trakt.username;};
         secrets = {
           token = "ryot-admin-token";
           keycloak = "ryot-keycloak-admin";
+          db = "ryot-app";
+          jellyfin = "jellyfin-admin";
+          audiobookshelf = "audiobookshelf-admin";
+          komga = "komga-admin";
+          radarr = "radarr-apikey";
+          sonarr = "sonarr-apikey";
         };
       };
       # Keycloak master-realm admin, to resolve tristan's `sub` (same Bitwarden entry
@@ -139,34 +166,45 @@ in {
           };
         };
       };
-      resources.externalSecrets.ryot.spec.data = [
-        {
-          secretKey = "DATABASE_URL";
-          remoteRef.key = "ryot-app";
-          remoteRef.property = "password";
-          sourceRef.storeRef.name = "kubernetes-media";
+      resources.externalSecrets.ryot.spec.data =
+        lib.optional trakt.enable {
+          secretKey = "TRAKT_CLIENT_ID";
+          remoteRef.key = "ryot/trakt/client-id";
+          sourceRef.storeRef.name = "bitwarden";
           sourceRef.storeRef.kind = "ClusterSecretStore";
         }
+        ++ [
+          {
+            secretKey = "DATABASE_URL";
+            remoteRef.key = "ryot-app";
+            remoteRef.property = "password";
+            sourceRef.storeRef.name = "kubernetes-media";
+            sourceRef.storeRef.kind = "ClusterSecretStore";
+          }
+          {
+            secretKey = "ADMIN_ACCESS_TOKEN";
+            remoteRef.key = "ryot-admin-token";
+            remoteRef.property = "password";
+            sourceRef.storeRef.name = "kubernetes-media";
+            sourceRef.storeRef.kind = "ClusterSecretStore";
+          }
+          {
+            secretKey = "OIDC_CLIENT_SECRET";
+            remoteRef.key = "ryot";
+            remoteRef.property = "client-secret";
+            sourceRef.storeRef.name = "kubernetes-identity";
+            sourceRef.storeRef.kind = "ClusterSecretStore";
+          }
+        ];
+      resources.externalSecrets.ryot.spec.target.template.data =
         {
-          secretKey = "ADMIN_ACCESS_TOKEN";
-          remoteRef.key = "ryot-admin-token";
-          remoteRef.property = "password";
-          sourceRef.storeRef.name = "kubernetes-media";
-          sourceRef.storeRef.kind = "ClusterSecretStore";
+          DATABASE_URL = "postgresql://ryot:{{ .DATABASE_URL }}@ryot-rw.media.svc.cluster.local:5432/ryot";
+          SERVER_ADMIN_ACCESS_TOKEN = "{{ .ADMIN_ACCESS_TOKEN }}";
+          SERVER_OIDC_CLIENT_SECRET = "{{ .OIDC_CLIENT_SECRET }}";
         }
-        {
-          secretKey = "OIDC_CLIENT_SECRET";
-          remoteRef.key = "ryot";
-          remoteRef.property = "client-secret";
-          sourceRef.storeRef.name = "kubernetes-identity";
-          sourceRef.storeRef.kind = "ClusterSecretStore";
-        }
-      ];
-      resources.externalSecrets.ryot.spec.target.template.data = {
-        DATABASE_URL = "postgresql://ryot:{{ .DATABASE_URL }}@ryot-rw.media.svc.cluster.local:5432/ryot";
-        SERVER_ADMIN_ACCESS_TOKEN = "{{ .ADMIN_ACCESS_TOKEN }}";
-        SERVER_OIDC_CLIENT_SECRET = "{{ .OIDC_CLIENT_SECRET }}";
-      };
+        // lib.optionalAttrs trakt.enable {
+          SERVER_IMPORTER_TRAKT_CLIENT_ID = "{{ .TRAKT_CLIENT_ID }}";
+        };
     };
     oauth2Proxy.upstreams = lib.mkIf (!bootstrapped) {
       ${hostname} = {
