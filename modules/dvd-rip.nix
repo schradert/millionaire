@@ -25,6 +25,11 @@
         default = "tristan";
         description = "Runs the service and owns the rips (the dvd-* commands are run by hand as this user too).";
       };
+      uid = lib.mkOption {
+        type = lib.types.nullOr lib.types.int;
+        default = null;
+        description = "Pins the user's uid, so a reinstall cannot renumber it away from the rips it owns (its group is `users`, gid 100).";
+      };
       device = lib.mkOption {
         type = lib.types.str;
         default = "/dev/sr0";
@@ -39,7 +44,10 @@
       environment.variables.DVD_RIPS = cfg.rips;
       # MakeMKV reads the drive through its SCSI-generic node; udev gives both to `cdrom`.
       boot.kernelModules = ["sg"];
-      users.users.${cfg.user}.extraGroups = ["cdrom"];
+      users.users.${cfg.user} = {
+        extraGroups = ["cdrom"];
+        uid = lib.mkIf (cfg.uid != null) cfg.uid;
+      };
       systemd.services = lib.genAttrs ["dvd-watch" "dvd-worker"] (name: {
         description = "DVD ripping: ${name}";
         wantedBy = ["multi-user.target"];
