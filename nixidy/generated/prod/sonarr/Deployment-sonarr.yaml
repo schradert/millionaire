@@ -39,6 +39,8 @@ spec:
                 secretKeyRef:
                   key: SONARR__AUTH__APIKEY
                   name: sonarr
+            - name: ENABLE_ADDITIONAL_METRICS
+              value: "true"
             - name: PORT
               value: "9707"
             - name: URL
