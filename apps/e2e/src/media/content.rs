@@ -98,11 +98,8 @@ pub const SLIP_TRACKS: [&str; 10] = [
 
 /// Nine Inch Nails, "The Slip" (2008): released by the band under CC BY-NC-SA 3.0 US (each file's
 /// TCOP tag says so), kept on the Internet Archive by the Archive itself (`The_Slip-2640`,
-/// uploader jake@archive.org). The full-suite download is that item's web-seeded torrent through
-/// the VPN (only the 10 mp3s are selected); the offline suite fetches the same 10 files directly.
-pub fn slip_torrent() -> String {
-    var("E2E_SLIP_TORRENT", "https://archive.org/download/The_Slip-2640/The_Slip-2640_archive.torrent")
-}
+/// uploader jake@archive.org). Fetched directly in every suite (its torrent cannot finish, see
+/// `slip_files` in flows_arr.rs).
 
 /// Direct URLs and file names of the 10 mp3s.
 pub fn slip_files() -> Vec<(String, String)> {
