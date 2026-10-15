@@ -157,3 +157,15 @@ on the host and the host decrypts its secrets from the first boot, no `updatekey
 
 A host that already has its own key (gargoyle, echidna) can keep it instead: `ssh-keyscan -t ed25519 <host> | ssh-to-age`, replace
 the anchor, `sops updatekeys` both files.
+
+## Flashing piper (Raspberry Pi 5, microSD)
+
+The Pi has no kexec, so there is no nixos-anywhere install: the image is the install. `nix build
+.#nixosConfigurations.piper.config.system.build.sdImage` (aarch64: build it on falcon, which has binfmt emulation, or a native
+builder; the vendor kernel is compiled), decompress it, `static/host-key.sh image piper <img>`, flash it. On first boot it
+expands the root partition, decrypts `default.yaml` with the key above, joins the tailnet and the cluster as an agent
+(`node.trdos.me/class=sbc`, soft taint) and answers as `piper.local` (avahi). Physical steps: write the card (`dd` or Etcher),
+put it in the Pi, connect Ethernet (the NIC is `eth0`, in cilium's device list) and power; reserve its address on the router.
+The kernel uses 16k pages: jemalloc-linked images (redis and the like) fail on it, hence the soft taint and the
+`node.trdos.me/page-size=16k` label.
+

@@ -214,26 +214,27 @@
           canivete.system = "aarch64-linux";
           profiles.system.canivete.configuration.imports = [./static/muffin.nix];
         };
-        # FIXME reactivate
-        # piper = {
-        #   canivete.system = "aarch64-linux";
-        #   profiles.system = {config, ...}: {
-        #     canivete = {
-        #       args = inputs;
-        #       builder = modules:
-        #         inputs.nixos-raspberrypi.lib.nixosInstaller {
-        #           specialArgs = config.canivete.args;
-        #           modules = [modules];
-        #         };
-        #       configuration = {
-        #         imports = [./static/rpi.nix ./static/k8s-node.nix ./static/server.nix];
-        #         system.stateVersion = "26.05";
-        #         home-manager.sharedModules = [{home.stateVersion = "26.05";}];
-        #         disko.devices.disk.root.device = "/dev/mmcblk0";
-        #       };
-        #     };
-        #   };
-        # };
+        # Raspberry Pi 5 on a microSD card (./static/piper.nix). Flashed from system.build.sdImage;
+        # nixos-anywhere cannot reach it (no kexec).
+        piper = {
+          canivete.system = "aarch64-linux";
+          profiles.system = {config, ...}: {
+            canivete = {
+              args = inputs;
+              builder = modules:
+                inputs.nixos-raspberrypi.lib.nixosSystem {
+                  inherit (inputs) nixpkgs;
+                  specialArgs = config.canivete.args;
+                  modules = [modules];
+                };
+              configuration = {
+                imports = [./static/piper.nix];
+                system.stateVersion = "26.05";
+                home-manager.sharedModules = [{home.stateVersion = "26.05";}];
+              };
+            };
+          };
+        };
         sirver = {
           remoteBuild = true;
           profiles.system.canivete.configuration = {config, ...}: {
