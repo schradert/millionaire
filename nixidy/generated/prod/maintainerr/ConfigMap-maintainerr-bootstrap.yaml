@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  image: harbor.trdos.me/library/app-bootstrap:0.22.0@sha256:54821207ee6084468b141d0241860900a0b8aa1d465cfde4769e529626aee9ac
+  spec: add068856d32c963a65cb0e6e0cd5a568995e79dac295245ea9cce7d81738fcf
+kind: ConfigMap
+metadata:
+  name: maintainerr-bootstrap
+  namespace: media

@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  image: harbor.trdos.me/library/app-bootstrap:0.22.0@sha256:54821207ee6084468b141d0241860900a0b8aa1d465cfde4769e529626aee9ac
+  spec: 499fb3bdc6c93f14c0ace4a44d36ba0272d0fbf58a83a4ed25f4aad4f67c7c38
+kind: ConfigMap
+metadata:
+  name: bazarr-bootstrap
+  namespace: media
