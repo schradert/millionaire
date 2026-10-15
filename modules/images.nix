@@ -394,6 +394,9 @@
           layers = [(n2c.buildLayer {deps = [amd64Pkgs.rsync];})];
         };
 
+      # Coder workspace base (apps/workspace, nixidy/apps/development/coder). Bump the tag with the image.
+      workspace = import ../apps/workspace/image.nix {inherit inputs n2c registry;};
+
       govee2mqtt = n2c.buildImage {
         name = "${registry}/library/govee2mqtt";
         tag = linuxPkgs.govee2mqtt.version;
