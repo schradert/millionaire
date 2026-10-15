@@ -20,8 +20,8 @@
       countries = [];
     };
     # DHT, PeX and LSD find peers without a tracker, which public torrents need. Private
-    # trackers ban clients that use them, and they announce to many more peers. Off by default.
-    peerDiscovery = false;
+    # trackers ban clients that use them; turn this off if one is added. On: the indexers are public (1337x).
+    peerDiscovery = true;
 
     providers = {
       protonvpn = {
