@@ -212,6 +212,16 @@ pub const NATIVE_AUTH: [(&str, &str); 5] = [
     ("rook-ceph", "/api/summary"),
 ];
 
+/// Upstreams whose host only sends some paths through oauth2-proxy (the app logs in by itself
+/// elsewhere): host's first label and the path the proxy guards.
+pub const PARTIAL_UPSTREAMS: [(&str, &str); 1] = [("dashy", "/catalog.json")];
+
+/// The path to request to reach an upstream's proxy: `/` unless only part of the host goes through it.
+pub fn proxied_path(host: &str) -> &'static str {
+    let label = host.split('.').next().unwrap_or_default();
+    PARTIAL_UPSTREAMS.iter().find(|(h, _)| *h == label).map_or("/", |(_, p)| *p)
+}
+
 /// An anonymous request to a path that needs a login: 401, 403 or a redirect to a login page
 /// is right; a 2xx answered with data, a 404, a 5xx or no answer is not.
 pub fn judge_anonymous(a: &Answer) -> Result<(), String> {
@@ -257,7 +267,7 @@ pub async fn admin_gate(ctx: &Ctx, f: &mut Flow) -> R<()> {
         .iter()
         .map(|u| {
             let (c, host, iss) = (ctx.noredir.clone(), u.host.clone(), iss.clone());
-            Box::pin(async move { sign_in_redirect(&c, &format!("https://{host}/"), &iss).await.err().map(|e| format!("{host}: {}", e.msg)) }) as Job
+            Box::pin(async move { sign_in_redirect(&c, &format!("https://{host}{}", proxied_path(&host)), &iss).await.err().map(|e| format!("{host}: {}", e.msg)) }) as Job
         })
         .collect();
     let failures = limited(jobs).await;
@@ -276,7 +286,7 @@ pub async fn admin_gate(ctx: &Ctx, f: &mut Flow) -> R<()> {
         .map(|u| {
             let (c, host, token, iss) = (ctx.noredir.clone(), u.host.clone(), token.clone(), iss.clone());
             Box::pin(async move {
-                let a = get(&c, &format!("https://{host}/"), Some(&token), Duration::from_secs(30)).await;
+                let a = get(&c, &format!("https://{host}{}", proxied_path(&host)), Some(&token), Duration::from_secs(30)).await;
                 match judge(false, &a, &iss) {
                     Verdict::Ok => None,
                     Verdict::Down(m) | Verdict::Wrong(m) => Some(format!("{host}: family user: {m}")),
@@ -491,6 +501,12 @@ mod tests {
         assert!(judge_anonymous(&ans(500, "")).is_err());
         let none = Answer { status: None, location: String::new(), error: "connection refused".into(), timed_out: false };
         assert!(judge_anonymous(&none).is_err());
+    }
+
+    #[test]
+    fn a_partly_proxied_host_is_probed_on_its_guarded_path() {
+        assert_eq!(proxied_path("dashy.example.com"), "/catalog.json");
+        assert_eq!(proxied_path("radarr.example.com"), "/");
     }
 
     #[test]
