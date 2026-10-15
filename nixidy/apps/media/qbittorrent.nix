@@ -58,6 +58,10 @@
       };
     };
     provider = providers.${vpn.provider};
+    nobody = {
+      runAsUser = 65534;
+      runAsGroup = 65534;
+    };
 
     # gluetun runs this once a port is forwarded (and the DOWN one when it goes away):
     # set qBittorrent's listening port and re-bind it to the tunnel through the WebUI API
@@ -153,6 +157,12 @@
             strategy = "Recreate";
             annotations."reloader.stakater.com/auto" = "true";
             pod = {
+              # The config PVC mounts root-owned. qBittorrent runs as nobody (the arr apps' uid, so
+              # /media/downloads is shared); gluetun stays root for NET_ADMIN.
+              securityContext = {
+                fsGroup = 65534;
+                fsGroupChangePolicy = "OnRootMismatch";
+              };
               # Everything in the pod resolves through gluetun's DNS-over-TLS server on
               # 127.0.0.1, which only talks through the tunnel. No cluster DNS, no search domains.
               dnsPolicy = "None";
@@ -162,6 +172,7 @@
             # not verify) and `settings` into qBittorrent.conf before start.
             initContainers.admin = {
               image = pinned.images.qbittorrent;
+              securityContext = nobody;
               env.QBT_SETTINGS = builtins.toJSON settings;
               command = [
                 "python3"
@@ -211,6 +222,7 @@
             };
             containers.qbittorrent = {
               image = pinned.images.qbittorrent;
+              securityContext = nobody;
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
               probes.startup.enabled = true;
