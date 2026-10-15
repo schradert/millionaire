@@ -15,7 +15,10 @@
 //!    with all ids), and `POST /settings/jellyfin/sync` starts a scan.
 //! 4. `POST /settings/initialize` marks the wizard finished.
 //!
-//! 5. Always (initialised or not): the libraries named in `JELLYFIN_LIBRARIES` (default Movies, TV Shows) are enabled.
+//! 5. Always (initialised or not), right after the admin login: user 1 gets `ADMIN_EMAIL` as its email, so it is not
+//!    a person's address (seerr-sso matches Keycloak users to Seerr users by email and never signs in as user 1).
+//!
+//!    Then: the libraries named in `JELLYFIN_LIBRARIES` (default Movies, TV Shows) are enabled.
 //!    Then, with `RADARR_API_KEY[_FILE]` / `SONARR_API_KEY[_FILE]` set: log in
 //!    as the Jellyfin admin and, for each of them that Seerr does not know yet (matched by
 //!    hostname), make sure the root folder exists, pick the quality profile named
@@ -96,6 +99,7 @@ pub async fn run() -> Result<()> {
     let r = ok(r, "POST /api/v1/auth/jellyfin (jellyfin admin login; the Jellyfin admin must exist with the jellyfin-admin password)").await?;
     let cookie = session_cookie(&r).ok_or("login did not set a session cookie")?;
     println!("seerr admin login ok");
+    ensure_admin_email(&http, base, &cookie, &email).await?;
 
     let get = |path: String| {
         let (http, cookie) = (&http, cookie.clone());
@@ -133,6 +137,21 @@ pub async fn run() -> Result<()> {
     ok(r, "POST /api/v1/settings/initialize").await?;
     println!("seerr initialised");
     wire_arr(&http, base, &cookie).await
+}
+
+/// Seerr user 1 (the Jellyfin `admin`, break-glass) keeps `ADMIN_EMAIL`, which must not be a person's address:
+/// seerr-sso gives every Keycloak user their own Seerr account, matched by email, and never signs anyone in as user 1.
+async fn ensure_admin_email(http: &Client, base: &str, cookie: &str, email: &str) -> Result<()> {
+    let r = http.get(format!("{base}/api/v1/auth/me")).header("Cookie", cookie).send_t().await?;
+    let me: Value = ok(r, "GET /api/v1/auth/me").await?.json().await?;
+    if me["email"].as_str().is_some_and(|e| e.eq_ignore_ascii_case(email)) {
+        return Ok(());
+    }
+    let id = me["id"].as_i64().ok_or("GET /api/v1/auth/me: no user id")?;
+    let r = http.post(format!("{base}/api/v1/user/{id}/settings/main")).header("Cookie", cookie).json(&json!({ "email": email })).send_t().await?;
+    ok(r, "POST /api/v1/user/<admin>/settings/main (break-glass email)").await?;
+    println!("seerr: break-glass admin's email is now {email}");
+    Ok(())
 }
 
 /// The Jellyfin libraries named in `JELLYFIN_LIBRARIES` (default Movies and TV Shows) are enabled, on top of
