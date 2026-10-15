@@ -102,6 +102,38 @@ impl Kube {
         }
     }
 
+    /// The keys of the ConfigMap `name` (empty when it does not exist).
+    pub async fn config_map_keys(&self, name: &str) -> Result<Vec<String>> {
+        let url = format!("{}/api/v1/namespaces/{}/configmaps/{name}", self.api, self.namespace);
+        let r = self.http.get(url).bearer_auth(&self.token).send_t().await?;
+        if r.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(vec![]);
+        }
+        let cur: serde_json::Value = ok(r, "get configmap").await?.json().await?;
+        Ok(cur["data"].as_object().map(|d| d.keys().cloned().collect()).unwrap_or_default())
+    }
+
+    /// Set `key` in the ConfigMap `name`, creating the ConfigMap when missing.
+    pub async fn config_map_set(&self, name: &str, key: &str, value: &str) -> Result<()> {
+        let url = format!("{}/api/v1/namespaces/{}/configmaps", self.api, self.namespace);
+        let body = serde_json::json!({ "apiVersion": "v1", "kind": "ConfigMap", "metadata": { "name": name }, "data": { key: value } });
+        let r = self
+            .http
+            .patch(format!("{url}/{name}"))
+            .bearer_auth(&self.token)
+            .header("Content-Type", "application/merge-patch+json")
+            .json(&body)
+            .send_t()
+            .await?;
+        if r.status() == reqwest::StatusCode::NOT_FOUND {
+            let r = self.http.post(&url).bearer_auth(&self.token).json(&body).send_t().await?;
+            ok(r, "create configmap").await?;
+            return Ok(());
+        }
+        ok(r, "patch configmap").await?;
+        Ok(())
+    }
+
     /// Make the Secret `name` hold exactly `data` (string values). Returns whether it changed.
     /// Values are never logged.
     pub async fn ensure_secret(&self, name: &str, data: &[(&str, &str)]) -> Result<bool> {

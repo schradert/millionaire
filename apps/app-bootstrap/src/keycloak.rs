@@ -110,3 +110,68 @@ pub async fn group_members(name: &str) -> Result<std::collections::HashSet<Strin
     let members = a.get(&format!("/groups/{id}/members"), &[("max", "1000")]).await?;
     Ok(members.as_array().into_iter().flatten().filter_map(account).map(|m| m.username.to_lowercase()).collect())
 }
+
+/// Is `id` already a key of the invite ledger, or does the user already have a password?
+fn needs_invite(sent: &[String], id: &str, credentials: &Value) -> bool {
+    !sent.iter().any(|k| k == id) && !credentials.as_array().into_iter().flatten().any(|c| c["type"].as_str() == Some("password"))
+}
+
+/// Keycloak's "execute actions" email (`INVITE_ACTIONS`, default UPDATE_PASSWORD and VERIFY_EMAIL, link
+/// valid `INVITE_LIFESPAN` seconds, default 7 days) for every enabled member of the top-level group
+/// `INVITE_GROUP` (default `family`) who has an email, no password yet and no entry in the ConfigMap
+/// `keycloak-invites` (the ledger: one key per invited user id, so a lost email is resent by deleting
+/// its key). Declaring a user in Nix is the invitation; this Job, run on a schedule, sends it once.
+pub async fn invite() -> Result<()> {
+    let a = admin().await?;
+    let group = var("INVITE_GROUP", "family");
+    let actions: Vec<String> =
+        var("INVITE_ACTIONS", "UPDATE_PASSWORD,VERIFY_EMAIL").split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+    let lifespan = var("INVITE_LIFESPAN", "604800");
+    let groups = a.get("/groups", &[("search", group.as_str()), ("exact", "true")]).await?;
+    let Some(gid) = groups.as_array().into_iter().flatten().find(|g| g["name"].as_str() == Some(group.as_str())).and_then(|g| g["id"].as_str()) else {
+        println!("keycloak invite: no group {group}");
+        return Ok(());
+    };
+    let members = a.get(&format!("/groups/{gid}/members"), &[("max", "1000")]).await?;
+    let kube = crate::common::Kube::new()?;
+    let ledger = var("INVITE_LEDGER", "keycloak-invites");
+    let sent = kube.config_map_keys(&ledger).await?;
+    for m in members.as_array().into_iter().flatten() {
+        let (Some(id), Some(email)) = (m["id"].as_str(), m["email"].as_str().filter(|e| !e.is_empty())) else {
+            continue;
+        };
+        if m["enabled"] == serde_json::json!(false) || !needs_invite(&sent, id, &a.get(&format!("/users/{id}/credentials"), &[]).await?) {
+            continue;
+        }
+        let r = a
+            .http
+            .put(format!("{}/admin/realms/{}/users/{id}/execute-actions-email", a.base, a.realm))
+            .bearer_auth(&a.token)
+            .query(&[("lifespan", lifespan.as_str())])
+            .json(&actions)
+            .send_t()
+            .await?;
+        ok(r, "keycloak execute-actions-email").await?;
+        kube.config_map_set(&ledger, id, email).await?;
+        println!("keycloak invite: sent {} to {email}", actions.join("+"));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn invites_only_users_without_password_or_ledger_entry() {
+        let none = json!([]);
+        let pw = json!([{"type": "password"}]);
+        let otp = json!([{"type": "otp"}]);
+        assert!(needs_invite(&[], "a", &none));
+        assert!(needs_invite(&[], "a", &otp));
+        assert!(!needs_invite(&[], "a", &pw));
+        assert!(!needs_invite(&["a".into()], "a", &none));
+        assert!(needs_invite(&["b".into()], "a", &none));
+    }
+}
