@@ -1,0 +1,16 @@
+--- a/src/fs.rs
++++ b/src/fs.rs
+@@ -249 +249 @@
+-fn symlink_attr(ino: INodeNo) -> FileAttr {
++fn symlink_attr(ino: INodeNo, size: u64) -> FileAttr {
+@@ -252 +252 @@
+-        size: 0,
++        size,
+@@ -647 +647 @@
+-                let attr = symlink_attr(INodeNo(next_number));
++                let attr = symlink_attr(INodeNo(next_number), path.as_os_str().len() as u64);
+@@ -676,2 +676,2 @@
+-        tryfuse!(self.inode(ino), reply);
+-        reply.attr(&TTL, &symlink_attr(ino));
++        let inode = tryfuse!(self.inode(ino), reply);
++        reply.attr(&TTL, &symlink_attr(ino, inode.path.as_os_str().len() as u64));
