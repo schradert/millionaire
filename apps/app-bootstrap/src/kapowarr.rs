@@ -91,6 +91,7 @@ pub async fn run() -> Result<()> {
             "download_type": 2,
             "client_type": "qBittorrent",
             "title": "qBittorrent",
+            "enabled": true,
             "base_url": format!("http://{host}:{port}"),
             "username": var("QBITTORRENT_USER", "admin"),
             "password": optional_secret("QBITTORRENT_PASSWORD")?.unwrap_or_default(),
