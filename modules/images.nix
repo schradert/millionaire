@@ -191,6 +191,35 @@
           layers = [(n2c.buildLayer {deps = [pkg];})];
         };
 
+      # Trakt to Letterboxd import robot (apps/letterboxd-sync, nixidy/apps/media/letterboxd-sync.nix,
+      # docs/scrobbling.md): a Rust binary driving the nixpkgs Chromium over its DevTools socket.
+      letterboxd-sync = let
+        amd64Pkgs = import inputs.nixpkgs {system = "x86_64-linux";};
+        src = ../apps/letterboxd-sync;
+        pkg = amd64Pkgs.rustPlatform.buildRustPackage {
+          pname = "letterboxd-sync";
+          version = (builtins.fromTOML (builtins.readFile "${src}/Cargo.toml")).package.version;
+          inherit src;
+          cargoLock.lockFile = "${src}/Cargo.lock";
+          # The flow tests need a Chromium on CHROMIUM_PATH and loopback servers; the pre-push hooks run them.
+          doCheck = false;
+        };
+        chromium = amd64Pkgs.chromium;
+      in
+        n2c.buildImage {
+          name = "${registry}/library/letterboxd-sync";
+          tag = pkg.version;
+          arch = "amd64";
+          config = {
+            Entrypoint = ["${pkg}/bin/letterboxd-sync"];
+            Env = ["HOME=/tmp" "CHROMIUM_PATH=${chromium}/bin/chromium" "SSL_CERT_FILE=${amd64Pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"];
+          };
+          layers = [
+            (n2c.buildLayer {deps = [chromium amd64Pkgs.cacert];})
+            (n2c.buildLayer {deps = [pkg];})
+          ];
+        };
+
       # Platform end-to-end tests (apps/e2e), run as a Job from a suspended `e2e` CronJob
       # (nixidy/apps/media/media-e2e.nix for the media family, nixidy/apps/e2e.nix for the rest).
       # kubectl is for `exec` into the qbittorrent pod (VPN leak tests) and the storage flows (tagged Pods, PVCs and snapshots in `e2e`), git for the git family.
