@@ -336,11 +336,13 @@ in {
     };
     netpol.namespaces.${workspaces}.enforce = true;
     # Agents in workspaces call Bifrost in-cluster (no key; the public route needs Keycloak).
+    # Cilium matches the pod's port (8080), not the Service's (8000); the rule is
+    # namespace-wide, so ContextForge's 8080 opens too (it needs a Keycloak token).
     netpol.namespaces.ai.extraIngress = lib.toList {
       fromEndpoints = lib.toList {matchLabels."k8s:io.kubernetes.pod.namespace" = workspaces;};
       toPorts = lib.toList {
         ports = lib.toList {
-          port = "8000";
+          port = "8080";
           protocol = "TCP";
         };
       };
