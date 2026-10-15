@@ -29,6 +29,7 @@
       "maloja-admin"
       "dvd-webdav"
       "qbittorrent-admin"
+      "autobrr-admin"
     ];
   in {
     applications.${name} = lib.mkIf (image != null) {
@@ -116,6 +117,7 @@
                     PYROSCOPE_SAMPLE_RATE = "1000";
                     E2E_REPORT_CONFIGMAP = "media/${name}-last-report";
                     DOMAIN = domain;
+                    AUTOBRR_USER = people.me;
                     ADMIN_EMAIL = people.my.profiles.personal.email;
                   };
                   resources = {

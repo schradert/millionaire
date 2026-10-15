@@ -379,6 +379,14 @@ pub fn maintainerr_url() -> String {
     url("maintainerr", "http://maintainerr.media.svc.cluster.local:6246")
 }
 
+pub fn bazarr_url() -> String {
+    url("bazarr", "http://bazarr.media.svc.cluster.local:6767")
+}
+
+pub fn autobrr_url() -> String {
+    url("autobrr", "http://autobrr.media.svc.cluster.local:7474")
+}
+
 pub fn maloja_url() -> String {
     url("maloja", "http://maloja.media.svc.cluster.local:42010")
 }
