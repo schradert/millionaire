@@ -144,3 +144,16 @@ An RKE2 agent labelled `node.trdos.me/class=vm` with a `PreferNoSchedule` taint 
   MoltenVK, per Lima's krunkit docs); Apple documents Virtualization.framework's Linux graphics device only as a display scanout
   (no 3D found), and qemu's hvf path has no 3D here. Vulkan is not CUDA and nothing in the cluster (NVIDIA operator, device
   plugins) schedules it, so the VM is CPU-only. Not tried.
+
+## Provisioned host keys (piper, echidna, gargoyle)
+
+Hosts that are off or not built yet cannot be asked for their ssh host key, so theirs were generated in advance. The public halves
+are the `&piper`, `&echidna` and `&gargoyle` age anchors in `.sops.yaml` (`personal.yaml`: echidna and gargoyle, the tailnet key;
+`default.yaml`: piper, the cluster secrets), the private halves are in `secrets/sops/hostkeys.yaml` (tristan only). Install the key
+on the host and the host decrypts its secrets from the first boot, no `updatekeys` round trip:
+
+- running host: `static/host-key.sh ssh <host> <user@address>` (then deploy: `deploy '.#<host>'`);
+- piper's SD image: `static/host-key.sh image piper <raw image>` before flashing (below).
+
+A host that already has its own key (gargoyle, echidna) can keep it instead: `ssh-keyscan -t ed25519 <host> | ssh-to-age`, replace
+the anchor, `sops updatekeys` both files.

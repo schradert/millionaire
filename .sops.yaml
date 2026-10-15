@@ -7,6 +7,11 @@ keys:
   - &systeamadeck age1ktnn5xmfwnclq7j6wt8anl98qz8m2s4jpuwl304ptcxug2ue5vfsyq2x27
   # The morgenmuffel VM (static/muffin.nix): the key is generated on the Mac and shared into the guest
   - &muffin age188v8zc9m6pt38u72cqns8lq45thtwhss5yge9gtel32tm9rmhs3qwff7cu
+  # Hosts not reachable yet: their keys were generated here and live in secrets/sops/hostkeys.yaml,
+  # to be installed as the host's ssh host key (docs/node-standard.md "Provisioned host keys")
+  - &piper age1zqd7ssewjapw8sg6re8cg26efsmp694247v0scm4hf0c2nmul38s65rmsl
+  - &echidna age1czl063d3c2gdqy6dcl8cc2n7v4wg4z2a2er3lhpxrjngqackrumqymcmdw
+  - &gargoyle age13uxyhlq5h2y4nw3gya33xemzk6l3hs8drqdpgaajxdt72dgcadnsxzr2rq
 creation_rules:
   - path_regex: secrets/sops/default\.yaml
     key_groups:
@@ -18,6 +23,7 @@ creation_rules:
           - *falcon
           - *axolotl
           - *muffin
+          - *piper
   - path_regex: secrets/sops/personal\.yaml
     key_groups:
       - age:
@@ -25,6 +31,13 @@ creation_rules:
           - *falcon
           - *axolotl
           - *systeamadeck
+          - *echidna
+          - *gargoyle
+  # Private halves of the host keys above: tristan only (installed by hand, never by the host itself)
+  - path_regex: secrets/sops/hostkeys\.yaml
+    key_groups:
+      - age:
+          - *tristan
   # Syncthing device identities (`syncthing-identity <host>`): each host decrypts only its own
   - path_regex: secrets/sops/syncthing-morgenmuffel\.yaml
     key_groups:
