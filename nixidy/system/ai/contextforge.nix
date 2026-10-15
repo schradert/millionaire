@@ -33,6 +33,7 @@ in {
       };
     };
 
+    portal.apps.contextforge.groups = ["admin"];
     gatus.endpoints.contextforge = {
       url = "https://${hostname}";
       group = "internal";

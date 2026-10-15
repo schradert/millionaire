@@ -64,6 +64,7 @@
     cicd.groups = ["admin"];
     identity.groups = ["admin"];
     observability.groups = ["admin"];
+    printing.groups = ["admin"];
     storage.groups = ["admin"];
   };
   nixidy.applications.namespaces = {

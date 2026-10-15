@@ -20,7 +20,7 @@ spec:
     - backendRefs:
         - group: ""
           kind: Service
-          name: maloja
-          namespace: media
-          port: 42010
+          name: oauth2-proxy
+          namespace: identity
+          port: 4180
           weight: 1

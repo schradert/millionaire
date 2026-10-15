@@ -4,9 +4,11 @@
   # to the pseudonymous ListenBrainz account for similar-artist recommendations and
   # Fresh Releases RSS — that's MA's only outbound public link.
   #
-  # No oauth2-proxy: Maloja's API endpoint at /apis/ accepts API-key auth per-request,
-  # and the dashboard has its own admin login. Putting oauth2-proxy in front would
-  # break Pano Scrobbler / multi-scrobbler / Navidrome's scrobble POSTs.
+  # The UI and read API are public in Maloja itself (its login only guards writes), so
+  # they sit behind oauth2-proxy, admin only. The scrobble endpoints (native,
+  # ListenBrainz, Last.fm) skip it: clients like Pano Scrobbler cannot do an OIDC login
+  # and Maloja requires an API key on each of those requests. multi-scrobbler and
+  # Navidrome use the in-cluster Service.
   nixidy = {
     charts,
     lib,
@@ -113,6 +115,33 @@
               namespace = "kube-system";
               sectionName = "https";
             };
+            rules = lib.toList {
+              backendRefs = lib.toList {
+                name = "oauth2-proxy";
+                namespace = "identity";
+                port = 4180;
+              };
+            };
+          };
+          route.maloja-scrobble = {
+            hostnames = [hostname];
+            parentRefs = lib.toList {
+              name = "internal";
+              namespace = "kube-system";
+              sectionName = "https";
+            };
+            rules = lib.toList {
+              matches = map (value: {
+                path = {
+                  type = "PathPrefix";
+                  inherit value;
+                };
+              }) ["/apis/mlj_1/newscrobble" "/apis/listenbrainz" "/apis/audioscrobbler" "/apis/audioscrobbler_legacy"];
+              backendRefs = lib.toList {
+                name = "maloja";
+                inherit port;
+              };
+            };
           };
         };
       };
@@ -162,6 +191,10 @@
           remoteRef.property = "password";
         };
       };
+    };
+    oauth2Proxy.upstreams."${hostname}" = {
+      url = "http://maloja.media.svc.cluster.local:${toString port}";
+      namespace = "media";
     };
   };
 }
