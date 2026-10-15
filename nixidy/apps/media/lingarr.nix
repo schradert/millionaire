@@ -196,7 +196,10 @@
               env = {
                 LT_LOAD_ONLY = lib.concatStringsSep "," (lib.unique (source ++ target));
                 LT_DISABLE_WEB_UI = "true";
-                LT_UPDATE_MODELS = "false";
+                # LibreTranslate only installs models at start when fewer than two are installed, so
+                # adding a language to LT_LOAD_ONLY needs this: it downloads the missing models of
+                # the loaded languages and updates one only when a newer version exists.
+                LT_UPDATE_MODELS = "true";
               };
               resources = {
                 requests = {

@@ -24,7 +24,7 @@ spec:
               value: "1000"
             - name: PYROSCOPE_SERVER_ADDRESS
               value: http://pyroscope.observability.svc.cluster.local:4040
-          image: harbor.trdos.me/library/app-bootstrap:0.32.0@sha256:d176aaba96dd6df583ad95f131d0cf04488f28522a045bb20a707addd8e5382f
+          image: harbor.trdos.me/library/app-bootstrap:0.37.0@sha256:1cb3aeaf50a7871ae695ffdfef8b392391f926ad35366fdbfd55671de7562583
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
