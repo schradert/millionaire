@@ -18,8 +18,16 @@ spec:
           env:
             - name: ADMIN_ACCESS_TOKEN_FILE
               value: /secrets/token/password
+            - name: AUDIOBOOKSHELF_PASSWORD_FILE
+              value: /secrets/audiobookshelf/password
+            - name: JELLYFIN_ADMIN_PASSWORD_FILE
+              value: /secrets/jellyfin/password
             - name: KEYCLOAK_PASSWORD_FILE
               value: /secrets/keycloak/password
+            - name: KOMGA_EMAIL
+              value: t0rdos@pm.me
+            - name: KOMGA_PASSWORD_FILE
+              value: /secrets/komga/password
             - name: OIDC_USERNAME
               value: tristan
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -28,9 +36,19 @@ spec:
               value: "1000"
             - name: PYROSCOPE_SERVER_ADDRESS
               value: http://pyroscope.observability.svc.cluster.local:4040
+            - name: RADARR_API_KEY_FILE
+              value: /secrets/radarr/apikey
+            - name: RADARR_PROFILE
+              value: HD-1080p
+            - name: RYOT_DB_PASSWORD_FILE
+              value: /secrets/db/password
             - name: RYOT_URL
               value: http://ryot.media.svc.cluster.local:8000
-          image: harbor.trdos.me/library/app-bootstrap:0.22.1@sha256:efcaab3b2ee14c6d12e21e323ee0c59948842dd9bf75a6f2de5f07ec590cde6f
+            - name: SONARR_API_KEY_FILE
+              value: /secrets/sonarr/apikey
+            - name: SONARR_PROFILE
+              value: WEB-1080p
+          image: harbor.trdos.me/library/app-bootstrap:0.25.0@sha256:612a544955fe9e3784797f56f803ce6a5a8f2d5d021f19d954e3e1a3d9e5d4ab
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
@@ -41,8 +59,26 @@ spec:
           volumeMounts:
             - mountPath: /tmp
               name: tmp
+            - mountPath: /secrets/audiobookshelf
+              name: audiobookshelf
+              readOnly: true
+            - mountPath: /secrets/db
+              name: db
+              readOnly: true
+            - mountPath: /secrets/jellyfin
+              name: jellyfin
+              readOnly: true
             - mountPath: /secrets/keycloak
               name: keycloak
+              readOnly: true
+            - mountPath: /secrets/komga
+              name: komga
+              readOnly: true
+            - mountPath: /secrets/radarr
+              name: radarr
+              readOnly: true
+            - mountPath: /secrets/sonarr
+              name: sonarr
               readOnly: true
             - mountPath: /secrets/token
               name: token
@@ -57,9 +93,27 @@ spec:
       volumes:
         - emptyDir: {}
           name: tmp
+        - name: audiobookshelf
+          secret:
+            secretName: audiobookshelf-admin
+        - name: db
+          secret:
+            secretName: ryot-app
+        - name: jellyfin
+          secret:
+            secretName: jellyfin-admin
         - name: keycloak
           secret:
             secretName: ryot-keycloak-admin
+        - name: komga
+          secret:
+            secretName: komga-admin
+        - name: radarr
+          secret:
+            secretName: radarr-apikey
+        - name: sonarr
+          secret:
+            secretName: sonarr-apikey
         - name: token
           secret:
             secretName: ryot-admin-token

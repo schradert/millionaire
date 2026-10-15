@@ -7,6 +7,9 @@
   }: let
     inherit (config.canivete.meta) domain;
     hostname = "jellyfin.${domain}";
+    # Jellyfin Trakt plugin (scrobbles plays to trakt.tv). Linking a Jellyfin user to Trakt is a
+    # device-code login in the plugin's page (docs/manual-steps.md "Ryot: Trakt and Letterboxd").
+    traktPlugin = false;
   in {
     gatus.endpoints.jellyfin = {
       url = "https://${hostname}";
@@ -236,84 +239,32 @@
       # the admin user, any missing libraries, Maintainerr's Jellyfin connection and
       # the Keycloak SSO plugin + provider + login button (apps/jellyfin-bootstrap). Reruns
       # after every sync, so it must stay a no-op once everything exists.
-      # Image: `image publish jellyfin-bootstrap` (modules/images.nix) -> Harbor.
-      resources.jobs.jellyfin-bootstrap = {
-        metadata.annotations = {
-          "argocd.argoproj.io/hook" = "PostSync";
-          "argocd.argoproj.io/hook-delete-policy" = "BeforeHookCreation";
+      # Image: `image publish jellyfin-bootstrap` (modules/images.nix) -> Harbor. The `bootstrap`
+      # option (nixidy/system/cicd/bootstrap.nix) hashes the spec into a tracked ConfigMap, so a new
+      # pin or env reruns it.
+      bootstrap = {
+        image = with pinned.images.jellyfin-bootstrap; "${repository}:${tag}@${digest}";
+        env = {
+          JELLYFIN_URL = "http://jellyfin.media.svc.cluster.local:8096";
+          MAINTAINERR_URL = "http://maintainerr.media.svc.cluster.local:6246";
+          ADMIN_PASSWORD_FILE = "/secrets/admin/password";
+          SSO_ISSUER = "https://keycloak.${domain}/realms/default";
+          SSO_SECRET_FILE = "/secrets/oidc/client_secret";
+          # Stable-repository plugins (name|guid|version, jellyfin-bootstrap >= 0.4.0). TMDb Box Sets
+          # groups movies into their franchise collections (the Jellyfin-native stand-in for Kometa,
+          # which only drives Plex); Webhook carries plays to Ryot (its destination is written by
+          # Ryot's bootstrap); Trakt scrobbles when `traktPlugin`.
+          PLUGINS = lib.concatStringsSep "," (
+            [
+              "TMDb Box Sets|bc4aad2e-d3d0-4725-a5e2-fd07949e5b42|13.0.0.0"
+              "Webhook|71552a5a5c5c4350a2aeebe451a30173|21.0.0.0"
+            ]
+            ++ lib.optional traktPlugin "Trakt|4fe3201ed6ae4f2e8917e12bda571281|30.0.0.0"
+          );
         };
-        spec = {
-          backoffLimit = 6;
-          activeDeadlineSeconds = 1200;
-          template.spec = {
-            restartPolicy = "OnFailure";
-            securityContext = {
-              runAsNonRoot = true;
-              runAsUser = 65534;
-              runAsGroup = 65534;
-              seccompProfile.type = "RuntimeDefault";
-            };
-            containers = lib.toList {
-              name = "bootstrap";
-              image = with pinned.images.jellyfin-bootstrap; "${repository}:${tag}@${digest}";
-              env = [
-                {
-                  name = "JELLYFIN_URL";
-                  value = "http://jellyfin.media.svc.cluster.local:8096";
-                }
-                {
-                  name = "MAINTAINERR_URL";
-                  value = "http://maintainerr.media.svc.cluster.local:6246";
-                }
-                {
-                  # Stable-repository plugins (name|guid|version, jellyfin-bootstrap >= 0.4.0).
-                  # TMDb Box Sets groups movies into their franchise collections; it is the
-                  # Jellyfin-native stand-in for Kometa, which only drives Plex.
-                  name = "PLUGINS";
-                  value = "TMDb Box Sets|bc4aad2e-d3d0-4725-a5e2-fd07949e5b42|13.0.0.0";
-                }
-                {
-                  name = "ADMIN_PASSWORD_FILE";
-                  value = "/secrets/admin/password";
-                }
-                {
-                  name = "SSO_ISSUER";
-                  value = "https://keycloak.${domain}/realms/default";
-                }
-                {
-                  name = "SSO_SECRET_FILE";
-                  value = "/secrets/oidc/client_secret";
-                }
-              ];
-              volumeMounts = [
-                {
-                  name = "admin";
-                  mountPath = "/secrets/admin";
-                  readOnly = true;
-                }
-                {
-                  name = "oidc";
-                  mountPath = "/secrets/oidc";
-                  readOnly = true;
-                }
-              ];
-              securityContext = {
-                allowPrivilegeEscalation = false;
-                readOnlyRootFilesystem = true;
-                capabilities.drop = ["ALL"];
-              };
-            };
-            volumes = [
-              {
-                name = "admin";
-                secret.secretName = "jellyfin-admin";
-              }
-              {
-                name = "oidc";
-                secret.secretName = "jellyfin-oidc";
-              }
-            ];
-          };
+        secrets = {
+          admin = "jellyfin-admin";
+          oidc = "jellyfin-oidc";
         };
       };
     };

@@ -11,21 +11,29 @@ spec:
   backoffLimit: 6
   template:
     spec:
+      automountServiceAccountToken: false
       containers:
-        - env:
+        - args: []
+          env:
+            - name: ADMIN_PASSWORD_FILE
+              value: /secrets/admin/password
             - name: JELLYFIN_URL
               value: http://jellyfin.media.svc.cluster.local:8096
             - name: MAINTAINERR_URL
               value: http://maintainerr.media.svc.cluster.local:6246
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4318
             - name: PLUGINS
-              value: TMDb Box Sets|bc4aad2e-d3d0-4725-a5e2-fd07949e5b42|13.0.0.0
-            - name: ADMIN_PASSWORD_FILE
-              value: /secrets/admin/password
+              value: TMDb Box Sets|bc4aad2e-d3d0-4725-a5e2-fd07949e5b42|13.0.0.0,Webhook|71552a5a5c5c4350a2aeebe451a30173|21.0.0.0
+            - name: PYROSCOPE_SAMPLE_RATE
+              value: "1000"
+            - name: PYROSCOPE_SERVER_ADDRESS
+              value: http://pyroscope.observability.svc.cluster.local:4040
             - name: SSO_ISSUER
               value: https://keycloak.trdos.me/realms/default
             - name: SSO_SECRET_FILE
               value: /secrets/oidc/client_secret
-          image: harbor.trdos.me/library/jellyfin-bootstrap:0.3.0@sha256:803c10a5548ff8124a5e1a195a7c2a950c24d62f6c7f4bf17dea19fb3ca01db2
+          image: harbor.trdos.me/library/jellyfin-bootstrap:0.4.0@sha256:ee8c49ea1d60dce53c705e937b1fe152f5cee19661f8da91233ea2a1dcbe3a5e
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
@@ -34,6 +42,8 @@ spec:
                 - ALL
             readOnlyRootFilesystem: true
           volumeMounts:
+            - mountPath: /tmp
+              name: tmp
             - mountPath: /secrets/admin
               name: admin
               readOnly: true
@@ -48,6 +58,8 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       volumes:
+        - emptyDir: {}
+          name: tmp
         - name: admin
           secret:
             secretName: jellyfin-admin
