@@ -47,6 +47,8 @@ const LIBRARIES: &[(&str, &str, &str)] = &[
     ("Books", "/media/books", "books"),
     ("Audiobooks", "/media/audiobooks", "books"),
     ("Comics", "/media/comics", "books"),
+    // Sportarr's library: events are filed as league / season / event, which Jellyfin reads as shows.
+    ("Sports", "/media/sports", "tvshows"),
 ];
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -644,7 +646,7 @@ mod tests {
     fn creates_only_missing() {
         let existing = vec!["movies".to_string(), "Music".to_string()];
         let names: Vec<_> = missing(&existing, LIBRARIES).iter().map(|l| l.0).collect();
-        assert_eq!(names, ["TV Shows", "Books", "Audiobooks", "Comics"]);
+        assert_eq!(names, ["TV Shows", "Books", "Audiobooks", "Comics", "Sports"]);
     }
 
     #[test]

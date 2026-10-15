@@ -1,6 +1,6 @@
 //! Idempotent first-run bootstraps, run as ArgoCD PostSync Jobs.
 //!
-//! `app-bootstrap <app>` where app is `actual`, `arr`, `atuin`, `audiobookshelf`, `autobrr`, `bazarr`, `forgejo`, `homarr`, `immich`, `kapowarr`, `kavita`, `komga`, `maintainerr`, `mealie`, `miniflux`, `navidrome`, `ombi`, `openviking`, `ryot`, `seerr`, `shoko`, `syncthing` or `contextforge`. Every step checks
+//! `app-bootstrap <app>` where app is `actual`, `arr`, `atuin`, `audiobookshelf`, `autobrr`, `bazarr`, `forgejo`, `homarr`, `immich`, `kapowarr`, `kavita`, `komga`, `maintainerr`, `mealie`, `miniflux`, `navidrome`, `ombi`, `openviking`, `ryot`, `seerr`, `shoko`, `sportarr`, `streamystats`, `syncthing`, `tracearr` or `contextforge`. Every step checks
 //! the current state first, so a rerun against a configured app changes nothing.
 
 mod actual;
@@ -14,6 +14,7 @@ mod contextforge;
 mod forgejo;
 mod homarr;
 mod immich;
+mod jellyfin;
 mod kapowarr;
 mod kavita;
 mod keycloak;
@@ -29,8 +30,11 @@ mod ryot;
 mod ryot_wire;
 mod seerr;
 mod shoko;
+mod sportarr;
+mod streamystats;
 mod syncthing;
 mod trace;
+mod tracearr;
 
 use std::{env, process::ExitCode};
 
@@ -63,10 +67,13 @@ async fn main() -> ExitCode {
         "ryot" => ryot::run().await,
         "seerr" => seerr::run().await,
         "shoko" => shoko::run().await,
+        "sportarr" => sportarr::run().await,
+        "streamystats" => streamystats::run().await,
         "syncthing" => syncthing::run().await,
+        "tracearr" => tracearr::run().await,
         "contextforge" => contextforge::run().await,
         "homarr" => homarr::run().await,
-        other => Err(format!("usage: app-bootstrap <actual|arr|atuin|audiobookshelf|autobrr|bazarr|forgejo|immich|kapowarr|kavita|komga|maintainerr|mealie|miniflux|navidrome|ombi|openviking|ryot|seerr|shoko|syncthing|contextforge|homarr> (got {other:?})").into()),
+        other => Err(format!("usage: app-bootstrap <actual|arr|atuin|audiobookshelf|autobrr|bazarr|forgejo|immich|kapowarr|kavita|komga|maintainerr|mealie|miniflux|navidrome|ombi|openviking|ryot|seerr|shoko|sportarr|streamystats|syncthing|tracearr|contextforge|homarr> (got {other:?})").into()),
     };
     let code = match res {
         Ok(()) => {
