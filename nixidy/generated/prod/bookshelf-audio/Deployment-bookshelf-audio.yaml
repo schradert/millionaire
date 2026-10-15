@@ -1,0 +1,133 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: bookshelf-audio
+    app.kubernetes.io/instance: bookshelf-audio
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: bookshelf-audio
+  name: bookshelf-audio
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: bookshelf-audio
+      app.kubernetes.io/instance: bookshelf-audio
+      app.kubernetes.io/name: bookshelf-audio
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 74f4b3504685f6be7993aae491a725edbeed1b0fb2c23eec92a4cb187d3524e7
+      labels:
+        app.kubernetes.io/controller: bookshelf-audio
+        app.kubernetes.io/instance: bookshelf-audio
+        app.kubernetes.io/name: bookshelf-audio
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - -nobrowser
+            - -data=/config
+          command:
+            - /app/readarr/bin/Readarr
+          envFrom:
+            - secretRef:
+                name: bookshelf-audio
+            - configMapRef:
+                name: bookshelf-audio
+          image: ghcr.io/pennydreadful/bookshelf:hardcover-v0.4.21.182@sha256:67498dd5ece516867d72ee642abd6c1a66b36a135c8f7da0127109564372beb1
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8787
+            timeoutSeconds: 1
+          name: app
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8787
+            timeoutSeconds: 1
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              cpu: 20m
+              memory: 192Mi
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8787
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /config
+              name: config
+            - mountPath: /media/audiobooks
+              name: media-audiobooks
+            - mountPath: /media/downloads
+              name: media-downloads
+            - mountPath: /tmp
+              name: tmpfs
+              subPath: tmp
+        - args:
+            - readarr
+          env:
+            - name: APIKEY
+              valueFrom:
+                secretKeyRef:
+                  key: READARR__AUTH__APIKEY
+                  name: bookshelf-audio
+            - name: PORT
+              value: "9707"
+            - name: URL
+              value: http://localhost:8787
+          image: ghcr.io/onedr0p/exportarr:v2.3.0@sha256:af535d94061cf97a52e1661945ffba78c03f9443eae7c0da1a80a5a4be56b520
+          name: exportarr
+          resources:
+            limits:
+              memory: 128Mi
+            requests:
+              cpu: 5m
+              memory: 32Mi
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmpfs
+              subPath: tmp
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostAliases:
+        - hostnames:
+            - ntfy.trdos.me
+          ip: 100.64.0.1
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      securityContext:
+        fsGroup: 65534
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 65534
+        runAsUser: 65534
+      serviceAccountName: bookshelf-audio
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: bookshelf-audio
+        - name: media-audiobooks
+          persistentVolumeClaim:
+            claimName: media-audiobooks
+        - name: media-downloads
+          persistentVolumeClaim:
+            claimName: media-downloads
+        - emptyDir: {}
+          name: tmpfs

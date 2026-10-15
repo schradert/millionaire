@@ -28,6 +28,11 @@
           controllers.lidarr = {
             annotations."reloader.stakater.com/auto" = "true";
             # Rootless image; the volume mounts root-owned.
+            # ntfy lives on hyena; pods don't resolve it (docs/observability.md).
+            pod.hostAliases = lib.toList {
+              ip = "100.64.0.1";
+              hostnames = ["ntfy.${domain}"];
+            };
             pod.securityContext = {
               runAsUser = 65534;
               runAsGroup = 65534;

@@ -1,0 +1,17 @@
+apiVersion: v1
+data:
+  READARR__APP__INSTANCENAME: bookshelf
+  READARR__AUTH__METHOD: External
+  READARR__AUTH__REQUIRED: DisabledForLocalAddresses
+  READARR__LOG__DBENABLED: "False"
+  READARR__LOG__LEVEL: info
+  READARR__SERVER__ALLOWEDHOSTS: bookshelf.trdos.me,bookshelf.media.svc.cluster.local,bookshelf.media.svc,bookshelf.media,bookshelf,localhost
+  READARR__SERVER__PORT: "8787"
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: bookshelf
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: bookshelf
+  name: bookshelf
+  namespace: media

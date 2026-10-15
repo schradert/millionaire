@@ -110,6 +110,16 @@ in {
             size = "1Gi";
             globalMounts = [{path = "/config";}];
           };
+          persistence.media-manga = {
+            type = "persistentVolumeClaim";
+            existingClaim = "media-manga";
+            advancedMounts.komga.komga = [
+              {
+                path = "/media/manga";
+                readOnly = true;
+              }
+            ];
+          };
           persistence.media-comics = {
             type = "persistentVolumeClaim";
             existingClaim = "media-comics";

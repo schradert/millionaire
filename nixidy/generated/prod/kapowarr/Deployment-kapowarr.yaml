@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/controller: kapowarr
+    app.kubernetes.io/instance: kapowarr
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kapowarr
+  name: kapowarr
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: kapowarr
+      app.kubernetes.io/instance: kapowarr
+      app.kubernetes.io/name: kapowarr
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: kapowarr
+        app.kubernetes.io/instance: kapowarr
+        app.kubernetes.io/name: kapowarr
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - mkdir -p /media/downloads/kapowarr && exec python3 /app/Kapowarr.py --DatabaseFolder /app/db --LogFolder /tmp/logs
+          command:
+            - sh
+            - -c
+          image: mrcas/kapowarr:v1.3.2@sha256:cd3f004caff59636dde73b06df5b2f8068b485b47ff5fe82f6129562c0f2ac3b
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 5656
+            timeoutSeconds: 1
+          name: kapowarr
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 5656
+            timeoutSeconds: 1
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              cpu: 10m
+              memory: 96Mi
+          volumeMounts:
+            - mountPath: /app/db
+              name: db
+            - mountPath: /media/comics
+              name: media-comics
+            - mountPath: /media/downloads
+              name: media-downloads
+            - mountPath: /tmp
+              name: tmp
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      securityContext:
+        fsGroup: 65534
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 65534
+        runAsUser: 65534
+      serviceAccountName: kapowarr
+      volumes:
+        - name: db
+          persistentVolumeClaim:
+            claimName: kapowarr
+        - name: media-comics
+          persistentVolumeClaim:
+            claimName: media-comics
+        - name: media-downloads
+          persistentVolumeClaim:
+            claimName: media-downloads
+        - emptyDir: {}
+          name: tmp

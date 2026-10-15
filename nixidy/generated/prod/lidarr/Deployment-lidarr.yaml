@@ -91,6 +91,10 @@ spec:
               subPath: tmp
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
+      hostAliases:
+        - hostnames:
+            - ntfy.trdos.me
+          ip: 100.64.0.1
       hostIPC: false
       hostNetwork: false
       hostPID: false

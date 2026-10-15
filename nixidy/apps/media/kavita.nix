@@ -78,6 +78,16 @@ in {
               }
             ];
           };
+          persistence.media-manga = {
+            type = "persistentVolumeClaim";
+            existingClaim = "media-manga";
+            advancedMounts.kavita.kavita = [
+              {
+                path = "/media/manga";
+                readOnly = true;
+              }
+            ];
+          };
           persistence.media-comics = {
             type = "persistentVolumeClaim";
             existingClaim = "media-comics";

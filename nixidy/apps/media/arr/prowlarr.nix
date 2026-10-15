@@ -46,6 +46,10 @@
             SONARR_API_KEY_FILE = "/secrets/sonarr/apikey";
             RADARR_API_KEY_FILE = "/secrets/radarr/apikey";
             LIDARR_API_KEY_FILE = "/secrets/lidarr/apikey";
+            BOOKSHELF_API_KEY_FILE = "/secrets/bookshelf/apikey";
+            BOOKSHELF_AUDIO_API_KEY_FILE = "/secrets/bookshelf-audio/apikey";
+            # Grabs, imports, failures and health from every arr (app-bootstrap >= 0.26.0).
+            NTFY_URL = "https://ntfy.${domain}/media";
             PROWLARR_API_KEY_FILE = "/secrets/prowlarr/apikey";
             QBITTORRENT_PASSWORD_FILE = "/secrets/qbittorrent/password";
           }
@@ -55,6 +59,8 @@
             sonarr = "sonarr-apikey";
             radarr = "radarr-apikey";
             lidarr = "lidarr-apikey";
+            bookshelf = "bookshelf-apikey";
+            bookshelf-audio = "bookshelf-audio-apikey";
             prowlarr = "prowlarr-apikey";
             qbittorrent = "qbittorrent-admin";
           }

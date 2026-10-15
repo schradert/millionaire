@@ -44,7 +44,7 @@
     ./media/music-assistant.nix
     ./media/arr/autobrr.nix
     ./media/arr/bazarr.nix
-    ./media/arr/chaptarr.nix
+    ./media/arr/bookshelf.nix
     ./media/arr/lidarr.nix
     ./media/arr/prowlarr.nix
     ./media/arr/radarr.nix
@@ -65,6 +65,7 @@
     ./media/immich.nix
     ./media/jellyfin.nix
     ./media/jitsi.nix
+    ./media/kapowarr.nix
     ./media/kavita.nix
     ./media/komga.nix
     ./media/archive-ingest.nix
@@ -80,6 +81,7 @@
     # Disabled: no per-user sign-in without a Jellyfin password, see docs/media-stack.md.
     # ./media/streamystats.nix
     ./media/tracearr.nix
+    ./media/suwayomi.nix
     ./printing/mainsail.nix
     ./printing/spoolman.nix
     ./printing/obico.nix

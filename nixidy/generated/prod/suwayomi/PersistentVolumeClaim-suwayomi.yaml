@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app.kubernetes.io/instance: suwayomi
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: suwayomi
+  name: suwayomi
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi

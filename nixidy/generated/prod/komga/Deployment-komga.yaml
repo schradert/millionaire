@@ -89,6 +89,9 @@ spec:
             - mountPath: /media/downloads
               name: media-downloads
               readOnly: true
+            - mountPath: /media/manga
+              name: media-manga
+              readOnly: true
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
       hostIPC: false
@@ -105,3 +108,6 @@ spec:
         - name: media-downloads
           persistentVolumeClaim:
             claimName: media-downloads
+        - name: media-manga
+          persistentVolumeClaim:
+            claimName: media-manga

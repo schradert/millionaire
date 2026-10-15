@@ -19,6 +19,8 @@ spec:
         - matchLabels:
             batch.kubernetes.io/job-name: sportarr-bootstrap
         - matchLabels:
+            batch.kubernetes.io/job-name: kapowarr-bootstrap
+        - matchLabels:
             app.kubernetes.io/name: media-e2e
         - matchLabels:
             app.kubernetes.io/name: radarr
@@ -34,6 +36,12 @@ spec:
             app.kubernetes.io/name: autobrr
         - matchLabels:
             app.kubernetes.io/name: maintainerr
+        - matchLabels:
+            app.kubernetes.io/name: bookshelf
+        - matchLabels:
+            app.kubernetes.io/name: bookshelf-audio
+        - matchLabels:
+            app.kubernetes.io/name: kapowarr
       toPorts:
         - ports:
             - port: "8080"

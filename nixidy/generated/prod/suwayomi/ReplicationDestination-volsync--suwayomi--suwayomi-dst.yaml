@@ -1,0 +1,12 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--suwayomi--suwayomi-dst
+  namespace: media
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: suwayomi
+    repository: volsync--suwayomi--suwayomi
+  trigger:
+    manual: "1"

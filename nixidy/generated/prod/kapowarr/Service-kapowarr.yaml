@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: kapowarr
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kapowarr
+    app.kubernetes.io/service: kapowarr
+  name: kapowarr
+  namespace: media
+spec:
+  ports:
+    - name: http
+      port: 5656
+      protocol: TCP
+      targetPort: 5656
+  selector:
+    app.kubernetes.io/controller: kapowarr
+    app.kubernetes.io/instance: kapowarr
+    app.kubernetes.io/name: kapowarr
+  type: ClusterIP
