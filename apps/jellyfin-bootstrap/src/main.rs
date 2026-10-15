@@ -394,29 +394,33 @@ fn sso_plugin_state(plugins: &Value) -> Result<bool> {
     plugin_state(plugins, SSO_PLUGIN_GUID, SSO_PLUGIN_NAME)
 }
 
-/// One stable-repository plugin to install: (name, guid, version).
-type PluginSpec = (String, String, String);
+/// One plugin to install: (name, guid, version, repository manifest URL).
+type PluginSpec = (String, String, String, String);
 
-/// `PLUGINS`: comma-separated `name|guid|version` entries.
+/// `PLUGINS`: comma-separated `name|guid|version[|manifest-url]` entries; without a URL the plugin
+/// comes from the stable repository, with one that repository is registered first.
 fn parse_plugins(raw: &str) -> Result<Vec<PluginSpec>> {
     raw.split(',')
         .map(str::trim)
         .filter(|s| !s.is_empty())
         .map(|entry| match entry.split('|').map(str::trim).collect::<Vec<_>>()[..] {
             [name, guid, version] if !name.is_empty() && !guid.is_empty() && !version.is_empty() => {
-                Ok((name.to_string(), guid.to_string(), version.to_string()))
+                Ok((name.to_string(), guid.to_string(), version.to_string(), STABLE_REPO_URL.to_string()))
             }
-            _ => Err(format!("PLUGINS entry {entry:?} is not name|guid|version").into()),
+            [name, guid, version, repo] if !name.is_empty() && !guid.is_empty() && !version.is_empty() && repo.starts_with("http") => {
+                Ok((name.to_string(), guid.to_string(), version.to_string(), repo.to_string()))
+            }
+            _ => Err(format!("PLUGINS entry {entry:?} is not name|guid|version[|https://manifest-url]").into()),
         })
         .collect()
 }
 
-/// Returns the repository list to POST, or None when ours is already registered and enabled.
-fn repos_with_sso(current: &Value) -> Option<Value> {
+/// Returns the repository list to POST, or None when `url` is already registered and enabled.
+fn repos_with(current: &Value, name: &str, url: &str) -> Option<Value> {
     let mut list = current.as_array().cloned().unwrap_or_default();
     let mut found = false;
     for r in list.iter_mut() {
-        if get_ci(r, "Url").and_then(Value::as_str) == Some(SSO_REPO_URL) {
+        if get_ci(r, "Url").and_then(Value::as_str) == Some(url) {
             found = true;
             if get_ci(r, "Enabled").and_then(Value::as_bool) == Some(true) {
                 return None;
@@ -425,9 +429,13 @@ fn repos_with_sso(current: &Value) -> Option<Value> {
         }
     }
     if !found {
-        list.push(json!({ "Name": SSO_REPO_NAME, "Url": SSO_REPO_URL, "Enabled": true }));
+        list.push(json!({ "Name": name, "Url": url, "Enabled": true }));
     }
     Some(Value::Array(list))
+}
+
+fn repos_with_sso(current: &Value) -> Option<Value> {
+    repos_with(current, SSO_REPO_NAME, SSO_REPO_URL)
 }
 
 fn login_disclaimer(provider: &str) -> String {
@@ -514,16 +522,27 @@ async fn ensure_sso_plugin(http: &Client, base: &str, user: &str, password: &str
 async fn ensure_plugins(http: &Client, base: &str, user: &str, password: &str, token: &mut String, wanted: &[PluginSpec]) -> Result<()> {
     let plugins = get_json(http, base, token, "/Plugins").await?;
     let mut installed = Vec::new();
-    for (name, guid, version) in wanted {
+    for (name, guid, version, repo) in wanted {
         if plugin_state(&plugins, guid, name)? {
             println!("{name} plugin already installed");
             continue;
+        }
+        if repo != STABLE_REPO_URL {
+            let repos = get_json(http, base, token, "/Repositories").await?;
+            if let Some(new_repos) = repos_with(&repos, name, repo) {
+                println!("registering plugin repository {name}");
+                ok(
+                    http.post(format!("{base}/Repositories")).header("X-Emby-Authorization", auth_header(Some(token))).json(&new_repos).send().await?,
+                    "POST /Repositories",
+                )
+                .await?;
+            }
         }
         println!("installing {name} plugin {version}");
         ok(
             http.post(format!("{base}/Packages/Installed/{}", name.replace(' ', "%20")))
                 .header("X-Emby-Authorization", auth_header(Some(token)))
-                .query(&[("assemblyGuid", guid.as_str()), ("version", version.as_str()), ("repositoryUrl", STABLE_REPO_URL)])
+                .query(&[("assemblyGuid", guid.as_str()), ("version", version.as_str()), ("repositoryUrl", repo.as_str())])
                 .send()
                 .await?,
             "POST /Packages/Installed",
@@ -710,8 +729,11 @@ mod tests {
         assert!(parse_plugins("").unwrap().is_empty());
         let p = parse_plugins("Webhook|71552a5a5c5c4350a2aeebe451a30173|21.0.0.0, Trakt|4fe3201e-d6ae-4f2e-8917-e12bda571281|30.0.0.0").unwrap();
         assert_eq!(p.len(), 2);
-        assert_eq!(p[1], ("Trakt".into(), "4fe3201e-d6ae-4f2e-8917-e12bda571281".into(), "30.0.0.0".into()));
+        assert_eq!(p[1], ("Trakt".into(), "4fe3201e-d6ae-4f2e-8917-e12bda571281".into(), "30.0.0.0".into(), STABLE_REPO_URL.into()));
         assert!(parse_plugins("Webhook|abc").is_err());
+        let third = parse_plugins("Intro Skipper|c83d86bb-a1e0-4c35-a113-e2101cf4ee6b|1.10.11.24|https://intro-skipper.org/manifest.json").unwrap();
+        assert_eq!(third[0].3, "https://intro-skipper.org/manifest.json");
+        assert!(parse_plugins("X|g|1|not-a-url").is_err());
         assert!(plugin_state(&json!([{"Name": "Trakt", "Id": "4fe3201ed6ae4f2e8917e12bda571281", "Status": "Active"}]), &p[1].1, "Trakt").unwrap());
         assert!(!plugin_state(&json!([{"Name": "Webhook", "Id": "71552a5a5c5c4350a2aeebe451a30173"}]), &p[1].1, "Trakt").unwrap());
     }
@@ -727,6 +749,9 @@ mod tests {
 
     #[test]
     fn repo_registration() {
+        let third = repos_with(&json!([]), "Intro Skipper", "https://intro-skipper.org/manifest.json").unwrap();
+        assert_eq!(third[0]["Name"], json!("Intro Skipper"));
+        assert!(repos_with(&third, "Intro Skipper", "https://intro-skipper.org/manifest.json").is_none());
         let added = repos_with_sso(&json!([{"Name": "Official", "Url": "https://x", "Enabled": true}])).unwrap();
         assert_eq!(added.as_array().unwrap().len(), 2);
         assert!(repos_with_sso(&added).is_none());
