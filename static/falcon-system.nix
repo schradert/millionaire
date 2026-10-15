@@ -69,6 +69,8 @@ in {
   # The only optical drive (LG DH50N, DVD only); rips land on the data pool.
   services.dvd-rip = {
     enable = true;
+    # The dvdrip agent rips here (docs/dvd-rip.md); "local" brings back the dvd-watch/dvd-worker units.
+    mode = "cluster";
     uid = 1001; # tristan's uid since the 2026-10-14 reinstall
   };
 

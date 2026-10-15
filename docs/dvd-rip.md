@@ -2,6 +2,18 @@
 
 Design for `dvdrip` (`apps/dvdrip`, Rust), the Kubernetes replacement for the bash pipeline in `apps/dvd-rip` that runs on falcon as the `dvd-watch`/`dvd-worker` units (`modules/dvd-rip.nix`). Goals: any node with an optical drive rips, several drives rip in parallel, encodes run wherever there is capacity, and the output lands in the same `media-dvd` / `media-movies` layout Jellyfin and Kodi read today. Nothing the bash pipeline does is dropped (checklist at the end).
 
+## Using it
+
+- **Rip:** put a DVD in a drive on a node running the agent (falcon: `services.dvd-rip.mode = "cluster"`). It is backed up, ejected, encoded on falcon's GPU and published to media-dvd and media-movies under the label's name (`BEETLEJUICE` → `Beetlejuice`). ntfy topic `dvd` reports each step.
+- **Watch:** `kubectl -n media get discs -w` and `kubectl get drives`. The review view at <https://rips.trdos.me> lists each disc and links its contact sheets (`review/index.html`), summary and logs.
+- **Name and sort** (formerly `dvd-rename` and `dvd-sort`): `kubectl -n media patch disc <disc> --type merge -p '{"spec":{"name":"Beetlejuice (1988)","titles":{"11":{"folder":"trailers"},"12":{"folder":"junk"},"3":{"folder":"featurettes","name":"Making Beetlejuice"}}}}'`. For a bonus disc, `"disc": 2` publishes everything as `Disc 2 - …` extras of `name`. The publish Job moves the files; nothing is encoded again.
+- **Re-encode:** set `spec.mainTitle` (main-feature override) or `spec.protected: true` (force MakeMKV). To retry a Failed disc, bump `spec.retry`. To hold a disc after backup, set `spec.hold: true`.
+- **Free a drive** (game discs): `kubectl patch drive falcon-sr0 --type merge -p '{"spec":{"enabled":false}}'`, or `touch /var/lib/dvd-rip/.pause` on the node. Set `ejectUnknown: false` to keep non-video discs in the tray.
+- **Region / drive tools:** `kubectl -n media exec ds/dvdrip-agent -- regionset /dev/sr0` (and `makemkvcon`, `dvdrip probe /dev/sr0`).
+- **Discs ripped before dvdrip:** `kubectl -n media create job --from=cronjob/dvdrip-import dvdrip-import`. ISOs in media-dvd become Done Discs, so reinserting one ejects it as a duplicate. Finished bash rips in falcon's `/data/dvd-rips` that never reached the cluster are uploaded and encoded; ones the bash pipeline had failed are held.
+- **Back to the bash pipeline:** `services.dvd-rip.mode = "local"` in `static/falcon-system.nix` and deploy falcon. The agent leaves (the node loses its label) and the dvd-watch/dvd-worker units return.
+- **Delete a Disc:** its work dir goes with it; published files stay.
+
 ## Overview
 
 ```text
