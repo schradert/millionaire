@@ -10,6 +10,9 @@
 #   Role only there (the chart's workspaceNamespaces).
 # - Agents and the CLI hold long-lived WebSockets (DERP, tunnels), so the route
 #   has no request timeout and DERP is forced over WebSockets.
+# - Templates as code: each ./templates/<name>/ becomes a ConfigMap and the
+#   bootstrap Job pushes it with `variables` as Terraform variables. A version
+#   is named after the hash of its files and variables and pushed only once.
 {config, ...}: let
   inherit (config.canivete.meta) domain people;
   hostname = "coder.${domain}";
@@ -27,6 +30,42 @@ in {
       "app.kubernetes.io/name" = "coder";
     };
     fromSecret = name: key: {valueFrom.secretKeyRef = {inherit name key;};};
+    esc = lib.escapeShellArg;
+
+    templatesDir = ./templates;
+    templates = lib.attrNames (lib.filterAttrs (_: t: t == "directory") (builtins.readDir templatesDir));
+    files = name: lib.attrNames (lib.filterAttrs (_: t: t == "regular") (builtins.readDir (templatesDir + "/${name}")));
+    contents = name: lib.genAttrs (files name) (f: builtins.readFile (templatesDir + "/${name}/${f}"));
+    variables.devenv.image = with pinned.images.workspace; "${repository}:${tag}@${digest}";
+    meta.devenv = {
+      display = "devenv project";
+      description = "One repository with its devenv, a persistent home and Nix store, Claude Code and opencode.";
+      icon = "/emojis/2744.png";
+    };
+    version = name:
+      builtins.substring 0 12 (builtins.hashString "sha256" (builtins.toJSON {
+        files = contents name;
+        variables = variables.${name} or {};
+      }));
+    # The variables go in a YAML file: `--variable` splits values on commas.
+    push = name: let
+      vars = "/tmp/variables-${name}.yaml";
+      m = meta.${name};
+      v = version name;
+    in ''
+      mkdir -p /tmp/templates/${name}
+      ${lib.concatMapStringsSep "\n" (f: "cp -L ${esc "/templates/${name}/${f}"} ${esc "/tmp/templates/${name}/${f}"}") (files name)}
+      : > ${vars}
+      ${lib.concatStringsSep "\n" (lib.mapAttrsToList (k: val: "echo ${esc "${k}: ${builtins.toJSON val}"} >> ${vars}") (variables.${name} or {}))}
+      if coder templates versions list ${name} -o json 2>/dev/null | grep -qF '"${v}"'; then
+        echo "${name}: ${v} already pushed"
+      else
+        coder templates push ${name} --directory /tmp/templates/${name} --name ${v} \
+          --variables-file ${vars} --message ${esc "nixidy ${v}"} --yes
+      fi
+      coder templates edit ${name} --display-name ${esc m.display} --description ${esc m.description} \
+        --icon ${esc m.icon} --default-ttl 8h --activity-bump 1h --yes
+    '';
     bootstrap = ''
       url=http://coder.development.svc.cluster.local
       until curl -sf "$url/healthz" >/dev/null; do echo "waiting for coderd"; sleep 5; done
@@ -42,6 +81,7 @@ in {
         coder users create --username "$USER_NAME" --email "$USER_EMAIL" --login-type oidc
       fi
       coder users edit-roles "$USER_NAME" --roles owner --yes
+      ${lib.concatMapStringsSep "\n" push templates}
     '';
   in {
     gatus.endpoints.coder = {
@@ -180,6 +220,10 @@ in {
           };
         };
 
+        configMaps = lib.genAttrs (map (n: "coder-template-${n}") templates) (cm: {
+          data = contents (lib.removePrefix "coder-template-" cm);
+        });
+
         # Runs once per change of its spec (the name is its hash), after coderd is up.
         jobs."coder-bootstrap-${builtins.substring 0 8 (builtins.hashString "sha256" (bootstrap + imageRef))}" = {
           metadata.annotations."argocd.argoproj.io/sync-wave" = "5";
@@ -230,15 +274,32 @@ in {
                   };
                   limits.memory = "256Mi";
                 };
-                volumeMounts = lib.toList {
-                  name = "tmp";
-                  mountPath = "/tmp";
-                };
+                volumeMounts =
+                  [
+                    {
+                      name = "tmp";
+                      mountPath = "/tmp";
+                    }
+                  ]
+                  ++ map (n: {
+                    name = "template-${n}";
+                    mountPath = "/templates/${n}";
+                    readOnly = true;
+                  })
+                  templates;
               };
-              volumes = lib.toList {
-                name = "tmp";
-                emptyDir = {};
-              };
+              volumes =
+                [
+                  {
+                    name = "tmp";
+                    emptyDir = {};
+                  }
+                ]
+                ++ map (n: {
+                  name = "template-${n}";
+                  configMap.name = "coder-template-${n}";
+                })
+                templates;
             };
           };
         };
@@ -270,5 +331,15 @@ in {
       };
     };
     netpol.namespaces.${workspaces}.enforce = true;
+    # Agents in workspaces call Bifrost in-cluster (no key; the public route needs Keycloak).
+    netpol.namespaces.ai.extraIngress = lib.toList {
+      fromEndpoints = lib.toList {matchLabels."k8s:io.kubernetes.pod.namespace" = workspaces;};
+      toPorts = lib.toList {
+        ports = lib.toList {
+          port = "8000";
+          protocol = "TCP";
+        };
+      };
+    };
   };
 }

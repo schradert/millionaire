@@ -1,0 +1,9 @@
+{
+  "version": "0.1.0",
+  "digest": "sha256:da1cbd9cc152beeff663bd83b5a178574ff275b037bf1a8601b311670410f61f",
+  "source": {
+    "type": "oci-tag",
+    "repository": "harbor.trdos.me/library/workspace",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}

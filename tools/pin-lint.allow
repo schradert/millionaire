@@ -18,3 +18,4 @@ docs/displaylink.md sri prose: the hash in nixpkgs' package, quoted as the examp
 docs/games.md sri prose: the placeholder hash to copy the real `got:` hash from
 apps/e2e/src/registry/oci.rs hex sha256 test vectors (digest helper), not pins
 apps/e2e/src/storage/s3.rs hex SigV4/sha256 test vectors (AWS docs examples), not pins
+nixidy/apps/development/coder/templates/devenv/.terraform.lock.hcl hex Terraform provider lock (coder push verifies the providers against it)
