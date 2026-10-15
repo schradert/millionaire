@@ -1,6 +1,6 @@
 {
-  "version": "0.1.1",
-  "digest": "sha256:e53a8c0d026dcfc9a31e80b29349524be3c47b926d21ac4fa91d76b9701d1c3e",
+  "version": "0.1.2",
+  "digest": "sha256:8c347ee1e00e2b6a761adf124d428c46e6b3b90c2c8df69fdc164bc0156c3dd3",
   "source": {
     "type": "oci-tag",
     "repository": "harbor.trdos.me/library/workspace",
