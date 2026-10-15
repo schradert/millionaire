@@ -43,10 +43,13 @@ pub fn pioneer_one() -> Item {
     )
 }
 
+/// The mp4 (107 MB), not the ogv: the ogv is the last media file, so its final piece also covers
+/// the small files behind it, which archive.org's web seeds do not serve byte-identically; that
+/// piece then only comes from real peers and the download stalls one piece short.
 pub fn pioneer_one_torrent() -> (String, &'static str) {
     (
         var("E2E_PIONEER_TORRENT", "https://archive.org/download/PioneerOneS01E01720pHD/PioneerOneS01E01720pHD_archive.torrent"),
-        "Pioneer.One.S01E01.REFIX.720p.x264-VODO.ogv",
+        "Pioneer.One.S01E01.REFIX.720p.x264-VODO.mp4",
     )
 }
 

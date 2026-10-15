@@ -1,8 +1,9 @@
 [default]
 # Syncthing device IDs (modules/syncthing.nix) and age recipients: base32 strings, not words;
-# Navidrome's `X-ND-Authorization` header
+# Navidrome's `X-ND-Authorization` header; ID3 frame ids (TPE1, TPE2)
 extend-ignore-re = [
   "[A-Z2-7]{7}(-[A-Z2-7]{7}){7}",
   "age1[a-z0-9]{58}",
   "X-ND-Authorization",
+  "TPE[0-9]",
 ]
