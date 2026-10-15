@@ -71,6 +71,11 @@ in {
       linkConfig.Name = "eno1";
     };
 
+    # The standard ESP is 512M (modules/disko.nix); a desktop boot entry with its own initrd costs up to
+    # ~140M (falcon's NVIDIA initrd is 132M), so srvos's desktop default of 10 would fill it and fail
+    # a switch. Older generations stay in the system profile for `nixos-rebuild --rollback`.
+    boot.loader.systemd-boot.configurationLimit = 3;
+
     canivete.kubernetes.yaml.node-label = ["node.trdos.me/class=desktop"];
     # Soft: ordinary pods prefer the headless nodes and land here only when those are full.
     # DaemonSets and pods that fit nowhere else (GPU) still schedule. Applied at registration.
