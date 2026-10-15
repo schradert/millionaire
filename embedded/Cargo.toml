@@ -20,6 +20,7 @@ exclude = [
   "apps/hello-world",
   "boards/arduino-uno-r3",
   "shared/wifi",
+  "shared/ota",
   "apps/web-request",
   # marker: new-app/new-board(avr): excluded — `new-app`/`new-board` inserts above
 ]

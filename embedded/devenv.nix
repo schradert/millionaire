@@ -145,6 +145,10 @@ in {
   # into falcon's build over SSH. See bin/deploy-s3-wifi.sh and TARGETS.md.
   scripts.deploy-s3-wifi.exec = ''exec bash "$DEVENV_ROOT/bin/deploy-s3-wifi.sh" "$@"'';
 
+  # On-device OTA test suite on falcon's ESP32-C3 (update, rollback, corrupt
+  # image). See bin/ota-test.sh and ../docs/iot-ota.md.
+  scripts.ota-test.exec = ''exec bash "$DEVENV_ROOT/bin/ota-test.sh" "$@"'';
+
   # `check` — the embedded CI: compile + clippy every board for its own target
   # on falcon (where all targets, incl. esp-rs build-std, build). See bin/check.sh.
   scripts.check.exec = ''exec bash "$DEVENV_ROOT/bin/check.sh" "$@"'';

@@ -1065,7 +1065,9 @@ dependencies = [
  "esp-hal",
  "esp-metadata-generated",
  "esp-sync",
+ "esp-wifi-sys-esp32c3",
  "esp-wifi-sys-esp32s3",
+ "esp32c3",
  "esp32s3",
  "log",
 ]
@@ -1115,6 +1117,7 @@ dependencies = [
  "esp-wifi-sys-esp32h2",
  "esp-wifi-sys-esp32s2",
  "esp-wifi-sys-esp32s3",
+ "esp32c3",
  "esp32s3",
  "heapless 0.9.3",
  "instability",
@@ -1186,6 +1189,21 @@ dependencies = [
  "portable-atomic",
  "riscv",
  "xtensa-lx",
+]
+
+[[package]]
+name = "esp-storage"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4cf2b3f00c9f94b27c62a4f5296b19470c3a083c687c8146e554a459f9bee596"
+dependencies = [
+ "document-features",
+ "embedded-storage",
+ "esp-hal",
+ "esp-hal-procmacros",
+ "esp-metadata-generated",
+ "esp-rom-sys",
+ "esp-sync",
 ]
 
 [[package]]
@@ -1561,13 +1579,18 @@ dependencies = [
  "critical-section",
  "embassy-executor",
  "embassy-time",
+ "esp-alloc",
  "esp-backtrace",
  "esp-bootloader-esp-idf",
  "esp-hal",
  "esp-println",
+ "esp-radio",
  "esp-rtos",
+ "esp-storage",
  "homelab-hello-world",
  "homelab-shared",
+ "homelab-shared-ota",
+ "homelab-shared-wifi",
  "log",
  "static_cell",
 ]
@@ -1608,6 +1631,23 @@ version = "0.1.0"
 dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-async",
+]
+
+[[package]]
+name = "homelab-shared-ota"
+version = "0.1.0"
+dependencies = [
+ "embassy-net",
+ "embassy-time",
+ "embedded-io-async 0.7.0",
+ "embedded-storage",
+ "esp-bootloader-esp-idf",
+ "esp-hal",
+ "esp-storage",
+ "log",
+ "reqwless",
+ "sha2",
+ "static_cell",
 ]
 
 [[package]]

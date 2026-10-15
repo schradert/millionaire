@@ -15,15 +15,35 @@ homelab-shared = { path = "../../shared/base" }
 homelab-hello-world = { path = "../../apps/hello-world", features = [
   "embassy",
 ] }
+homelab-shared-wifi = { path = "../../shared/wifi" }
+homelab-shared-ota = { path = "../../shared/ota" }
 
 esp-hal = { workspace = true, features = ["esp32c3", "log-04", "unstable"] }
-esp-rtos = { workspace = true, features = ["esp32c3", "embassy", "log-04"] }
+esp-rtos = { workspace = true, features = [
+  "esp32c3",
+  "embassy",
+  "esp-radio",
+  "esp-alloc",
+  "log-04",
+] }
+esp-radio = { workspace = true, features = [
+  "esp32c3",
+  "wifi",
+  "log-04",
+  "unstable",
+  "esp-alloc",
+] }
+esp-alloc = { workspace = true }
+esp-storage = { version = "0.9", features = ["esp32c3"] }
 esp-bootloader-esp-idf = { workspace = true, features = ["esp32c3", "log-04"] }
 esp-println = { workspace = true, features = ["esp32c3", "log-04", "auto"] }
+# custom-halt: a panic resets the chip instead of spinning, so an OTA trial
+# image that panics rolls back (see shared/ota).
 esp-backtrace = { workspace = true, features = [
   "esp32c3",
   "panic-handler",
   "println",
+  "custom-halt",
 ] }
 critical-section.workspace = true
 static_cell.workspace = true

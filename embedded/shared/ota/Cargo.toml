@@ -1,0 +1,30 @@
+[package]
+name = "homelab-shared-ota"
+edition = "2024"
+version = "0.1.0"
+rust-version = "1.88"
+license = "MIT"
+description = "ESP A/B OTA over HTTP with trial boot + rollback (ESP-only capability tier)."
+
+# Excluded from workspace membership → pin versions explicitly. Chip features
+# (esp-hal / esp-storage / esp-bootloader-esp-idf) come from the board crate via
+# feature unification, like homelab-shared-wifi. embassy-net MUST match
+# homelab-shared-wifi so the `Stack` type is identical.
+[dependencies]
+esp-hal = { version = "1.1", features = ["log-04", "unstable"] }
+esp-storage = { version = "0.9" }
+esp-bootloader-esp-idf = { version = "0.5", features = ["log-04"] }
+embedded-storage = "0.3.1"
+
+embassy-net = { version = "0.9.1", features = [
+  "tcp",
+  "dns",
+  "dhcpv4",
+  "medium-ethernet",
+] }
+embassy-time = { version = "0.5" }
+embedded-io-async = { version = "0.7" }
+reqwless = { version = "0.14.0", default-features = false }
+sha2 = { version = "0.10", default-features = false }
+static_cell = "2.1.1"
+log = "0.4"

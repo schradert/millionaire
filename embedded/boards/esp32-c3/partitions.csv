@@ -1,0 +1,8 @@
+# A/B OTA layout for 4 MB ESP32-C3. No factory slot: USB flashes land in ota_0
+# (`--target-app-partition ota_0`), OTA alternates ota_0 <-> ota_1.
+# Name,   Type, SubType, Offset,   Size,
+nvs,      data, nvs,     0x9000,   0x4000,
+otadata,  data, ota,     0xd000,   0x2000,
+phy_init, data, phy,     0xf000,   0x1000,
+ota_0,    app,  ota_0,   0x10000,  0x1f0000,
+ota_1,    app,  ota_1,   0x200000, 0x1f0000,
