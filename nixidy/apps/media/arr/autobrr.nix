@@ -54,6 +54,28 @@ in {
       };
       postgres.enable = true;
       volsync.pvcs.autobrr.title = "autobrr";
+      # Idempotent post-sync bootstrap (apps/app-bootstrap autobrr): download clients (qBittorrent,
+      # Sonarr, Radarr, Lidarr) and a filter per arr app, as the break-glass user. IRC networks and
+      # feeds stay empty until indexers are chosen.
+      bootstrap = lib.mkIf (pinned.images ? app-bootstrap-autobrr) {
+        image = with pinned.images.app-bootstrap-autobrr; "${repository}:${tag}@${digest}";
+        args = ["autobrr"];
+        env = {
+          AUTOBRR_USER = people.me;
+          AUTOBRR_PASSWORD_FILE = "/secrets/admin/password";
+          SONARR_API_KEY_FILE = "/secrets/sonarr/apikey";
+          RADARR_API_KEY_FILE = "/secrets/radarr/apikey";
+          LIDARR_API_KEY_FILE = "/secrets/lidarr/apikey";
+          QBITTORRENT_PASSWORD_FILE = "/secrets/qbittorrent/password";
+        };
+        secrets = {
+          admin = "autobrr-admin";
+          sonarr = "sonarr-apikey";
+          radarr = "radarr-apikey";
+          lidarr = "lidarr-apikey";
+          qbittorrent = "qbittorrent-admin";
+        };
+      };
       helm.releases.autobrr = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
