@@ -81,6 +81,10 @@ in {
         coder users create --username "$USER_NAME" --email "$USER_EMAIL" --login-type oidc
       fi
       coder users edit-roles "$USER_NAME" --roles owner --yes
+      # A user who has not logged in yet is dormant, and its workspaces' agents get 401.
+      if coder users show "$USER_NAME" -o json | grep -q '"status": *"dormant"'; then
+        coder users activate "$USER_NAME"
+      fi
       ${lib.concatMapStringsSep "\n" push templates}
     '';
   in {
