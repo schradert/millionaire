@@ -270,6 +270,9 @@ mod tests {
         }
         let t = |n: u32, role: &str, aspect: &str| serde_json::json!({"title": n, "seconds": 100.0, "vts": 1, "ttn": 1, "aspect": aspect, "fps": 29.97, "angles": 1, "chapters": [], "cells": [], "audio": [], "subs": [], "role": role});
         let titles = serde_json::json!([t(1, "main", "16/9"), t(2, "alt", "4/3"), t(6, "extra", ""), t(7, "extra", ""), t(8, "short", "")]);
+        // A copy-protected disc's titles.json (bash, MakeMKV analysis) has no vts/ttn/fps/angles.
+        let protected: Vec<crate::classify::Title> = serde_json::from_str(r#"[{"title": 1, "seconds": 6000, "role": "main", "aspect": "", "chapters": [], "cells": [], "audio": [], "subs": [], "mkv": 0, "file": "t00.mkv"}]"#).unwrap();
+        assert_eq!(protected[0].vts, 0);
         std::fs::write(dir.join("titles.json"), titles.to_string()).unwrap();
         let c = bash_library(&dir, "Elf (2003)").unwrap();
         let nums: Vec<u32> = c.files.iter().map(|(n, _)| *n).collect();

@@ -20,7 +20,7 @@ spec:
                 - /media/dvd
                 - --rips
                 - /rips
-              image: harbor.trdos.me/library/dvdrip:0.1.4@sha256:90bc1b845a63d3614c8af44f90ab4df80ebfdbbbb2e3e763a2520d35eecf16d1
+              image: harbor.trdos.me/library/dvdrip:0.1.5@sha256:f599147157443691d74098e6502b87efa5cafe670d8c6614328a43d927e1dbef
               name: import
               volumeMounts:
                 - mountPath: /work

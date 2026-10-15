@@ -48,10 +48,15 @@ pub struct Track {
 pub struct Title {
     pub title: u32,
     pub seconds: f64,
+    // Absent in the bash pipeline's titles.json for copy-protected discs (MakeMKV analysis).
+    #[serde(default)]
     pub vts: u32,
+    #[serde(default)]
     pub ttn: u32,
     pub aspect: Value,
+    #[serde(default)]
     pub fps: f64,
+    #[serde(default)]
     pub angles: u32,
     pub chapters: Vec<f64>,
     /// Cell lengths in tenths of a second (rounded), for duplicate detection.
