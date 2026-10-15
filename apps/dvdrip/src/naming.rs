@@ -56,9 +56,10 @@ pub fn version_label(aspect: &serde_json::Value, title: u32) -> String {
     }
 }
 
-/// True if `name` is usable as a single path component in the libraries.
+/// True if `name` is usable as a single path component in the libraries (a leading dot hides it
+/// from Jellyfin, which the e2e flow relies on).
 pub fn valid_library_name(name: &str) -> bool {
-    !name.is_empty() && !name.contains('/') && name != "." && name != ".." && !name.starts_with('.')
+    !name.is_empty() && !name.contains('/') && name != "." && name != ".."
 }
 
 #[cfg(test)]

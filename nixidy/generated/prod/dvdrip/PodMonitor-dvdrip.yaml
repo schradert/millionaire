@@ -1,0 +1,12 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: dvdrip
+  namespace: media
+spec:
+  podMetricsEndpoints:
+    - interval: 1m
+      port: http
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dvdrip

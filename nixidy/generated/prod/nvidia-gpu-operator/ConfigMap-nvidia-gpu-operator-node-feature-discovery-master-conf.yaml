@@ -3,6 +3,7 @@ data:
   nfd-master.conf: |-
     extraLabelNs:
     - nvidia.com
+    - dvd.trdos.me
 kind: ConfigMap
 metadata:
   labels:

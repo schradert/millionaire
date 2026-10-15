@@ -18,6 +18,7 @@ mod notify;
 mod otel;
 mod publish;
 mod review;
+mod synth;
 #[cfg(test)]
 mod testutil;
 mod tool;
@@ -47,6 +48,8 @@ enum Command {
     Controller(controller::ControllerArgs),
     /// Print the CustomResourceDefinitions (crds/dvd.trdos.me.yaml).
     Crds,
+    /// Make a synthetic DVD as a backed-up master (and Disc), for end-to-end tests.
+    Synth(synth::SynthArgs),
     /// Inspect, encode, mark damage, make review sheets and summarise one disc (the encode Job).
     Encode(job::EncodeArgs),
     /// Put a disc's ISO and encodes in the libraries as its spec says (the publish Job).
@@ -87,6 +90,7 @@ async fn run() -> anyhow::Result<()> {
         Command::Probe(a) => agent::probe(a).await?,
         Command::Controller(a) => controller::run(a).await?,
         Command::Encode(a) => job::encode_cmd(a).await?,
+        Command::Synth(a) => synth::run(a).await?,
         Command::Publish(a) => job::publish_cmd(a).await?,
     }
     Ok(())

@@ -119,6 +119,12 @@ data:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
+      name: dvdrip
+      url: https://rips.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
       name: excalidraw
       url: https://excalidraw.trdos.me
     - conditions:

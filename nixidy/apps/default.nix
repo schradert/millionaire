@@ -64,6 +64,7 @@
     ./media/kavita.nix
     ./media/komga.nix
     ./media/archive-ingest.nix
+    ./media/dvd-rip.nix
     ./media/dvd-webdav.nix
     ./media/games-webdav.nix
     # TODO obs-studio: currently a dotfiles-style NixOS config, not nixidy.

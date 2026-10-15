@@ -1,0 +1,27 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    release: prometheus
+  name: dvdrip
+  namespace: media
+spec:
+  groups:
+    - name: dvdrip
+      rules:
+        - alert: DvdRipFailed
+          annotations:
+            description: kubectl -n media get discs; the Disc's status.message says why. Bump spec.retry to retry (docs/dvd-rip.md).
+            summary: A disc failed to rip, encode or publish
+          expr: dvdrip_discs{name="Failed"} > 0
+          for: 10m
+          labels:
+            severity: warning
+        - alert: DvdRipDriveError
+          annotations:
+            description: kubectl get drives; the agent's log on the drive's node.
+            summary: Optical drive {{ $labels.drive }} is in an error state
+          expr: dvdrip_drive_state{state="Error"} == 1
+          for: 15m
+          labels:
+            severity: warning

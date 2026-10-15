@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dvdrip-controller
+  namespace: media
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: controller
+      app.kubernetes.io/name: dvdrip
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: controller
+        app.kubernetes.io/name: dvdrip
+    spec:
+      containers:
+        - args:
+            - controller
+          env:
+            - name: NTFY_URL
+              value: https://ntfy.trdos.me/dvd
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4318
+            - name: DVDRIP_IMAGE
+              value: harbor.trdos.me/library/dvdrip:0.1.1@sha256:448082bb823d5f4221c1d2a57fef09332a8ebfdb7844fc40fd142e3b9ae14c0b
+            - name: DVDRIP_JELLYFIN_URL
+              value: http://jellyfin.media.svc.cluster.local:8096
+            - name: OTEL_SERVICE_NAME
+              value: dvdrip-controller
+          image: harbor.trdos.me/library/dvdrip:0.1.1@sha256:448082bb823d5f4221c1d2a57fef09332a8ebfdb7844fc40fd142e3b9ae14c0b
+          name: controller
+          ports:
+            - containerPort: 9090
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /work
+              name: work
+              readOnly: false
+            - mountPath: /tmp
+              name: tmp
+      hostAliases:
+        - hostnames:
+            - ntfy.trdos.me
+          ip: 100.64.0.1
+      serviceAccountName: dvdrip-controller
+      tolerations:
+        - effect: PreferNoSchedule
+          key: node.trdos.me/class
+          operator: Equal
+          value: desktop
+      volumes:
+        - name: work
+          persistentVolumeClaim:
+            claimName: dvd-rip-work
+        - emptyDir: {}
+          name: tmp

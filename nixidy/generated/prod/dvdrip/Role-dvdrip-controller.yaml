@@ -1,0 +1,40 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dvdrip-controller
+  namespace: media
+rules:
+  - apiGroups:
+      - dvd.trdos.me
+    resources:
+      - discs
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+  - apiGroups:
+      - dvd.trdos.me
+    resources:
+      - discs/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - list

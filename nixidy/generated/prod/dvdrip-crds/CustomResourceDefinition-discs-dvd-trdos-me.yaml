@@ -1,0 +1,291 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: discs.dvd.trdos.me
+spec:
+  group: dvd.trdos.me
+  names:
+    kind: Disc
+    plural: discs
+    singular: disc
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .spec.name
+          name: Name
+          type: string
+        - jsonPath: .spec.disc
+          name: Disc
+          type: integer
+        - jsonPath: .status.phase
+          name: Phase
+          type: string
+        - jsonPath: .status.drive
+          name: Drive
+          type: string
+        - jsonPath: .status.message
+          name: Message
+          priority: 1
+          type: string
+        - jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
+      name: v1alpha1
+      schema:
+        openAPIV3Schema:
+          description: Auto-generated derived type for DiscSpec via `CustomResource`
+          properties:
+            spec:
+              description: One physical disc. The agent creates it; the agent and the Jobs own `status`, people own `spec`.
+              properties:
+                disc:
+                  default: 1
+                  description: 'Disc number within `name`: 2+ is a bonus disc, published as "Disc N - ..." extras.'
+                  format: uint32
+                  minimum: 0
+                  type: integer
+                hold:
+                  default: false
+                  description: Back up, but don't encode or publish yet.
+                  type: boolean
+                mainTitle:
+                  description: Override HandBrake's main-feature pick.
+                  format: uint32
+                  minimum: 0
+                  nullable: true
+                  type: integer
+                name:
+                  description: Library name, e.g. "Beetlejuice (1988)"; defaults to the label in title case.
+                  type: string
+                protected:
+                  default: false
+                  description: Force MakeMKV's title analysis and remux (copy-protected discs).
+                  type: boolean
+                retry:
+                  default: 0
+                  description: Bump to retry a Failed disc.
+                  format: uint32
+                  minimum: 0
+                  type: integer
+                titles:
+                  additionalProperties:
+                    description: 'Where an extra goes in the library: a Jellyfin extras folder, or `junk` (not published).'
+                    properties:
+                      folder:
+                        nullable: true
+                        type: string
+                      name:
+                        description: File name (without .mkv) instead of "Title N - XmYYs".
+                        nullable: true
+                        type: string
+                    type: object
+                  default: {}
+                  description: 'Per title number: library folder and name (sorting extras).'
+                  type: object
+              required:
+                - name
+              type: object
+            status:
+              nullable: true
+              properties:
+                attempts:
+                  default: 0
+                  format: uint32
+                  minimum: 0
+                  type: integer
+                backup:
+                  nullable: true
+                  properties:
+                    bytes:
+                      format: uint64
+                      minimum: 0
+                      type: integer
+                    method:
+                      description: makemkv | dvdbackup | rescue | raw
+                      type: string
+                    readErrors:
+                      default: 0
+                      format: uint32
+                      minimum: 0
+                      type: integer
+                    seconds:
+                      format: uint64
+                      minimum: 0
+                      type: integer
+                    sha256:
+                      type: string
+                  required:
+                    - bytes
+                    - method
+                    - seconds
+                    - sha256
+                  type: object
+                damage:
+                  nullable: true
+                  properties:
+                    missingBytes:
+                      format: uint64
+                      minimum: 0
+                      type: integer
+                    recoveredPercent:
+                      format: double
+                      type: number
+                    rescuePending:
+                      description: 'raw image + map kept: reinsert the disc (cleaned, or another copy) to re-read the gaps.'
+                      type: boolean
+                  required:
+                    - missingBytes
+                    - recoveredPercent
+                    - rescuePending
+                  type: object
+                drive:
+                  nullable: true
+                  type: string
+                encodeKey:
+                  description: The spec's encode-relevant fields (mainTitle, protected) at the last encode.
+                  nullable: true
+                  type: string
+                encodedGeneration:
+                  description: The spec generation the last encode used (a change to mainTitle/protected re-encodes).
+                  format: int64
+                  nullable: true
+                  type: integer
+                fingerprint:
+                  type: string
+                heartbeat:
+                  description: Renewed every 30 s by the agent while it backs the disc up (its lease).
+                  nullable: true
+                  type: string
+                label:
+                  type: string
+                message:
+                  nullable: true
+                  type: string
+                observedRetry:
+                  default: 0
+                  format: uint32
+                  minimum: 0
+                  type: integer
+                phase:
+                  default: Detected
+                  enum:
+                    - Detected
+                    - BackingUp
+                    - BackedUp
+                    - Held
+                    - Encoding
+                    - Encoded
+                    - Publishing
+                    - Done
+                    - Failed
+                  type: string
+                protected:
+                  default: false
+                  description: The disc was encoded via MakeMKV (detected or forced copy protection).
+                  type: boolean
+                publishKey:
+                  description: The spec's layout fields (name, disc, titles) at the last publish.
+                  nullable: true
+                  type: string
+                published:
+                  nullable: true
+                  properties:
+                    files:
+                      default: []
+                      items:
+                        description: A file this disc put in media-movies (the only files publish ever moves or removes).
+                        properties:
+                          path:
+                            description: Relative to media-movies.
+                            type: string
+                          segmentTitle:
+                            default: ""
+                            type: string
+                          title:
+                            description: 'The disc title it came from (0: the NFO).'
+                            format: uint32
+                            minimum: 0
+                            type: integer
+                        required:
+                          - path
+                          - title
+                        type: object
+                      type: array
+                    generation:
+                      default: 0
+                      description: The Disc generation this was published from.
+                      format: int64
+                      type: integer
+                    iso:
+                      description: Relative to media-dvd.
+                      nullable: true
+                      type: string
+                  type: object
+                since:
+                  description: RFC 3339 time of the last phase change.
+                  nullable: true
+                  type: string
+                titles:
+                  default: []
+                  items:
+                    properties:
+                      aspect:
+                        nullable: true
+                        type: string
+                      encodedSeconds:
+                        description: Encoded runtime, when it differs much from the title's (still-frame galleries).
+                        format: double
+                        nullable: true
+                        type: number
+                      glitches:
+                        description: 'Damaged discs: where the encode glitches (seconds), marked as chapters.'
+                        items:
+                          format: uint64
+                          minimum: 0
+                          type: integer
+                        type: array
+                      output:
+                        description: Encoded file in the work dir (`encodes/<title>.mkv`), once it exists.
+                        nullable: true
+                        type: string
+                      role:
+                        enum:
+                          - main
+                          - alt
+                          - dup
+                          - playall
+                          - part
+                          - stub
+                          - short
+                          - extra
+                        type: string
+                      seconds:
+                        format: double
+                        type: number
+                      title:
+                        format: uint32
+                        minimum: 0
+                        type: integer
+                    required:
+                      - role
+                      - seconds
+                      - title
+                    type: object
+                  type: array
+                warnings:
+                  default: []
+                  items:
+                    type: string
+                  type: array
+              required:
+                - fingerprint
+                - label
+              type: object
+          required:
+            - spec
+          title: Disc
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
