@@ -4,6 +4,8 @@ use letterboxd_sync::{ntfy, resolve, run, Config, Outcome};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+const TRAKT_HOST: &str = "api.trakt.tv";
+
 fn env(name: &str) -> Option<String> {
     std::env::var(name).ok().map(|v| v.trim().to_string()).filter(|v| !v.is_empty())
 }
@@ -19,7 +21,8 @@ fn secret(name: &str) -> Result<Option<String>, String> {
 fn config() -> Result<Config, String> {
     let need = |name: &str| env(name).ok_or_else(|| format!("{name} is not set"));
     Ok(Config {
-        trakt_url: env("TRAKT_URL").unwrap_or_else(|| "https://api.trakt.tv".into()),
+        // A host, not a link literal: the link checker would probe the bare API root, which answers 412.
+        trakt_url: env("TRAKT_URL").unwrap_or_else(|| format!("https://{TRAKT_HOST}")),
         trakt_user: need("TRAKT_USERNAME")?,
         trakt_client_id: secret("TRAKT_CLIENT_ID")?.ok_or("TRAKT_CLIENT_ID / TRAKT_CLIENT_ID_FILE is not set")?,
         letterboxd_url: env("LETTERBOXD_URL").unwrap_or_else(|| "https://letterboxd.com".into()),
