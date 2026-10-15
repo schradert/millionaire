@@ -16,11 +16,6 @@
     # removing an entry here does not delete the indexer.
     indexers = [
       {
-        # Public, legal: the Internet Archive's torrents. Exercises the whole pipeline.
-        name = "Internet Archive";
-        definition = "internetarchive";
-      }
-      {
         # Public, behind Cloudflare: the "flaresolverr" tag routes it through the in-cluster FlareSolverr proxy.
         name = "1337x";
         definition = "1337x";
