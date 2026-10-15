@@ -39,6 +39,10 @@ data:
       webhook_configs:
       - send_resolved: true
         url: https://ntfy.trdos.me/e2e?template=alertmanager&priority=2
+    - name: dvd-ntfy
+      webhook_configs:
+      - send_resolved: true
+        url: https://ntfy.trdos.me/dvd?template=alertmanager&priority=2
     - name: gatus-heartbeat
       webhook_configs:
       - http_config:
@@ -75,6 +79,11 @@ data:
         - namespace =~ "e2e|media"
         - job_name =~ "(media-)?e2e.*"
         receiver: e2e-jobs-ntfy
+      - matchers:
+        - alertname = KubeJobFailed
+        - namespace = media
+        - job_name =~ "dvd-.*"
+        receiver: dvd-ntfy
       - group_interval: 1m
         group_wait: 0s
         matchers:

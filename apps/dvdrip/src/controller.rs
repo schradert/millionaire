@@ -172,8 +172,10 @@ fn job_state(job: Option<&Job>) -> JobState {
     }
 }
 
-fn job_name(stage: &str, st: &DiscStatus, n: u32) -> String {
-    format!("dvd-{stage}-{}-{n}", st.fingerprint)
+/// `dvd-<stage>-<fingerprint>-<n>`, `e2e-dvd-...` for test discs (alert routing, alertmanager.nix).
+fn job_name(disc: &Disc, stage: &str, st: &DiscStatus, n: u32) -> String {
+    let prefix = if crate::crd::is_test(disc) { "e2e-" } else { "" };
+    format!("{prefix}dvd-{stage}-{}-{n}", st.fingerprint)
 }
 
 pub const FINALIZER: &str = "dvd.trdos.me/work-dir";
@@ -227,7 +229,7 @@ async fn apply(disc: Arc<Disc>, ctx: Arc<Ctx>) -> Result<Action, Error> {
         Phase::Publishing => ("p", st.attempts),
         _ => ("", 0),
     };
-    let job = if stage.is_empty() { None } else { jobs.get_opt(&job_name(stage, &st, n)).await? };
+    let job = if stage.is_empty() { None } else { jobs.get_opt(&job_name(&disc, stage, &st, n)).await? };
     let lease_expired = st.phase == Phase::BackingUp && stale(st.heartbeat.as_deref().or(st.since.as_deref()));
 
     // No GPU for too long: start again on the CPU.
@@ -355,7 +357,7 @@ async fn gpu_starved(ctx: &Ctx, ns: &str, job: &Job) -> bool {
 
 /// The encode ("e") or publish ("p") Job for a disc.
 pub fn job_spec(a: &ControllerArgs, disc: &Disc, st: &DiscStatus, stage: &str, n: u32, cpu: bool) -> Job {
-    let name = job_name(stage, st, n);
+    let name = job_name(disc, stage, st, n);
     let disc_ref = format!("{}/{}", disc.namespace().unwrap_or_else(|| a.namespace.clone()), disc.name_any());
     let encoder = if cpu { a.cpu_encoder.clone() } else { a.encoder.clone() };
     let gpu = stage == "e" && encoder.starts_with("nvenc");
@@ -405,7 +407,7 @@ pub fn job_spec(a: &ControllerArgs, disc: &Disc, st: &DiscStatus, stage: &str, n
         ..Default::default()
     });
     let owner = disc.controller_owner_ref(&()).unwrap();
-    let spec = json!({
+    let mut spec = json!({
         "backoffLimit": 0,
         "ttlSecondsAfterFinished": 86400,
         "template": {
@@ -429,6 +431,10 @@ pub fn job_spec(a: &ControllerArgs, disc: &Disc, st: &DiscStatus, stage: &str, n
             }
         }
     });
+    if gpu {
+        // The containerd runtime that applies the CDI spec: the driver's libraries and env.
+        spec["template"]["spec"]["runtimeClassName"] = json!("nvidia");
+    }
     Job {
         metadata: ObjectMeta {
             name: Some(name),
@@ -472,7 +478,7 @@ async fn housekeeping(ctx: Arc<Ctx>) {
             for p in ["Detected", "BackingUp", "BackedUp", "Held", "Encoding", "Encoded", "Publishing", "Done", "Failed"] {
                 counts.insert(p.into(), 0);
             }
-            for d in &l.items {
+            for d in l.items.iter().filter(|d| !crate::crd::is_test(d)) {
                 let p = d.status.as_ref().map(|s| format!("{:?}", s.phase)).unwrap_or_else(|| "Detected".into());
                 *counts.entry(p).or_default() += 1;
             }
@@ -573,10 +579,15 @@ mod tests {
         let s = st(Phase::BackedUp);
         let gpu = serde_json::to_value(job_spec(&a, &disc, &s, "e", 1, false)).unwrap();
         assert_eq!(gpu["metadata"]["name"], "dvd-e-abc-1");
+        let mut test = disc.clone();
+        test.metadata.labels = Some([(crate::crd::TEST_LABEL.to_string(), "true".to_string())].into());
+        assert_eq!(serde_json::to_value(job_spec(&a, &test, &s, "e", 1, false)).unwrap()["metadata"]["name"], "e2e-dvd-e-abc-1");
         assert_eq!(gpu["spec"]["template"]["spec"]["containers"][0]["resources"]["limits"]["nvidia.com/gpu"], "1");
+        assert_eq!(gpu["spec"]["template"]["spec"]["runtimeClassName"], "nvidia");
         assert_eq!(gpu["spec"]["template"]["spec"]["containers"][0]["args"], json!(["encode", "--disc", "media/elf-abc"]));
         let cpu = serde_json::to_value(job_spec(&a, &disc, &s, "e", 2, true)).unwrap();
         assert!(cpu["spec"]["template"]["spec"]["containers"][0]["resources"].get("limits").is_none());
+        assert!(cpu["spec"]["template"]["spec"].get("runtimeClassName").is_none());
         let publ = serde_json::to_value(job_spec(&a, &disc, &s, "p", 3, false)).unwrap();
         let vols: Vec<&str> = publ["spec"]["template"]["spec"]["volumes"].as_array().unwrap().iter().map(|v| v["name"].as_str().unwrap()).collect();
         assert_eq!(vols, ["work", "tmp", "dvd", "movies"]);
