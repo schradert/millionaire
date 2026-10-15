@@ -4,7 +4,7 @@ Design for `dvdrip` (`apps/dvdrip`, Rust), the Kubernetes replacement for the ba
 
 ## Overview
 
-```
+```text
  node with a drive (DaemonSet)          anywhere (Deployment)             anywhere / GPU (Jobs)
 ┌──────────────────────────────┐      ┌───────────────────────────┐     ┌────────────────────────────┐
 │ dvdrip agent                 │      │ dvdrip controller         │     │ dvdrip encode <disc>       │

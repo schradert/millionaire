@@ -14,12 +14,7 @@ pub fn base() -> String {
 
 /// The series of an instant-vector response: (labels, value).
 pub fn series(v: &Value) -> Vec<(Value, f64)> {
-    v["data"]["result"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|r| Some((r["metric"].clone(), r["value"][1].as_str()?.parse().ok()?)))
-        .collect()
+    v["data"]["result"].as_array().into_iter().flatten().filter_map(|r| Some((r["metric"].clone(), r["value"][1].as_str()?.parse().ok()?))).collect()
 }
 
 pub async fn query(ctx: &Ctx, promql: &str) -> R<Vec<(Value, f64)>> {

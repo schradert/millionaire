@@ -148,7 +148,11 @@ class NixOS:
             # off and let the agent's keys authenticate the hop. A ProxyCommand
             # cannot be used: nix splits NIX_SSHOPTS on whitespace.
             ssh_id += f" -J {jump}"
-            na_id = f"-i {identity} --ssh-option ProxyJump={jump}" if identity else f"--ssh-option ProxyJump={jump}"
+            na_id = (
+                f"-i {identity} --ssh-option ProxyJump={jump}"
+                if identity
+                else f"--ssh-option ProxyJump={jump}"
+            )
         host_key = (
             f"""
                 # Keep the host's ssh identity across the reinstall: it is a sops

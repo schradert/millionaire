@@ -20,10 +20,7 @@ use serde_json::{json, Value};
 use crate::common::{ok, retry, secret, var, Result};
 
 /// (name, folder, mediaType).
-const LIBRARIES: &[(&str, &str, &str)] = &[
-    ("Audiobooks", "/media/audiobooks", "book"),
-    ("Podcasts", "/media/podcasts", "podcast"),
-];
+const LIBRARIES: &[(&str, &str, &str)] = &[("Audiobooks", "/media/audiobooks", "book"), ("Podcasts", "/media/podcasts", "podcast")];
 
 struct Oidc {
     issuer: String,
@@ -46,9 +43,7 @@ struct Endpoints {
 
 impl Endpoints {
     fn from_discovery(d: &Value) -> Result<Self> {
-        let get = |k: &str| -> Result<String> {
-            d[k].as_str().map(String::from).ok_or_else(|| format!("discovery has no {k}").into())
-        };
+        let get = |k: &str| -> Result<String> { d[k].as_str().map(String::from).ok_or_else(|| format!("discovery has no {k}").into()) };
         Ok(Self {
             issuer: get("issuer")?,
             authorization: get("authorization_endpoint")?,
@@ -62,38 +57,21 @@ impl Endpoints {
     /// Keycloak's fixed endpoint layout, for when discovery can't be fetched from the job.
     fn keycloak(issuer: &str) -> Self {
         let p = |s: &str| format!("{issuer}/protocol/openid-connect/{s}");
-        Self {
-            issuer: issuer.into(),
-            authorization: p("auth"),
-            token: p("token"),
-            userinfo: p("userinfo"),
-            jwks: p("certs"),
-            logout: p("logout"),
-        }
+        Self { issuer: issuer.into(), authorization: p("auth"), token: p("token"), userinfo: p("userinfo"), jwks: p("certs"), logout: p("logout") }
     }
 }
 
-fn missing<'a>(
-    existing: &[(String, Vec<String>)],
-    wanted: &'a [(&'a str, &'a str, &'a str)],
-) -> Vec<&'a (&'a str, &'a str, &'a str)> {
+fn missing<'a>(existing: &[(String, Vec<String>)], wanted: &'a [(&'a str, &'a str, &'a str)]) -> Vec<&'a (&'a str, &'a str, &'a str)> {
     wanted
         .iter()
         .filter(|(name, folder, _)| {
-            !existing.iter().any(|(n, folders)| {
-                n.eq_ignore_ascii_case(name) || folders.iter().any(|f| f.trim_end_matches('/') == *folder)
-            })
+            !existing.iter().any(|(n, folders)| n.eq_ignore_ascii_case(name) || folders.iter().any(|f| f.trim_end_matches('/') == *folder))
         })
         .collect()
 }
 
 fn sorted_strings(v: &Value) -> Vec<String> {
-    let mut out: Vec<String> = v
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|s| s.as_str().map(String::from))
-        .collect();
+    let mut out: Vec<String> = v.as_array().into_iter().flatten().filter_map(|s| s.as_str().map(String::from)).collect();
     out.sort();
     out
 }
@@ -128,13 +106,7 @@ fn desired(want: &Oidc, ep: &Endpoints) -> Vec<(&'static str, Value)> {
 /// Array fields compare as sets (the server sorts them).
 fn diff(current: &Value, want: &[(&'static str, Value)]) -> serde_json::Map<String, Value> {
     want.iter()
-        .filter(|(k, v)| {
-            if v.is_array() {
-                sorted_strings(&current[k]) != sorted_strings(v)
-            } else {
-                current.get(*k) != Some(v)
-            }
-        })
+        .filter(|(k, v)| if v.is_array() { sorted_strings(&current[k]) != sorted_strings(v) } else { current.get(*k) != Some(v) })
         .map(|(k, v)| (k.to_string(), v.clone()))
         .collect()
 }
@@ -163,24 +135,15 @@ async fn list_libraries(http: &Client, base: &str, token: &str) -> Result<Vec<(S
         .into_iter()
         .flatten()
         .map(|l| {
-            let folders = l["folders"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .filter_map(|f| f["fullPath"].as_str().or(f["path"].as_str()).map(String::from))
-                .collect();
+            let folders =
+                l["folders"].as_array().into_iter().flatten().filter_map(|f| f["fullPath"].as_str().or(f["path"].as_str()).map(String::from)).collect();
             (l["name"].as_str().unwrap_or("").to_string(), folders)
         })
         .collect())
 }
 
 async fn patch_auth(http: &Client, base: &str, token: &str, body: &Value, what: &str) -> Result<()> {
-    let r = http
-        .patch(format!("{base}/api/auth-settings"))
-        .bearer_auth(token)
-        .json(body)
-        .send_t()
-        .await?;
+    let r = http.patch(format!("{base}/api/auth-settings")).bearer_auth(token).json(body).send_t().await?;
     ok(r, what).await?;
     Ok(())
 }
@@ -198,11 +161,7 @@ pub async fn run() -> Result<()> {
         secret: secret("OIDC_CLIENT_SECRET")?,
         button_text: var("OIDC_PROVIDER_NAME", "Login with Keycloak"),
         group_claim: var("OIDC_GROUP_CLAIM", "groups"),
-        mobile_redirects: var("OIDC_MOBILE_REDIRECTS", "audiobookshelf://oauth")
-            .split(',')
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .collect(),
+        mobile_redirects: var("OIDC_MOBILE_REDIRECTS", "audiobookshelf://oauth").split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect(),
     };
     let http = Client::builder().timeout(Duration::from_secs(60)).build()?;
 
@@ -216,19 +175,11 @@ pub async fn run() -> Result<()> {
         println!("server already initialised, not creating a root user");
     } else {
         println!("initialising server with root user {user}");
-        let r = http
-            .post(format!("{base}/init"))
-            .json(&json!({ "newRoot": { "username": user, "password": password } }))
-            .send_t()
-            .await?;
+        let r = http.post(format!("{base}/init")).json(&json!({ "newRoot": { "username": user, "password": password } })).send_t().await?;
         ok(r, "POST /init").await?;
     }
 
-    let r = http
-        .post(format!("{base}/login"))
-        .json(&json!({ "username": user, "password": password }))
-        .send_t()
-        .await?;
+    let r = http.post(format!("{base}/login")).json(&json!({ "username": user, "password": password })).send_t().await?;
     let login = ok(
         r,
         &format!("POST /login as {user} (generated admin password; if the server was initialised by hand, set the root user to {user} with that password)"),
@@ -236,11 +187,7 @@ pub async fn run() -> Result<()> {
     .await?
     .json::<Value>()
     .await?;
-    let token = login["user"]["accessToken"]
-        .as_str()
-        .or(login["user"]["token"].as_str())
-        .ok_or("login response has no token")?
-        .to_string();
+    let token = login["user"]["accessToken"].as_str().or(login["user"]["token"].as_str()).ok_or("login response has no token")?.to_string();
     println!("admin login ok");
 
     let existing = list_libraries(&http, base, &token).await?;

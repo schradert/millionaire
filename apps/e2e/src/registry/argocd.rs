@@ -72,7 +72,12 @@ fn make_repo(root: &std::path::Path, marker: &str) -> R<()> {
     std::fs::write(work.join("configmap.yaml"), manifest(marker)).at("fs", "write manifest")?;
     let bare = root.join(format!("{marker}.git"));
     let run = |dir: &std::path::Path, args: &[&str]| -> R<()> {
-        let o = Command::new("git").current_dir(dir).args(["-c", "user.name=e2e", "-c", "user.email=e2e@e2e.invalid", "-c", "init.defaultBranch=main"]).args(args).output().at("git", "run")?;
+        let o = Command::new("git")
+            .current_dir(dir)
+            .args(["-c", "user.name=e2e", "-c", "user.email=e2e@e2e.invalid", "-c", "init.defaultBranch=main"])
+            .args(args)
+            .output()
+            .at("git", "run")?;
         if o.status.success() {
             Ok(())
         } else {
@@ -119,14 +124,20 @@ pub async fn gitops(ctx: &Ctx, f: &mut Flow) -> R<()> {
         Ok((sync == "Synced" && health == "Healthy").then_some(a))
     })
     .await?;
-    let has_cm = app["status"]["resources"].as_array().into_iter().flatten().any(|r| r["kind"] == "ConfigMap" && r["name"].as_str() == Some(&format!("{m}-cm")));
+    let has_cm =
+        app["status"]["resources"].as_array().into_iter().flatten().any(|r| r["kind"] == "ConfigMap" && r["name"].as_str() == Some(&format!("{m}-cm")));
     if !has_cm {
-        return Err(Fail::new(APP, "resources", format!("the ConfigMap is not among the Application's resources: {}", excerpt(&app["status"]["resources"].to_string()))));
+        return Err(Fail::new(
+            APP,
+            "resources",
+            format!("the ConfigMap is not among the Application's resources: {}", excerpt(&app["status"]["resources"].to_string())),
+        ));
     }
     f.ok(APP, "Application is Synced and Healthy", format!("ConfigMap {m}-cm deployed from the repo"));
 
     send(argo.req(ctx, Method::DELETE, &format!("/applications/{m}?cascade=true")), APP, "delete application").await?;
-    poll(APP, "application deleted", Duration::from_secs(180), Duration::from_secs(3), || async { Ok(argo.app(ctx, m).await?.is_none().then_some(())) }).await?;
+    poll(APP, "application deleted", Duration::from_secs(180), Duration::from_secs(3), || async { Ok(argo.app(ctx, m).await?.is_none().then_some(())) })
+        .await?;
     f.ok(APP, "cascading delete finished", "Application gone (its finalizer removed the ConfigMap first)");
     drop(server);
     let _ = std::fs::remove_dir_all(&root);
@@ -151,7 +162,10 @@ pub async fn sweep(ctx: &Ctx, scope: &Scope, delete: bool) -> R<Vec<String>> {
         for a in &apps {
             tagged(APP, a)?;
             send(argo.req(ctx, Method::DELETE, &format!("/applications/{a}?cascade=true")), APP, "delete application").await?;
-            poll(APP, "application deleted", Duration::from_secs(180), Duration::from_secs(3), || async { Ok(argo.app(ctx, a).await?.is_none().then_some(())) }).await?;
+            poll(APP, "application deleted", Duration::from_secs(180), Duration::from_secs(3), || async {
+                Ok(argo.app(ctx, a).await?.is_none().then_some(()))
+            })
+            .await?;
         }
         for r in &repos {
             tagged(APP, r)?;

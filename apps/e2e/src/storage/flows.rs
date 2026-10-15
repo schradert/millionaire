@@ -26,7 +26,11 @@ async fn bound(app: &str, pvc: &str, f: &mut Flow) -> R<()> {
     if p["status"]["phase"] != "Bound" {
         return Err(Fail::new(app, "pvc bound", format!("{pvc} is {}", p["status"]["phase"])));
     }
-    f.ok(app, "volume provisioned and bound", format!("{} {}", p["spec"]["storageClassName"].as_str().unwrap_or("?"), p["status"]["capacity"]["storage"].as_str().unwrap_or("?")));
+    f.ok(
+        app,
+        "volume provisioned and bound",
+        format!("{} {}", p["spec"]["storageClassName"].as_str().unwrap_or("?"), p["status"]["capacity"]["storage"].as_str().unwrap_or("?")),
+    );
     Ok(())
 }
 
@@ -78,7 +82,8 @@ pub async fn filesystem(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let holder = n(ctx, "fs-hold");
     kube::start_pod(ctx, &holder, &image, &["__pod", "sleep", "300"], &[("data", &fs)]).await?;
     f.ok(APP, "second Pod holds the volume", holder.clone());
-    pod_step(ctx, f, APP, "read by a Pod while the other holds it (ReadWriteMany)", &n(ctx, "fs-r"), &["__pod", "check", "/data", &text], ("data", &fs)).await?;
+    pod_step(ctx, f, APP, "read by a Pod while the other holds it (ReadWriteMany)", &n(ctx, "fs-r"), &["__pod", "check", "/data", &text], ("data", &fs))
+        .await?;
     Ok(())
 }
 

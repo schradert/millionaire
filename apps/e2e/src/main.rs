@@ -165,7 +165,9 @@ async fn run() -> ExitCode {
                 (Some(r), _) => match ctx::run_marker(&r) {
                     Some(m) => (r.clone(), Scope::Run(m)),
                     None => {
-                        eprintln!("--run {r}: not a run id (expected YYYYMMDD-HHMMSS-xxxx, optionally prefixed e2e-); refusing to build a cleanup scope from it");
+                        eprintln!(
+                            "--run {r}: not a run id (expected YYYYMMDD-HHMMSS-xxxx, optionally prefixed e2e-); refusing to build a cleanup scope from it"
+                        );
                         return ExitCode::FAILURE;
                     }
                 },

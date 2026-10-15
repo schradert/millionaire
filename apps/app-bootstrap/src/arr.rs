@@ -62,10 +62,7 @@ impl Servarr {
     }
 
     pub async fn wait(&self, http: &Client, what: &str) -> Result<()> {
-        retry(&format!("waiting for {what}"), 120, || async {
-            self.get(http, "/system/status").await.map(|_| ())
-        })
-        .await
+        retry(&format!("waiting for {what}"), 120, || async { self.get(http, "/system/status").await.map(|_| ()) }).await
     }
 }
 
@@ -84,12 +81,7 @@ fn first_id(list: &Value) -> Option<i64> {
 /// Make sure `path` is a root folder. Lidarr also wants default profiles.
 pub async fn ensure_root_folder(http: &Client, s: &Servarr, path: &str) -> Result<bool> {
     let folders = s.get(http, "/rootfolder").await?;
-    if folders
-        .as_array()
-        .into_iter()
-        .flatten()
-        .any(|f| f["path"].as_str().map(|p| p.trim_end_matches('/')) == Some(path.trim_end_matches('/')))
-    {
+    if folders.as_array().into_iter().flatten().any(|f| f["path"].as_str().map(|p| p.trim_end_matches('/')) == Some(path.trim_end_matches('/'))) {
         return Ok(false);
     }
     let mut body = json!({ "path": path });
@@ -127,12 +119,7 @@ async fn ensure_provider(
     set: &dyn Fn(&str) -> Option<Value>,
 ) -> Result<bool> {
     let existing = s.get(http, collection).await?;
-    if existing
-        .as_array()
-        .into_iter()
-        .flatten()
-        .any(|p| p["name"] == json!(name) || p["implementation"] == json!(implementation))
-    {
+    if existing.as_array().into_iter().flatten().any(|p| p["name"] == json!(name) || p["implementation"] == json!(implementation)) {
         return Ok(false);
     }
     let schemas = s.get(http, &format!("{collection}/schema")).await?;
@@ -166,16 +153,9 @@ fn qbt_cookie(headers: &reqwest::header::HeaderMap) -> Option<String> {
 
 /// Make `save_path` qBittorrent's default save path. Returns whether it changed.
 async fn ensure_qbittorrent_save_path(http: &Client, base: &str, user: &str, pass: &str, save_path: &str) -> Result<bool> {
-    let r = http
-        .post(format!("{base}/api/v2/auth/login"))
-        .header("Referer", base)
-        .form(&[("username", user), ("password", pass)])
-        .send_t()
-        .await?;
+    let r = http.post(format!("{base}/api/v2/auth/login")).header("Referer", base).form(&[("username", user), ("password", pass)]).send_t().await?;
     let sid = qbt_cookie(r.headers()).ok_or("qbittorrent login did not set a session cookie (wrong password?)")?;
-    let get = |path: &str| {
-        http.get(format!("{base}/api/v2{path}")).header("Cookie", &sid).header("Referer", base)
-    };
+    let get = |path: &str| http.get(format!("{base}/api/v2{path}")).header("Cookie", &sid).header("Referer", base);
     let prefs: Value = ok(get("/app/preferences").send_t().await?, "GET /app/preferences").await?.json().await?;
     if prefs["save_path"].as_str().map(|p| p.trim_end_matches('/')) == Some(save_path.trim_end_matches('/')) {
         return Ok(false);
@@ -194,12 +174,8 @@ async fn ensure_qbittorrent_save_path(http: &Client, base: &str, user: &str, pas
 /// The id of the tag labelled `label`, created when missing.
 async fn ensure_tag(http: &Client, s: &Servarr, label: &str) -> Result<i64> {
     let tags = s.get(http, "/tag").await?;
-    if let Some(id) = tags
-        .as_array()
-        .into_iter()
-        .flatten()
-        .find(|t| t["label"].as_str().is_some_and(|l| l.eq_ignore_ascii_case(label)))
-        .and_then(|t| t["id"].as_i64())
+    if let Some(id) =
+        tags.as_array().into_iter().flatten().find(|t| t["label"].as_str().is_some_and(|l| l.eq_ignore_ascii_case(label))).and_then(|t| t["id"].as_i64())
     {
         return Ok(id);
     }
@@ -235,9 +211,7 @@ fn indexer_differs(have: &Value, enable: bool, priority: i64, tags: &[i64], fiel
     if have_tags != want_tags {
         return true;
     }
-    fields.iter().any(|(name, value)| {
-        have["fields"].as_array().into_iter().flatten().find(|f| f["name"] == json!(name)).map(|f| &f["value"]) != Some(value)
-    })
+    fields.iter().any(|(name, value)| have["fields"].as_array().into_iter().flatten().find(|f| f["name"] == json!(name)).map(|f| &f["value"]) != Some(value))
 }
 
 /// Declared indexers (`PROWLARR_INDEXERS`) into Prowlarr: see the module docs.
@@ -311,27 +285,9 @@ struct App {
 }
 
 const APPS: [App; 3] = [
-    App {
-        name: "Sonarr",
-        env: "SONARR",
-        api: "v3",
-        root: "/media/tv",
-        category: "sonarr",
-    },
-    App {
-        name: "Radarr",
-        env: "RADARR",
-        api: "v3",
-        root: "/media/movies",
-        category: "radarr",
-    },
-    App {
-        name: "Lidarr",
-        env: "LIDARR",
-        api: "v1",
-        root: "/media/music",
-        category: "lidarr",
-    },
+    App { name: "Sonarr", env: "SONARR", api: "v3", root: "/media/tv", category: "sonarr" },
+    App { name: "Radarr", env: "RADARR", api: "v3", root: "/media/movies", category: "radarr" },
+    App { name: "Lidarr", env: "LIDARR", api: "v1", root: "/media/music", category: "lidarr" },
 ];
 
 pub async fn run() -> Result<()> {
@@ -357,11 +313,7 @@ pub async fn run() -> Result<()> {
         };
         let l = app.name.to_lowercase();
         let base = var(&format!("{}_URL", app.env), &format!("http://{l}.media.svc.cluster.local"));
-        let s = Servarr {
-            base: base.clone(),
-            key: key.clone(),
-            api: app.api,
-        };
+        let s = Servarr { base: base.clone(), key: key.clone(), api: app.api };
         s.wait(&http, &l).await?;
 
         let root = var(&format!("{}_ROOT", app.env), app.root);
@@ -385,11 +337,7 @@ pub async fn run() -> Result<()> {
         return Ok(());
     };
     let purl = var("PROWLARR_URL", "http://prowlarr.media.svc.cluster.local");
-    let prowlarr = Servarr {
-        base: purl.clone(),
-        key: pkey,
-        api: "v1",
-    };
+    let prowlarr = Servarr { base: purl.clone(), key: pkey, api: "v1" };
     prowlarr.wait(&http, "prowlarr").await?;
     for (app, base, key) in present {
         let (purl, base) = (purl.clone(), base.clone());

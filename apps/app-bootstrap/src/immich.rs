@@ -43,11 +43,7 @@ struct Features {
 
 async fn is_initialized(http: &Client, base: &str) -> Result<bool> {
     let r = http.get(format!("{base}/api/server/config")).send_t().await?;
-    Ok(ok(r, "GET /api/server/config")
-        .await?
-        .json::<ServerConfig>()
-        .await?
-        .is_initialized)
+    Ok(ok(r, "GET /api/server/config").await?.json::<ServerConfig>().await?.is_initialized)
 }
 
 pub async fn run() -> Result<()> {
@@ -58,20 +54,13 @@ pub async fn run() -> Result<()> {
     let password = secret("ADMIN_PASSWORD")?;
     let http = Client::builder().timeout(Duration::from_secs(60)).build()?;
 
-    let initialized = retry("waiting for immich", 120, || {
-        is_initialized(&http, base)
-    })
-    .await?;
+    let initialized = retry("waiting for immich", 120, || is_initialized(&http, base)).await?;
 
     if initialized {
         println!("immich already initialized, skipping admin sign-up");
     } else {
         println!("creating first admin {email}");
-        let r = http
-            .post(format!("{base}/api/auth/admin-sign-up"))
-            .json(&json!({ "email": email, "name": name, "password": password }))
-            .send_t()
-            .await?;
+        let r = http.post(format!("{base}/api/auth/admin-sign-up")).json(&json!({ "email": email, "name": name, "password": password })).send_t().await?;
         if let Err(e) = ok(r, "POST /api/auth/admin-sign-up").await {
             // Lost a race with another signup: fine if the server now reports initialized.
             if !is_initialized(&http, base).await? {
@@ -81,11 +70,7 @@ pub async fn run() -> Result<()> {
         }
     }
 
-    let r = http
-        .post(format!("{base}/api/auth/login"))
-        .json(&json!({ "email": email, "password": password }))
-        .send_t()
-        .await?;
+    let r = http.post(format!("{base}/api/auth/login")).json(&json!({ "email": email, "password": password })).send_t().await?;
     let login: serde_json::Value = ok(r, "POST /api/auth/login (generated admin password)").await?.json().await?;
     let token = login["accessToken"].as_str().ok_or("login response has no accessToken")?;
     println!("admin login ok");
@@ -116,11 +101,7 @@ pub async fn run() -> Result<()> {
 
 /// The id of the user with `email` in an `/api/admin/users` list.
 fn user_id(users: &serde_json::Value, email: &str) -> Option<String> {
-    users
-        .as_array()?
-        .iter()
-        .find(|u| u["email"].as_str().is_some_and(|e| e.eq_ignore_ascii_case(email)))
-        .and_then(|u| u["id"].as_str().map(String::from))
+    users.as_array()?.iter().find(|u| u["email"].as_str().is_some_and(|e| e.eq_ignore_ascii_case(email))).and_then(|u| u["id"].as_str().map(String::from))
 }
 
 async fn e2e_admin(http: &Client, base: &str, admin_token: &str, secret_name: &str, email: &str) -> Result<()> {
@@ -186,12 +167,7 @@ async fn api_key(http: &Client, base: &str, token: &str, secret_name: &str, key_
         let r = http.delete(format!("{base}/api/api-keys/{id}")).bearer_auth(token).send_t().await?;
         ok(r, "DELETE /api/api-keys").await?;
     }
-    let r = http
-        .post(format!("{base}/api/api-keys"))
-        .bearer_auth(token)
-        .json(&json!({ "name": key_name, "permissions": ["all"] }))
-        .send_t()
-        .await?;
+    let r = http.post(format!("{base}/api/api-keys")).bearer_auth(token).json(&json!({ "name": key_name, "permissions": ["all"] })).send_t().await?;
     let created: serde_json::Value = ok(r, "POST /api/api-keys").await?.json().await?;
     let key = created["secret"].as_str().ok_or("api key response has no secret")?;
     kube.ensure_secret(secret_name, &[("api-key", key)]).await?;

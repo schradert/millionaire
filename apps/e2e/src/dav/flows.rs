@@ -64,7 +64,11 @@ fn decode(s: &str) -> String {
 /// Names of the root collection's children (Depth 1) that carry a run marker in scope.
 pub async fn tagged(ctx: &Ctx, token: &str, scope: &crate::ctx::Scope) -> R<Vec<String>> {
     let body = send(req(ctx, "PROPFIND", "/", token).header("Depth", "1"), APP, "PROPFIND /").await?.text().await.at(APP, "PROPFIND body")?;
-    Ok(hrefs(&body).into_iter().map(|h| h.trim_matches('/').rsplit('/').next().unwrap_or_default().to_string()).filter(|n| n.starts_with(".e2e-") && scope.hit(n)).collect())
+    Ok(hrefs(&body)
+        .into_iter()
+        .map(|h| h.trim_matches('/').rsplit('/').next().unwrap_or_default().to_string())
+        .filter(|n| n.starts_with(".e2e-") && scope.hit(n))
+        .collect())
 }
 
 async fn status(rb: RequestBuilder, step: &str) -> R<u16> {
@@ -168,7 +172,11 @@ mod tests {
     #[test]
     fn only_marked_hidden_folders_are_tagged() {
         let s = Scope::Run("e2e-20260101-000000-aaaa".into());
-        let names: Vec<String> = ["/", "/.e2e-20260101-000000-aaaa/", "/.e2e-20260202-000000-bbbb/", "/notes/", "/e2e-20260101-000000-aaaa.org"].iter().map(|h| h.trim_matches('/').rsplit('/').next().unwrap_or_default().to_string()).filter(|n| n.starts_with(".e2e-") && s.hit(n)).collect();
+        let names: Vec<String> = ["/", "/.e2e-20260101-000000-aaaa/", "/.e2e-20260202-000000-bbbb/", "/notes/", "/e2e-20260101-000000-aaaa.org"]
+            .iter()
+            .map(|h| h.trim_matches('/').rsplit('/').next().unwrap_or_default().to_string())
+            .filter(|n| n.starts_with(".e2e-") && s.hit(n))
+            .collect();
         assert_eq!(names, [".e2e-20260101-000000-aaaa"]);
     }
 }

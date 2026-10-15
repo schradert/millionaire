@@ -16,7 +16,8 @@ pub fn base() -> String {
 }
 
 pub async fn publish(ctx: &Ctx, topic: &str, title: &str, message: &str) -> R<Value> {
-    let r = send(ctx.http.post(format!("{}/{topic}", base())).header("Title", title).header("Tags", "test_tube").body(message.to_string()), APP, "publish").await?;
+    let r =
+        send(ctx.http.post(format!("{}/{topic}", base())).header("Title", title).header("Tags", "test_tube").body(message.to_string()), APP, "publish").await?;
     r.json().await.at(APP, "publish response")
 }
 
@@ -105,7 +106,9 @@ mod tests {
             let mut buf = [0u8; 1024];
             let _ = tokio::io::AsyncReadExt::read(&mut s, &mut buf).await;
             s.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: application/x-ndjson\r\nConnection: close\r\n\r\n{\"event\":\"open\"}\n").await.unwrap();
-            for part in ["{\"event\":\"message\",\"message\":\"other run\"}\n{\"event\":\"mess", "age\",\"message\":\"for e2e-20260101-000000-aaaa\",\"id\":\"1\"}\n"] {
+            for part in
+                ["{\"event\":\"message\",\"message\":\"other run\"}\n{\"event\":\"mess", "age\",\"message\":\"for e2e-20260101-000000-aaaa\",\"id\":\"1\"}\n"]
+            {
                 s.write_all(part.as_bytes()).await.unwrap();
                 s.flush().await.unwrap();
                 tokio::time::sleep(Duration::from_millis(50)).await;

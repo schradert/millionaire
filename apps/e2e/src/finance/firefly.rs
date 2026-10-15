@@ -25,7 +25,10 @@ struct Ff {
 
 impl Ff {
     fn connect() -> R<Self> {
-        Ok(Ff { base: crate::ctx::var("FIREFLY_URL", "http://firefly.finance.svc.cluster.local:8080").trim_end_matches('/').to_string(), token: need_secret(APP, "e2e-firefly", "token")? })
+        Ok(Ff {
+            base: crate::ctx::var("FIREFLY_URL", "http://firefly.finance.svc.cluster.local:8080").trim_end_matches('/').to_string(),
+            token: need_secret(APP, "e2e-firefly", "token")?,
+        })
     }
 
     fn req(&self, ctx: &Ctx, m: Method, path: &str) -> reqwest::RequestBuilder {
@@ -111,7 +114,9 @@ pub async fn ledger(ctx: &Ctx, f: &mut Flow) -> R<()> {
     if (balance - 87.5).abs() > 0.001 {
         return Err(Fail::new(APP, "balance", format!("current balance {balance} after a 12.50 withdrawal from 100.00")));
     }
-    let found = get_json(ff.req(ctx, Method::GET, &format!("/search/transactions?query={}", crate::ctx::enc(&format!("description_contains:\"{m}\"")))), APP, "search").await?;
+    let found =
+        get_json(ff.req(ctx, Method::GET, &format!("/search/transactions?query={}", crate::ctx::enc(&format!("description_contains:\"{m}\"")))), APP, "search")
+            .await?;
     if !found["data"].as_array().into_iter().flatten().any(|g| g["id"].as_str() == Some(&tid)) {
         return Err(Fail::new(APP, "search", format!("the transaction is not found by its tag: {}", excerpt(&found.to_string()))));
     }

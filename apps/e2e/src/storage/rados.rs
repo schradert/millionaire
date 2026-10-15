@@ -30,7 +30,8 @@ pub fn obc(name: &str, class: &str) -> Value {
 }
 
 async fn data(kind: &str, name: &str, key: &str) -> R<String> {
-    kube::kubectl(&["get", kind, name, "-o", &format!("go-template={{{{index .data \"{key}\"{}}}}}", if kind == "secret" { " | base64decode" } else { "" })]).await
+    kube::kubectl(&["get", kind, name, "-o", &format!("go-template={{{{index .data \"{key}\"{}}}}}", if kind == "secret" { " | base64decode" } else { "" })])
+        .await
 }
 
 pub async fn object(ctx: &Ctx, f: &mut Flow) -> R<()> {
@@ -90,14 +91,19 @@ pub async fn object(ctx: &Ctx, f: &mut Flow) -> R<()> {
 /// delete the claim, and wait for its Secret and ConfigMap to go with it.
 pub async fn cleanup(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let name = claim(ctx);
-    if let (Ok(bucket), Ok(ak), Ok(sk)) = (data("configmap", &name, "BUCKET_NAME").await, data("secret", &name, "AWS_ACCESS_KEY_ID").await, data("secret", &name, "AWS_SECRET_ACCESS_KEY").await) {
+    if let (Ok(bucket), Ok(ak), Ok(sk)) =
+        (data("configmap", &name, "BUCKET_NAME").await, data("secret", &name, "AWS_ACCESS_KEY_ID").await, data("secret", &name, "AWS_SECRET_ACCESS_KEY").await)
+    {
         let s3 = S3 { endpoint: var("E2E_S3_ENDPOINT", &format!("https://rados.{}", domain())), access_key: ak, secret_key: sk, region: "us-east-1".into() };
         // Best effort: the object normally is deleted already.
         let _ = s3.request(ctx, Method::DELETE, &path(&bucket, &format!("{}.txt", ctx.marker)), &[], vec![]).await;
     }
     kube::delete(&[("objectbucketclaim".into(), name.clone())]).await?;
     for kind in ["secret", "configmap"] {
-        poll(APP, &format!("{kind} {name} is removed with the claim"), Duration::from_secs(120), Duration::from_secs(3), || async { Ok(kube::get(kind, &name).await?.is_none().then_some(())) }).await?;
+        poll(APP, &format!("{kind} {name} is removed with the claim"), Duration::from_secs(120), Duration::from_secs(3), || async {
+            Ok(kube::get(kind, &name).await?.is_none().then_some(()))
+        })
+        .await?;
     }
     f.ok(APP, "claim deleted; Secret and ConfigMap gone", name);
     Ok(())

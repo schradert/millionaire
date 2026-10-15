@@ -132,7 +132,10 @@ pub async fn sign_in_redirect(c: &Client, url: &str, issuer: &str) -> R<()> {
 async fn probe(ctx: &Ctx, f: &mut Flow, app: &str, host_prefix: &str) -> R<()> {
     let host = format!("{host_prefix}.{}", domain());
     let ups = catalog::upstreams()?;
-    let up = ups.iter().find(|u| u.host == host).ok_or_else(|| Fail::new("oauth2-proxy", "route", format!("{host} is not an oauth2-proxy upstream any more (nixidy/apps/e2e-catalog.nix)")))?;
+    let up = ups
+        .iter()
+        .find(|u| u.host == host)
+        .ok_or_else(|| Fail::new("oauth2-proxy", "route", format!("{host} is not an oauth2-proxy upstream any more (nixidy/apps/e2e-catalog.nix)")))?;
     let url = format!("https://{host}/");
     let groups = up.groups.as_ref().map_or("any signed-in user".to_string(), |g| format!("groups {}", g.join(", ")));
     sign_in_redirect(&ctx.noredir, &url, &issuer()).await?;
@@ -267,7 +270,9 @@ pub async fn admin_gate(ctx: &Ctx, f: &mut Flow) -> R<()> {
         .iter()
         .map(|u| {
             let (c, host, iss) = (ctx.noredir.clone(), u.host.clone(), iss.clone());
-            Box::pin(async move { sign_in_redirect(&c, &format!("https://{host}{}", proxied_path(&host)), &iss).await.err().map(|e| format!("{host}: {}", e.msg)) }) as Job
+            Box::pin(
+                async move { sign_in_redirect(&c, &format!("https://{host}{}", proxied_path(&host)), &iss).await.err().map(|e| format!("{host}: {}", e.msg)) },
+            ) as Job
         })
         .collect();
     let failures = limited(jobs).await;
@@ -306,7 +311,10 @@ pub async fn admin_gate(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let mut jobs: Vec<Job> = Vec::new();
     for t in &native {
         let Some((_, path)) = NATIVE_AUTH.iter().find(|(n, _)| *n == t.name) else {
-            bad.push(format!("{} ({}): an admin tile with no oauth2-proxy route and no anonymous check in NATIVE_AUTH (apps/e2e/src/proxy/flows.rs)", t.name, t.url));
+            bad.push(format!(
+                "{} ({}): an admin tile with no oauth2-proxy route and no anonymous check in NATIVE_AUTH (apps/e2e/src/proxy/flows.rs)",
+                t.name, t.url
+            ));
             continue;
         };
         let (c, name, url) = (ctx.noredir.clone(), t.name.clone(), format!("{}{path}", t.url.trim_end_matches('/')));
@@ -321,7 +329,11 @@ pub async fn admin_gate(ctx: &Ctx, f: &mut Flow) -> R<()> {
     }
     let failures = limited(jobs).await;
     if failures.is_empty() {
-        f.ok("native auth", "admin tiles an app serves itself refuse an anonymous request", native.iter().map(|t| t.name.as_str()).collect::<Vec<_>>().join(", "));
+        f.ok(
+            "native auth",
+            "admin tiles an app serves itself refuse an anonymous request",
+            native.iter().map(|t| t.name.as_str()).collect::<Vec<_>>().join(", "),
+        );
     }
     bad.extend(failures);
 
@@ -418,7 +430,11 @@ pub async fn portal_tiles(ctx: &Ctx, f: &mut Flow) -> R<()> {
     if !bad.is_empty() {
         return Err(Fail::new("portal", "tiles answer", format!("{} of {} tiles: {}", bad.len(), tiles.len(), bad.join("; "))));
     }
-    f.ok("portal", "every tile answers", format!("{} tiles ({} not resolvable from the cluster: {})", tiles.len(), unresolvable.len(), unresolvable.join(", ")));
+    f.ok(
+        "portal",
+        "every tile answers",
+        format!("{} tiles ({} not resolvable from the cluster: {})", tiles.len(), unresolvable.len(), unresolvable.join(", ")),
+    );
 
     // The portal's exports (served through oauth2-proxy by dashy) are the declared catalog.
     let kc = Kc::connect()?;
@@ -431,7 +447,11 @@ pub async fn portal_tiles(ctx: &Ctx, f: &mut Flow) -> R<()> {
         return Err(Fail::new("dashy", "catalog.json", format!("the export differs from the declared tiles: {}", diff.join("; "))));
     }
     f.ok("dashy", "catalog.json lists the declared tiles", format!("{} tiles", tiles.len()));
-    let html = send(ctx.noredir.get(format!("{base}/bookmarks.html")).bearer_auth(&token), "dashy", "bookmarks.html").await?.text().await.at("dashy", "bookmarks.html")?;
+    let html = send(ctx.noredir.get(format!("{base}/bookmarks.html")).bearer_auth(&token), "dashy", "bookmarks.html")
+        .await?
+        .text()
+        .await
+        .at("dashy", "bookmarks.html")?;
     let missing: Vec<&str> = tiles.iter().filter(|t| !html.contains(&format!("HREF=\"{}\"", xml_escape(&t.url)))).map(|t| t.name.as_str()).collect();
     if !missing.is_empty() {
         return Err(Fail::new("dashy", "bookmarks.html", format!("no bookmark for {}", missing.join(", "))));
@@ -485,7 +505,12 @@ mod tests {
         assert_eq!(judge_tile(&ans(401, "")), TileState::Up);
         assert!(matches!(judge_tile(&ans(404, "")), TileState::Bad(_)));
         assert!(matches!(judge_tile(&ans(503, "")), TileState::Bad(_)));
-        let dns = Answer { status: None, location: String::new(), error: "error sending request: dns error: failed to lookup address information".into(), timed_out: false };
+        let dns = Answer {
+            status: None,
+            location: String::new(),
+            error: "error sending request: dns error: failed to lookup address information".into(),
+            timed_out: false,
+        };
         assert_eq!(judge_tile(&dns), TileState::Unresolvable);
         let refused = Answer { status: None, location: String::new(), error: "connection refused".into(), timed_out: false };
         assert!(matches!(judge_tile(&refused), TileState::Bad(_)));
@@ -530,7 +555,10 @@ mod tests {
 
     #[test]
     fn export_differences_are_named() {
-        let tiles = vec![Tile { name: "a".into(), url: "https://a.example".into(), groups: vec![] }, Tile { name: "b".into(), url: "https://b.example".into(), groups: vec![] }];
+        let tiles = vec![
+            Tile { name: "a".into(), url: "https://a.example".into(), groups: vec![] },
+            Tile { name: "b".into(), url: "https://b.example".into(), groups: vec![] },
+        ];
         let export = json!([{ "name": "a", "url": "https://a.example" }, { "name": "c", "url": "https://c.example" }]);
         assert_eq!(export_diff(&tiles, &export), ["b missing", "c listed but not declared"]);
         let export = json!([{ "name": "a", "url": "https://other.example" }, { "name": "b", "url": "https://b.example" }]);

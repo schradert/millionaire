@@ -61,7 +61,10 @@ impl Forgejo {
     /// A token for `u` with `scopes`, minted with the user's own credentials.
     pub async fn mint_token(&self, ctx: &Ctx, u: &User, scopes: &[&str]) -> R<String> {
         let r = json(
-            ctx.http.post(self.url(&format!("/users/{}/tokens", u.name))).basic_auth(&u.name, Some(&u.password)).json(&json!({ "name": format!("{}-token", u.name), "scopes": scopes })),
+            ctx.http
+                .post(self.url(&format!("/users/{}/tokens", u.name)))
+                .basic_auth(&u.name, Some(&u.password))
+                .json(&json!({ "name": format!("{}-token", u.name), "scopes": scopes })),
             APP,
             "mint token",
         )

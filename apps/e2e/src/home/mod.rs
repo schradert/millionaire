@@ -27,10 +27,22 @@ pub fn family() -> Family {
 
 fn flows() -> Vec<FlowDef> {
     vec![
-        FlowDef::new(NAME, "miniflux-feed", Tier::Offline, "a tagged user subscribes to a feed the Job serves; entries appear, a refresh adds one; user deleted", step!(miniflux::feed_roundtrip))
-            .cleanup(step!(miniflux::cleanup)),
-        FlowDef::new(NAME, "spoolman-inventory", Tier::Offline, "tagged vendor, filament and spool through the API (oauth2-proxy bearer); read back, used, deleted", step!(spoolman::inventory))
-            .cleanup(step!(spoolman::cleanup)),
+        FlowDef::new(
+            NAME,
+            "miniflux-feed",
+            Tier::Offline,
+            "a tagged user subscribes to a feed the Job serves; entries appear, a refresh adds one; user deleted",
+            step!(miniflux::feed_roundtrip),
+        )
+        .cleanup(step!(miniflux::cleanup)),
+        FlowDef::new(
+            NAME,
+            "spoolman-inventory",
+            Tier::Offline,
+            "tagged vendor, filament and spool through the API (oauth2-proxy bearer); read back, used, deleted",
+            step!(spoolman::inventory),
+        )
+        .cleanup(step!(spoolman::cleanup)),
     ]
 }
 

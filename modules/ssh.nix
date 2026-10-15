@@ -10,22 +10,24 @@
     ...
   }: {
     config = lib.mkIf config.profiles.workstation.enable {
-      programs.ssh.knownHosts = lib.mapAttrs' (n: p:
-        lib.nameValuePair "lan-${n}" {
-          hostNames = [n p.lan];
-          publicKey = p.hostKey;
-        })
-      (import ../static/builders.nix).nodes // {
-        # a port-forward to sirver, so it presents sirver's key (as in modules/builders.nix)
-        edge = {
-          hostNames = ["192.184.168.248"];
-          publicKey = (import ../static/builders.nix).nodes.sirver.hostKey;
+      programs.ssh.knownHosts =
+        lib.mapAttrs' (n: p:
+          lib.nameValuePair "lan-${n}" {
+            hostNames = [n p.lan];
+            publicKey = p.hostKey;
+          })
+        (import ../static/builders.nix).nodes
+        // {
+          # a port-forward to sirver, so it presents sirver's key (as in modules/builders.nix)
+          edge = {
+            hostNames = ["192.184.168.248"];
+            publicKey = (import ../static/builders.nix).nodes.sirver.hostKey;
+          };
+          axolotl = {
+            hostNames = ["axolotl" "192.168.50.250"];
+            publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAOwwGlApwAVdNrflHHk/DkxDapP7RevXV8jjnOrjqfD";
+          };
         };
-        axolotl = {
-          hostNames = ["axolotl" "192.168.50.250"];
-          publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAOwwGlApwAVdNrflHHk/DkxDapP7RevXV8jjnOrjqfD";
-        };
-      };
     };
   };
   home = {

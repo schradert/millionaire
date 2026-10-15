@@ -57,7 +57,11 @@ pub fn lines(v: &Value) -> Vec<(Value, String)> {
 pub async fn query(ctx: &Ctx, tenant: &str, marker: &str) -> R<Vec<(Value, String)>> {
     let q = format!("{{e2e=\"{marker}\"}}");
     let r = send(
-        ctx.http.get(format!("{}/loki/api/v1/query_range", base())).header("X-Scope-OrgID", tenant).query(&[("query", q.as_str()), ("since", "1h"), ("limit", "100")]),
+        ctx.http.get(format!("{}/loki/api/v1/query_range", base())).header("X-Scope-OrgID", tenant).query(&[
+            ("query", q.as_str()),
+            ("since", "1h"),
+            ("limit", "100"),
+        ]),
         APP,
         "query_range",
     )
@@ -127,7 +131,12 @@ mod tests {
                     let lines: Vec<Value> = store.iter().filter(|(t, _)| *t == tenant).map(|(_, l)| json!(["1", l])).collect();
                     ("200 OK", json!({ "status": "success", "data": { "result": [{ "stream": { "e2e": "x" }, "values": lines }] } }).to_string())
                 };
-                let _ = s.write_all(format!("HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).as_bytes()).await;
+                let _ = s
+                    .write_all(
+                        format!("HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len())
+                            .as_bytes(),
+                    )
+                    .await;
             }
         });
         let base_url = format!("http://{addr}");

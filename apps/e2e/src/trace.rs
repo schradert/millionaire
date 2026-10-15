@@ -94,7 +94,8 @@ impl Tracer {
         if set("OTEL_SDK_DISABLED").is_some_and(|v| v == "true") {
             return None;
         }
-        let url = set("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT").or_else(|| set("OTEL_EXPORTER_OTLP_ENDPOINT").map(|b| format!("{}/v1/traces", b.trim_end_matches('/'))))?;
+        let url = set("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+            .or_else(|| set("OTEL_EXPORTER_OTLP_ENDPOINT").map(|b| format!("{}/v1/traces", b.trim_end_matches('/'))))?;
         Some(Tracer::new(url, set("OTEL_SERVICE_NAME").unwrap_or_else(|| default_service.into())))
     }
 
@@ -282,7 +283,10 @@ mod tests {
                 buf.extend_from_slice(&chunk[..k]);
                 let text = String::from_utf8_lossy(&buf).to_string();
                 if let Some((head, body)) = text.split_once("\r\n\r\n") {
-                    let want = head.lines().find_map(|l| l.to_ascii_lowercase().strip_prefix("content-length:").map(|v| v.trim().parse::<usize>().unwrap())).unwrap_or(0);
+                    let want = head
+                        .lines()
+                        .find_map(|l| l.to_ascii_lowercase().strip_prefix("content-length:").map(|v| v.trim().parse::<usize>().unwrap()))
+                        .unwrap_or(0);
                     if body.len() >= want {
                         break;
                     }

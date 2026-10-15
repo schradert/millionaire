@@ -38,6 +38,7 @@ anything not checked is marked *(unverified)*.
 | `teensy-4-1` | i.MX RT1062, 8 MB QSPI | Ethernet PHY on board (needs MagJack kit) | No | — | Ethernet kit + either FlasherX (C++/Arduino, copies the new image over itself — not A/B, not power-fail safe) or a Rust port: `imxrt-enet` 0.1.0 + `teensy4-bsp` 0.6.0 + `embassy-boot` core over a FlexSPI `NorFlash` impl. No upstream `embassy-boot-imxrt` exists *(port effort unverified)*. |
 
 Notes
+
 - ESP32 does **not** use embassy-boot: the ROM loads the ESP-IDF 2nd-stage
   bootloader, which picks the slot from `otadata`. `embassy-boot` 0.7.0
   (2026-03-20) has backends for nRF, RP2040/RP235x and STM32 only.
@@ -50,7 +51,7 @@ Notes
 
 Same app-level protocol everywhere; only the slot backend differs.
 
-```
+```text
        ┌──────── device (embassy) ─────────┐
 poll / │ check manifest → download → hash │  backend:
 notify │ → write inactive slot → activate │   ESP:   esp-bootloader-esp-idf otadata
@@ -161,7 +162,7 @@ git-declared state and staged rollouts.
 
 ## 4. Fleet provisioning
 
-```
+```text
 dev machine (repo)                       cluster                         device
 ──────────────────                       ───────                         ──────
 1. add device to fleet devices.nix  ──►  fleetd/ArgoCD: Certificate,
@@ -225,7 +226,7 @@ Code: `embedded/shared/ota` (ESP-only tier like `shared/wifi`),
 Result on `esp32-c3-e178` (2026-10-14, image ~563 KB, espflash 4.4.0):
 all six scenarios pass. Excerpt of the rollback path:
 
-```
+```text
 ota: te-2 -> te-3 (563424 bytes)
 ota: te-3 written to Ota0, sha256 ok
 ota: trial boot of te-3
@@ -238,6 +239,7 @@ ota: te-3 previously rolled back; skipping
 ```
 
 Findings
+
 - The first rollback run boot-looped the *good* image: `Ota::boot` allocated
   (version string) before the heap existed, which only happens once an
   ABORTED entry exists. Fixed (boot path is allocation-free) — the

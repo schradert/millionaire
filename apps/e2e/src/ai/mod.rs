@@ -28,16 +28,27 @@ pub fn family() -> Family {
 
 fn flows() -> Vec<FlowDef> {
     vec![
-        FlowDef::new(NAME, "bifrost-chat", Tier::Offline, "tagged provider (a mock the Job serves) and key; a chat completion through the gateway; provider deleted", step!(bifrost::chat)).cleanup(step!(bifrost::cleanup)),
-        FlowDef::new(NAME, "contextforge-tool", Tier::Offline, "tagged REST tool on a tagged virtual server; /mcp lists and calls it; both deleted", step!(contextforge::tool)).cleanup(step!(contextforge::cleanup)),
+        FlowDef::new(
+            NAME,
+            "bifrost-chat",
+            Tier::Offline,
+            "tagged provider (a mock the Job serves) and key; a chat completion through the gateway; provider deleted",
+            step!(bifrost::chat),
+        )
+        .cleanup(step!(bifrost::cleanup)),
+        FlowDef::new(
+            NAME,
+            "contextforge-tool",
+            Tier::Offline,
+            "tagged REST tool on a tagged virtual server; /mcp lists and calls it; both deleted",
+            step!(contextforge::tool),
+        )
+        .cleanup(step!(contextforge::cleanup)),
     ]
 }
 
 async fn passes(ctx: &Ctx, scope: &Scope, delete: bool) -> Vec<(&'static str, svc::Found)> {
-    vec![
-        ("bifrost", bifrost::sweep(ctx, scope, delete).await),
-        ("contextforge", contextforge::sweep(ctx, scope, delete).await),
-    ]
+    vec![("bifrost", bifrost::sweep(ctx, scope, delete).await), ("contextforge", contextforge::sweep(ctx, scope, delete).await)]
 }
 
 async fn cleanup(ctx: &Ctx, scope: &Scope, dry: bool) -> Flow {

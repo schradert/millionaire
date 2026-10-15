@@ -29,18 +29,11 @@ pub async fn user() -> Result<KeycloakUser> {
     retry(&format!("looking up keycloak user {username}"), 120, || async {
         let r = http
             .post(format!("{base}/realms/master/protocol/openid-connect/token"))
-            .form(&[
-                ("grant_type", "password"),
-                ("client_id", "admin-cli"),
-                ("username", admin.as_str()),
-                ("password", password.as_str()),
-            ])
+            .form(&[("grant_type", "password"), ("client_id", "admin-cli"), ("username", admin.as_str()), ("password", password.as_str())])
             .send_t()
             .await?;
         let token: Value = ok(r, "keycloak admin login").await?.json().await?;
-        let token = token["access_token"]
-            .as_str()
-            .ok_or("keycloak login response has no access_token")?;
+        let token = token["access_token"].as_str().ok_or("keycloak login response has no access_token")?;
 
         let r = http
             .get(format!("{base}/admin/realms/{realm}/users"))
@@ -49,10 +42,7 @@ pub async fn user() -> Result<KeycloakUser> {
             .send_t()
             .await?;
         let users: Value = ok(r, "keycloak user lookup").await?.json().await?;
-        let u = users
-            .as_array()
-            .and_then(|a| a.first())
-            .ok_or_else(|| format!("keycloak user {username} not found yet"))?;
+        let u = users.as_array().and_then(|a| a.first()).ok_or_else(|| format!("keycloak user {username} not found yet"))?;
         Ok(KeycloakUser {
             sub: u["id"].as_str().ok_or("keycloak user has no id")?.to_string(),
             email: u["email"].as_str().filter(|e| !e.is_empty()).map(str::to_string),

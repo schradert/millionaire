@@ -21,7 +21,6 @@
 # Sized for a 16 GB Mac: 8 GB RAM and 4 vCPUs, fixed (qemu does not give guest page cache
 # back, so the VM can be expected to hold all 8 GB once it has been up for a while).
 {
-  config,
   flake,
   lib,
   modulesPath,

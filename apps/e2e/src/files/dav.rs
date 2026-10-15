@@ -11,7 +11,10 @@ use crate::ctx::{excerpt, random_hex, At, Ctx, Fail, R};
 
 /// MD5 of `data` as lowercase hex (Digest auth needs it; nothing here is a security boundary).
 pub fn md5_hex(data: &[u8]) -> String {
-    const S: [u32; 64] = [7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21];
+    const S: [u32; 64] = [
+        7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 4, 11, 16, 23, 4, 11, 16, 23, 4,
+        11, 16, 23, 4, 11, 16, 23, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21,
+    ];
     let k: Vec<u32> = (0..64).map(|i| ((i as f64 + 1.0).sin().abs() * 4294967296.0) as u32).collect();
     let (mut a0, mut b0, mut c0, mut d0) = (0x67452301u32, 0xefcdab89u32, 0x98badcfeu32, 0x10325476u32);
     let mut msg = data.to_vec();
@@ -84,7 +87,11 @@ pub fn digest_header(ch: &Challenge, user: &str, pass: &str, method: &str, uri: 
     let ha1 = md5_hex(format!("{user}:{}:{pass}", ch.realm).as_bytes());
     let ha2 = md5_hex(format!("{method}:{uri}").as_bytes());
     let nc = format!("{nc:08x}");
-    let response = if ch.qop { md5_hex(format!("{ha1}:{}:{nc}:{cnonce}:auth:{ha2}", ch.nonce).as_bytes()) } else { md5_hex(format!("{ha1}:{}:{ha2}", ch.nonce).as_bytes()) };
+    let response = if ch.qop {
+        md5_hex(format!("{ha1}:{}:{nc}:{cnonce}:auth:{ha2}", ch.nonce).as_bytes())
+    } else {
+        md5_hex(format!("{ha1}:{}:{ha2}", ch.nonce).as_bytes())
+    };
     let mut h = format!("Digest username=\"{user}\", realm=\"{}\", nonce=\"{}\", uri=\"{uri}\", response=\"{response}\"", ch.realm, ch.nonce);
     if ch.qop {
         h.push_str(&format!(", qop=auth, nc={nc}, cnonce=\"{cnonce}\""));
@@ -236,7 +243,10 @@ mod tests {
 
     #[test]
     fn digest_matches_rfc_2617() {
-        let ch = parse_challenge(r#"Digest realm="testrealm@host.com", qop="auth,auth-int", nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", opaque="5ccc069c403ebaf9f0171e9517f40e41""#).unwrap();
+        let ch = parse_challenge(
+            r#"Digest realm="testrealm@host.com", qop="auth,auth-int", nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", opaque="5ccc069c403ebaf9f0171e9517f40e41""#,
+        )
+        .unwrap();
         assert!(ch.qop);
         let h = digest_header(&ch, "Mufasa", "Circle Of Life", "GET", "/dir/index.html", 1, "0a4f113b");
         assert!(h.contains(r#"response="6629fae49393a05397450978507c4ef1""#), "{h}");

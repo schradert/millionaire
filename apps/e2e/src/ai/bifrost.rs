@@ -64,11 +64,22 @@ pub async fn chat(ctx: &Ctx, f: &mut Flow) -> R<()> {
         "add provider",
     )
     .await?;
-    send(bf.req(ctx, Method::POST, &format!("/api/providers/{m}/keys")).json(&json!({ "name": format!("{m}-key"), "value": "sk-e2e-not-a-real-key", "models": ["*"], "weight": 1 })), APP, "add key").await?;
+    send(
+        bf.req(ctx, Method::POST, &format!("/api/providers/{m}/keys"))
+            .json(&json!({ "name": format!("{m}-key"), "value": "sk-e2e-not-a-real-key", "models": ["*"], "weight": 1 })),
+        APP,
+        "add key",
+    )
+    .await?;
     f.ok(APP, "tagged provider and key added", format!("{m} → mock {}", mock.base));
 
     let prompt = format!("ping {m}");
-    let r = get_json(bf.req(ctx, Method::POST, "/v1/chat/completions").json(&json!({ "model": format!("{m}/mock-1"), "messages": [{ "role": "user", "content": prompt }] })), APP, "chat completion").await?;
+    let r = get_json(
+        bf.req(ctx, Method::POST, "/v1/chat/completions").json(&json!({ "model": format!("{m}/mock-1"), "messages": [{ "role": "user", "content": prompt }] })),
+        APP,
+        "chat completion",
+    )
+    .await?;
     if r["choices"][0]["message"]["content"].as_str() != Some(REPLY) || r["extra_fields"]["provider"].as_str() != Some(m) {
         return Err(Fail::new(APP, "chat completion", format!("unexpected answer {}", excerpt(&r.to_string()))));
     }
@@ -82,7 +93,12 @@ pub async fn chat(ctx: &Ctx, f: &mut Flow) -> R<()> {
     if !bf.tagged_providers(ctx, &Scope::Run(m.to_string())).await?.is_empty() {
         return Err(Fail::new(APP, "provider deleted", "still listed"));
     }
-    let after = bf.req(ctx, Method::POST, "/v1/chat/completions").json(&json!({ "model": format!("{m}/mock-1"), "messages": [{ "role": "user", "content": "again" }] })).send_t().await.map_err(|e| Fail::new(APP, "completion after delete", crate::ctx::chain(&e)))?;
+    let after = bf
+        .req(ctx, Method::POST, "/v1/chat/completions")
+        .json(&json!({ "model": format!("{m}/mock-1"), "messages": [{ "role": "user", "content": "again" }] }))
+        .send_t()
+        .await
+        .map_err(|e| Fail::new(APP, "completion after delete", crate::ctx::chain(&e)))?;
     if after.status().is_success() {
         return Err(Fail::new(APP, "provider deleted", "the gateway still routes to the deleted provider"));
     }

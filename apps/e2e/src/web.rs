@@ -343,7 +343,10 @@ mod tests {
     fn parses_keycloak_forms() {
         let f = forms(USERNAME_PAGE);
         assert_eq!(f.len(), 2);
-        assert_eq!(f[0].action.as_deref(), Some("https://keycloak.trdos.me/realms/default/login-actions/authenticate?session_code=abc&execution=1f2e&client_id=mealie&tab_id=T1"));
+        assert_eq!(
+            f[0].action.as_deref(),
+            Some("https://keycloak.trdos.me/realms/default/login-actions/authenticate?session_code=abc&execution=1f2e&client_id=mealie&tab_id=T1")
+        );
         let names: Vec<_> = f[0].fields.iter().map(|(n, _, t)| (n.as_str(), t.as_str())).collect();
         assert_eq!(names, [("username", "text"), ("credentialId", "hidden"), ("login", "submit")]);
         assert_eq!(f[1].fields[0], ("tryAnotherWay".into(), "on".into(), "hidden".into()));
@@ -406,16 +409,25 @@ mod tests {
                     let req = String::from_utf8_lossy(&buf[..n]).to_string();
                     let line = req.lines().next().unwrap_or_default().to_string();
                     let has_cookie = req.to_ascii_lowercase().contains("cookie: sid=1");
-                    let page = |action: &str, field: &str, extra: &str| format!("<form action=\"{base}{action}\" method=\"post\"><input type=\"hidden\" name=\"state\" value=\"s1\"/><input name=\"{field}\" type=\"text\"/></form>{extra}");
+                    let page = |action: &str, field: &str, extra: &str| {
+                        format!("<form action=\"{base}{action}\" method=\"post\"><input type=\"hidden\" name=\"state\" value=\"s1\"/><input name=\"{field}\" type=\"text\"/></form>{extra}")
+                    };
                     let (status, head, body) = match line.as_str() {
                         l if l.starts_with("GET /start") => ("302 Found", format!("Location: {base}/auth\r\nSet-Cookie: sid=1; Path=/\r\n"), String::new()),
                         l if l.starts_with("GET /auth") => ("200 OK", String::new(), page("/user", "username", "")),
-                        l if l.starts_with("POST /user") && has_cookie && req.contains("username=bob") && req.contains("state=s1") => ("200 OK", String::new(), page("/pass", "password", "")),
-                        l if l.starts_with("POST /pass") && req.contains("password=good") => ("302 Found", format!("Location: {base}/app/callback?code=abc\r\n"), String::new()),
-                        l if l.starts_with("POST /pass") => ("200 OK", String::new(), page("/pass", "password", "<span class=\"kc-feedback-text\">Invalid username or password.</span>")),
+                        l if l.starts_with("POST /user") && has_cookie && req.contains("username=bob") && req.contains("state=s1") => {
+                            ("200 OK", String::new(), page("/pass", "password", ""))
+                        }
+                        l if l.starts_with("POST /pass") && req.contains("password=good") => {
+                            ("302 Found", format!("Location: {base}/app/callback?code=abc\r\n"), String::new())
+                        }
+                        l if l.starts_with("POST /pass") => {
+                            ("200 OK", String::new(), page("/pass", "password", "<span class=\"kc-feedback-text\">Invalid username or password.</span>"))
+                        }
                         _ => ("404 Not Found", String::new(), String::new()),
                     };
-                    let resp = format!("HTTP/1.1 {status}\r\n{head}Content-Type: text/html\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
+                    let resp =
+                        format!("HTTP/1.1 {status}\r\n{head}Content-Type: text/html\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
                     let _ = s.write_all(resp.as_bytes()).await;
                 });
             }

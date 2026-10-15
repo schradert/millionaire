@@ -30,11 +30,7 @@ enum UserStep {
 }
 
 fn user_step(users: &Value, name: &str) -> UserStep {
-    let found = users
-        .as_array()
-        .into_iter()
-        .flatten()
-        .find(|u| u["userName"].as_str().is_some_and(|n| n.eq_ignore_ascii_case(name)));
+    let found = users.as_array().into_iter().flatten().find(|u| u["userName"].as_str().is_some_and(|n| n.eq_ignore_ascii_case(name)));
     match found {
         None => UserStep::Create,
         Some(u) if u["role"] == json!("ADMIN") && u["enabled"] == json!(true) => UserStep::Done,
@@ -43,18 +39,11 @@ fn user_step(users: &Value, name: &str) -> UserStep {
 }
 
 fn has_openid(status: &Value) -> bool {
-    status["data"]["availableLoginMethods"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .any(|m| m["method"] == json!("openid"))
+    status["data"]["availableLoginMethods"].as_array().into_iter().flatten().any(|m| m["method"] == json!("openid"))
 }
 
 fn token_of(body: &Value) -> Result<String> {
-    body["data"]["token"]
-        .as_str()
-        .map(String::from)
-        .ok_or_else(|| "response has no token".into())
+    body["data"]["token"].as_str().map(String::from).ok_or_else(|| "response has no token".into())
 }
 
 pub async fn run() -> Result<()> {
@@ -78,11 +67,7 @@ pub async fn run() -> Result<()> {
 
     let token = if status["data"]["bootstrapped"] == json!(true) {
         println!("server already bootstrapped, logging in with the generated password");
-        let r = http
-            .post(format!("{base}/account/login"))
-            .json(&json!({ "password": password, "loginMethod": "password" }))
-            .send_t()
-            .await?;
+        let r = http.post(format!("{base}/account/login")).json(&json!({ "password": password, "loginMethod": "password" })).send_t().await?;
         token_of(
             &ok(r, "POST /account/login (generated server password; if the server was set up by hand, set its password to the generated one)")
                 .await?
@@ -91,11 +76,7 @@ pub async fn run() -> Result<()> {
         )?
     } else {
         println!("bootstrapping the server password");
-        let r = http
-            .post(format!("{base}/account/bootstrap"))
-            .json(&json!({ "password": password }))
-            .send_t()
-            .await?;
+        let r = http.post(format!("{base}/account/bootstrap")).json(&json!({ "password": password })).send_t().await?;
         token_of(&ok(r, "POST /account/bootstrap").await?.json().await?)?
     };
     println!("admin session ok");

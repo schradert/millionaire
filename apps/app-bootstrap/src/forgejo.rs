@@ -21,10 +21,7 @@ use serde_json::{json, Value};
 use crate::common::{ok, random_password, retry, secret, var, Kube, Result};
 
 pub async fn run() -> Result<()> {
-    let base = var(
-        "FORGEJO_URL",
-        "http://forgejo-http.development.svc.cluster.local:3000",
-    );
+    let base = var("FORGEJO_URL", "http://forgejo-http.development.svc.cluster.local:3000");
     let base = base.trim_end_matches('/');
     let admin = var("ADMIN_USER", "forgejo-admin");
     let password = secret("ADMIN_PASSWORD")?;
@@ -32,16 +29,10 @@ pub async fn run() -> Result<()> {
     let email = std::env::var("USER_EMAIL").map_err(|_| "set USER_EMAIL")?;
     let repo = var("REPO", "bookmarks");
     let token_name = var("TOKEN_NAME", "floccus");
-    let scopes: Vec<String> = var("TOKEN_SCOPES", "write:repository")
-        .split(',')
-        .map(String::from)
-        .collect();
+    let scopes: Vec<String> = var("TOKEN_SCOPES", "write:repository").split(',').map(String::from).collect();
     let secret_name = var("SECRET_NAME", "forgejo-tristan-floccus");
     let http = Client::builder().timeout(Duration::from_secs(60)).build()?;
-    let api = |m: reqwest::Method, path: &str| -> RequestBuilder {
-        http.request(m, format!("{base}/api/v1{path}"))
-            .basic_auth(&admin, Some(&password))
-    };
+    let api = |m: reqwest::Method, path: &str| -> RequestBuilder { http.request(m, format!("{base}/api/v1{path}")).basic_auth(&admin, Some(&password)) };
 
     retry("waiting for forgejo", 120, || async {
         let r = http.get(format!("{base}/api/healthz")).send_t().await?;
@@ -49,9 +40,7 @@ pub async fn run() -> Result<()> {
     })
     .await?;
 
-    let r = api(reqwest::Method::GET, &format!("/users/{user}"))
-        .send_t()
-        .await?;
+    let r = api(reqwest::Method::GET, &format!("/users/{user}")).send_t().await?;
     if r.status() == StatusCode::NOT_FOUND {
         println!("creating user {user}");
         let r = api(reqwest::Method::POST, "/admin/users")
@@ -67,9 +56,7 @@ pub async fn run() -> Result<()> {
         println!("user {user} exists");
     }
 
-    let r = api(reqwest::Method::GET, &format!("/repos/{user}/{repo}"))
-        .send_t()
-        .await?;
+    let r = api(reqwest::Method::GET, &format!("/repos/{user}/{repo}")).send_t().await?;
     if r.status() == StatusCode::NOT_FOUND {
         println!("creating repo {user}/{repo}");
         let r = api(reqwest::Method::POST, &format!("/admin/users/{user}/repos"))
@@ -87,11 +74,7 @@ pub async fn run() -> Result<()> {
 
     let kube = Kube::new()?;
     if let Some(token) = kube.secret_value(&secret_name, "token").await? {
-        let r = http
-            .get(format!("{base}/api/v1/repos/{user}/{repo}"))
-            .header("Authorization", format!("token {token}"))
-            .send_t()
-            .await?;
+        let r = http.get(format!("{base}/api/v1/repos/{user}/{repo}")).header("Authorization", format!("token {token}")).send_t().await?;
         if r.status().is_success() {
             let v: Value = r.json().await?;
             if v["permissions"]["push"] == json!(true) {
@@ -102,24 +85,15 @@ pub async fn run() -> Result<()> {
         println!("token {token_name}: stored token no longer works, recreating");
     }
 
-    let r = api(
-        reqwest::Method::DELETE,
-        &format!("/users/{user}/tokens/{token_name}"),
-    )
-    .send_t()
-    .await?;
+    let r = api(reqwest::Method::DELETE, &format!("/users/{user}/tokens/{token_name}")).send_t().await?;
     if r.status() != StatusCode::NOT_FOUND {
         ok(r, "DELETE /users/{user}/tokens").await?;
         println!("deleted stale token {token_name}");
     }
-    let r = api(reqwest::Method::POST, &format!("/users/{user}/tokens"))
-        .json(&json!({ "name": token_name, "scopes": scopes }))
-        .send_t()
-        .await?;
+    let r = api(reqwest::Method::POST, &format!("/users/{user}/tokens")).json(&json!({ "name": token_name, "scopes": scopes })).send_t().await?;
     let v: Value = ok(r, "POST /users/{user}/tokens").await?.json().await?;
     let token = v["sha1"].as_str().ok_or("token response has no sha1")?;
-    kube.ensure_secret(&secret_name, &[("username", &user), ("token", token)])
-        .await?;
+    kube.ensure_secret(&secret_name, &[("username", &user), ("token", token)]).await?;
     println!("token {token_name}: created, secret {secret_name} written");
     Ok(())
 }

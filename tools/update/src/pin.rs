@@ -29,12 +29,7 @@ pub struct Pin {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[serde(
-    tag = "type",
-    rename_all = "kebab-case",
-    rename_all_fields = "camelCase",
-    deny_unknown_fields
-)]
+#[serde(tag = "type", rename_all = "kebab-case", rename_all_fields = "camelCase", deny_unknown_fields)]
 pub enum Source {
     GithubRelease {
         owner: String,
@@ -154,8 +149,7 @@ impl Entry {
 
 pub fn read(path: &Path) -> Result<Pin> {
     let text = fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
-    let pin: Pin =
-        serde_json::from_str(&text).with_context(|| format!("parsing {}", path.display()))?;
+    let pin: Pin = serde_json::from_str(&text).with_context(|| format!("parsing {}", path.display()))?;
     match (&pin.source, &pin.hash, &pin.digest) {
         (Source::OciTag { .. }, _, None) => bail!("{}: oci-tag needs digest", path.display()),
         (Source::OciTag { .. }, _, _) => {}
@@ -181,11 +175,7 @@ pub fn write(path: &Path, pin: &Pin) -> Result<()> {
 pub fn discover(root: &Path) -> Result<Vec<Entry>> {
     let pkgs = root.join("pkgs");
     let mut out = Vec::new();
-    for (sub, kind) in [
-        ("", Kind::Src),
-        ("charts", Kind::Chart),
-        ("images", Kind::Image),
-    ] {
+    for (sub, kind) in [("", Kind::Src), ("charts", Kind::Chart), ("images", Kind::Image)] {
         let dir = pkgs.join(sub);
         if !dir.is_dir() {
             continue;
@@ -201,18 +191,8 @@ pub fn discover(root: &Path) -> Result<Vec<Entry>> {
                 continue;
             }
             let pin = read(&path)?;
-            let id = if sub.is_empty() {
-                name.clone()
-            } else {
-                format!("{sub}/{name}")
-            };
-            out.push(Entry {
-                id,
-                name,
-                kind,
-                path,
-                pin,
-            });
+            let id = if sub.is_empty() { name.clone() } else { format!("{sub}/{name}") };
+            out.push(Entry { id, name, kind, path, pin });
         }
     }
     out.sort_by(|a, b| a.id.cmp(&b.id));
@@ -244,14 +224,7 @@ mod tests {
     fn roundtrip_is_stable() {
         let pin: Pin = serde_json::from_str(TAILSCALE).unwrap();
         assert_eq!(to_string(&pin).unwrap(), TAILSCALE);
-        assert_eq!(
-            pin.source,
-            Source::GithubRelease {
-                owner: "tailscale".into(),
-                repo: "tailscale".into(),
-                tag_prefix: Some("v".into())
-            }
-        );
+        assert_eq!(pin.source, Source::GithubRelease { owner: "tailscale".into(), repo: "tailscale".into(), tag_prefix: Some("v".into()) });
     }
 
     #[test]
@@ -274,10 +247,8 @@ mod tests {
 
     #[test]
     fn url_set_parses() {
-        let pin: Pin = serde_json::from_str(
-            r#"{"version":"1","hashes":{"a/b":"x"},"source":{"type":"url-set","url":"https://e/{name}.zip","unpack":true}}"#,
-        )
-        .unwrap();
+        let pin: Pin =
+            serde_json::from_str(r#"{"version":"1","hashes":{"a/b":"x"},"source":{"type":"url-set","url":"https://e/{name}.zip","unpack":true}}"#).unwrap();
         assert!(matches!(pin.source, Source::UrlSet { unpack: Some(true), .. }));
     }
 
@@ -302,12 +273,11 @@ mod tests {
 
     #[test]
     fn rejects_unknown_fields() {
-        assert!(serde_json::from_str::<Pin>(r#"{"version":"1","hash":"x","bogus":1,"source":{"type":"git-commit","owner":"a","repo":"b","branch":"m"}}"#).is_err());
+        assert!(
+            serde_json::from_str::<Pin>(r#"{"version":"1","hash":"x","bogus":1,"source":{"type":"git-commit","owner":"a","repo":"b","branch":"m"}}"#).is_err()
+        );
         assert!(serde_json::from_str::<Pin>(r#"{"version":"1","hash":"x","source":{"type":"git-commit","owner":"a","repo":"b","branch":"m","x":1}}"#).is_err());
-        assert!(serde_json::from_str::<Pin>(
-            r#"{"version":"1","hash":"x","source":{"type":"nope"}}"#
-        )
-        .is_err());
+        assert!(serde_json::from_str::<Pin>(r#"{"version":"1","hash":"x","source":{"type":"nope"}}"#).is_err());
     }
 
     #[test]
@@ -340,11 +310,7 @@ mod tests {
     fn image_needs_digest() {
         let tmp = tempfile::tempdir().unwrap();
         let p = tmp.path().join("pin.json");
-        fs::write(
-            &p,
-            r#"{"version":"1","source":{"type":"oci-tag","repository":"r"}}"#,
-        )
-        .unwrap();
+        fs::write(&p, r#"{"version":"1","source":{"type":"oci-tag","repository":"r"}}"#).unwrap();
         assert!(read(&p).is_err());
     }
 }

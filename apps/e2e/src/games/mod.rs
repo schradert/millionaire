@@ -31,7 +31,14 @@ pub fn family() -> Family {
 }
 
 fn flows() -> Vec<FlowDef> {
-    vec![FlowDef::new(NAME, "games-webdav", Tier::Offline, "a generated file on the games volume is served with ranges; PUT and DELETE are refused", step!(webdav)).cleanup(step!(webdav_cleanup))]
+    vec![FlowDef::new(
+        NAME,
+        "games-webdav",
+        Tier::Offline,
+        "a generated file on the games volume is served with ranges; PUT and DELETE are refused",
+        step!(webdav),
+    )
+    .cleanup(step!(webdav_cleanup))]
 }
 
 /// 4 KiB of deterministic bytes per run (generated, not a real ROM).
@@ -75,7 +82,15 @@ async fn webdav(ctx: &Ctx, f: &mut Flow) -> R<()> {
     }
     f.ok(APP, "range GET bytes=10-19", format!("206, {range}"));
 
-    let listing = send(ctx.http.request(Method::from_bytes(b"PROPFIND").unwrap(), format!("https://games.{}/.{}/", domain(), ctx.marker)).header("Depth", "1"), APP, "PROPFIND").await?.text().await.at(APP, "PROPFIND body")?;
+    let listing = send(
+        ctx.http.request(Method::from_bytes(b"PROPFIND").unwrap(), format!("https://games.{}/.{}/", domain(), ctx.marker)).header("Depth", "1"),
+        APP,
+        "PROPFIND",
+    )
+    .await?
+    .text()
+    .await
+    .at(APP, "PROPFIND body")?;
     if !listing.contains(&name) {
         return Err(Fail::new(APP, "PROPFIND", "the placed file is not listed"));
     }
