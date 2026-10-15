@@ -26,12 +26,12 @@ spec:
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: http://alloy.observability.svc.cluster.local:4318
             - name: DVDRIP_IMAGE
-              value: harbor.trdos.me/library/dvdrip:0.1.3@sha256:1fd286350acf5f02c58ea484581c24d1dd7f16c4e3be4a8ba7ab028fa14618ff
+              value: harbor.trdos.me/library/dvdrip:0.1.4@sha256:90bc1b845a63d3614c8af44f90ab4df80ebfdbbbb2e3e763a2520d35eecf16d1
             - name: DVDRIP_JELLYFIN_URL
               value: http://jellyfin.media.svc.cluster.local:8096
             - name: OTEL_SERVICE_NAME
               value: dvdrip-controller
-          image: harbor.trdos.me/library/dvdrip:0.1.3@sha256:1fd286350acf5f02c58ea484581c24d1dd7f16c4e3be4a8ba7ab028fa14618ff
+          image: harbor.trdos.me/library/dvdrip:0.1.4@sha256:90bc1b845a63d3614c8af44f90ab4df80ebfdbbbb2e3e763a2520d35eecf16d1
           name: controller
           ports:
             - containerPort: 9090
