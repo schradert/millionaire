@@ -1,0 +1,9 @@
+{
+  "version": "v1.5.2",
+  "digest": "sha256:8a1294b7fea80993e4ec18220e391578e0f9ca9e109294fd6a379d2cb5213c85",
+  "source": {
+    "type": "oci-tag",
+    "repository": "rebelcore/jellyfin-exporter",
+    "tagPattern": "v(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}
