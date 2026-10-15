@@ -35,3 +35,7 @@ HASS = "HASS"
 ND = "ND"
 # chiaki's PS5 registration key flag (--registkey, regist_key)
 regist = "regist"
+# Android package ids and app names (modules/android.nix): org.mian.gitnex, Transportr
+mian = "mian"
+transportr = "transportr"
+Transportr = "Transportr"

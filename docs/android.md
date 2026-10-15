@@ -36,7 +36,7 @@ The headscale ACL (`static/hyena.nix`) limits `family` devices to AdGuard DNS an
 5. In Tailscale, open the menu and choose **Use an alternate server**: `https://headscale.trdos.me`. Log in with a pre-auth key:
    - tristan: `sops -d --extract '["headscale"]["preauth-key"]["personal"]' secrets/sops/personal.yaml`
    - family: `sops -d --extract '["headscale"]["preauth-key"]["family"]' secrets/sops/personal.yaml`
-6. Go to Settings, then Network, then VPN, then Tailscale. Turn **Always-on VPN** ON. Leave **Block connections without VPN** OFF: AdGuard on hyena is the only resolver, and lockdown would break captive portals.
+6. Go to Settings, then Network, then VPN, then Tailscale. Set **Always-on VPN** and **Block connections without VPN** to match `android.devices.<name>.vpn` (both on for `tristan` devices; lockdown off for `family`). With lockdown on, a captive portal needs lockdown switched off until you have logged in. `android <device>` reports drift.
 7. Exempt Tailscale, ntfy, and Obtainium from battery optimisation. Samsung and vivo devices also need them added to "never sleeping apps".
 8. Open `https://android.trdos.me/<device>.html` on the device:
    1. Tap **Subscribe ntfy**, or in ntfy add server `https://ntfy.trdos.me` with topic `android-<device>`.

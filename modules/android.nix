@@ -472,6 +472,7 @@ in {
   android.devices = {
     pixel = {
       owner = "tristan";
+      hostname = "fallicle";
       sets = ["base" "homelab" "pixel"];
     };
     s21 = {
