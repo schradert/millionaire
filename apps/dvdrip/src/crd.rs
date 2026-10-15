@@ -138,7 +138,6 @@ pub enum Phase {
     Encoded,
     Publishing,
     Done,
-    RescuePending,
     Failed,
 }
 
@@ -177,18 +176,33 @@ pub struct TitleStatus {
     pub encoded_seconds: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub aspect: Option<String>,
+    /// Damaged discs: where the encode glitches (seconds), marked as chapters.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub glitches: Vec<u64>,
+}
+
+/// A file this disc put in media-movies (the only files publish ever moves or removes).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PublishedFile {
+    /// The disc title it came from (0: the NFO).
+    pub title: u32,
+    /// Relative to media-movies.
+    pub path: String,
+    #[serde(default)]
+    pub segment_title: String,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Published {
-    /// Paths relative to media-dvd.
-    #[serde(default)]
+    /// Relative to media-dvd.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub iso: Option<String>,
-    /// Paths relative to media-movies.
     #[serde(default)]
-    pub files: Vec<String>,
-    /// The Disc generation these paths were published from.
+    pub files: Vec<PublishedFile>,
+    /// The Disc generation this was published from.
+    #[serde(default)]
     pub generation: i64,
 }
 
@@ -226,6 +240,25 @@ pub struct DiscStatus {
     /// RFC 3339 time of the last phase change.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub since: Option<String>,
+    /// The spec's encode-relevant fields (mainTitle, protected) at the last encode.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub encode_key: Option<String>,
+    /// The spec's layout fields (name, disc, titles) at the last publish.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub publish_key: Option<String>,
+    /// Renewed every 30 s by the agent while it backs the disc up (its lease).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub heartbeat: Option<String>,
+}
+
+/// The spec fields an encode depends on, and those a publish depends on: a change to either
+/// re-runs that part.
+pub fn encode_key(s: &DiscSpec) -> String {
+    serde_json::json!({"mainTitle": s.main_title, "protected": s.protected}).to_string()
+}
+
+pub fn publish_key(s: &DiscSpec) -> String {
+    serde_json::json!({"name": s.name, "disc": s.disc, "titles": s.titles}).to_string()
 }
 
 /// Both CRDs as one YAML stream (JSON documents, which YAML reads).

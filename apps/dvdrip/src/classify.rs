@@ -63,6 +63,11 @@ pub struct Title {
     pub part_of: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub playall_of: Option<Vec<u32>>,
+    /// Copy-protected discs: MakeMKV's title index and the file its remux writes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mkv: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file: Option<String>,
 }
 
 pub struct Thresholds {
@@ -123,6 +128,8 @@ pub fn classify(lsdvd: &Value, main: u32, th: &Thresholds) -> Vec<Title> {
             role: Role::Extra,
             part_of: None,
             playall_of: None,
+            mkv: None,
+            file: None,
         })
         .collect();
     titles.sort_by_key(|t| t.title);
