@@ -1,0 +1,21 @@
+apiVersion: v1
+data:
+  CORS_ORIGIN: https://tracearr.trdos.me
+  HOST: 0.0.0.0
+  LOG_LEVEL: info
+  NODE_ENV: production
+  OIDC_CLIENT_ID: tracearr
+  OIDC_ISSUER_URL: https://keycloak.trdos.me/realms/default
+  OIDC_PROVIDER_NAME: Keycloak
+  PORT: "3000"
+  REDIS_URL: redis://tracearr-dragonfly.media.svc.cluster.local:6379
+  TRUST_PROXY: "true"
+  TZ: UTC
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: tracearr
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: tracearr
+  name: tracearr
+  namespace: media

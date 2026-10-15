@@ -17,6 +17,8 @@ spec:
         - matchLabels:
             batch.kubernetes.io/job-name: prowlarr-bootstrap
         - matchLabels:
+            batch.kubernetes.io/job-name: sportarr-bootstrap
+        - matchLabels:
             app.kubernetes.io/name: media-e2e
         - matchLabels:
             app.kubernetes.io/name: radarr
@@ -24,6 +26,8 @@ spec:
             app.kubernetes.io/name: sonarr
         - matchLabels:
             app.kubernetes.io/name: lidarr
+        - matchLabels:
+            app.kubernetes.io/name: sportarr
         - matchLabels:
             app.kubernetes.io/name: prowlarr
         - matchLabels:

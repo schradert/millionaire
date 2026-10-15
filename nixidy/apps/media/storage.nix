@@ -9,7 +9,7 @@
         restore = false;
       };
       # Libraries that cannot be re-downloaded from the *arr stack. Deliberately not backed up:
-      # media-downloads (transient), media-tv (re-acquirable, large).
+      # media-downloads (transient), media-tv and media-sports (re-acquirable, large).
       volsync.pvcs.media-music = {
         title = "media-music";
         cacheAccessModes = ["ReadWriteOnce"];
@@ -71,6 +71,9 @@
         media-dvd = cephfsPVC "1536Gi";
         # ROMs, BIOS and game installers (games-webdav.nix, docs/games.md)
         media-games = cephfsPVC "250Gi";
+        # Sportarr's library (re-acquirable, so not backed up). Ceph is small (size 2), so the quota is
+        # modest and Sportarr deletes matches after SPORTARR_RETENTION_DAYS (sportarr.nix).
+        media-sports = cephfsPVC "250Gi";
       };
     };
   };

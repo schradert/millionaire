@@ -94,6 +94,7 @@ data:
     ensure_scopes ryot default openid profile email groups
     ensure_scopes sure default openid profile email groups
     ensure_scopes toolhive default openid profile email
+    ensure_scopes tracearr default openid profile email
     ensure_scopes windmill default openid profile email groups
 
     # Realm-management roles for a client's service account, exactly the listed set (the account exists once the

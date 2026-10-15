@@ -1,0 +1,18 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: volsync--sportarr--sportarr-src
+  namespace: media
+spec:
+  restic:
+    copyMethod: Direct
+    pruneIntervalDays: 8
+    repository: volsync--sportarr--sportarr
+    retain:
+      daily: 1
+      monthly: 1
+      weekly: 1
+      yearly: 1
+  sourcePVC: sportarr
+  trigger:
+    schedule: 0 4 * * *

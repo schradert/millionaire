@@ -19,6 +19,7 @@ spec:
           - ombi
           - qbittorrent
           - seerr
+          - sportarr
           - tdarr
   ingress:
     - fromEntities:
@@ -69,6 +70,8 @@ spec:
             - port: "5056"
               protocol: TCP
             - port: "8111"
+              protocol: TCP
+            - port: "1867"
               protocol: TCP
             - port: "8265"
               protocol: TCP

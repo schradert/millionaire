@@ -1,0 +1,16 @@
+apiVersion: dragonflydb.io/v1alpha1
+kind: Dragonfly
+metadata:
+  name: tracearr-dragonfly
+  namespace: media
+spec:
+  args:
+    - --proactor_threads
+    - "1"
+    - --default_lua_flags=allow-undeclared-keys
+  replicas: 1
+  resources:
+    limits:
+      memory: 768Mi
+    requests:
+      memory: 256Mi

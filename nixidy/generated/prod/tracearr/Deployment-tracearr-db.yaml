@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: db
+    app.kubernetes.io/instance: tracearr
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: tracearr
+  name: tracearr-db
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: db
+      app.kubernetes.io/instance: tracearr
+      app.kubernetes.io/name: tracearr
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 52cdb5e94292111a40f44c2994cad1856cb77496ad3301915462967740373225
+      labels:
+        app.kubernetes.io/controller: db
+        app.kubernetes.io/instance: tracearr
+        app.kubernetes.io/name: tracearr
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - postgres
+            - -c
+            - timescaledb.license=timescale
+            - -c
+            - timescaledb.max_tuples_decompressed_per_dml_transaction=100000
+            - -c
+            - max_locks_per_transaction=4096
+            - -c
+            - timescaledb.telemetry_level=off
+            - -c
+            - max_connections=150
+          envFrom:
+            - secretRef:
+                name: tracearr-postgres
+          image: timescale/timescaledb-ha:pg18.4-ts2.29.1@sha256:26a7598a17939878a388864a8faea56f4b90558163b28cfa0e73600091689c82
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - tracearr
+                - -d
+                - tracearr
+          name: db
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - tracearr
+                - -d
+                - tracearr
+          resources:
+            limits:
+              memory: 2Gi
+            requests:
+              cpu: 100m
+              memory: 512Mi
+          startupProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - tracearr
+                - -d
+                - tracearr
+            failureThreshold: 60
+          volumeMounts:
+            - mountPath: /home/postgres/pgdata
+              name: db
+            - mountPath: /dev/shm
+              name: shm
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 1000
+        runAsUser: 1000
+      serviceAccountName: tracearr
+      volumes:
+        - name: db
+          persistentVolumeClaim:
+            claimName: tracearr-db
+        - emptyDir:
+            medium: Memory
+            sizeLimit: 512Mi
+          name: shm

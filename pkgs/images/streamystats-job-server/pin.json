@@ -1,0 +1,8 @@
+{
+  "version": "v2.20.0",
+  "digest": "sha256:b9e6fc640b02ede44f379970cf3f8e81a20bb82bb846e2f738c5db650784137c",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/fredrikburmester/streamystats-job-server"
+  }
+}

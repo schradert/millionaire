@@ -78,6 +78,9 @@ spec:
             - mountPath: /media/music
               name: media-music
               readOnly: true
+            - mountPath: /media/sports
+              name: media-sports
+              readOnly: true
             - mountPath: /media/tv
               name: media-tv
               readOnly: true
@@ -145,6 +148,9 @@ spec:
         - name: media-music
           persistentVolumeClaim:
             claimName: media-music
+        - name: media-sports
+          persistentVolumeClaim:
+            claimName: media-sports
         - name: media-tv
           persistentVolumeClaim:
             claimName: media-tv
