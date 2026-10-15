@@ -10,7 +10,18 @@
 //!   the app's own `/downloadclient/schema` and saved with `forceSave=true`. qBittorrent may be scaled
 //!   down (no VPN credentials yet) and the app can still refuse the client: that is a warning, not an
 //!   error, and the next run adds it.
+//! - qBittorrent's own default save path (`QBITTORRENT_SAVE_PATH`, default `/media/downloads`, the mount the
+//!   arr apps share). Without it qBittorrent saves to its private `/config/Downloads` and every arr app
+//!   reports a remote-path-mapping error.
 //! - Prowlarr applications "Sonarr", "Radarr" and "Lidarr" (full sync), from `/applications/schema`.
+//! - Prowlarr's own qBittorrent download client (category `prowlarr`, for grabs from its search page) and a
+//!   FlareSolverr indexer proxy (`FLARESOLVERR_URL`, tag `flaresolverr`).
+//! - Prowlarr indexers from `PROWLARR_INDEXERS`, a JSON list of `{name, definition, enable?, priority?,
+//!   tags?, settings?, secrets?}`: `definition` is a Prowlarr definition name (`internetarchive`), `settings`
+//!   maps field names to values and `secrets` maps field names to files holding the value (Bitwarden items
+//!   through an ExternalSecret). An indexer is created when no indexer of that name exists; an existing one
+//!   is updated only where a declared value differs (always, when it has secrets: Prowlarr masks them).
+//!   Indexers added in the UI and indexers dropped from the list are left alone.
 //!
 //! Port variables are `<APP>_PORT_NUMBER`, never `<APP>_PORT`: Kubernetes injects `<SERVICE>_PORT=tcp://ip:port`
 //! for every Service in the namespace.
@@ -43,6 +54,11 @@ impl Servarr {
     pub async fn post(&self, http: &Client, path: &str, body: &Value) -> Result<Value> {
         let r = http.post(self.url(path)).header("X-Api-Key", &self.key).json(body).send_t().await?;
         Ok(ok(r, &format!("POST {path}")).await?.json().await?)
+    }
+
+    pub async fn put(&self, http: &Client, path: &str, body: &Value) -> Result<Value> {
+        let r = http.put(self.url(path)).header("X-Api-Key", &self.key).json(body).send_t().await?;
+        Ok(ok(r, &format!("PUT {path}")).await?.json().await?)
     }
 
     pub async fn wait(&self, http: &Client, what: &str) -> Result<()> {
@@ -137,6 +153,155 @@ async fn ensure_provider(
     Ok(true)
 }
 
+/// The session cookie of a qBittorrent login (`SID=` up to 5.1, `QBT_SID_<port>=` after).
+fn qbt_cookie(headers: &reqwest::header::HeaderMap) -> Option<String> {
+    headers
+        .get_all("set-cookie")
+        .iter()
+        .filter_map(|v| v.to_str().ok())
+        .find(|c| c.starts_with("SID=") || c.starts_with("QBT_SID_"))
+        .and_then(|c| c.split(';').next())
+        .map(String::from)
+}
+
+/// Make `save_path` qBittorrent's default save path. Returns whether it changed.
+async fn ensure_qbittorrent_save_path(http: &Client, base: &str, user: &str, pass: &str, save_path: &str) -> Result<bool> {
+    let r = http
+        .post(format!("{base}/api/v2/auth/login"))
+        .header("Referer", base)
+        .form(&[("username", user), ("password", pass)])
+        .send_t()
+        .await?;
+    let sid = qbt_cookie(r.headers()).ok_or("qbittorrent login did not set a session cookie (wrong password?)")?;
+    let get = |path: &str| {
+        http.get(format!("{base}/api/v2{path}")).header("Cookie", &sid).header("Referer", base)
+    };
+    let prefs: Value = ok(get("/app/preferences").send_t().await?, "GET /app/preferences").await?.json().await?;
+    if prefs["save_path"].as_str().map(|p| p.trim_end_matches('/')) == Some(save_path.trim_end_matches('/')) {
+        return Ok(false);
+    }
+    let r = http
+        .post(format!("{base}/api/v2/app/setPreferences"))
+        .header("Cookie", &sid)
+        .header("Referer", base)
+        .form(&[("json", json!({ "save_path": save_path }).to_string())])
+        .send_t()
+        .await?;
+    ok(r, "POST /app/setPreferences").await?;
+    Ok(true)
+}
+
+/// The id of the tag labelled `label`, created when missing.
+async fn ensure_tag(http: &Client, s: &Servarr, label: &str) -> Result<i64> {
+    let tags = s.get(http, "/tag").await?;
+    if let Some(id) = tags
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|t| t["label"].as_str().is_some_and(|l| l.eq_ignore_ascii_case(label)))
+        .and_then(|t| t["id"].as_i64())
+    {
+        return Ok(id);
+    }
+    let t = s.post(http, "/tag", &json!({ "label": label })).await?;
+    t["id"].as_i64().ok_or_else(|| format!("tag {label}: no id in the reply").into())
+}
+
+/// qBittorrent's fields in an app's download client schema.
+fn qbt_fields(host: String, port: i64, user: String, pass: String, category: String) -> impl Fn(&str) -> Option<Value> {
+    move |f: &str| match f {
+        "host" => Some(json!(host)),
+        "port" => Some(json!(port)),
+        "useSsl" => Some(json!(false)),
+        "username" => Some(json!(user)),
+        "password" => Some(json!(pass)),
+        // `category` (Prowlarr), `tvCategory`, `movieCategory`, `musicCategory`; not the Post/Recent/Older ones.
+        f if f.eq_ignore_ascii_case("category") || (f.ends_with("Category") && !f.contains("Post") && !f.contains("Recent") && !f.contains("Older")) => {
+            Some(json!(category))
+        }
+        _ => None,
+    }
+}
+
+/// Does the indexer `have` differ from what `want` (name, enable, priority, tag ids, field values) declares?
+fn indexer_differs(have: &Value, enable: bool, priority: i64, tags: &[i64], fields: &[(String, Value)]) -> bool {
+    if have["enable"] != json!(enable) || have["priority"] != json!(priority) {
+        return true;
+    }
+    let mut have_tags: Vec<i64> = have["tags"].as_array().into_iter().flatten().filter_map(Value::as_i64).collect();
+    let mut want_tags = tags.to_vec();
+    have_tags.sort_unstable();
+    want_tags.sort_unstable();
+    if have_tags != want_tags {
+        return true;
+    }
+    fields.iter().any(|(name, value)| {
+        have["fields"].as_array().into_iter().flatten().find(|f| f["name"] == json!(name)).map(|f| &f["value"]) != Some(value)
+    })
+}
+
+/// Declared indexers (`PROWLARR_INDEXERS`) into Prowlarr: see the module docs.
+async fn ensure_indexers(http: &Client, p: &Servarr, spec: &Value) -> Result<()> {
+    let wanted = spec.as_array().ok_or("PROWLARR_INDEXERS must be a JSON list")?;
+    if wanted.is_empty() {
+        return Ok(());
+    }
+    let schemas = p.get(http, "/indexer/schema").await?;
+    let profile = first_id(&p.get(http, "/appprofile").await?).ok_or("prowlarr has no app profile")?;
+    for ix in wanted {
+        let name = ix["name"].as_str().ok_or("an indexer without a name")?;
+        let definition = ix["definition"].as_str().ok_or_else(|| format!("indexer {name}: no definition"))?;
+        let enable = ix["enable"].as_bool().unwrap_or(true);
+        let priority = ix["priority"].as_i64().unwrap_or(25);
+        let mut tags = Vec::new();
+        for label in ix["tags"].as_array().into_iter().flatten().filter_map(Value::as_str) {
+            tags.push(ensure_tag(http, p, label).await?);
+        }
+        let mut fields: Vec<(String, Value)> = ix["settings"].as_object().into_iter().flatten().map(|(k, v)| (k.clone(), v.clone())).collect();
+        let secrets: Vec<String> = ix["secrets"].as_object().into_iter().flatten().map(|(k, _)| k.clone()).collect();
+        for (field, file) in ix["secrets"].as_object().into_iter().flatten() {
+            let path = file.as_str().ok_or_else(|| format!("indexer {name}: secret {field} is not a file path"))?;
+            fields.push((field.clone(), json!(std::fs::read_to_string(path)?.trim_end_matches(['\n', '\r']))));
+        }
+        let existing = p.get(http, "/indexer").await?;
+        let have = existing.as_array().into_iter().flatten().find(|i| i["name"].as_str().is_some_and(|n| n.eq_ignore_ascii_case(name)));
+        let fill = |body: &mut Value| {
+            fill_fields(body, &|f| fields.iter().find(|(n, _)| n == f).map(|(_, v)| v.clone()));
+            body["name"] = json!(name);
+            body["enable"] = json!(enable);
+            body["priority"] = json!(priority);
+            body["tags"] = json!(tags);
+        };
+        match have {
+            Some(have) => {
+                // Secrets come back masked, so an indexer with secrets is written every run.
+                if secrets.is_empty() && !indexer_differs(have, enable, priority, &tags, &fields) {
+                    continue;
+                }
+                let mut body = have.clone();
+                fill(&mut body);
+                let id = have["id"].as_i64().ok_or("indexer without an id")?;
+                p.put(http, &format!("/indexer/{id}?forceSave=true"), &body).await?;
+                println!("prowlarr: updated indexer {name}");
+            }
+            None => {
+                let mut body = schemas
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .find(|s| s["definitionName"].as_str().is_some_and(|d| d.eq_ignore_ascii_case(definition)))
+                    .cloned()
+                    .ok_or_else(|| format!("indexer {name}: Prowlarr has no definition {definition:?}"))?;
+                fill(&mut body);
+                body["appProfileId"] = json!(profile);
+                p.post(http, "/indexer?forceSave=true", &body).await?;
+                println!("prowlarr: added indexer {name} ({definition})");
+            }
+        }
+    }
+    Ok(())
+}
+
 struct App {
     name: &'static str,
     env: &'static str,
@@ -176,6 +341,14 @@ pub async fn run() -> Result<()> {
     let qb_user = var("QBITTORRENT_USER", "admin");
     let qb_pass = optional_secret("QBITTORRENT_PASSWORD")?.unwrap_or_default();
 
+    // qBittorrent may be scaled down (no VPN credentials yet): a warning, the next run does it.
+    let qb_save = var("QBITTORRENT_SAVE_PATH", "/media/downloads");
+    match ensure_qbittorrent_save_path(&http, &format!("http://{qb_host}:{qb_port}"), &qb_user, &qb_pass, &qb_save).await {
+        Ok(true) => println!("qbittorrent: default save path is now {qb_save}"),
+        Ok(false) => {}
+        Err(e) => eprintln!("qbittorrent: not setting the save path (is qbittorrent up?): {e}"),
+    }
+
     let mut present = Vec::new();
     for app in &APPS {
         let Some(key) = optional_secret(&format!("{}_API_KEY", app.env))? else {
@@ -195,17 +368,8 @@ pub async fn run() -> Result<()> {
         if retry(&format!("{l} root folder"), 12, || ensure_root_folder(&http, &s, &root)).await? {
             println!("{l}: added root folder {root}");
         }
-        let (user, pass, host) = (qb_user.clone(), qb_pass.clone(), qb_host.clone());
         let category = var(&format!("{}_CATEGORY", app.env), app.category);
-        let set = move |f: &str| match f {
-            "host" => Some(json!(host)),
-            "port" => Some(json!(qb_port)),
-            "useSsl" => Some(json!(false)),
-            "username" => Some(json!(user)),
-            "password" => Some(json!(pass)),
-            f if f.ends_with("Category") && !f.contains("Post") && !f.contains("Recent") && !f.contains("Older") => Some(json!(category)),
-            _ => None,
-        };
+        let set = qbt_fields(qb_host.clone(), qb_port, qb_user.clone(), qb_pass.clone(), category);
         // qBittorrent can be scaled to zero (no VPN credentials yet) and the app then refuses the
         // client even with forceSave: warn and move on, a later run adds it once it is up.
         match ensure_provider(&http, &s, "/downloadclient", "qBittorrent", "QBittorrent", json!({}), &set).await {
@@ -240,6 +404,26 @@ pub async fn run() -> Result<()> {
             println!("prowlarr: added application {}", app.name);
         }
     }
+
+    // Prowlarr's own download client, for grabs from its search page.
+    let set = qbt_fields(qb_host, qb_port, qb_user, qb_pass, "prowlarr".into());
+    match ensure_provider(&http, &prowlarr, "/downloadclient", "qBittorrent", "QBittorrent", json!({}), &set).await {
+        Ok(true) => println!("prowlarr: added the qBittorrent download client"),
+        Ok(false) => {}
+        Err(e) => eprintln!("prowlarr: skipping the qBittorrent download client (is qbittorrent up?): {e}"),
+    }
+
+    // FlareSolverr for indexers behind Cloudflare: an indexer tagged `flaresolverr` goes through it.
+    let flaresolverr = var("FLARESOLVERR_URL", "http://flaresolverr.media.svc.cluster.local:8191");
+    let tag = ensure_tag(&http, &prowlarr, "flaresolverr").await?;
+    let set = move |f: &str| (f == "host").then(|| json!(flaresolverr));
+    if ensure_provider(&http, &prowlarr, "/indexerProxy", "FlareSolverr", "FlareSolverr", json!({ "tags": [tag] }), &set).await? {
+        println!("prowlarr: added the FlareSolverr indexer proxy");
+    }
+
+    if let Ok(spec) = env::var("PROWLARR_INDEXERS") {
+        ensure_indexers(&http, &prowlarr, &serde_json::from_str(&spec).map_err(|e| format!("PROWLARR_INDEXERS: {e}"))?).await?;
+    }
     Ok(())
 }
 
@@ -258,6 +442,37 @@ mod tests {
         assert_eq!(schema["fields"][0]["value"], "qb");
         assert_eq!(schema["fields"][1]["value"], "sonarr");
         assert_eq!(schema["fields"][2]["value"], 1);
+    }
+
+    #[test]
+    fn qbittorrent_fields_per_app() {
+        let set = qbt_fields("qb".into(), 8080, "admin".into(), "pw".into(), "sonarr".into());
+        assert_eq!(set("tvCategory"), Some(json!("sonarr")));
+        assert_eq!(set("category"), Some(json!("sonarr")));
+        assert_eq!(set("recentTvPriority"), None);
+        assert_eq!(set("tvPostImportCategory"), None);
+        assert_eq!(set("port"), Some(json!(8080)));
+    }
+
+    #[test]
+    fn indexer_drift() {
+        let have = json!({ "enable": true, "priority": 25, "tags": [2, 1], "fields": [{ "name": "titleOnly", "value": true }] });
+        let same = [("titleOnly".to_string(), json!(true))];
+        assert!(!indexer_differs(&have, true, 25, &[1, 2], &same));
+        assert!(indexer_differs(&have, false, 25, &[1, 2], &same));
+        assert!(indexer_differs(&have, true, 10, &[1, 2], &same));
+        assert!(indexer_differs(&have, true, 25, &[1], &same));
+        assert!(indexer_differs(&have, true, 25, &[1, 2], &[("titleOnly".to_string(), json!(false))]));
+        assert!(indexer_differs(&have, true, 25, &[1, 2], &[("noMagnet".to_string(), json!(true))]));
+    }
+
+    #[test]
+    fn qbittorrent_session_cookie() {
+        let mut h = reqwest::header::HeaderMap::new();
+        h.append("set-cookie", "other=1; Path=/".parse().unwrap());
+        h.append("set-cookie", "QBT_SID_8080=abc; HttpOnly; path=/".parse().unwrap());
+        assert_eq!(qbt_cookie(&h).as_deref(), Some("QBT_SID_8080=abc"));
+        assert_eq!(qbt_cookie(&reqwest::header::HeaderMap::new()), None);
     }
 
     #[test]
