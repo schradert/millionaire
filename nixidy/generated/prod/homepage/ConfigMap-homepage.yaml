@@ -360,6 +360,10 @@ data:
           description: ''
           href: https://dvd.trdos.me
           icon: dvd-webdav
+      - dvdrip:
+          description: ''
+          href: https://rips.trdos.me
+          icon: dvdrip
       - games-webdav:
           description: ''
           href: https://games.trdos.me
