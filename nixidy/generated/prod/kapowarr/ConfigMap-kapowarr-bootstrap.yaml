@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
-  image: harbor.trdos.me/library/app-bootstrap:0.28.0@sha256:695c3d142378f9284c1ed57f9d867873f61af8eea531e6a94ff6005d3bc8968a
-  spec: d7fea6ef7afc37f372df77ee6d70514ebaa48ef44bc96cdd83523db64df08bf3
+  image: harbor.trdos.me/library/app-bootstrap:0.33.0@sha256:943d36f34262c76aaaba4d271aed960e16b9068d5064f3cd3297ef1877ffdad5
+  spec: 8aa852ea675aae1a900ba94fa289c832a3e591ef2f15cb8531b1571770541d3f
 kind: ConfigMap
 metadata:
   name: kapowarr-bootstrap
