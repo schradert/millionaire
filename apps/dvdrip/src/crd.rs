@@ -9,9 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::classify::Role;
 
-pub const GROUP: &str = "dvd.trdos.me";
 pub const FINGERPRINT_LABEL: &str = "dvd.trdos.me/fingerprint";
-pub const TRACEPARENT_ANNOTATION: &str = "dvd.trdos.me/traceparent";
 
 fn yes() -> bool {
     true

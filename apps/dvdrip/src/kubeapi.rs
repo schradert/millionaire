@@ -9,8 +9,6 @@ use serde_json::Value;
 
 use crate::crd::{Disc, Drive};
 
-pub const MANAGER: &str = "dvdrip";
-
 /// `namespace/name` (or just `name` in `default_ns`).
 pub fn split_ref<'a>(r: &'a str, default_ns: &'a str) -> (&'a str, &'a str) {
     r.split_once('/').unwrap_or((default_ns, r))
@@ -18,10 +16,6 @@ pub fn split_ref<'a>(r: &'a str, default_ns: &'a str) -> (&'a str, &'a str) {
 
 pub async fn discs(ns: &str) -> Result<Api<Disc>> {
     Ok(Api::namespaced(Client::try_default().await.context("connecting to the API server")?, ns))
-}
-
-pub async fn drives() -> Result<Api<Drive>> {
-    Ok(Api::all(Client::try_default().await.context("connecting to the API server")?))
 }
 
 /// Merge-patch a Disc's status.

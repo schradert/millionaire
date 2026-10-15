@@ -1,10 +1,8 @@
 //! dvdrip: DVD ripping on Kubernetes (docs/dvd-rip.md).
-// The controller (next in the stack) uses what is not called yet.
-#![allow(dead_code)]
-
 mod agent;
 mod backup;
 mod classify;
+mod controller;
 mod crd;
 mod damage;
 mod encode;
@@ -17,6 +15,7 @@ mod makemkv;
 mod metrics;
 mod naming;
 mod notify;
+mod otel;
 mod publish;
 mod review;
 #[cfg(test)]
@@ -44,6 +43,8 @@ enum Command {
     Backup(agent::BackupArgs),
     /// Print a disc's label and fingerprint (drive or image).
     Probe(agent::ProbeArgs),
+    /// Run the Disc phase machine and the review view (the Deployment).
+    Controller(controller::ControllerArgs),
     /// Print the CustomResourceDefinitions (crds/dvd.trdos.me.yaml).
     Crds,
     /// Inspect, encode, mark damage, make review sheets and summarise one disc (the encode Job).
@@ -79,6 +80,7 @@ async fn main() -> anyhow::Result<()> {
         Command::Agent(a) => agent::run(a).await?,
         Command::Backup(a) => agent::backup_cmd(a).await?,
         Command::Probe(a) => agent::probe(a).await?,
+        Command::Controller(a) => controller::run(a).await?,
         Command::Encode(a) => job::encode_cmd(a).await?,
         Command::Publish(a) => job::publish_cmd(a).await?,
     }
