@@ -95,15 +95,21 @@ in {
       set -f # disable globbing
       [ -f /run/secrets/attic-auth-token ] || exit 0
       ATTIC_TOKEN=$(cat /run/secrets/attic-auth-token)
-      ${attic} login --set-default main "http://sirver:8199" "$ATTIC_TOKEN" 2>/dev/null
+      ${pkgs.coreutils}/bin/timeout 20 ${attic} login --set-default main "http://sirver:8199" "$ATTIC_TOKEN" 2>/dev/null || exit 0
       if [ -n "''${OUT_PATHS:-}" ]; then
-        ${attic} push main $OUT_PATHS 2>/dev/null || true
+        # post-build-hook blocks the build until it returns: never let a slow cache stall builds
+        ${pkgs.coreutils}/bin/timeout 120 ${attic} push main $OUT_PATHS 2>/dev/null || true
       fi
     '';
   in
     lib.mkIf atticEnabled {
       substituters = ["http://sirver:8199/main"];
       trusted-public-keys = [publicKey];
+      # attic lives on one host (sirver, on a failing disk): bound every wait on it so a hung cache
+      # is skipped instead of stalling activations (home-manager hit its 10-minute timeout at boot).
+      connect-timeout = 5;
+      stalled-download-timeout = 60;
+      fallback = true;
       post-build-hook = toString hook;
     };
   sops.secrets = lib.mkIf (builtins.pathExists ./generated.json) {attic-auth-token.key = "attic/auth-token";};
