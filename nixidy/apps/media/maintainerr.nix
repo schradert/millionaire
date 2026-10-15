@@ -19,9 +19,10 @@ in {
     applications.maintainerr = {
       namespace = "media";
       volsync.pvcs.maintainerr.title = "maintainerr";
-      # Idempotent post-sync bootstrap (apps/app-bootstrap maintainerr, >= 0.22.0): the Radarr, Sonarr
-      # and Seerr connections (Jellyfin comes from jellyfin-bootstrap). Creates no rule group: rules
-      # delete media, so they stay a deliberate choice.
+      # Idempotent post-sync bootstrap (apps/app-bootstrap maintainerr, >= 0.24.0): the Radarr, Sonarr,
+      # Seerr and Ombi connections (Jellyfin comes from jellyfin-bootstrap), the qBittorrent download
+      # client, the ntfy notification and two DISABLED example rule groups. Rules unmonitor or delete
+      # media, so enabling one stays a deliberate choice; see docs/maintainerr.md.
       bootstrap = lib.mkIf (pinned.images ? app-bootstrap-maintainerr) {
         image = with pinned.images.app-bootstrap-maintainerr; "${repository}:${tag}@${digest}";
         args = ["maintainerr"];
@@ -31,11 +32,18 @@ in {
           JELLYFIN_ADMIN_USER = "admin";
           JELLYFIN_ADMIN_PASSWORD_FILE = "/secrets/jellyfin/password";
           ADMIN_EMAIL = people.my.profiles.personal.email;
+          OMBI_API_KEY_FILE = "/secrets/ombi/apikey";
+          QBITTORRENT_PASSWORD_FILE = "/secrets/qbittorrent/password";
+          NTFY_URL = "https://ntfy.${domain}";
+          NTFY_TOPIC = "media";
+          NTFY_PRIORITY = "2";
         };
         secrets = {
           radarr = "radarr-apikey";
           sonarr = "sonarr-apikey";
           jellyfin = "jellyfin-admin";
+          ombi = "ombi-apikey";
+          qbittorrent = "qbittorrent-admin";
         };
       };
       # Maintainerr has no login and returns its settings (API key, Jellyfin key) to any caller, so
@@ -75,10 +83,17 @@ in {
             fsGroup = 1000;
             fsGroupChangePolicy = "OnRootMismatch";
           };
+          # ntfy lives on hyena; pods don't resolve it (docs/observability.md).
+          controllers.maintainerr.pod.hostAliases = lib.toList {
+            ip = "100.64.0.1";
+            hostnames = ["ntfy.${domain}"];
+          };
           controllers.maintainerr.containers.maintainerr = {
             # 3.x added Jellyfin/Emby support (2.x is Plex-only). Not backward
             # compatible: its DB migration is one-way.
             image = pinned.images.maintainerr;
+            # No anonymous weekly usage report (default on).
+            env.TELEMETRY = "off";
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
             probes.startup = {

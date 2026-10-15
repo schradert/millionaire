@@ -28,6 +28,8 @@ spec:
             app.kubernetes.io/name: prowlarr
         - matchLabels:
             app.kubernetes.io/name: autobrr
+        - matchLabels:
+            app.kubernetes.io/name: maintainerr
       toPorts:
         - ports:
             - port: "8080"

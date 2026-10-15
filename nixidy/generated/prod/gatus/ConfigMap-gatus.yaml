@@ -332,6 +332,12 @@ data:
       name: obico
       url: https://obico.trdos.me
     - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: ombi
+      url: https://ombi.trdos.me
+    - conditions:
       - '[STATUS] == any(200, 302)'
       group: internal
       interval: 1m

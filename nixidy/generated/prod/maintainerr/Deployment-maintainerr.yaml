@@ -27,7 +27,10 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - image: ghcr.io/maintainerr/maintainerr:3.30.1@sha256:8251a1f0ba5d71acc878846a727fba566ec87cbfbf6a914fb881a5953af53d46
+        - env:
+            - name: TELEMETRY
+              value: "off"
+          image: ghcr.io/maintainerr/maintainerr:3.30.1@sha256:8251a1f0ba5d71acc878846a727fba566ec87cbfbf6a914fb881a5953af53d46
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0
@@ -58,6 +61,10 @@ spec:
               subPath: tmp
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
+      hostAliases:
+        - hostnames:
+            - ntfy.trdos.me
+          ip: 100.64.0.1
       hostIPC: false
       hostNetwork: false
       hostPID: false

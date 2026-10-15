@@ -1,0 +1,35 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  labels:
+    app.kubernetes.io/instance: ombi
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: ombi
+  name: ombi
+  namespace: media
+spec:
+  hostnames:
+    - ombi.trdos.me
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: internal
+      namespace: kube-system
+      sectionName: https
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: oauth2-proxy
+          namespace: identity
+          port: 4180
+          weight: 1
+      filters:
+        - requestHeaderModifier:
+            remove:
+              - X-Auth-Request-Preferred-Username
+              - X-Forwarded-Preferred-Username
+              - X-Forwarded-User
+              - X-Forwarded-Email
+              - Remote-User
+          type: RequestHeaderModifier

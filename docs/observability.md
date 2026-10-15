@@ -161,6 +161,7 @@ default on, nixidy/system/storage/postgres.nix), so every database is scraped; t
 | nvidia-gpu-operator-crds | CRDs only | none needed |
 | oauth2-proxy | ServiceMonitor (--metrics-address :44180) + Dragonfly |  |
 | obico | CNPG database only | no metrics endpoint. CNPG metrics are scraped |
+| ombi | none | no metrics endpoint upstream |
 | openclaw | none | no metrics endpoint (ai-sandbox) |
 | openviking | none | no metrics endpoint |
 | org-bridge | none | own service, no metrics yet |

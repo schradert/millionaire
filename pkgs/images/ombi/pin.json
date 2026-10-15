@@ -1,0 +1,9 @@
+{
+  "version": "v4.53.10-ls272",
+  "digest": "sha256:6e5ac438dccc199addaf72fdb868ff6631cc5a67f91ecc7f10be1d6b4283f1dc",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/linuxserver/ombi",
+    "tagPattern": "v(\\d+)\\.(\\d+)\\.(\\d+)-ls(\\d+)"
+  }
+}
