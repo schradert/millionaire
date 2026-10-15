@@ -1,0 +1,28 @@
+[package]
+name = "seerr-sso"
+version = "0.1.0"
+description = "Per-user single sign-on in front of Seerr: oauth2-proxy's identity becomes the person's own Seerr account"
+publish = false
+edition = "2021"
+
+[dependencies]
+bytes = "1"
+http-body-util = "0.1"
+hyper = { version = "1", features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+reqwest = { version = "0.12", default-features = false }
+serde_json = "1"
+sha2 = "0.10"
+hmac = "0.12"
+tokio = { version = "1", features = [
+  "macros",
+  "rt-multi-thread",
+  "net",
+  "time",
+  "sync",
+] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true

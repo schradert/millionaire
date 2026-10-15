@@ -172,6 +172,25 @@
           layers = [(n2c.buildLayer {deps = [pkg];})];
         };
 
+      # Per-user single sign-on sidecar for Seerr (apps/seerr-sso, nixidy/apps/media/seerr.nix).
+      seerr-sso = let
+        amd64Pkgs = import inputs.nixpkgs {system = "x86_64-linux";};
+        src = ../apps/seerr-sso;
+        pkg = amd64Pkgs.rustPlatform.buildRustPackage {
+          pname = "seerr-sso";
+          version = (builtins.fromTOML (builtins.readFile "${src}/Cargo.toml")).package.version;
+          inherit src;
+          cargoLock.lockFile = "${src}/Cargo.lock";
+        };
+      in
+        n2c.buildImage {
+          name = "${registry}/library/seerr-sso";
+          tag = pkg.version;
+          arch = "amd64";
+          config.Entrypoint = ["${pkg}/bin/seerr-sso"];
+          layers = [(n2c.buildLayer {deps = [pkg];})];
+        };
+
       # Platform end-to-end tests (apps/e2e), run as a Job from a suspended `e2e` CronJob
       # (nixidy/apps/media/media-e2e.nix for the media family, nixidy/apps/e2e.nix for the rest).
       # kubectl is for `exec` into the qbittorrent pod (VPN leak tests) and the storage flows (tagged Pods, PVCs and snapshots in `e2e`), git for the git family.
