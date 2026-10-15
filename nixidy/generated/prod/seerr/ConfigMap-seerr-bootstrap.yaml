@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
-  image: harbor.trdos.me/library/app-bootstrap:0.22.2@sha256:328a87b67f85d5b42bff086b51d497c64d729dde4c1aca4cc5b3c2e8a6a7c113
-  spec: 9d311dd89eef0685bfd9c75321f3d1630fa8b79b3d3697ef2d9efb455b266d83
+  image: harbor.trdos.me/library/app-bootstrap:0.22.3@sha256:aafd93839736ce8462f9837d58ca47d9326d7e2b8f9d7fd9740e10c9f5c95b4a
+  spec: f3e8fd83edaca8b010d334d83998450d09edeb38b0f99aa57a6871d648cbd4f9
 kind: ConfigMap
 metadata:
   name: seerr-bootstrap
