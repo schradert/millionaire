@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: job-server
+    app.kubernetes.io/instance: streamystats
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: streamystats
+  name: streamystats-job-server
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: job-server
+      app.kubernetes.io/instance: streamystats
+      app.kubernetes.io/name: streamystats
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: e99928e5781a2643a5305430dc6c68fc86551d3f67503aaa9849df056755bf8e
+      labels:
+        app.kubernetes.io/controller: job-server
+        app.kubernetes.io/instance: streamystats
+        app.kubernetes.io/name: streamystats
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - envFrom:
+            - secretRef:
+                name: streamystats
+            - configMapRef:
+                name: streamystats-job-server
+          image: ghcr.io/fredrikburmester/streamystats-job-server:v2.20.0@sha256:b9e6fc640b02ede44f379970cf3f8e81a20bb82bb846e2f738c5db650784137c
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 3005
+          name: streamystats-job-server
+          readinessProbe:
+            httpGet:
+              path: /health/live
+              port: 3005
+          resources:
+            limits:
+              memory: 2Gi
+            requests:
+              cpu: 50m
+              memory: 256Mi
+          startupProbe:
+            failureThreshold: 120
+            httpGet:
+              path: /health/live
+              port: 3005
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      securityContext:
+        runAsGroup: 65534
+        runAsUser: 65534
+      serviceAccountName: streamystats

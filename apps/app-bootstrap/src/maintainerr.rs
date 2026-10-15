@@ -1,4 +1,4 @@
-//! Maintainerr: the Radarr, Sonarr, Seerr and Ombi connections, the download client, an ntfy
+//! Maintainerr: the Radarr, Sonarr, Sportarr, Seerr, Ombi, Tracearr and Streamystats connections, the download client, an ntfy
 //! notification and two disabled example rule groups (Jellyfin is wired by jellyfin-bootstrap).
 //!
 //! Each piece is added only when Maintainerr has none, so a rerun changes nothing and hand edits
@@ -93,6 +93,9 @@ pub async fn run() -> Result<()> {
     }
 
     ombi(&http, base).await?;
+    sportarr(&http, base).await?;
+    tracearr(&http, base).await?;
+    streamystats(&http, base).await?;
     download_client(&http, base).await?;
     let notification = ntfy(&http, base).await?;
     examples(&http, base, notification).await
@@ -109,6 +112,74 @@ async fn ombi(http: &Client, base: &str) -> Result<()> {
     let url = var("OMBI_URL", "http://ombi.media.svc.cluster.local:3579");
     post(http, base, "/api/settings/ombi", &json!({ "url": url, "api_key": key })).await?;
     println!("maintainerr: added Ombi {url}");
+    Ok(())
+}
+
+/// Ask Maintainerr to test a connection it was just given (`POST /api/settings/test/<kind>`): a warning, not an
+/// error, when it does not answer OK (the other app may still be starting).
+async fn test_connection(http: &Client, base: &str, kind: &str, body: &Value) {
+    let result = async {
+        let r = http.post(format!("{base}/api/settings/test/{kind}")).json(body).send_t().await?;
+        Ok::<Value, Box<dyn std::error::Error>>(ok(r, &format!("POST /api/settings/test/{kind}")).await?.json().await?)
+    }
+    .await;
+    match result {
+        Ok(r) if r["status"] == json!("OK") => println!("maintainerr: {kind} connection OK"),
+        Ok(r) => eprintln!("maintainerr: {kind} connection test: {r}"),
+        Err(e) => eprintln!("maintainerr: {kind} connection test failed: {e}"),
+    }
+}
+
+/// Sportarr (a Servarr-style server, like Radarr), from `SPORTARR_API_KEY[_FILE]`; URL `SPORTARR_URL`, default
+/// `http://sportarr.media.svc.cluster.local:1867`. Added only while none has that URL.
+async fn sportarr(http: &Client, base: &str) -> Result<()> {
+    let Some(key) = optional_secret("SPORTARR_API_KEY")? else {
+        return Ok(());
+    };
+    let url = var("SPORTARR_URL", "http://sportarr.media.svc.cluster.local:1867");
+    if has_url(&get(http, base, "/api/settings/sportarr").await?, &url) {
+        return Ok(());
+    }
+    let body = json!({ "serverName": "Sportarr", "url": url, "apiKey": key });
+    post(http, base, "/api/settings/sportarr", &body).await?;
+    println!("maintainerr: added Sportarr {url}");
+    test_connection(http, base, "sportarr", &body).await;
+    Ok(())
+}
+
+/// Tracearr, with the owner's public API token (`trr_pub_...`): this signs in as the Tracearr owner
+/// (`TRACEARR_USER`, `TRACEARR_PASSWORD[_FILE]`) and reads the token, creating it when the owner has none
+/// (tracearr.rs). Maintainerr picks the Tracearr server that matches its own media server on save. `TRACEARR_URL`
+/// defaults to `http://tracearr.media.svc.cluster.local:3000`. Added only while no URL is set.
+async fn tracearr(http: &Client, base: &str) -> Result<()> {
+    let Some(password) = optional_secret("TRACEARR_PASSWORD")? else {
+        return Ok(());
+    };
+    if get(http, base, "/api/settings/tracearr").await?["url"].as_str().is_some_and(|u| !u.is_empty()) {
+        return Ok(());
+    }
+    let url = var("TRACEARR_URL", "http://tracearr.media.svc.cluster.local:3000");
+    let token = crate::tracearr::public_api_token(http, url.trim_end_matches('/'), &var("TRACEARR_USER", "tristan"), &password).await?;
+    let body = json!({ "url": url, "api_key": token });
+    post(http, base, "/api/settings/tracearr", &body).await?;
+    println!("maintainerr: added Tracearr {url}");
+    test_connection(http, base, "tracearr", &body).await;
+    Ok(())
+}
+
+/// Streamystats (in cluster only, no route), when `STREAMYSTATS_URL` is set. Maintainerr reads it with the Jellyfin
+/// API key it already has; the URL is the only setting. Added only while no URL is set.
+async fn streamystats(http: &Client, base: &str) -> Result<()> {
+    let Ok(url) = std::env::var("STREAMYSTATS_URL") else {
+        return Ok(());
+    };
+    if get(http, base, "/api/settings/streamystats").await?["url"].as_str().is_some_and(|u| !u.is_empty()) {
+        return Ok(());
+    }
+    let body = json!({ "url": url });
+    post(http, base, "/api/settings/streamystats", &body).await?;
+    println!("maintainerr: added Streamystats {url}");
+    test_connection(http, base, "streamystats", &body).await;
     Ok(())
 }
 

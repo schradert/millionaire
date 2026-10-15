@@ -1,0 +1,19 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: streamystats-streamystats
+  namespace: media
+spec:
+  cluster:
+    name: streamystats
+  databaseReclaimPolicy: retain
+  ensure: present
+  extensions:
+    - ensure: present
+      name: vector
+    - ensure: present
+      name: uuid-ossp
+    - ensure: present
+      name: pg_trgm
+  name: streamystats
+  owner: streamystats

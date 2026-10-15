@@ -1,0 +1,65 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: streamystats-dump
+  namespace: media
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          containers:
+            - args:
+                - |
+                  set -eu
+                  f=/dump/streamystats-$(date +%a).dump
+                  pg_dump --format=custom --no-owner --file="$f.tmp" && mv "$f.tmp" "$f"
+              command:
+                - bash
+                - -c
+              env:
+                - name: PGHOST
+                  value: streamystats-rw.media.svc.cluster.local
+                - name: PGUSER
+                  value: streamystats
+                - name: PGDATABASE
+                  value: streamystats
+                - name: PGSSLMODE
+                  value: disable
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      key: password
+                      name: streamystats-app
+              image: ghcr.io/immich-app/postgres:17-vectorchord0.4.3-pgvectors0.3.0@sha256:6b725ce331a1db016c75ca13e4cfc35435718f3fe975ff75a9c11debebbe21d7
+              name: dump
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - mountPath: /dump
+                  name: dump
+                - mountPath: /tmp
+                  name: tmp
+          restartPolicy: OnFailure
+          securityContext:
+            fsGroup: 999
+            runAsGroup: 999
+            runAsNonRoot: true
+            runAsUser: 999
+            seccompProfile:
+              type: RuntimeDefault
+          volumes:
+            - name: dump
+              persistentVolumeClaim:
+                claimName: streamystats-dump
+            - emptyDir: {}
+              name: tmp
+  schedule: 30 3 * * *
+  successfulJobsHistoryLimit: 1

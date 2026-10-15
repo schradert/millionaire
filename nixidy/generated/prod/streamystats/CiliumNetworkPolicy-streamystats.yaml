@@ -1,0 +1,29 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: streamystats
+  namespace: media
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: streamystats
+  ingress:
+    - fromEntities:
+        - host
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/instance: streamystats
+        - matchLabels:
+            app.kubernetes.io/name: maintainerr
+        - matchLabels:
+            batch.kubernetes.io/job-name: maintainerr-bootstrap
+        - matchLabels:
+            batch.kubernetes.io/job-name: streamystats-bootstrap
+        - matchLabels:
+            app.kubernetes.io/name: media-e2e
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP
+            - port: "3005"
+              protocol: TCP

@@ -19,8 +19,8 @@ in {
     applications.maintainerr = {
       namespace = "media";
       volsync.pvcs.maintainerr.title = "maintainerr";
-      # Idempotent post-sync bootstrap (apps/app-bootstrap maintainerr, >= 0.24.0): the Radarr, Sonarr,
-      # Seerr and Ombi connections (Jellyfin comes from jellyfin-bootstrap), the qBittorrent download
+      # Idempotent post-sync bootstrap (apps/app-bootstrap maintainerr, >= 0.38.0 for Sportarr, Tracearr and Streamystats): the Radarr, Sonarr,
+      # Sportarr, Seerr, Ombi, Tracearr and Streamystats connections (Jellyfin comes from jellyfin-bootstrap), the qBittorrent download
       # client, the ntfy notification and two DISABLED example rule groups. Rules unmonitor or delete
       # media, so enabling one stays a deliberate choice; see docs/maintainerr.md.
       bootstrap = lib.mkIf (pinned.images ? app-bootstrap-maintainerr) {
@@ -33,6 +33,11 @@ in {
           JELLYFIN_ADMIN_PASSWORD_FILE = "/secrets/jellyfin/password";
           ADMIN_EMAIL = people.my.profiles.personal.email;
           OMBI_API_KEY_FILE = "/secrets/ombi/apikey";
+          SPORTARR_API_KEY_FILE = "/secrets/sportarr/apikey";
+          TRACEARR_USER = people.me;
+          TRACEARR_PASSWORD_FILE = "/secrets/tracearr/password";
+          # In cluster only, no route: see streamystats.nix.
+          STREAMYSTATS_URL = "http://streamystats.media.svc.cluster.local:3000";
           QBITTORRENT_PASSWORD_FILE = "/secrets/qbittorrent/password";
           NTFY_URL = "https://ntfy.${domain}";
           NTFY_TOPIC = "media";
@@ -43,6 +48,8 @@ in {
           sonarr = "sonarr-apikey";
           jellyfin = "jellyfin-admin";
           ombi = "ombi-apikey";
+          sportarr = "sportarr-apikey";
+          tracearr = "tracearr-admin";
           qbittorrent = "qbittorrent-admin";
         };
       };

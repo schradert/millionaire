@@ -6,7 +6,6 @@
     ...
   }: let
     inherit (config.canivete.meta) domain;
-    hostname = "streamystats.${domain}";
     webPort = 3000;
     jobPort = 3005;
     nobody = 65534;
@@ -23,18 +22,49 @@
       sourceRef.storeRef.kind = "ClusterSecretStore";
     };
   in {
-    portal.apps.streamystats.groups = ["admin"];
-    gatus.endpoints.streamystats = {
-      url = "https://${hostname}";
-      group = "internal";
-      conditions = ["[STATUS] == any(200, 302, 401)"];
-    };
-    oauth2Proxy.upstreams."${hostname}" = {
-      url = "http://streamystats.media.svc.cluster.local:${toString webPort}";
-      namespace = "media";
-    };
+    # In cluster only, deliberately no route, portal entry or oauth2-proxy upstream: Streamystats signs
+    # people in with a Jellyfin username and password, which Jellyfin SSO users do not have, and it
+    # keeps no per-user session a proxy could mint (the session is a cookie signed with SESSION_SECRET
+    # plus the user's Jellyfin token). Putting it behind the gateway would leave only the shared Jellyfin
+    # admin login, which breaks the per-user rule. So nothing human-facing exists yet; it serves
+    # Maintainerr (item details and watchlists through its API, with the Jellyfin API key Maintainerr
+    # already has) and ingests the statistics from Jellyfin. Human access waits for a per-user path: a
+    # sidecar behind oauth2-proxy (like seerr-sso) that gets the user's Jellyfin token without a
+    # password and mints Streamystats' session (docs/media-stack.md).
     applications.streamystats = {
       namespace = "media";
+      # Its API and web UI run without a login of their own for anything that reaches them, so only
+      # the Streamystats pods themselves (web, job server), Maintainerr, the Streamystats bootstrap Job,
+      # the e2e Job and the kubelet may.
+      resources.ciliumNetworkPolicies.streamystats.spec = {
+        endpointSelector.matchLabels."app.kubernetes.io/instance" = "streamystats";
+        ingress = [
+          {fromEntities = ["host"];}
+          {
+            fromEndpoints = [
+              {matchLabels."app.kubernetes.io/instance" = "streamystats";}
+              {matchLabels."app.kubernetes.io/name" = "maintainerr";}
+              {matchLabels."batch.kubernetes.io/job-name" = "maintainerr-bootstrap";}
+              {matchLabels."batch.kubernetes.io/job-name" = "streamystats-bootstrap";}
+              {matchLabels."app.kubernetes.io/name" = "media-e2e";}
+            ];
+            toPorts = [
+              {
+                ports = [
+                  {
+                    port = toString webPort;
+                    protocol = "TCP";
+                  }
+                  {
+                    port = toString jobPort;
+                    protocol = "TCP";
+                  }
+                ];
+              }
+            ];
+          }
+        ];
+      };
       # pgvector for the optional embeddings; the stock CNPG operand image has none, so the same
       # image as immich (VectorChord, which brings `vector`). uuid-ossp and pg_trgm are contrib.
       postgres = {
@@ -166,26 +196,6 @@
             HOST = "0.0.0.0";
             PORT = toString jobPort;
             NEXTJS_URL = "http://streamystats.media.svc.cluster.local:${toString webPort}";
-          };
-          # Admin-only for now, behind oauth2-proxy. Its own sign-in takes a Jellyfin password, which
-          # Jellyfin SSO users do not have, and it keeps no per-user session a proxy could mint (the
-          # session is a cookie signed with SESSION_SECRET plus the user's Jellyfin token). Family
-          # access needs a sidecar like seerr-sso's; until then the admin signs in with the Jellyfin
-          # admin account (Bitwarden jellyfin/admin-password).
-          route.streamystats = {
-            hostnames = [hostname];
-            parentRefs = lib.toList {
-              name = "internal";
-              namespace = "kube-system";
-              sectionName = "https";
-            };
-            rules = lib.toList {
-              backendRefs = lib.toList {
-                name = "oauth2-proxy";
-                namespace = "identity";
-                port = 4180;
-              };
-            };
           };
         };
       };

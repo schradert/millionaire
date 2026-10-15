@@ -136,13 +136,13 @@ Files are deleted 30 days after an event aired (`retentionDays` in the module), 
 
 It has no Prometheus metrics.
 
-### Streamystats (not deployed)
+### Streamystats (in cluster only, no human access yet)
 
-`nixidy/apps/media/streamystats.nix` is written and renders, but `nixidy/apps/default.nix` does not import it.
+`nixidy/apps/media/streamystats.nix` is deployed with no route, portal entry or oauth2-proxy upstream. Its Services are ClusterIP and a network policy admits only its own pods, Maintainerr, the bootstrap Jobs, the e2e Job and the kubelet. It serves Maintainerr (the connection is added by the Maintainerr bootstrap) and ingests statistics from Jellyfin (the `app-bootstrap streamystats` Job adds the Jellyfin server with an API key named `Streamystats`).
 
-Streamystats signs people in with a Jellyfin username and password, and keeps no other identity. Its session is a cookie signed with `SESSION_SECRET`, plus the person's Jellyfin token. Jellyfin SSO users have no password, so the only way in left is the shared Jellyfin admin account, which breaks the per-user rule.
+Why no UI: Streamystats signs people in with a Jellyfin username and password, and keeps no other identity. Its session is a cookie signed with `SESSION_SECRET`, plus the person's Jellyfin token. Jellyfin SSO users have no password, so the only way in would be the shared Jellyfin admin account, which breaks the per-user rule.
 
-A per-user path needs a sidecar behind oauth2-proxy. The sidecar would get that user's Jellyfin token without a password and mint Streamystats' session; neither part is available cleanly today. Enable Streamystats once that exists. The bootstrap mode `app-bootstrap streamystats` is already in place.
+Human access waits for a per-user path: a sidecar behind oauth2-proxy that gets that user's Jellyfin token without a password and mints Streamystats' session. Neither part is available cleanly today. When it exists, add the route and the oauth2-proxy upstream back.
 
 ### Subtitles for language practice
 
