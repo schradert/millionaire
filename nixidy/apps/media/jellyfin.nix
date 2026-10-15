@@ -268,6 +268,13 @@
             [
               "TMDb Box Sets|bc4aad2e-d3d0-4725-a5e2-fd07949e5b42|13.0.0.0"
               "Webhook|71552a5a5c5c4350a2aeebe451a30173|21.0.0.0"
+              # Third-party repositories (a fourth field, jellyfin-bootstrap >= 0.6.0). Smart Lists:
+              # rule-based collections and playlists that refresh themselves (genre, decade, studio,
+              # rating, recently added). Intro Skipper: detects intros and credits and adds Skip.
+              # SmartLists 12.0.1.0 is the last build for 10.11; Intro Skipper's manifest is served
+              # per Jellyfin version.
+              "SmartLists|A0A2A7B2-747A-4113-8B39-757A9D267C79|12.0.1.0|https://raw.githubusercontent.com/jyourstone/jellyfin-plugin-manifest/main/manifest.json"
+              "Intro Skipper|c83d86bb-a1e0-4c35-a113-e2101cf4ee6b|1.10.11.24|https://intro-skipper.org/manifest.json"
             ]
             ++ lib.optional traktPlugin "Trakt|4fe3201ed6ae4f2e8917e12bda571281|30.0.0.0"
           );
