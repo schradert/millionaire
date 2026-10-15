@@ -13,7 +13,8 @@
     ...
   }: let
     inherit (config.canivete.meta) domain;
-    port = 8787;
+    # Port 80 like the other arrs (the arr bootstrap's default URL).
+    port = 80;
     instance = name: library: {
       portal.apps.${name}.groups = ["admin"];
       gatus.endpoints.${name} = {

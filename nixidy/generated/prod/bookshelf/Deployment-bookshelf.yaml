@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 4c8f38ca4f0366008e204474b120140ba82e158076b596f10eb5fbddf0864896
+        checksum/configMaps: 0a4a480fe599757178707aa0f24c694d3beeed368d22a954149e25d459b426ab
       labels:
         app.kubernetes.io/controller: bookshelf
         app.kubernetes.io/instance: bookshelf
@@ -47,7 +47,7 @@ spec:
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
-              port: 8787
+              port: 80
             timeoutSeconds: 1
           name: app
           readinessProbe:
@@ -55,7 +55,7 @@ spec:
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
-              port: 8787
+              port: 80
             timeoutSeconds: 1
           resources:
             limits:
@@ -68,7 +68,7 @@ spec:
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
-              port: 8787
+              port: 80
             timeoutSeconds: 1
           volumeMounts:
             - mountPath: /config
@@ -91,7 +91,7 @@ spec:
             - name: PORT
               value: "9707"
             - name: URL
-              value: http://localhost:8787
+              value: http://localhost:80
           image: ghcr.io/onedr0p/exportarr:v2.3.0@sha256:af535d94061cf97a52e1661945ffba78c03f9443eae7c0da1a80a5a4be56b520
           name: exportarr
           resources:

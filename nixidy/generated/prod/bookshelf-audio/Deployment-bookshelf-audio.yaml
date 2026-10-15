@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 74f4b3504685f6be7993aae491a725edbeed1b0fb2c23eec92a4cb187d3524e7
+        checksum/configMaps: f138484fd8ff1c87ebdfac1c01c851da4a5f21bbc55e44953f64c1405b31f147
       labels:
         app.kubernetes.io/controller: bookshelf-audio
         app.kubernetes.io/instance: bookshelf-audio
@@ -47,7 +47,7 @@ spec:
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
-              port: 8787
+              port: 80
             timeoutSeconds: 1
           name: app
           readinessProbe:
@@ -55,7 +55,7 @@ spec:
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
-              port: 8787
+              port: 80
             timeoutSeconds: 1
           resources:
             limits:
@@ -68,7 +68,7 @@ spec:
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
-              port: 8787
+              port: 80
             timeoutSeconds: 1
           volumeMounts:
             - mountPath: /config
@@ -91,7 +91,7 @@ spec:
             - name: PORT
               value: "9707"
             - name: URL
-              value: http://localhost:8787
+              value: http://localhost:80
           image: ghcr.io/onedr0p/exportarr:v2.3.0@sha256:af535d94061cf97a52e1661945ffba78c03f9443eae7c0da1a80a5a4be56b520
           name: exportarr
           resources:

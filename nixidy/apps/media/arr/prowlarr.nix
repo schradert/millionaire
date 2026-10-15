@@ -48,9 +48,6 @@
             LIDARR_API_KEY_FILE = "/secrets/lidarr/apikey";
             BOOKSHELF_API_KEY_FILE = "/secrets/bookshelf/apikey";
             BOOKSHELF_AUDIO_API_KEY_FILE = "/secrets/bookshelf-audio/apikey";
-            # Readarr's port; the arr default URL assumes :80.
-            BOOKSHELF_URL = "http://bookshelf.media.svc.cluster.local:8787";
-            BOOKSHELF_AUDIO_URL = "http://bookshelf-audio.media.svc.cluster.local:8787";
             # Grabs, imports, failures and health from every arr (app-bootstrap >= 0.26.0).
             NTFY_URL = "https://ntfy.${domain}/media";
             PROWLARR_API_KEY_FILE = "/secrets/prowlarr/apikey";

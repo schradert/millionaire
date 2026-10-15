@@ -20,10 +20,6 @@ spec:
               value: /secrets/bookshelf/apikey
             - name: BOOKSHELF_AUDIO_API_KEY_FILE
               value: /secrets/bookshelf-audio/apikey
-            - name: BOOKSHELF_AUDIO_URL
-              value: http://bookshelf-audio.media.svc.cluster.local:8787
-            - name: BOOKSHELF_URL
-              value: http://bookshelf.media.svc.cluster.local:8787
             - name: LIDARR_API_KEY_FILE
               value: /secrets/lidarr/apikey
             - name: NTFY_URL
