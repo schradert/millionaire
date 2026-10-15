@@ -54,6 +54,18 @@ in {
     };
 
     networking.networkmanager.unmanaged = ["interface-name:cilium_*" "interface-name:lxc*" "interface-name:tailscale0"];
+    # Nodes run tailscale with accept-dns=false, so the desktop never got headscale's AdGuard and
+    # *.trdos.me (tailnet-only) did not resolve in the browser. Split DNS: only trdos.me goes to
+    # AdGuard over the tailnet, everything else stays on the DHCP resolver. A routing domain (~), not
+    # a search domain, and kubelet keeps /etc/rke2-resolv.conf (k8s-node.nix), so pods are unaffected.
+    networking.networkmanager.dns = "systemd-resolved";
+    services.resolved = {
+      enable = true;
+      settings.Resolve = {
+        DNS = "100.64.0.1";
+        Domains = "~trdos.me";
+      };
+    };
     systemd.network.links."10-lan" = lib.mkIf (cfg.lanLink != null) {
       matchConfig = cfg.lanLink;
       linkConfig.Name = "eno1";
