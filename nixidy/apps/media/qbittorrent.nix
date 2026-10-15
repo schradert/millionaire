@@ -13,13 +13,11 @@
     credentials = true;
     vpn = {
       # One of the `providers` below. protonvpn: NAT-PMP port forwarding, synced into
-      # qBittorrent. airvpn: a static port reserved in the client area (`airvpnPort`).
-      # custom: any WireGuard config file, no inbound port.
+      # qBittorrent. custom: any WireGuard config file, no inbound port.
       provider = "protonvpn";
       # gluetun SERVER_COUNTRIES (e.g. ["Switzerland" "Netherlands"]); empty lets gluetun pick
       # any P2P server.
       countries = [];
-      airvpnPort = null;
     };
     # DHT, PeX and LSD find peers without a tracker, which public torrents need. Private
     # trackers ban clients that use them, and they announce to many more peers. Off by default.
@@ -35,16 +33,6 @@
           VPN_PORT_FORWARDING_PROVIDER = "protonvpn";
         };
         secrets.WIREGUARD_PRIVATE_KEY = "vpn/protonvpn/wireguard-private-key";
-      };
-      airvpn = {
-        env =
-          {VPN_SERVICE_PROVIDER = "airvpn";}
-          // lib.optionalAttrs (vpn.airvpnPort != null) {FIREWALL_VPN_INPUT_PORTS = toString vpn.airvpnPort;};
-        secrets = {
-          WIREGUARD_PRIVATE_KEY = "vpn/airvpn/wireguard-private-key";
-          WIREGUARD_PRESHARED_KEY = "vpn/airvpn/wireguard-preshared-key";
-          WIREGUARD_ADDRESSES = "vpn/airvpn/wireguard-addresses";
-        };
       };
       custom = {
         env.VPN_SERVICE_PROVIDER = "custom";
@@ -77,20 +65,16 @@
     # Applied to qBittorrent.conf by the init container on every start, before qBittorrent
     # reads it, so the config file can't drift from this.
     settings = {
-      BitTorrent =
-        {
-          "Session\\Interface" = "tun0";
-          "Session\\InterfaceName" = "tun0";
-          "Session\\AnonymousModeEnabled" = "true";
-          "Session\\DHTEnabled" = lib.boolToString peerDiscovery;
-          "Session\\PeXEnabled" = lib.boolToString peerDiscovery;
-          "Session\\LSDEnabled" = lib.boolToString peerDiscovery;
-          # 1 = require encryption.
-          "Session\\Encryption" = "1";
-        }
-        // lib.optionalAttrs (vpn.provider == "airvpn" && vpn.airvpnPort != null) {
-          "Session\\Port" = toString vpn.airvpnPort;
-        };
+      BitTorrent = {
+        "Session\\Interface" = "tun0";
+        "Session\\InterfaceName" = "tun0";
+        "Session\\AnonymousModeEnabled" = "true";
+        "Session\\DHTEnabled" = lib.boolToString peerDiscovery;
+        "Session\\PeXEnabled" = lib.boolToString peerDiscovery;
+        "Session\\LSDEnabled" = lib.boolToString peerDiscovery;
+        # 1 = require encryption.
+        "Session\\Encryption" = "1";
+      };
       Network.PortForwardingEnabled = "false";
       Preferences = {
         "WebUI\\Username" = "admin";

@@ -46,7 +46,7 @@ ProtonVPN is the default (`vpn.provider = "protonvpn"` in `nixidy/apps/media/qbi
 8. Flip `credentials = true`, render, commit, sync. Check `kubectl -n media logs deploy/qbittorrent -c gluetun` for `port forwarded is NNNNN`.
 9. Run the full e2e suite (step 9).
 
-Fallback: `vpn.provider = "custom"` takes any WireGuard config file (`vpn/wireguard/private-key`, `vpn/wireguard/addresses`, `vpn/wireguard/public-key`, `vpn/wireguard/endpoint-ip`, `vpn/wireguard/endpoint-port`), without port forwarding. `airvpn` is also wired (`vpn/airvpn/wireguard-private-key`, `vpn/airvpn/wireguard-preshared-key`, `vpn/airvpn/wireguard-addresses`, plus `vpn.airvpnPort`).
+Fallback: `vpn.provider = "custom"` takes any WireGuard config file (`vpn/wireguard/private-key`, `vpn/wireguard/addresses`, `vpn/wireguard/public-key`, `vpn/wireguard/endpoint-ip`, `vpn/wireguard/endpoint-port`), without port forwarding.
 
 Already enforced, whichever provider: gluetun's firewall kill switch, DNS over TLS through the tunnel (the pod resolves only through gluetun), qBittorrent bound to `tun0`, anonymous mode, UPnP/NAT-PMP in qBittorrent off, no IPv6 (Cilium is IPv4-only and gluetun drops IPv6), and the WebUI reachable only through oauth2-proxy and from the arr apps (CiliumNetworkPolicy), with the password required. `peerDiscovery` (DHT/PeX/LSD) is off, which private trackers require; turn it on only for public torrents.
 
