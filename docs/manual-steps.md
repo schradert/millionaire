@@ -186,3 +186,17 @@ Letterboxd: there is no public write API, and Ryot (v10.5) has no Letterboxd imp
 - Letterboxd into Ryot, once: export at Letterboxd → Settings → Data → Export. If Trakt's own importer accepts that CSV, import it into Trakt and let the Trakt import above carry it into Ryot. That Trakt feature is unverified.
 - Ryot or Jellyfin out to Letterboxd: upload a CSV by hand at <https://letterboxd.com/import/>. Letterboxd matches rows by `tmdbID`, and Ryot's JSON export holds TMDB ids.
 - Ongoing Letterboxd → Ryot is not built. The scoped follow-up is a CronJob that reads the public diary RSS (`https://letterboxd.com/<user>/rss/`, which carries `tmdb:movieId`) and posts new entries to a Ryot "Generic JSON" sink. Ryot doesn't de-duplicate seen entries (upstream issue 1611), so that job would keep state.
+
+## 14. Books, comics and manga acquisition
+
+Bookshelf (ebooks and audiobooks), Kapowarr (comics) and Suwayomi (manga) are deployed and wired: libraries, qBittorrent, Prowlarr sync for Bookshelf, and ntfy topic `media`. Three things need you.
+
+1. **ComicVine API key (Kapowarr).** Kapowarr cannot match or search comics without one.
+   1. Create a free account at <https://comicvine.gamespot.com/api/>. Copy the key.
+   2. Store it in Bitwarden as `kapowarr/comicvine-api-key`.
+   3. Flip `credentials = true` in `nixidy/apps/media/kapowarr.nix`, then render, commit and sync. The bootstrap writes the key.
+2. **Manga sources (Suwayomi).** No extension store is configured, because stores are third-party.
+   1. Put the store's index URL in `extensionStores` in `nixidy/apps/media/suwayomi.nix`, then render, commit and sync.
+   2. In <https://suwayomi.trdos.me>, install the source extensions you want, add series to the library, and turn on auto-download.
+   3. Chapters land as CBZ in `media-manga`, which Komga and Kavita serve as "Manga".
+3. **Indexers for books.** Prowlarr syncs to both Bookshelf instances, but book indexers (MyAnonamouse and others) need your accounts. Add them in Prowlarr, as in step 2. Bookshelf's metadata comes from the hosted rreading-glasses (`api.bookinfo.pro`), so it needs no key. Self-hosting rreading-glasses would need a Hardcover API token and is not set up.

@@ -1,0 +1,9 @@
+{
+  "version": "hardcover-v0.4.21.182",
+  "digest": "sha256:67498dd5ece516867d72ee642abd6c1a66b36a135c8f7da0127109564372beb1",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/pennydreadful/bookshelf",
+    "tagPattern": "hardcover-v(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}

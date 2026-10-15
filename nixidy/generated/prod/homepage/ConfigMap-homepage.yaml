@@ -356,6 +356,14 @@ data:
           description: ''
           href: https://bazarr.trdos.me
           icon: bazarr
+      - bookshelf:
+          description: ''
+          href: https://bookshelf.trdos.me
+          icon: bookshelf
+      - bookshelf-audio:
+          description: ''
+          href: https://bookshelf-audio.trdos.me
+          icon: bookshelf-audio
       - dvd-webdav:
           description: ''
           href: https://dvd.trdos.me
@@ -384,6 +392,10 @@ data:
           description: ''
           href: https://jitsi.trdos.me
           icon: jitsi
+      - kapowarr:
+          description: ''
+          href: https://kapowarr.trdos.me
+          icon: kapowarr
       - kavita:
           description: ''
           href: https://kavita.trdos.me
@@ -456,6 +468,10 @@ data:
           description: ''
           href: https://sportarr.trdos.me
           icon: sportarr
+      - suwayomi:
+          description: ''
+          href: https://suwayomi.trdos.me
+          icon: suwayomi
       - tdarr:
           description: Library health checks and transcoding
           href: https://tdarr.trdos.me

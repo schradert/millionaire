@@ -47,7 +47,11 @@ spec:
               protocol: TCP
             - port: "6767"
               protocol: TCP
+            - port: "8787"
+              protocol: TCP
             - port: "3000"
+              protocol: TCP
+            - port: "5656"
               protocol: TCP
             - port: "80"
               protocol: TCP
@@ -72,6 +76,8 @@ spec:
             - port: "8111"
               protocol: TCP
             - port: "1867"
+              protocol: TCP
+            - port: "4567"
               protocol: TCP
             - port: "8265"
               protocol: TCP

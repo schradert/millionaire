@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: kapowarr-bootstrap
+  namespace: media
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - kapowarr
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4318
+            - name: PYROSCOPE_SAMPLE_RATE
+              value: "1000"
+            - name: PYROSCOPE_SERVER_ADDRESS
+              value: http://pyroscope.observability.svc.cluster.local:4040
+            - name: QBITTORRENT_PASSWORD_FILE
+              value: /secrets/qbittorrent/password
+          image: harbor.trdos.me/library/app-bootstrap:0.26.0@sha256:5a72edc35fb941e6ffff0700f83a7ed4c1fd3198d7bc88e9d395268c8e6ae2cc
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /secrets/qbittorrent
+              name: qbittorrent
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - emptyDir: {}
+          name: tmp
+        - name: qbittorrent
+          secret:
+            secretName: qbittorrent-admin

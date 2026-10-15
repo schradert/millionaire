@@ -80,6 +80,18 @@ data:
       name: bifrost
       url: https://bifrost.trdos.me
     - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: bookshelf
+      url: https://bookshelf.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: bookshelf-audio
+      url: https://bookshelf-audio.trdos.me
+    - conditions:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
@@ -229,6 +241,12 @@ data:
       interval: 1m
       name: jitsi
       url: https://jitsi.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: kapowarr
+      url: https://kapowarr.trdos.me
     - conditions:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
@@ -439,6 +457,12 @@ data:
       interval: 1m
       name: sure
       url: https://sure.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
+      name: suwayomi
+      url: https://suwayomi.trdos.me
     - conditions:
       - '[STATUS] == 200'
       group: internal

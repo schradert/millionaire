@@ -30,6 +30,11 @@
         cacheAccessModes = ["ReadWriteOnce"];
         restore = false;
       };
+      volsync.pvcs.media-manga = {
+        title = "media-manga";
+        cacheAccessModes = ["ReadWriteOnce"];
+        restore = false;
+      };
       volsync.pvcs.media-podcasts = {
         title = "media-podcasts";
         cacheAccessModes = ["ReadWriteOnce"];
@@ -65,6 +70,8 @@
         media-books = cephfsPVC "20Gi";
         media-audiobooks = cephfsPVC "50Gi";
         media-comics = cephfsPVC "20Gi";
+        # Suwayomi's CBZ downloads, the Manga library in Komga and Kavita.
+        media-manga = cephfsPVC "50Gi";
         media-podcasts = cephfsPVC "20Gi";
         media-downloads = cephfsPVC "50Gi";
         # Full-disc DVD backups (ISOs): the originals behind media-movies, played with menus in Kodi.

@@ -16,8 +16,14 @@ spec:
         - args:
             - arr
           env:
+            - name: BOOKSHELF_API_KEY_FILE
+              value: /secrets/bookshelf/apikey
+            - name: BOOKSHELF_AUDIO_API_KEY_FILE
+              value: /secrets/bookshelf-audio/apikey
             - name: LIDARR_API_KEY_FILE
               value: /secrets/lidarr/apikey
+            - name: NTFY_URL
+              value: https://ntfy.trdos.me/media
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: http://alloy.observability.svc.cluster.local:4318
             - name: PROWLARR_API_KEY_FILE
@@ -34,7 +40,7 @@ spec:
               value: /secrets/radarr/apikey
             - name: SONARR_API_KEY_FILE
               value: /secrets/sonarr/apikey
-          image: harbor.trdos.me/library/app-bootstrap:0.22.1@sha256:efcaab3b2ee14c6d12e21e323ee0c59948842dd9bf75a6f2de5f07ec590cde6f
+          image: harbor.trdos.me/library/app-bootstrap:0.26.0@sha256:5a72edc35fb941e6ffff0700f83a7ed4c1fd3198d7bc88e9d395268c8e6ae2cc
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
@@ -45,6 +51,12 @@ spec:
           volumeMounts:
             - mountPath: /tmp
               name: tmp
+            - mountPath: /secrets/bookshelf
+              name: bookshelf
+              readOnly: true
+            - mountPath: /secrets/bookshelf-audio
+              name: bookshelf-audio
+              readOnly: true
             - mountPath: /secrets/lidarr
               name: lidarr
               readOnly: true
@@ -70,6 +82,12 @@ spec:
       volumes:
         - emptyDir: {}
           name: tmp
+        - name: bookshelf
+          secret:
+            secretName: bookshelf-apikey
+        - name: bookshelf-audio
+          secret:
+            secretName: bookshelf-audio-apikey
         - name: lidarr
           secret:
             secretName: lidarr-apikey

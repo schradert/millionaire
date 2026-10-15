@@ -1,0 +1,133 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: bookshelf
+    app.kubernetes.io/instance: bookshelf
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: bookshelf
+  name: bookshelf
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: bookshelf
+      app.kubernetes.io/instance: bookshelf
+      app.kubernetes.io/name: bookshelf
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 4c8f38ca4f0366008e204474b120140ba82e158076b596f10eb5fbddf0864896
+      labels:
+        app.kubernetes.io/controller: bookshelf
+        app.kubernetes.io/instance: bookshelf
+        app.kubernetes.io/name: bookshelf
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - -nobrowser
+            - -data=/config
+          command:
+            - /app/readarr/bin/Readarr
+          envFrom:
+            - secretRef:
+                name: bookshelf
+            - configMapRef:
+                name: bookshelf
+          image: ghcr.io/pennydreadful/bookshelf:hardcover-v0.4.21.182@sha256:67498dd5ece516867d72ee642abd6c1a66b36a135c8f7da0127109564372beb1
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8787
+            timeoutSeconds: 1
+          name: app
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8787
+            timeoutSeconds: 1
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              cpu: 20m
+              memory: 192Mi
+          startupProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8787
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /config
+              name: config
+            - mountPath: /media/books
+              name: media-books
+            - mountPath: /media/downloads
+              name: media-downloads
+            - mountPath: /tmp
+              name: tmpfs
+              subPath: tmp
+        - args:
+            - readarr
+          env:
+            - name: APIKEY
+              valueFrom:
+                secretKeyRef:
+                  key: READARR__AUTH__APIKEY
+                  name: bookshelf
+            - name: PORT
+              value: "9707"
+            - name: URL
+              value: http://localhost:8787
+          image: ghcr.io/onedr0p/exportarr:v2.3.0@sha256:af535d94061cf97a52e1661945ffba78c03f9443eae7c0da1a80a5a4be56b520
+          name: exportarr
+          resources:
+            limits:
+              memory: 128Mi
+            requests:
+              cpu: 5m
+              memory: 32Mi
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmpfs
+              subPath: tmp
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostAliases:
+        - hostnames:
+            - ntfy.trdos.me
+          ip: 100.64.0.1
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      securityContext:
+        fsGroup: 65534
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 65534
+        runAsUser: 65534
+      serviceAccountName: bookshelf
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: bookshelf
+        - name: media-books
+          persistentVolumeClaim:
+            claimName: media-books
+        - name: media-downloads
+          persistentVolumeClaim:
+            claimName: media-downloads
+        - emptyDir: {}
+          name: tmpfs

@@ -59,6 +59,9 @@ spec:
             - mountPath: /media/comics
               name: media-comics
               readOnly: true
+            - mountPath: /media/manga
+              name: media-manga
+              readOnly: true
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
       hostIPC: false
@@ -75,3 +78,6 @@ spec:
         - name: media-comics
           persistentVolumeClaim:
             claimName: media-comics
+        - name: media-manga
+          persistentVolumeClaim:
+            claimName: media-manga

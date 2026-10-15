@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: suwayomi
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: suwayomi
+    app.kubernetes.io/service: suwayomi
+  name: suwayomi
+  namespace: media
+spec:
+  ports:
+    - name: http
+      port: 4567
+      protocol: TCP
+      targetPort: 4567
+  selector:
+    app.kubernetes.io/controller: suwayomi
+    app.kubernetes.io/instance: suwayomi
+    app.kubernetes.io/name: suwayomi
+  type: ClusterIP
