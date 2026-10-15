@@ -185,7 +185,10 @@ impl Qbt {
             .get_all("set-cookie")
             .iter()
             .filter_map(|v| v.to_str().ok())
-            .find_map(|c| c.strip_prefix("SID=").map(|v| v.split(';').next().unwrap_or("").to_string()))
+            // `SID=` up to qBittorrent 5.1, `QBT_SID_<port>=` after.
+            .find(|c| c.starts_with("SID=") || c.starts_with("QBT_SID_"))
+            .and_then(|c| c.split(';').next())
+            .map(str::to_string)
             .ok_or_else(|| Fail::new("qbittorrent", "login", format!("HTTP {}: no SID cookie (wrong password?)", r.status())))?;
         Ok(Qbt { base, sid })
     }
@@ -193,7 +196,7 @@ impl Qbt {
     pub fn req(&self, ctx: &Ctx, m: Method, path: &str) -> RequestBuilder {
         ctx.http
             .request(m, format!("{}/api/v2{}", self.base, path))
-            .header("Cookie", format!("SID={}", self.sid))
+            .header("Cookie", &self.sid)
             .header("Referer", &self.base)
     }
 

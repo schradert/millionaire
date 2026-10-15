@@ -73,10 +73,8 @@ pub async fn dns(ctx: &Ctx, f: &mut Flow) -> R<()> {
     }
     f.ok("qbittorrent", "resolv.conf", "only gluetun (127.0.0.1)");
     let home = home_ip(ctx).await?;
-    let mut seed = xorshift(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos() as u64);
-    seed = xorshift(seed);
-    let url = format!("http://{}.edns.ip-api.com/json", hex(&seed.to_le_bytes()));
-    let (ok, out) = fetch_in_pod(&p, &url, 20).await?;
+    // edns.ip-api.com redirects to a unique subdomain it generates itself (a made-up label is a 404).
+    let (ok, out) = fetch_in_pod(&p, "http://edns.ip-api.com/json", 20).await?;
     if !ok {
         return Err(Fail::new("qbittorrent", "DNS leak probe", out));
     }
