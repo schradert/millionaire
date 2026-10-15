@@ -77,7 +77,7 @@ pub async fn sso(ctx: &Ctx, f: &mut Flow) -> R<()> {
         ("komga", "/oauth2/authorization/keycloak".to_string()),
         ("audiobookshelf", format!("/auth/openid?callback=https%3A%2F%2Faudiobookshelf.{d}%2Faudiobookshelf%2Flogin")),
     ];
-    let proxied = ["radarr", "sonarr", "lidarr", "prowlarr", "bazarr", "seerr", "maintainerr", "navidrome", "multi-scrobbler", "qbittorrent"];
+    let proxied = ["radarr", "sonarr", "lidarr", "prowlarr", "bazarr", "seerr", "ombi", "maintainerr", "navidrome", "multi-scrobbler", "qbittorrent"];
     let mut failures = Vec::new();
 
     for (app, path) in native {
@@ -200,7 +200,8 @@ pub async fn kavita(ctx: &Ctx, f: &mut Flow) -> R<()> {
     )
     .await?;
     let libs = json(k.req(ctx, Method::GET, "/api/Library/libraries"), "kavita", "list libraries").await?;
-    let lib = libs.as_array().into_iter().flatten().find(|l| l["name"] == json!(ctx.marker)).and_then(|l| l["id"].as_i64()).at("kavita", "find test library")?;
+    let lib =
+        libs.as_array().into_iter().flatten().find(|l| l["name"] == json!(ctx.marker)).and_then(|l| l["id"].as_i64()).at("kavita", "find test library")?;
     f.ok("kavita", "create test library", format!("id {lib}"));
 
     send(k.req(ctx, Method::POST, &format!("/api/Library/scan?libraryId={lib}&force=true")), "kavita", "scan").await?;
@@ -221,7 +222,11 @@ pub async fn kavita(ctx: &Ctx, f: &mut Flow) -> R<()> {
     if k.api_key.is_empty() {
         return Err(Fail::new("kavita", "OPDS", "login returned no API key"));
     }
-    let feed = send(ctx.http.get(format!("{}/api/opds/{}/libraries/{lib}", k.base, k.api_key)), "kavita", "OPDS library feed").await?.text().await.at("kavita", "OPDS")?;
+    let feed = send(ctx.http.get(format!("{}/api/opds/{}/libraries/{lib}", k.base, k.api_key)), "kavita", "OPDS library feed")
+        .await?
+        .text()
+        .await
+        .at("kavita", "OPDS")?;
     if !feed.contains("Alice") {
         return Err(Fail::new("kavita", "OPDS library feed", format!("book not listed: {}", excerpt(&feed))));
     }
@@ -261,7 +266,11 @@ pub async fn komga(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let key = json(k.req(ctx, Method::POST, "/api/v2/users/me/api-keys").json(&json!({ "comment": ctx.marker })), "komga", "create API key").await?;
     let key = key["key"].as_str().at("komga", "create API key")?.to_string();
     f.ok("komga", "create run API key", "");
-    let feed = send(ctx.http.get(format!("{}/opds/v1.2/libraries/{id}", k.base)).header("X-API-Key", &key), "komga", "OPDS library feed").await?.text().await.at("komga", "OPDS")?;
+    let feed = send(ctx.http.get(format!("{}/opds/v1.2/libraries/{id}", k.base)).header("X-API-Key", &key), "komga", "OPDS library feed")
+        .await?
+        .text()
+        .await
+        .at("komga", "OPDS")?;
     if !feed.contains("Alice") {
         return Err(Fail::new("komga", "OPDS library feed", format!("not listed: {}", excerpt(&feed))));
     }
@@ -353,7 +362,12 @@ pub async fn music(ctx: &Ctx, f: &mut Flow) -> R<()> {
     f.ok(
         "multi-scrobbler",
         "components ready",
-        format!("{} components; clients {}{}", comps.len(), clients.join(" "), if lb { "" } else { "; no ListenBrainz client configured (Maloja relay is a TODO in maloja.nix)" }),
+        format!(
+            "{} components; clients {}{}",
+            comps.len(),
+            clients.join(" "),
+            if lb { "" } else { "; no ListenBrainz client configured (Maloja relay is a TODO in maloja.nix)" }
+        ),
     );
     Ok(())
 }
@@ -361,7 +375,11 @@ pub async fn music(ctx: &Ctx, f: &mut Flow) -> R<()> {
 /// Components that are not ready (`type name: status`), and the clients as `type=status`. An empty list is an error.
 fn ms_components(comps: &[Value]) -> R<(Vec<String>, Vec<String>)> {
     if comps.is_empty() {
-        return Err(Fail::new("multi-scrobbler", "components", "no sources or clients configured (a component whose ENV config fails validation is dropped; see the pod log)"));
+        return Err(Fail::new(
+            "multi-scrobbler",
+            "components",
+            "no sources or clients configured (a component whose ENV config fails validation is dropped; see the pod log)",
+        ));
     }
     let mut bad = vec![];
     let mut clients = vec![];
@@ -380,12 +398,12 @@ fn ms_components(comps: &[Value]) -> R<(Vec<String>, Vec<String>)> {
 
 /// Recyclarr's profiles exist in Radarr and Sonarr, and its CronJob succeeded recently.
 pub async fn recyclarr(ctx: &Ctx, f: &mut Flow) -> R<()> {
-    for (app, want) in [
-        ("radarr", var("RECYCLARR_RADARR_PROFILES", "[SQP] SQP-1 WEB (2160p)")),
-        ("sonarr", var("RECYCLARR_SONARR_PROFILES", "WEB-1080p,WEB-2160p")),
-    ] {
+    for (app, want) in
+        [("radarr", var("RECYCLARR_RADARR_PROFILES", "[SQP] SQP-1 WEB (2160p)")), ("sonarr", var("RECYCLARR_SONARR_PROFILES", "WEB-1080p,WEB-2160p"))]
+    {
         let arr = Arr::new(app)?;
-        let names: Vec<String> = arr.get(ctx, "/qualityprofile").await?.as_array().into_iter().flatten().filter_map(|p| p["name"].as_str().map(String::from)).collect();
+        let names: Vec<String> =
+            arr.get(ctx, "/qualityprofile").await?.as_array().into_iter().flatten().filter_map(|p| p["name"].as_str().map(String::from)).collect();
         let missing: Vec<&str> = want.split(',').filter(|w| !names.iter().any(|n| n == w)).collect();
         if !missing.is_empty() {
             return Err(Fail::new(app, "quality profiles", format!("missing {missing:?} (have {names:?})")));
@@ -406,7 +424,11 @@ pub async fn recyclarr(ctx: &Ctx, f: &mut Flow) -> R<()> {
 
 /// Maintainerr evaluates an inactive test rule group against the chain's Jellyfin movie.
 pub async fn maintainerr(ctx: &Ctx, f: &mut Flow) -> R<()> {
-    let (lib, movie) = ctx.st().jellyfin_movie.clone().ok_or_else(|| Fail::skip("maintainerr", "precondition", "no Jellyfin test movie (the movie chain did not import one)"))?;
+    let (lib, movie) = ctx
+        .st()
+        .jellyfin_movie
+        .clone()
+        .ok_or_else(|| Fail::skip("maintainerr", "precondition", "no Jellyfin test movie (the movie chain did not import one)"))?;
     let base = maintainerr_url();
     let body = json!({
         "libraryId": lib, "name": ctx.marker, "description": format!("media-e2e run {} (inactive, test only)", ctx.run),
@@ -441,12 +463,23 @@ pub async fn maintainerr(ctx: &Ctx, f: &mut Flow) -> R<()> {
             .at("maintainerr", "find a movies library")?;
         body["libraryId"] = json!(real);
         send(ctx.http.post(format!("{base}/api/rules")).json(&body), "maintainerr", "create test rule group").await?;
-        f.ok("maintainerr", "anchor library", "test library not in Maintainerr's 30-min cache yet; anchored on the real Movies library (group inactive, no collection)");
+        f.ok(
+            "maintainerr",
+            "anchor library",
+            "test library not in Maintainerr's 30-min cache yet; anchored on the real Movies library (group inactive, no collection)",
+        );
     }
     let groups = json(ctx.http.get(format!("{base}/api/rules")), "maintainerr", "list rule groups").await?;
-    let id = groups.as_array().into_iter().flatten().find(|g| g["name"] == json!(ctx.marker)).and_then(|g| g["id"].as_i64()).at("maintainerr", "find test rule group")?;
+    let id = groups
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|g| g["name"] == json!(ctx.marker))
+        .and_then(|g| g["id"].as_i64())
+        .at("maintainerr", "find test rule group")?;
     f.ok("maintainerr", "create inactive rule group", format!("id {id}"));
-    let r = json(ctx.http.post(format!("{base}/api/rules/test")).json(&json!({ "mediaId": movie, "rulegroupId": id })), "maintainerr", "test rule group").await?;
+    let r =
+        json(ctx.http.post(format!("{base}/api/rules/test")).json(&json!({ "mediaId": movie, "rulegroupId": id })), "maintainerr", "test rule group").await?;
     let text = r.to_string();
     if r["code"].as_i64() == Some(0) || !text.contains("true") {
         return Err(Fail::new("maintainerr", "test rule group", format!("rule did not match the unwatched test movie: {}", excerpt(&text))));

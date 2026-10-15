@@ -63,6 +63,13 @@ fn flows() -> Vec<FlowDef> {
         d("movie-chain", Offline, "Radarr add and import, Jellyfin scan and playback", step!(flows_arr::movie_chain)),
         d("maintainerr", Offline, "Maintainerr evaluates a test rule group", step!(flows_media::maintainerr)),
         d("seerr", Offline, "a Seerr request reaches Radarr", step!(flows_arr::seerr)),
+        // Before `lidarr`: needs The Slip in Lidarr without files, which `lidarr` then reuses.
+        d(
+            "ombi",
+            Offline,
+            "a header login makes a family account; an Ombi request reaches Radarr and an approved one monitors the album in Lidarr",
+            step!(flows_arr::ombi),
+        ),
         d("sonarr-chain", Offline, "Sonarr add and import, Jellyfin scan", step!(flows_arr::sonarr_chain)),
         d("lidarr", Offline, "Lidarr imports an album, Navidrome serves it", step!(flows_arr::lidarr)),
         d("prowlarr", Offline, "Prowlarr answers a search", step!(flows_arr::prowlarr)),
@@ -82,7 +89,13 @@ fn flows() -> Vec<FlowDef> {
         d("integrations-qbittorrent", Offline, "qBittorrent saves to the shared downloads volume", step!(flows_integrations::qbittorrent_path)),
         d("integrations-bazarr", Offline, "Bazarr: Sonarr and Radarr connected, English default profile, providers", step!(flows_integrations::bazarr)),
         d("integrations-autobrr", Offline, "autobrr: download clients and a filter per arr app", step!(flows_integrations::autobrr)),
-        d("integrations-maintainerr", Offline, "Maintainerr: Jellyfin, Radarr, Sonarr, Seerr connected", step!(flows_integrations::maintainerr)),
+        d(
+            "integrations-maintainerr",
+            Offline,
+            "Maintainerr: Jellyfin, Radarr, Sonarr, Seerr, Ombi, qBittorrent, ntfy connected",
+            step!(flows_integrations::maintainerr),
+        ),
         d("integrations-seerr", Offline, "Seerr: Jellyfin libraries, Radarr, Sonarr", step!(flows_integrations::seerr)),
+        d("integrations-ombi", Offline, "Ombi: header login, Jellyfin libraries, Sonarr, Radarr, Lidarr, ntfy", step!(flows_integrations::ombi)),
     ]
 }
