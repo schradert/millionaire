@@ -47,8 +47,42 @@
           # NixOS handles NVIDIA drivers and container toolkit at the OS level
           driver.enabled = false;
           toolkit.enabled = false;
-          # Device plugin advertises GPU resources to k8s scheduler
+          # With the host driver the validator would modprobe via chroot /host (/sbin/modprobe does
+          # not exist on NixOS) to create /dev/char links; udev already makes them.
+          validator.driver.env = lib.toList {
+            name = "DISABLE_DEV_CHAR_SYMLINK_CREATION";
+            value = "true";
+          };
+          # Device plugin advertises GPU resources to k8s scheduler. Index IDs: the CDI spec NixOS
+          # generates (static/desktop-node.nix) names devices by index, not UUID. The env list
+          # replaces the chart's, so its other defaults are repeated.
           devicePlugin.enabled = true;
+          devicePlugin.env = [
+            {
+              name = "PASS_DEVICE_SPECS";
+              value = "true";
+            }
+            {
+              name = "FAIL_ON_INIT_ERROR";
+              value = "true";
+            }
+            {
+              name = "DEVICE_LIST_STRATEGY";
+              value = "envvar";
+            }
+            {
+              name = "DEVICE_ID_STRATEGY";
+              value = "index";
+            }
+            {
+              name = "NVIDIA_VISIBLE_DEVICES";
+              value = "all";
+            }
+            {
+              name = "NVIDIA_DRIVER_CAPABILITIES";
+              value = "all";
+            }
+          ];
           # DCGM exporter for Prometheus GPU metrics
           dcgmExporter = {
             enabled = true;
