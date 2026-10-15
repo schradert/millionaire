@@ -448,6 +448,10 @@ data:
           description: ''
           href: https://sonarr.trdos.me
           icon: sonarr
+      - tdarr:
+          description: Library health checks and transcoding
+          href: https://tdarr.trdos.me
+          icon: tdarr
     - Observability:
       - Alertmanager:
           description: Alert routing

@@ -443,6 +443,12 @@ data:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
+      name: tdarr
+      url: https://tdarr.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
       name: webdav
       url: https://dav.trdos.me
     - conditions:

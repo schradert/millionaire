@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: tdarr-node
+    app.kubernetes.io/instance: tdarr
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: tdarr
+  name: tdarr-tdarr-node
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: tdarr-node
+      app.kubernetes.io/instance: tdarr
+      app.kubernetes.io/name: tdarr
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: tdarr-node
+        app.kubernetes.io/instance: tdarr
+        app.kubernetes.io/name: tdarr
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: compute,video,utility
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: all
+            - name: TZ
+              value: Etc/UTC
+            - name: ffmpegVersion
+              value: "7"
+            - name: inContainer
+              value: "true"
+            - name: nodeName
+              value: falcon
+            - name: nodeType
+              value: mapped
+            - name: serverIP
+              value: tdarr.media.svc.cluster.local
+            - name: serverPort
+              value: "8266"
+          image: ghcr.io/haveagitgat/tdarr_node:3.01.00@sha256:58d1c5f319c7fc5ece1c7ee54afffca81339efe5298d342bbc1a356ee858d9c5
+          name: tdarr-node
+          resources:
+            limits:
+              cpu: "4"
+              memory: 8Gi
+            requests:
+              cpu: 50m
+              memory: 512Mi
+          volumeMounts:
+            - mountPath: /media/movies
+              name: media-movies
+              readOnly: true
+            - mountPath: /media/tv
+              name: media-tv
+              readOnly: true
+            - mountPath: /app/configs
+              name: node-configs
+            - mountPath: /app/logs
+              name: node-logs
+            - mountPath: /temp
+              name: transcode-cache
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
+      runtimeClassName: nvidia
+      serviceAccountName: tdarr
+      tolerations:
+        - effect: PreferNoSchedule
+          key: node.trdos.me/class
+          operator: Equal
+          value: desktop
+      volumes:
+        - name: media-movies
+          persistentVolumeClaim:
+            claimName: media-movies
+        - name: media-tv
+          persistentVolumeClaim:
+            claimName: media-tv
+        - emptyDir: {}
+          name: node-configs
+        - emptyDir: {}
+          name: node-logs
+        - emptyDir:
+            sizeLimit: 60Gi
+          name: transcode-cache

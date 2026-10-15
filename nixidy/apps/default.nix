@@ -54,6 +54,7 @@
     ./media/flaresolverr.nix
     ./media/maintainerr.nix
     ./media/jellystat.nix
+    ./media/tdarr.nix
     ./media/qbittorrent.nix
     ./media/media-e2e.nix
     ./media/seerr.nix

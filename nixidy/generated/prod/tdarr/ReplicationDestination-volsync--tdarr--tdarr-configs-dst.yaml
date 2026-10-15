@@ -1,0 +1,12 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--tdarr--tdarr-configs-dst
+  namespace: media
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: tdarr-configs
+    repository: volsync--tdarr--tdarr-configs
+  trigger:
+    manual: "1"

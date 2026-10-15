@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: tdarr
+    app.kubernetes.io/instance: tdarr
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: tdarr
+  name: tdarr
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: tdarr
+      app.kubernetes.io/instance: tdarr
+      app.kubernetes.io/name: tdarr
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: tdarr
+        app.kubernetes.io/instance: tdarr
+        app.kubernetes.io/name: tdarr
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: TZ
+              value: Etc/UTC
+            - name: auth
+              value: "false"
+            - name: inContainer
+              value: "true"
+            - name: internalNode
+              value: "false"
+            - name: serverIP
+              value: 0.0.0.0
+            - name: serverPort
+              value: "8266"
+            - name: webUIPort
+              value: "8265"
+          image: ghcr.io/haveagitgat/tdarr:3.01.00@sha256:5b3b8d4e54f41738d12ff71705cf8eb8e90fcbcc05209c331853aef119879992
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8265
+            timeoutSeconds: 1
+          name: tdarr
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8265
+            timeoutSeconds: 1
+          resources:
+            limits:
+              memory: 2Gi
+            requests:
+              cpu: 50m
+              memory: 512Mi
+          startupProbe:
+            failureThreshold: 60
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8265
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /app/configs
+              name: configs
+            - mountPath: /app/logs
+              name: logs
+            - mountPath: /media/movies
+              name: media-movies
+              readOnly: true
+            - mountPath: /media/tv
+              name: media-tv
+              readOnly: true
+            - mountPath: /app/server
+              name: server
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: tdarr
+      volumes:
+        - name: configs
+          persistentVolumeClaim:
+            claimName: tdarr-configs
+        - emptyDir: {}
+          name: logs
+        - name: media-movies
+          persistentVolumeClaim:
+            claimName: media-movies
+        - name: media-tv
+          persistentVolumeClaim:
+            claimName: media-tv
+        - name: server
+          persistentVolumeClaim:
+            claimName: tdarr-server
