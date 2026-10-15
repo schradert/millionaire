@@ -11,6 +11,8 @@
     toYAML = name: yamlObj:
       builtins.replaceStrings ["'!env_var RADARR_API_KEY'" "'!env_var SONARR_API_KEY'"] ["!env_var RADARR_API_KEY" "!env_var SONARR_API_KEY"]
       (builtins.readFile (yaml.generate name yamlObj));
+    # Recyclarr is the one owner of the TRaSH quality profiles and custom formats. Profilarr would write
+    # the same objects from UI state in its own database, so the two would fight: it is not deployed.
     # Recyclarr 8 dropped include templates: the published "templates" are
     # whole configs (config-templates repo) and TRaSH profiles/CF groups are
     # referenced by trash_id. This mirrors sqp-1-web-2160p (radarr) and

@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/controller: cleanuparr
+    app.kubernetes.io/instance: cleanuparr
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: cleanuparr
+  name: cleanuparr
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: cleanuparr
+      app.kubernetes.io/instance: cleanuparr
+      app.kubernetes.io/name: cleanuparr
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: cleanuparr
+        app.kubernetes.io/instance: cleanuparr
+        app.kubernetes.io/name: cleanuparr
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - image: ghcr.io/cleanuparr/cleanuparr:2.10.10@sha256:fd532c99716dbaba1cda12208f3a8e3651b8125c50fcd59dfe35a91c9506e665
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 11011
+            periodSeconds: 30
+            timeoutSeconds: 10
+          name: cleanuparr
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 11011
+          resources:
+            requests:
+              cpu: 20m
+              memory: 256Mi
+          startupProbe:
+            failureThreshold: 60
+            httpGet:
+              path: /health
+              port: 11011
+            periodSeconds: 5
+          volumeMounts:
+            - mountPath: /config
+              name: config
+            - mountPath: /tmp
+              name: tmpfs
+              subPath: tmp
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostAliases:
+        - hostnames:
+            - ntfy.trdos.me
+          ip: 100.64.0.1
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      securityContext:
+        fsGroup: 65534
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 65534
+        runAsUser: 65534
+      serviceAccountName: cleanuparr
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: cleanuparr
+        - emptyDir: {}
+          name: tmpfs

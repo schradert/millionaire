@@ -4,7 +4,7 @@
 use reqwest::Method;
 use serde_json::{json, Value};
 
-use super::apps::{autobrr_url, bazarr_url, lingarr_url, maintainerr_url, Arr, Ombi, Qbt, Seerr, OMBI_USER_HEADER};
+use super::apps::{autobrr_url, bazarr_url, cleanuparr_url, lingarr_url, maintainerr_url, Arr, Ombi, Qbt, Seerr, OMBI_USER_HEADER};
 use crate::{
     ctx::{json, need_secret, send, var, At, Ctx, Fail, R},
     report::Flow,
@@ -278,6 +278,37 @@ pub async fn lingarr(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let want: Vec<&str> = targets.iter().map(String::as_str).collect();
     require("libretranslate", "languages", &codes, &want)?;
     f.ok("lingarr", "integrations", format!("Sonarr and Radarr linked, scheduled translation on, LibreTranslate serves {}", targets.join(", ")));
+    Ok(())
+}
+
+/// Cleanuparr: the arr apps and qBittorrent connected, cleaning and the Seeker on, ntfy set up. The Job is
+/// inside the trusted networks, so the app's own login is bypassed.
+pub async fn cleanuparr(ctx: &Ctx, f: &mut Flow) -> R<()> {
+    let base = cleanuparr_url();
+    let get = |path: &str| ctx.http.get(format!("{base}{path}"));
+    let status = json(get("/api/auth/status"), "cleanuparr", "auth status").await?;
+    if status["setupCompleted"] != json!(true) || status["authBypassActive"] != json!(true) {
+        return Err(Fail::new("cleanuparr", "account", format!("setup or trusted-network bypass missing: {status}")));
+    }
+    for kind in ["sonarr", "radarr", "lidarr"] {
+        let c = json(get(&format!("/api/configuration/{kind}")), "cleanuparr", kind).await?;
+        require("cleanuparr", kind, &names(&c["instances"], "name"), &[kind])?;
+    }
+    let clients = json(get("/api/configuration/download_client"), "cleanuparr", "download clients").await?;
+    require("cleanuparr", "download clients", &names(&clients["clients"], "name"), &["qBittorrent"])?;
+    for (kind, what) in [("queue_cleaner", "queue cleaner"), ("malware_blocker", "malware blocker")] {
+        if json(get(&format!("/api/configuration/{kind}")), "cleanuparr", what).await?["enabled"] != json!(true) {
+            return Err(Fail::new("cleanuparr", what, "disabled"));
+        }
+    }
+    let seeker = json(get("/api/configuration/seeker"), "cleanuparr", "seeker").await?;
+    let searching = seeker["instances"].as_array().into_iter().flatten().filter(|i| i["enabled"] == json!(true)).count();
+    if seeker["proactiveSearchEnabled"] != json!(true) || searching == 0 {
+        return Err(Fail::new("cleanuparr", "seeker", "proactive search is off"));
+    }
+    let providers = json(get("/api/configuration/notification_providers"), "cleanuparr", "notifications").await?;
+    require("cleanuparr", "notifications", &names(&providers["providers"], "name"), &["ntfy"])?;
+    f.ok("cleanuparr", "integrations", format!("arr apps and qBittorrent connected, cleaning on, seeker on {searching} instance(s), ntfy"));
     Ok(())
 }
 

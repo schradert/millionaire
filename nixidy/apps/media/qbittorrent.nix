@@ -127,7 +127,7 @@
                 {matchLabels."batch.kubernetes.io/job-name" = "kapowarr-bootstrap";}
                 {matchLabels."app.kubernetes.io/name" = "media-e2e";}
               ]
-              ++ map (app: {matchLabels."app.kubernetes.io/name" = app;}) ["radarr" "sonarr" "lidarr" "sportarr" "prowlarr" "autobrr" "maintainerr" "bookshelf" "bookshelf-audio" "kapowarr"];
+              ++ map (app: {matchLabels."app.kubernetes.io/name" = app;}) ["radarr" "sonarr" "lidarr" "sportarr" "prowlarr" "autobrr" "maintainerr" "bookshelf" "bookshelf-audio" "kapowarr" "cleanuparr"];
             toPorts = lib.toList {
               ports = lib.toList {
                 port = toString port;

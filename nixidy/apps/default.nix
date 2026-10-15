@@ -44,6 +44,7 @@
     ./media/music-assistant.nix
     ./media/arr/autobrr.nix
     ./media/arr/bazarr.nix
+    ./media/arr/cleanuparr.nix
     ./media/arr/bookshelf.nix
     ./media/arr/lidarr.nix
     ./media/arr/prowlarr.nix

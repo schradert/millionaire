@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: cleanuparr
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: cleanuparr
+    app.kubernetes.io/service: cleanuparr
+  name: cleanuparr
+  namespace: media
+spec:
+  ports:
+    - name: http
+      port: 11011
+      protocol: TCP
+      targetPort: 11011
+  selector:
+    app.kubernetes.io/controller: cleanuparr
+    app.kubernetes.io/instance: cleanuparr
+    app.kubernetes.io/name: cleanuparr
+  type: ClusterIP

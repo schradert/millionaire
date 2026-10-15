@@ -93,6 +93,7 @@ default on, nixidy/system/storage/postgres.nix), so every database is scraped; t
 | cilium-crds | CRDs only | none needed |
 | clickhouse | ServiceMonitor (operator) |  |
 | clickhouse-crds | CRDs only | none needed |
+| cleanuparr | none | no metrics endpoint upstream |
 | cloudflared | ServiceMonitor |  |
 | contextforge | CNPG database only | native /metrics/prometheus exists but needs a JWT bearer; no declarative token. CNPG metrics are scraped |
 | coredns | via prometheus app: kube-prometheus-coredns ServiceMonitor |  |

@@ -1,0 +1,12 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: volsync--cleanuparr--cleanuparr-dst
+  namespace: media
+spec:
+  restic:
+    copyMethod: Direct
+    destinationPVC: cleanuparr
+    repository: volsync--cleanuparr--cleanuparr
+  trigger:
+    manual: "1"

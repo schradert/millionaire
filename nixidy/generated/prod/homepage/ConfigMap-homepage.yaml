@@ -364,6 +364,11 @@ data:
           description: ''
           href: https://bookshelf-audio.trdos.me
           icon: bookshelf-audio
+      - cleanuparr:
+          description: Removes stalled and malicious downloads; searches for missing
+            and upgradable media
+          href: https://cleanuparr.trdos.me
+          icon: mdi-broom
       - dvd-webdav:
           description: ''
           href: https://dvd.trdos.me
