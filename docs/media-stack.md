@@ -84,12 +84,16 @@ How the bootstrap acts as tristan: impersonation links are a Ryot Pro feature, a
    - Maloja has a single user.
    - Navidrome's Maloja link exists only for tristan.
    - The ListenBrainz forward is a TODO that needs a user token.
-7. **Metrics gaps:**
+7. **Metrics gaps** (note: the apparent duplicate arr scrapes are not duplicates. Job `<app>` is exportarr on :9707 from the app ServiceMonitor; job `media/<app>` is the CNPG operator PodMonitor on the app's Postgres :9187. Checked 2026-10-15: 213 active Prometheus targets, none share a scrape URL, and each exportarr series exists once, so the dashboard `max()` is harmless and nothing needs removing):
    - ABS, Kavita, Komga, Maloja, multi-scrobbler, Seerr, Kapowarr and Suwayomi expose nothing.
    - Bazarr's exportarr needs a key that can't be set declaratively.
    - qBittorrent and gluetun have no exporter.
    - The candidates are qbittorrent-exporter and Gatus-based uptime alerts.
-8. **Requests for music and books** have no front end. Seerr and Ombi cover movies and TV only. Candidates: Ryot collections pushed to Lidarr and Bookshelf (Ryot has no such push), or a Lidarr request UI.
+8. **Requests for music and books** have no front end. Seerr and Ombi cover movies and TV only (Ombi also lists Lidarr music; neither mentions Bookshelf, Readarr or Kapowarr). Researched 2026-10-15:
+   - **Shelfmark** (`calibrain/shelfmark`, formerly Calibre-Web-Automated-Book-Downloader) is the best fit for books and audiobooks. It has a built-in multi-user request system with per-source request policies, native OIDC and proxy-header auth (so each Keycloak person gets their own account and requests), Prowlarr indexers and download clients, and hands files to Audiobookshelf or Calibre. Caveats: its README calls it "feature stable, best effort" with no roadmap; it searches and downloads itself rather than driving Bookshelf, so it would be a second acquisition path into the same library folders; it has no comics or manga.
+   - **AudioBookRequest** (`markbeep/AudioBookRequest`): OIDC and per-user requests, Prowlarr, Audiobookshelf scan. Audiobooks only, no forward-auth, and admin-created accounts.
+   - Comics and manga: no request front end exists for Kapowarr or Suwayomi.
+   - Not deployed: it would add a second acquisition path for little gain while Bookshelf covers the admin workflow. **Recommended workflow today:** people ask the admin, who adds the book in Bookshelf (ebooks or audiobooks), the comic volume in Kapowarr, or the manga in Suwayomi; Ryot collections stay the wish list. **If requests become a need:** deploy Shelfmark behind OIDC for books and audiobooks (point its download client at qBittorrent and its output at the Bookshelf-managed folders so Kavita and Audiobookshelf pick them up), and leave comics and manga admin-driven.
 9. **Letterboxd → Ryot ongoing sync.** This is a follow-up CronJob that reads the public diary RSS (`tmdb:movieId`) and posts to a Ryot Generic JSON sink. Ryot does not de-duplicate (upstream issue 1611), so the job keeps state.
 10. **Minor:**
     - Jellyfin also mounts books, audiobooks and comics as `books` libraries, duplicating Kavita, Komga and ABS.
