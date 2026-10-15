@@ -219,7 +219,7 @@ dependencies = [
 
 [[package]]
 name = "e2e"
-version = "0.7.3"
+version = "0.7.4"
 dependencies = [
  "hmac",
  "pyroscope",
