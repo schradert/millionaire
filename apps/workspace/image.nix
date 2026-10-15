@@ -38,6 +38,7 @@
       gnutar
       gzip
       helix
+      hostname
       htop
       jq
       less
@@ -69,6 +70,10 @@
     experimental-features = nix-command flakes
     # unprivileged container: no user namespaces, no build users
     sandbox = false
+    # fsGroup leaves setgid on the volume's directories, and the builders'
+    # seccomp filter refuses any chmod that keeps it (EPERM in fetchzip's
+    # `chmod -R +w`); outputs are canonicalised without set[ug]id anyway
+    filter-syscalls = false
     build-users-group =
     max-jobs = auto
     substituters = https://cache.nixos.org https://nix-community.cachix.org https://devenv.cachix.org
@@ -130,7 +135,7 @@
 in
   n2c.buildImage {
     name = "${registry}/library/workspace";
-    tag = "0.1.1";
+    tag = "0.1.2";
     arch = "amd64";
     # Also usable without a /nix volume (the store and its database as user coder).
     initializeNixDatabase = true;
