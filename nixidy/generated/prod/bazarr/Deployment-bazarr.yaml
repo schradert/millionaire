@@ -55,10 +55,8 @@ spec:
               name: config
             - mountPath: /media/movies
               name: media-movies
-              readOnly: true
             - mountPath: /media/tv
               name: media-tv
-              readOnly: true
             - mountPath: /config/cache
               name: tmpfs
               subPath: cache

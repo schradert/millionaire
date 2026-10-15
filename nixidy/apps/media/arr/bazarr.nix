@@ -17,6 +17,22 @@
     applications.bazarr = {
       namespace = "media";
       volsync.pvcs.bazarr.title = "bazarr";
+      # Idempotent post-sync bootstrap (apps/app-bootstrap bazarr): the English language profile as
+      # the default, Sonarr/Radarr links and the account-free subtitle providers. Bazarr only
+      # manages what Sonarr and Radarr manage; the DVD rips they did not add (/media/movies,
+      # /media/dvd) are out of its scope. The API key is read from Bazarr's own index page.
+      bootstrap = lib.mkIf (pinned.images ? app-bootstrap-bazarr) {
+        image = with pinned.images.app-bootstrap-bazarr; "${repository}:${tag}@${digest}";
+        args = ["bazarr"];
+        env = {
+          SONARR_API_KEY_FILE = "/secrets/sonarr/apikey";
+          RADARR_API_KEY_FILE = "/secrets/radarr/apikey";
+        };
+        secrets = {
+          sonarr = "sonarr-apikey";
+          radarr = "radarr-apikey";
+        };
+      };
       helm.releases.bazarr = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
@@ -61,25 +77,17 @@
               }
             ];
           };
+          # Writable: Bazarr saves each subtitle next to its video. Same paths as Sonarr/Radarr, so
+          # no path mapping.
           persistence.media-movies = {
             type = "persistentVolumeClaim";
             existingClaim = "media-movies";
-            advancedMounts.bazarr.bazarr = [
-              {
-                path = "/media/movies";
-                readOnly = true;
-              }
-            ];
+            advancedMounts.bazarr.bazarr = [{path = "/media/movies";}];
           };
           persistence.media-tv = {
             type = "persistentVolumeClaim";
             existingClaim = "media-tv";
-            advancedMounts.bazarr.bazarr = [
-              {
-                path = "/media/tv";
-                readOnly = true;
-              }
-            ];
+            advancedMounts.bazarr.bazarr = [{path = "/media/tv";}];
           };
           route.bazarr = {
             hostnames = [hostname];
