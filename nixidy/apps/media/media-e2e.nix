@@ -25,7 +25,6 @@
       "komga-admin"
       "audiobookshelf-admin"
       "navidrome-admin"
-      "multi-scrobbler"
       "maloja-admin"
       "dvd-webdav"
       "qbittorrent-admin"

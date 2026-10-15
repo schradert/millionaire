@@ -47,10 +47,17 @@ in {
             # hasn't deployed yet) fails the whole config with "host not found in
             # upstream" and takes the entire SSO proxy offline for every service.
             resolver 10.43.0.10 valid=30s ipv6=off;
-            set $upstream ${cfg.url};${lib.optionalString (cfg.groups != null) ''
+            set $upstream ${cfg.url};${lib.optionalString (cfg.groups != null && cfg.users == []) ''
 
           # oauth2-proxy sends one X-Forwarded-Groups line per group; nginx joins them with ", ".
-          if ($http_x_forwarded_groups !~ "(^|,\s*)(${lib.concatStringsSep "|" cfg.groups})(\s*,|$)") { return 403; }''}
+          if ($http_x_forwarded_groups !~ "(^|,\s*)(${lib.concatStringsSep "|" cfg.groups})(\s*,|$)") { return 403; }''}${lib.optionalString (cfg.users != []) ''
+
+          # Named users, or a member of any listed group (nginx has no OR: collect it in a variable).
+          set $allowed 0;
+          if ($http_x_forwarded_preferred_username ~ "^(${lib.concatMapStringsSep "|" lib.escapeRegex cfg.users})$") { set $allowed 1; }${lib.optionalString (cfg.groups != null) ''
+
+            if ($http_x_forwarded_groups ~ "(^|,\s*)(${lib.concatStringsSep "|" cfg.groups})(\s*,|$)") { set $allowed 1; }''}
+          if ($allowed = 0) { return 403; }''}
             client_max_body_size 0;
             proxy_buffering off;
             proxy_pass $upstream$request_uri;
@@ -77,6 +84,7 @@ in {
       options.namespace = can.str "Namespace where the HTTPRoute lives" {};
       options.websocket = can.bool "Enable WebSocket proxying" {default = false;};
       options.groups = can.opt.list.str "Keycloak groups allowed (any of); null = every signed-in user" {};
+      options.users = can.list.str "Keycloak usernames also allowed besides `groups`; empty = no per-user rule" {default = [];};
       config.groups = lib.mkDefault (portalGroups name);
     });
     config = {
