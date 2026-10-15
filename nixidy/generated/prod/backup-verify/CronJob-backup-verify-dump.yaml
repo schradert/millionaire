@@ -1,0 +1,69 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-verify-dump
+  namespace: backup-verify
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 21600
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: backup-verify
+        spec:
+          containers:
+            - env:
+                - name: DUMP_SOURCES
+                  value: media/immich|volsync--immich--immich-server|^/backups/.*\.sql\.gz$
+                - name: NTFY_URL
+                  value: https://ntfy.trdos.me/alerts
+                - name: SELF_IMAGE
+                  value: harbor.trdos.me/library/backup-verify:0.2.0@sha256:bc3da0aecf7a575dcdcce2ea13a0dcebab3e7fb3aeaac42c818304af282f7d73
+                - name: STEPS
+                  value: dump
+              envFrom:
+                - secretRef:
+                    name: backup-verify
+              image: harbor.trdos.me/library/backup-verify:0.2.0@sha256:bc3da0aecf7a575dcdcce2ea13a0dcebab3e7fb3aeaac42c818304af282f7d73
+              name: backup-verify
+              resources:
+                limits:
+                  memory: 4Gi
+                requests:
+                  cpu: 100m
+                  memory: 512Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - mountPath: /tmp
+                  name: tmp
+                - mountPath: /cache
+                  name: cache
+          hostAliases:
+            - hostnames:
+                - ntfy.trdos.me
+              ip: 100.64.0.1
+          restartPolicy: Never
+          securityContext:
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          serviceAccountName: backup-verify
+          volumes:
+            - emptyDir: {}
+              name: tmp
+            - emptyDir:
+                sizeLimit: 20Gi
+              name: cache
+  schedule: 0 8 * * 0
+  successfulJobsHistoryLimit: 3

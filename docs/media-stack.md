@@ -51,7 +51,7 @@ Ryot has a music type, but no integration reads Navidrome, Maloja or ListenBrain
 
 | App | Auth | Per-user | Bootstrap | Data | Metrics | E2E |
 |---|---|---|---|---|---|---|
-| Immich | OIDC (email link) | yes | yes (API key, e2e admin) | CNPG without barman (in-app dump only, restore never verified) + library PVC VolSync | ServiceMonitor, dashboard | oidc-immich, upload |
+| Immich | OIDC (email link) | yes | yes (API key, e2e admin) | CNPG without barman (in-app daily dump on the VolSync-backed PVC; restore verified weekly by `backup-verify-dump`) + library PVC VolSync | ServiceMonitor, dashboard | oidc-immich, upload |
 | Owncast | own admin password | n/a | none | PVC + VolSync | none | planned |
 
 ### Tracking hub: Ryot
@@ -78,7 +78,7 @@ How the bootstrap acts as tristan: impersonation links are a Ryot Pro feature, a
    - e2e no longer counts an arr `UpdateCheck` notice as a failure (#859, e2e 0.12.1 and later).
 3. **Plays into Ryot not exercised end to end.** The Jellyfin → Ryot sink and webhook are configured and idempotent, but no real play has gone through yet. Check Ryot's Jellyfin integration `triggerResult` after the first play.
 4. **e2e coverage for the new acquirers.** Add flows for Bookshelf (root folder and Prowlarr app present), Kapowarr (API key and root folder) and Suwayomi (GraphQL `aboutServer`), on the media runner.
-5. **Immich database backups.** An in-app dump runs daily, but no restore has ever been tested, and CNPG barman is off (the image lacks it). Fix: a barman-capable image, or add the dump to backup-verify.
+5. **Immich database backups. Done 2026-10-15.** CNPG barman stays off (the operand image lacks barman-cloud and the Barman Cloud plugin is not installed), so the backup is Immich's daily in-app dump on the VolSync-backed PVC (RPO ~1 day, no PITR). The restore is now verified: the newest dump was restored from B2 into a scratch cluster (72 tables, 233165 rows, identical to live) and `backup-verify-dump` repeats it weekly, with alerts. Procedure: `docs/pvc-and-postgres-restore.md`. Open: a barman-capable image or the plugin would give PITR.
 6. **Music tracking is single-user.**
    - multi-scrobbler allows only tristan.
    - Maloja has a single user.
@@ -103,7 +103,7 @@ How the bootstrap acts as tristan: impersonation links are a Ryot Pro feature, a
 ## Plan
 
 - **Next, small:** confirm gap 3 after a real play, and fix `docs/observability.md`. Each is a one-file change.
-- **Then:** gap 4 (e2e flows for the new apps, one e2e release) and the Immich restore check (backup-verify).
+- **Then:** gap 4 (e2e flows for the new apps, one e2e release). The Immich restore check (gap 5) is done.
 - **Bigger:** music multi-user scrobbling (Maloja is single-user by design, so move to ListenBrainz-compatible per-user sinks), request front ends for music and books, and the Letterboxd RSS job.
 
 ## App notes

@@ -12,8 +12,7 @@ spec:
         - alert: BackupVerificationFailed
           annotations:
             description: |
-              A check failed (the failures were also POSTed to ntfy): restic check on a VolSync repository, the scratch volume or
-              database restore, or the etcd snapshot in B2 being over 12h old. Details: kubectl -n backup-verify logs job/<newest backup-verify-* job>.
+              A check failed (the failures were also POSTed to ntfy). Details: kubectl -n backup-verify logs job/<newest backup-verify-* job>.
               Scratch resources are deleted on exit; leftovers: kubectl -n backup-verify get all,pvc -l app.kubernetes.io/part-of=backup-verify.
               Procedures: docs/pvc-and-postgres-restore.md, docs/etcd-restore.md.
             summary: The monthly backup verification failed
@@ -36,6 +35,35 @@ spec:
             (time() - kube_cronjob_status_last_successful_time{namespace="backup-verify",cronjob="backup-verify"} > 3024000)
             or
             ((time() - kube_cronjob_created{namespace="backup-verify",cronjob="backup-verify"} > 3024000) unless on (namespace, cronjob) kube_cronjob_status_last_successful_time{namespace="backup-verify",cronjob="backup-verify"})
+          for: 10m
+          labels:
+            severity: critical
+        - alert: DumpRestoreVerificationFailed
+          annotations:
+            description: |
+              A check failed (the failures were also POSTed to ntfy). Details: kubectl -n backup-verify logs job/<newest backup-verify-dump-* job>.
+              Scratch resources are deleted on exit; leftovers: kubectl -n backup-verify get all,pvc -l app.kubernetes.io/part-of=backup-verify.
+              Procedures: docs/pvc-and-postgres-restore.md, docs/etcd-restore.md.
+            summary: The weekly in-app database dump restore check (Immich) failed
+          expr: |
+            (
+              kube_cronjob_status_last_schedule_time{namespace="backup-verify",cronjob="backup-verify-dump"} > on (namespace, cronjob) kube_cronjob_status_last_successful_time{namespace="backup-verify",cronjob="backup-verify-dump"}
+              or
+              kube_cronjob_status_last_schedule_time{namespace="backup-verify",cronjob="backup-verify-dump"} unless on (namespace, cronjob) kube_cronjob_status_last_successful_time{namespace="backup-verify",cronjob="backup-verify-dump"}
+            ) unless on (namespace, cronjob) (kube_cronjob_status_active{namespace="backup-verify",cronjob="backup-verify-dump"} > 0)
+          for: 5m
+          labels:
+            severity: warning
+        - alert: DumpRestoreVerificationStale
+          annotations:
+            description: |
+              The backup-verify-dump CronJob runs weekly. It either failed every time, did not run (suspended, image missing, scheduling), or never succeeded.
+              Check: kubectl -n backup-verify get cronjob,job,pod.
+            summary: No successful in-app database dump restore check (Immich) in 10 days
+          expr: |
+            (time() - kube_cronjob_status_last_successful_time{namespace="backup-verify",cronjob="backup-verify-dump"} > 864000)
+            or
+            ((time() - kube_cronjob_created{namespace="backup-verify",cronjob="backup-verify-dump"} > 864000) unless on (namespace, cronjob) kube_cronjob_status_last_successful_time{namespace="backup-verify",cronjob="backup-verify-dump"})
           for: 10m
           labels:
             severity: critical
