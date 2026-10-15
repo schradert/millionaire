@@ -34,6 +34,8 @@
           env =
             {
               QBITTORRENT_PASSWORD_FILE = "/secrets/qbittorrent/password";
+              # Kapowarr stores folders with a trailing slash; matching it keeps reruns from rewriting it.
+              DOWNLOAD_FOLDER = "/media/downloads/kapowarr/";
             }
             // lib.optionalAttrs credentials {COMICVINE_API_KEY_FILE = "/secrets/comicvine/api-key";};
           secrets =
