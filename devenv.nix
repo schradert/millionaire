@@ -65,6 +65,22 @@ in {
         subcmd="''${1:---help}"
         shift 2>/dev/null || true
 
+        # Push one image, then sign the digest of the tag just pushed (the image's own tag, not
+        # whichever tag the registry lists first). A failed build stops here.
+        publish_one() {
+          echo "==> Publishing $1..."
+          nix run "${imageBase}.$1.copyToRegistry" --no-pure-eval || { echo "    FAILED: $1 was not pushed" >&2; return 1; }
+          tag=$(nix eval --raw "${imageBase}.$1.imageTag" --no-pure-eval) || return 1
+          digest=$(skopeo inspect "docker://${registry}/library/$1:$tag" 2>/dev/null | ${lib.getExe pkgs.jq} -r '.Digest // empty')
+          [ -n "$digest" ] || { echo "    FAILED: no ${registry}/library/$1:$tag after the push" >&2; return 1; }
+          echo "    Tag: $tag"
+          echo "    Digest: $digest"
+          echo "    Signing..."
+          cosign sign --yes --key "$COSIGN_KEY" --signing-config "$COSIGN_SIGNING_CONFIG" "${registry}/library/$1@$digest" \
+            && echo "    Signed." \
+            || echo "    Signing skipped (no COSIGN_KEY or signing failed)"
+        }
+
         case "$subcmd" in
           list|-l)
             echo "Available images:"
@@ -84,17 +100,7 @@ in {
             case "$target" in
               --all)
                 ${builtins.concatStringsSep "\n" (map (name: ''
-            echo "==> Publishing ${name}..."
-            nix run "${imageBase}.${name}.copyToRegistry" --no-pure-eval
-            tag=$(skopeo list-tags "docker://${registry}/library/${name}" 2>/dev/null | ${lib.getExe pkgs.jq} -r '.Tags[0] // empty')
-            digest=$(skopeo inspect "docker://${registry}/library/${name}:$tag" 2>/dev/null | ${lib.getExe pkgs.jq} -r '.Digest // empty')
-            if [ -n "$digest" ]; then
-              echo "    Digest: $digest"
-              echo "    Signing..."
-              cosign sign --yes --key "$COSIGN_KEY" --signing-config "$COSIGN_SIGNING_CONFIG" "${registry}/library/${name}@$digest" \
-                && echo "    Signed." \
-                || echo "    Signing skipped (no COSIGN_KEY or signing failed)"
-            fi
+            publish_one ${name} || exit 1
           '')
           imageNames)}
                 echo "Done."
@@ -105,17 +111,7 @@ in {
                 exit 1
                 ;;
               *)
-                echo "==> Publishing $target..."
-                nix run "${imageBase}.$target.copyToRegistry" --no-pure-eval
-                tag=$(skopeo list-tags "docker://${registry}/library/$target" 2>/dev/null | ${lib.getExe pkgs.jq} -r '.Tags[0] // empty')
-                digest=$(skopeo inspect "docker://${registry}/library/$target:$tag" 2>/dev/null | ${lib.getExe pkgs.jq} -r '.Digest // empty')
-                if [ -n "$digest" ]; then
-                  echo "    Digest: $digest"
-                  echo "    Signing..."
-                  cosign sign --yes --key "$COSIGN_KEY" --signing-config "$COSIGN_SIGNING_CONFIG" "${registry}/library/$target@$digest" \
-                    && echo "    Signed." \
-                    || echo "    Signing skipped (no COSIGN_KEY or signing failed)"
-                fi
+                publish_one "$target" || exit 1
                 ;;
             esac
             ;;
