@@ -434,6 +434,11 @@
                     "nullable": true,
                     "type": "string"
                   },
+                  "summary": {
+                    "description": "The last encode's one-line summary (main runtime, extras, warnings); the message once Done.",
+                    "nullable": true,
+                    "type": "string"
+                  },
                   "titles": {
                     "default": [],
                     "items": {

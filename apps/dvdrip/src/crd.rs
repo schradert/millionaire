@@ -242,6 +242,9 @@ pub struct DiscStatus {
     /// The spec generation the last encode used (a change to mainTitle/protected re-encodes).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub encoded_generation: Option<i64>,
+    /// The last encode's one-line summary (main runtime, extras, warnings); the message once Done.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
     /// RFC 3339 time of the last phase change.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub since: Option<String>,

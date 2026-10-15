@@ -1,0 +1,61 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: dvdrip-import
+  namespace: media
+spec:
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/component: import
+            app.kubernetes.io/name: dvdrip
+        spec:
+          containers:
+            - args:
+                - import
+                - --dvd-root
+                - /media/dvd
+                - --rips
+                - /rips
+              image: harbor.trdos.me/library/dvdrip:0.1.3@sha256:1fd286350acf5f02c58ea484581c24d1dd7f16c4e3be4a8ba7ab028fa14618ff
+              name: import
+              volumeMounts:
+                - mountPath: /work
+                  name: work
+                  readOnly: false
+                - mountPath: /tmp
+                  name: tmp
+                - mountPath: /media/dvd
+                  name: dvd
+                  readOnly: true
+                - mountPath: /rips
+                  name: rips
+                  readOnly: true
+          nodeSelector:
+            kubernetes.io/hostname: falcon
+          restartPolicy: Never
+          serviceAccountName: dvdrip-agent
+          tolerations:
+            - effect: PreferNoSchedule
+              key: node.trdos.me/class
+              operator: Equal
+              value: desktop
+          volumes:
+            - name: work
+              persistentVolumeClaim:
+                claimName: dvd-rip-work
+            - emptyDir: {}
+              name: tmp
+            - name: dvd
+              persistentVolumeClaim:
+                claimName: media-dvd
+                readOnly: true
+            - hostPath:
+                path: /data/dvd-rips
+              name: rips
+      ttlSecondsAfterFinished: 604800
+  schedule: 0 0 1 1 *
+  suspend: true

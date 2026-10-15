@@ -262,8 +262,9 @@ async fn apply(disc: Arc<Disc>, ctx: Arc<Ctx>) -> Result<Action, Error> {
                 }
                 Phase::Done => {
                     patch["publishKey"] = json!(publish_key(&disc.spec));
-                    // The encode's summary is the message people want to see.
-                    if let Some(m) = st.message.clone().filter(|m| !m.starts_with("publish")) {
+                    // Done shows the encode's summary, whatever the last step said.
+                    if let Some(m) = st.summary.clone() {
+                        patch["message"] = json!(m);
                         notify::send(&m, "done").await;
                     }
                     ctx.metrics.event("done");
