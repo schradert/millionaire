@@ -76,6 +76,35 @@ The `barmanObjectStore` recovery path is deprecated and removed in CNPG 1.30; mo
 For a real restore, use the same Cluster spec under the original name after deleting the broken cluster (and its PVC), with
 `bootstrap.recovery.source` set and `backup` re-added.
 
+## Immich: restore the in-app dump into a scratch cluster (rehearsed 2026-10-15)
+
+Immich's CNPG cluster has no barman (its operand image lacks barman-cloud, and the Barman Cloud plugin is not installed), so there is
+no base backup or WAL archive for it. Its only database backup is Immich's own job: a daily 02:00 `pg_dump` (gzip) into
+`/usr/src/app/upload/backups/` on the `immich-server` PVC, which VolSync backs up daily to `volsync--immich--immich-server`.
+The dump is therefore up to about 26h old at the time of a VolSync snapshot (RPO ~1 day, no point-in-time recovery).
+
+Restore (what `backup-verify` step `dump` does, in `backup-verify`; to do it by hand use any scratch namespace):
+
+1. Scratch cluster, same image and `postgresUID/GID` (999) and preload library as the live one, `bootstrap.initdb` with database
+   `immich`, owner `immich`, no `backup` section (see `nixidy/apps/media/immich.nix` for the live spec).
+2. `restic dump latest /backups/immich-db-backup-<ts>-<immich version>-pg17.6.sql.gz` (repository from the
+   `volsync--immich--immich-server` secret), piped through `kubectl exec -i <pod> -c postgres -- bash -c "gunzip | sed
+   \"s/SELECT pg_catalog.set_config('search_path', '', false);/SELECT pg_catalog.set_config('search_path', 'public, pg_catalog', true);/g\" |
+   psql -U postgres -d immich -v ON_ERROR_STOP=1"`. The `sed` is the rewrite Immich documents for its dumps. The dump creates its own
+   extensions (vector, vchord, cube, earthdistance, ...), so the preload library is the only prerequisite. It took about 2.5 minutes in total.
+3. Compare with the live database (read-only): 2026-10-15 the restore had 72 tables and 233165 rows, identical to live
+   (72 / 233165; users 7, assets 2). Clean up: delete the scratch Cluster; its PVC goes with it.
+
+For a real restore: stop immich-server, drop and recreate the `immich` database (or restore into a new cluster as above and swap
+`DB_HOSTNAME`), load the dump the same way, start immich-server. Machine-learning and thumbnails are not in the database; the
+library PVC is restored separately (VolSync).
+
+CronJob `backup-verify-dump` (Sunday 08:00 America/Los_Angeles, `STEPS=dump`, entries from `dumpSources` in
+`nixidy/system/storage/backup-verify.nix`) repeats this weekly: newest dump in the latest VolSync snapshot must be under 60h old,
+load without error, and yield at least as many tables as the previous run (kept in ConfigMap `backup-verify-state`). Failure fails the
+Job (`KubeJobFailed`), POSTs to ntfy, and alerts `DumpRestoreVerificationFailed` / `DumpRestoreVerificationStale` (10 days). To cover
+another database without barman, add an entry `namespace/cluster|repository|path regex` to `dumpSources`.
+
 ## Backup coverage gaps seen on 2026-10-10
 
 - ReplicationSources with no sync ever: forgejo (data-forgejo-0), baikal, ha-config, syncthing, zwave-js-ui, audiobookshelf, prosody.

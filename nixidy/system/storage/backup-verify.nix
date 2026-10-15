@@ -3,6 +3,8 @@
 # scratch cluster (both in the backup-verify namespace, deleted afterwards, also on failure), and checks
 # the newest etcd snapshot in B2 is under 12h old. The Job fails if any check failed and POSTs the
 # failures to ntfy; kube-state-metrics' cronjob series feed the alerts (there is no pushgateway).
+# A second, weekly CronJob (backup-verify-dump, STEPS=dump) restores the newest in-app database dump
+# (Immich, which has no CNPG barman) from its VolSync repository into a scratch cluster.
 # Manual run / one specific target: docs/pvc-and-postgres-restore.md.
 {config, ...}: {
   nixidy = {
@@ -13,8 +15,137 @@
     inherit (config.canivete.meta) domain;
     name = "backup-verify";
     image = with pinned.images.backup-verify; "${repository}:${tag}@${digest}";
-    selector = ''namespace="${name}",cronjob="${name}"'';
+    dumpName = "${name}-dump";
+    selectorFor = cronjob: ''namespace="${name}",cronjob="${cronjob}"'';
     month = 35 * 86400;
+    tenDays = 10 * 86400;
+    # In-app dumps of databases without CNPG barman (the Immich operand image lacks barman-cloud):
+    # `namespace/cluster|VolSync restic repository|regex of the dump path inside the snapshot`.
+    dumpSources = ["media/immich|volsync--immich--immich-server|^/backups/.*\\.sql\\.gz$"];
+    # One CronJob per cadence. The scratch sweep at the start and end of every run is global to the
+    # namespace, so the schedules must never overlap (the weekly dump run is a few minutes long).
+    mkCronJob = {
+      schedule,
+      env ? {},
+    }: {
+      spec = {
+        inherit schedule;
+        concurrencyPolicy = "Forbid";
+        successfulJobsHistoryLimit = 3;
+        failedJobsHistoryLimit = 3;
+        jobTemplate.spec = {
+          backoffLimit = 0;
+          activeDeadlineSeconds = 21600;
+          template = {
+            metadata.labels."app.kubernetes.io/name" = name;
+            spec = {
+              restartPolicy = "Never";
+              serviceAccountName = name;
+              # ntfy lives on hyena's tailnet IP (same pattern as alertmanager).
+              hostAliases = lib.toList {
+                ip = "100.64.0.1";
+                hostnames = ["ntfy.${domain}"];
+              };
+              securityContext = {
+                runAsNonRoot = true;
+                runAsUser = 65534;
+                runAsGroup = 65534;
+                seccompProfile.type = "RuntimeDefault";
+              };
+              containers = lib.toList {
+                inherit name image;
+                envFrom = lib.toList {secretRef.name = name;};
+                env = lib.mapAttrsToList (name: value: {inherit name value;}) ({
+                    SELF_IMAGE = image;
+                    NTFY_URL = "https://ntfy.${domain}/alerts";
+                  }
+                  // env);
+                resources = {
+                  requests = {
+                    cpu = "100m";
+                    memory = "512Mi";
+                  };
+                  limits.memory = "4Gi";
+                };
+                securityContext = {
+                  allowPrivilegeEscalation = false;
+                  readOnlyRootFilesystem = true;
+                  capabilities.drop = ["ALL"];
+                };
+                volumeMounts = [
+                  {
+                    name = "tmp";
+                    mountPath = "/tmp";
+                  }
+                  {
+                    name = "cache";
+                    mountPath = "/cache";
+                  }
+                ];
+              };
+              volumes = [
+                {
+                  name = "tmp";
+                  emptyDir = {};
+                }
+                {
+                  name = "cache";
+                  emptyDir.sizeLimit = "20Gi";
+                }
+              ];
+            };
+          };
+        };
+      };
+    };
+    mkRules = {
+      cronjob,
+      cadence,
+      period,
+      what,
+      title,
+    }: let
+      selector = selectorFor cronjob;
+    in [
+      {
+        alert = "${what}Failed";
+        # The newest scheduled run did not succeed and none is running.
+        expr = ''
+          (
+            kube_cronjob_status_last_schedule_time{${selector}} > on (namespace, cronjob) kube_cronjob_status_last_successful_time{${selector}}
+            or
+            kube_cronjob_status_last_schedule_time{${selector}} unless on (namespace, cronjob) kube_cronjob_status_last_successful_time{${selector}}
+          ) unless on (namespace, cronjob) (kube_cronjob_status_active{${selector}} > 0)
+        '';
+        "for" = "5m";
+        labels.severity = "warning";
+        annotations = {
+          summary = "The ${cadence} ${title} failed";
+          description = ''
+            A check failed (the failures were also POSTed to ntfy). Details: kubectl -n backup-verify logs job/<newest ${cronjob}-* job>.
+            Scratch resources are deleted on exit; leftovers: kubectl -n backup-verify get all,pvc -l app.kubernetes.io/part-of=backup-verify.
+            Procedures: docs/pvc-and-postgres-restore.md, docs/etcd-restore.md.
+          '';
+        };
+      }
+      {
+        alert = "${what}Stale";
+        expr = ''
+          (time() - kube_cronjob_status_last_successful_time{${selector}} > ${toString period})
+          or
+          ((time() - kube_cronjob_created{${selector}} > ${toString period}) unless on (namespace, cronjob) kube_cronjob_status_last_successful_time{${selector}})
+        '';
+        "for" = "10m";
+        labels.severity = "critical";
+        annotations = {
+          summary = "No successful ${title} in ${toString (period / 86400)} days";
+          description = ''
+            The ${cronjob} CronJob runs ${cadence}. It either failed every time, did not run (suspended, image missing, scheduling), or never succeeded.
+            Check: kubectl -n backup-verify get cronjob,job,pod.
+          '';
+        };
+      }
+    ];
   in {
     applications.${name} = lib.mkIf (pinned.images ? backup-verify) {
       namespace = name;
@@ -109,72 +240,15 @@
             AWS_SECRET_ACCESS_KEY = "{{ .password }}";
           };
         };
-        cronJobs.${name}.spec = {
+        cronJobs = {
           # Midday on the 1st, clear of the 04:00 VolSync syncs.
-          schedule = "0 12 1 * *";
-          concurrencyPolicy = "Forbid";
-          successfulJobsHistoryLimit = 3;
-          failedJobsHistoryLimit = 3;
-          jobTemplate.spec = {
-            backoffLimit = 0;
-            activeDeadlineSeconds = 21600;
-            template = {
-              metadata.labels."app.kubernetes.io/name" = name;
-              spec = {
-                restartPolicy = "Never";
-                serviceAccountName = name;
-                # ntfy lives on hyena's tailnet IP (same pattern as alertmanager).
-                hostAliases = lib.toList {
-                  ip = "100.64.0.1";
-                  hostnames = ["ntfy.${domain}"];
-                };
-                securityContext = {
-                  runAsNonRoot = true;
-                  runAsUser = 65534;
-                  runAsGroup = 65534;
-                  seccompProfile.type = "RuntimeDefault";
-                };
-                containers = lib.toList {
-                  inherit name image;
-                  envFrom = lib.toList {secretRef.name = name;};
-                  env = lib.mapAttrsToList (name: value: {inherit name value;}) {
-                    SELF_IMAGE = image;
-                    NTFY_URL = "https://ntfy.${domain}/alerts";
-                  };
-                  resources = {
-                    requests = {
-                      cpu = "100m";
-                      memory = "512Mi";
-                    };
-                    limits.memory = "4Gi";
-                  };
-                  securityContext = {
-                    allowPrivilegeEscalation = false;
-                    readOnlyRootFilesystem = true;
-                    capabilities.drop = ["ALL"];
-                  };
-                  volumeMounts = [
-                    {
-                      name = "tmp";
-                      mountPath = "/tmp";
-                    }
-                    {
-                      name = "cache";
-                      mountPath = "/cache";
-                    }
-                  ];
-                };
-                volumes = [
-                  {
-                    name = "tmp";
-                    emptyDir = {};
-                  }
-                  {
-                    name = "cache";
-                    emptyDir.sizeLimit = "20Gi";
-                  }
-                ];
-              };
+          ${name} = mkCronJob {schedule = "0 12 1 * *";};
+          # Sunday 08:00, after the daily Immich dump (02:00) and VolSync sync (04:00), and far from the monthly run.
+          ${dumpName} = mkCronJob {
+            schedule = "0 8 * * 0";
+            env = {
+              STEPS = "dump";
+              DUMP_SOURCES = lib.concatStringsSep " " dumpSources;
             };
           };
         };
@@ -182,47 +256,21 @@
           metadata.labels.release = "prometheus";
           spec.groups = lib.toList {
             name = "backup-verification";
-            rules = [
-              {
-                alert = "BackupVerificationFailed";
-                # The newest scheduled run did not succeed and none is running.
-                expr = ''
-                  (
-                    kube_cronjob_status_last_schedule_time{${selector}} > on (namespace, cronjob) kube_cronjob_status_last_successful_time{${selector}}
-                    or
-                    kube_cronjob_status_last_schedule_time{${selector}} unless on (namespace, cronjob) kube_cronjob_status_last_successful_time{${selector}}
-                  ) unless on (namespace, cronjob) (kube_cronjob_status_active{${selector}} > 0)
-                '';
-                "for" = "5m";
-                labels.severity = "warning";
-                annotations = {
-                  summary = "The monthly backup verification failed";
-                  description = ''
-                    A check failed (the failures were also POSTed to ntfy): restic check on a VolSync repository, the scratch volume or
-                    database restore, or the etcd snapshot in B2 being over 12h old. Details: kubectl -n backup-verify logs job/<newest backup-verify-* job>.
-                    Scratch resources are deleted on exit; leftovers: kubectl -n backup-verify get all,pvc -l app.kubernetes.io/part-of=backup-verify.
-                    Procedures: docs/pvc-and-postgres-restore.md, docs/etcd-restore.md.
-                  '';
-                };
+            rules =
+              mkRules {
+                cronjob = name;
+                cadence = "monthly";
+                period = month;
+                what = "BackupVerification";
+                title = "backup verification";
               }
-              {
-                alert = "BackupVerificationStale";
-                expr = ''
-                  (time() - kube_cronjob_status_last_successful_time{${selector}} > ${toString month})
-                  or
-                  ((time() - kube_cronjob_created{${selector}} > ${toString month}) unless on (namespace, cronjob) kube_cronjob_status_last_successful_time{${selector}})
-                '';
-                "for" = "10m";
-                labels.severity = "critical";
-                annotations = {
-                  summary = "No successful backup verification in 35 days";
-                  description = ''
-                    The backup-verify CronJob runs monthly. It either failed every time, did not run (suspended, image missing, scheduling), or never succeeded.
-                    Check: kubectl -n backup-verify get cronjob,job,pod.
-                  '';
-                };
-              }
-            ];
+              ++ mkRules {
+                cronjob = dumpName;
+                cadence = "weekly";
+                period = tenDays;
+                what = "DumpRestoreVerification";
+                title = "in-app database dump restore check (Immich)";
+              };
           };
         };
       };
