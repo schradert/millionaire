@@ -15,11 +15,13 @@
 //!    with all ids), and `POST /settings/jellyfin/sync` starts a scan.
 //! 4. `POST /settings/initialize` marks the wizard finished.
 //!
-//! 5. Always (initialised or not), with `RADARR_API_KEY[_FILE]` / `SONARR_API_KEY[_FILE]` set: log in
+//! 5. Always (initialised or not): the libraries named in `JELLYFIN_LIBRARIES` (default Movies, TV Shows) are enabled.
+//!    Then, with `RADARR_API_KEY[_FILE]` / `SONARR_API_KEY[_FILE]` set: log in
 //!    as the Jellyfin admin and, for each of them that Seerr does not know yet (matched by
 //!    hostname), make sure the root folder exists, pick the quality profile named
 //!    `RADARR_PROFILE`/`SONARR_PROFILE` (else the lowest id) and `POST /settings/radarr|sonarr`
-//!    as the default server. Servers already listed are left alone.
+//!    as the default server; `RADARR_4K_PROFILE`/`SONARR_4K_PROFILE` add a second, `is4k` one. A server Seerr already
+//!    has (hostname and `is4k`) is updated when its profile, root folder or default flag differ.
 
 use crate::trace::SendTraced as _;
 use std::time::Duration;
@@ -116,6 +118,7 @@ pub async fn run() -> Result<()> {
     };
 
     if initialized {
+        reconcile_libraries(&http, base, &cookie).await?;
         return wire_arr(&http, base, &cookie).await;
     }
 
@@ -153,7 +156,59 @@ pub async fn run() -> Result<()> {
     wire_arr(&http, base, &cookie).await
 }
 
-/// Radarr and Sonarr as default servers, when their API keys are given.
+/// The Jellyfin libraries named in `JELLYFIN_LIBRARIES` (default Movies and TV Shows) are enabled, on top of
+/// whatever is enabled already (the selection may have been tuned by hand; `enable` replaces it).
+async fn reconcile_libraries(http: &Client, base: &str, cookie: &str) -> Result<()> {
+    let names = var("JELLYFIN_LIBRARIES", "Movies,TV Shows");
+    let names: Vec<&str> = names.split(',').map(str::trim).filter(|n| !n.is_empty()).collect();
+    let get = |path: String| async move {
+        let r = http.get(format!("{base}{path}")).header("Cookie", cookie).send_t().await?;
+        Ok::<Value, Box<dyn std::error::Error>>(ok(r, &format!("GET {path}")).await?.json().await?)
+    };
+    let current = get("/api/v1/settings/jellyfin".into()).await?;
+    let keep = ids(&current["libraries"], true);
+    let sync_path = if keep.is_empty() {
+        "/api/v1/settings/jellyfin/library?sync=true".to_string()
+    } else {
+        format!("/api/v1/settings/jellyfin/library?sync=true&enable={}", keep.join(","))
+    };
+    let synced = retry("syncing jellyfin libraries", 24, || get(sync_path.clone())).await?;
+    let want = wanted_libraries(&synced, &names);
+    if want.iter().all(|id| keep.contains(id)) {
+        println!("seerr: jellyfin libraries {names:?} already enabled");
+        return Ok(());
+    }
+    let mut all = keep;
+    for id in want {
+        if !all.contains(&id) {
+            all.push(id);
+        }
+    }
+    let enabled = get(format!("/api/v1/settings/jellyfin/library?enable={}", all.join(","))).await?;
+    println!("seerr: enabled jellyfin libraries, {} now on", ids(&enabled, true).len());
+    let r = http
+        .post(format!("{base}/api/v1/settings/jellyfin/sync"))
+        .header("Cookie", cookie)
+        .json(&json!({ "start": true }))
+        .send_t()
+        .await?;
+    ok(r, "POST /api/v1/settings/jellyfin/sync").await?;
+    Ok(())
+}
+
+/// Ids of the libraries whose name is in `names`.
+fn wanted_libraries(libs: &Value, names: &[&str]) -> Vec<String> {
+    libs.as_array()
+        .into_iter()
+        .flatten()
+        .filter(|l| l["name"].as_str().is_some_and(|n| names.contains(&n)))
+        .filter_map(|l| l["id"].as_str().map(String::from))
+        .collect()
+}
+
+/// Radarr and Sonarr as Seerr servers, when their API keys are given: the default one (`{UP}_PROFILE`, 1080p)
+/// and, when `{UP}_4K_PROFILE` is set, a 4K one (`is4k`) with that profile. Servers are matched by hostname and
+/// `is4k`; one that exists is updated to match when its profile, root folder or default flag differ.
 async fn wire_arr(http: &Client, base: &str, cookie: &str) -> Result<()> {
     for kind in ["radarr", "sonarr"] {
         let up = kind.to_uppercase();
@@ -163,19 +218,6 @@ async fn wire_arr(http: &Client, base: &str, cookie: &str) -> Result<()> {
         let host = var(&format!("{up}_HOST"), &format!("{kind}.media.svc.cluster.local"));
         let port: i64 = var(&format!("{up}_PORT_NUMBER"), "80").parse()?;
         let root = var(&format!("{up}_ROOT"), if kind == "radarr" { "/media/movies" } else { "/media/tv" });
-        let want = var(&format!("{up}_PROFILE"), "");
-
-        let r = http
-            .get(format!("{base}/api/v1/settings/{kind}"))
-            .header("Cookie", cookie)
-            .send_t()
-            .await?;
-        let known: Value = ok(r, &format!("GET /api/v1/settings/{kind}")).await?.json().await?;
-        if known.as_array().into_iter().flatten().any(|k| k["hostname"] == json!(host)) {
-            println!("seerr already has {kind} {host}");
-            continue;
-        }
-
         let s = Servarr {
             base: format!("http://{host}:{port}"),
             key: key.clone(),
@@ -185,54 +227,103 @@ async fn wire_arr(http: &Client, base: &str, cookie: &str) -> Result<()> {
         if ensure_root_folder(http, &s, &root).await? {
             println!("{kind}: added root folder {root}");
         }
-        let profiles = retry(&format!("{kind} quality profiles"), 12, || async {
-            let p = s.get(http, "/qualityprofile").await?;
-            let mut p: Vec<(i64, String)> = p
+        for (is4k, var_name) in [(false, format!("{up}_PROFILE")), (true, format!("{up}_4K_PROFILE"))] {
+            let want = var(&var_name, "");
+            if is4k && want.is_empty() {
+                continue;
+            }
+            let profiles = retry(&format!("{kind} quality profiles"), 12, || async {
+                let p = s.get(http, "/qualityprofile").await?;
+                let mut p: Vec<(i64, String)> = p
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|p| Some((p["id"].as_i64()?, p["name"].as_str()?.to_string())))
+                    .filter(|(id, _)| *id != 0)
+                    .collect();
+                p.sort();
+                if p.is_empty() {
+                    Err("no quality profile yet".into())
+                } else {
+                    Ok(p)
+                }
+            })
+            .await?;
+            let (pid, pname) = match profiles.iter().find(|(_, n)| *n == want) {
+                Some(p) => p.clone(),
+                None if is4k => {
+                    println!("{kind}: no quality profile {want:?} for the 4K server, skipping it");
+                    continue;
+                }
+                None => profiles[0].clone(),
+            };
+            let label = if is4k { "4K" } else { "default" };
+
+            let r = http.get(format!("{base}/api/v1/settings/{kind}")).header("Cookie", cookie).send_t().await?;
+            let known: Value = ok(r, &format!("GET /api/v1/settings/{kind}")).await?.json().await?;
+            let have = known
                 .as_array()
                 .into_iter()
                 .flatten()
-                .filter_map(|p| Some((p["id"].as_i64()?, p["name"].as_str()?.to_string())))
-                .filter(|(id, _)| *id != 0)
-                .collect();
-            p.sort();
-            if p.is_empty() {
-                Err("no quality profile yet".into())
-            } else {
-                Ok(p)
+                .find(|k| k["hostname"] == json!(host) && k["is4k"].as_bool().unwrap_or(false) == is4k);
+            if let Some(have) = have {
+                if !server_differs(have, pid, &root) {
+                    println!("seerr already has {kind} {host} ({label}, profile {pname})");
+                    continue;
+                }
+                let mut body = have.clone();
+                body["activeProfileId"] = json!(pid);
+                body["activeProfileName"] = json!(pname);
+                body["activeDirectory"] = json!(root);
+                body["isDefault"] = json!(true);
+                let id = have["id"].as_i64().unwrap_or(0);
+                let r = http.put(format!("{base}/api/v1/settings/{kind}/{id}")).header("Cookie", cookie).json(&body).send_t().await?;
+                ok(r, &format!("PUT /api/v1/settings/{kind}/{id}")).await?;
+                println!("seerr: updated {kind} {host} ({label}, profile {pname}, root {root})");
+                continue;
             }
-        })
-        .await?;
-        let (pid, pname) = profiles.iter().find(|(_, n)| *n == want).unwrap_or(&profiles[0]).clone();
 
-        let mut body = json!({
-            "name": kind[..1].to_uppercase() + &kind[1..], "hostname": host, "port": port, "apiKey": key, "useSsl": false,
-            "baseUrl": "", "activeProfileId": pid, "activeProfileName": pname, "activeDirectory": root,
-            "is4k": false, "isDefault": true, "tags": [], "syncEnabled": false, "preventSearch": false,
-            "tagRequests": false, "overrideRule": [],
-        });
-        if kind == "radarr" {
-            body["minimumAvailability"] = json!("released");
-        } else {
-            body["seriesType"] = json!("standard");
-            body["animeSeriesType"] = json!("anime");
-            body["enableSeasonFolders"] = json!(true);
-            body["monitorNewItems"] = json!("all");
+            let mut body = json!({
+                "name": format!("{}{}", kind[..1].to_uppercase() + &kind[1..], if is4k { " 4K" } else { "" }),
+                "hostname": host, "port": port, "apiKey": key, "useSsl": false,
+                "baseUrl": "", "activeProfileId": pid, "activeProfileName": pname, "activeDirectory": root,
+                "is4k": is4k, "isDefault": true, "tags": [], "syncEnabled": false, "preventSearch": false,
+                "tagRequests": false, "overrideRule": [],
+            });
+            if kind == "radarr" {
+                body["minimumAvailability"] = json!("released");
+            } else {
+                body["seriesType"] = json!("standard");
+                body["animeSeriesType"] = json!("anime");
+                body["enableSeasonFolders"] = json!(true);
+                body["monitorNewItems"] = json!("all");
+            }
+            let r = http.post(format!("{base}/api/v1/settings/{kind}")).header("Cookie", cookie).json(&body).send_t().await?;
+            ok(r, &format!("POST /api/v1/settings/{kind}")).await?;
+            println!("seerr: added {kind} {host} ({label}, profile {pname}, root {root})");
         }
-        let r = http
-            .post(format!("{base}/api/v1/settings/{kind}"))
-            .header("Cookie", cookie)
-            .json(&body)
-            .send_t()
-            .await?;
-        ok(r, &format!("POST /api/v1/settings/{kind}")).await?;
-        println!("seerr: added {kind} {host} (profile {pname}, root {root})");
     }
     Ok(())
+}
+
+/// Does a Seerr server entry differ from the declared profile id, root folder or default flag?
+fn server_differs(have: &Value, profile: i64, root: &str) -> bool {
+    have["activeProfileId"].as_i64() != Some(profile) || have["activeDirectory"].as_str() != Some(root) || have["isDefault"] != json!(true)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reconcile_helpers() {
+        let libs = json!([{ "id": "1", "name": "Movies" }, { "id": "2", "name": "Music" }, { "id": "3", "name": "TV Shows" }]);
+        assert_eq!(wanted_libraries(&libs, &["Movies", "TV Shows"]), ["1", "3"]);
+        let have = json!({ "activeProfileId": 4, "activeDirectory": "/media/movies", "isDefault": true });
+        assert!(!server_differs(&have, 4, "/media/movies"));
+        assert!(server_differs(&have, 5, "/media/movies"));
+        assert!(server_differs(&have, 4, "/media/tv"));
+    }
 
     #[test]
     fn picks_ids() {
