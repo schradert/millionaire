@@ -117,6 +117,7 @@ pub async fn torrent_files(ctx: &Ctx, f: &mut Flow, url: &str, keep: &dyn Fn(&st
         q.post_form(ctx, "/torrents/resume", &[("hashes", &hash)]).await?;
     }
     let names: Vec<&str> = keep.iter().filter_map(|v| v["name"].as_str()).collect();
+    let want: Vec<i64> = keep.iter().filter_map(|v| v["index"].as_i64()).collect();
     f.ok("qbittorrent", "torrent added", format!("{hash}, downloading {} (+{} boundary neighbours) of {} files", names.len(), extra.len(), files.len()));
     let start = std::time::Instant::now();
     poll("qbittorrent", "download completes", Duration::from_secs(var("E2E_TORRENT_TIMEOUT", "2700").parse().unwrap_or(2700)), Duration::from_secs(10), || async {
@@ -125,7 +126,12 @@ pub async fn torrent_files(ctx: &Ctx, f: &mut Flow, url: &str, keep: &dyn Fn(&st
         if t["state"] == json!("error") || t["state"] == json!("missingFiles") {
             return Err(Fail::new("qbittorrent", "download", format!("state {}", t["state"])));
         }
-        Ok((t["progress"].as_f64().unwrap_or(0.0) >= 1.0).then_some(()))
+        // Done when the wanted files are: the neighbours only help their shared pieces complete,
+        // and a piece shared with a file archive.org serves differently (a .URL, an .nfo) may
+        // never finish.
+        let fl = q.get(ctx, &format!("/torrents/files?hash={hash}")).await?;
+        let done = fl.as_array().is_some_and(|a| a.iter().filter(|x| want.contains(&x["index"].as_i64().unwrap_or(-1))).all(|x| x["progress"].as_f64().unwrap_or(0.0) >= 1.0));
+        Ok(done.then_some(()))
     })
     .await?;
     let paths: Vec<PathBuf> = names.iter().map(|n| save.join(n)).collect();
