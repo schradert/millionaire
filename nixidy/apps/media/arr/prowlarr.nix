@@ -20,6 +20,12 @@
         name = "Internet Archive";
         definition = "internetarchive";
       }
+      {
+        # Public, behind Cloudflare: the "flaresolverr" tag routes it through the in-cluster FlareSolverr proxy.
+        name = "1337x";
+        definition = "1337x";
+        tags = ["flaresolverr"];
+      }
     ];
     slug = ix: field: lib.toLower (builtins.replaceStrings [" "] ["-"] "${ix.name}-${field}");
     withSecretFiles = ix: ix // {secrets = lib.mapAttrs (field: _: "/secrets/indexers/${slug ix field}") (ix.secrets or {});};

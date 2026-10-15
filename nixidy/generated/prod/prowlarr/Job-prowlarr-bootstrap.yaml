@@ -23,7 +23,7 @@ spec:
             - name: PROWLARR_API_KEY_FILE
               value: /secrets/prowlarr/apikey
             - name: PROWLARR_INDEXERS
-              value: '[{"definition":"internetarchive","name":"Internet Archive","secrets":{}}]'
+              value: '[{"definition":"internetarchive","name":"Internet Archive","secrets":{}},{"definition":"1337x","name":"1337x","secrets":{},"tags":["flaresolverr"]}]'
             - name: PYROSCOPE_SAMPLE_RATE
               value: "1000"
             - name: PYROSCOPE_SERVER_ADDRESS
