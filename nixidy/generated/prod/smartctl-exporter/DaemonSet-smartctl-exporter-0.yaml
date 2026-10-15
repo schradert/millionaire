@@ -30,6 +30,10 @@ spec:
                     operator: NotIn
                     values:
                       - sirver
+                  - key: node.trdos.me/class
+                    operator: NotIn
+                    values:
+                      - vm
       containers:
         - args:
             - --smartctl.path=/usr/sbin/smartctl

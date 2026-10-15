@@ -80,6 +80,13 @@
                   group_interval = "1m";
                   repeat_interval = "2m";
                 }
+                # Nodes that come and go (a VM on a Mac, an SBC): their own node-level alerts stay
+                # queryable but never page. Drain and delete the node when it is meant to be away,
+                # which also removes its DaemonSet pods and their pod-level alerts.
+                {
+                  matchers = ["node =~ \"muffin|piper\""];
+                  receiver = "null";
+                }
                 {
                   matchers = ["alertname = InfoInhibitor"];
                   receiver = "null";

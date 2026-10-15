@@ -82,6 +82,9 @@ data:
         receiver: gatus-heartbeat
         repeat_interval: 2m
       - matchers:
+        - node =~ "muffin|piper"
+        receiver: "null"
+      - matchers:
         - alertname = InfoInhibitor
         receiver: "null"
       - matchers:
