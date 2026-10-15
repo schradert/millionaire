@@ -1,0 +1,141 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations: {}
+  labels:
+    app.kubernetes.io/instance: coder
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: coder
+    app.kubernetes.io/part-of: coder
+  name: coder
+  namespace: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: coder
+      app.kubernetes.io/name: coder
+  template:
+    metadata:
+      annotations:
+        app.kubernetes.io/component: coderd
+        reloader.stakater.com/auto: "true"
+      labels:
+        app.kubernetes.io/instance: coder
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: coder
+        app.kubernetes.io/part-of: coder
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/instance
+                      operator: In
+                      values:
+                        - coder
+                topologyKey: kubernetes.io/hostname
+              weight: 1
+      containers:
+        - args:
+            - server
+          command:
+            - /opt/coder
+          env:
+            - name: CODER_HTTP_ADDRESS
+              value: 0.0.0.0:8080
+            - name: CODER_PPROF_ADDRESS
+              value: 0.0.0.0:6060
+            - name: KUBE_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: CODER_DERP_SERVER_RELAY_URL
+              value: http://$(KUBE_POD_IP):8080
+            - name: CODER_CLUSTER_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: CODER_ACCESS_URL
+              value: https://coder.trdos.me
+            - name: CODER_DERP_FORCE_WEBSOCKETS
+              value: "true"
+            - name: CODER_OAUTH2_GITHUB_DEFAULT_PROVIDER_ENABLE
+              value: "false"
+            - name: CODER_OIDC_CLIENT_ID
+              value: coder
+            - name: CODER_OIDC_EMAIL_FIELD
+              value: email
+            - name: CODER_OIDC_IGNORE_EMAIL_VERIFIED
+              value: "true"
+            - name: CODER_OIDC_ISSUER_URL
+              value: https://keycloak.trdos.me/realms/default
+            - name: CODER_OIDC_SCOPES
+              value: openid,profile,email,groups
+            - name: CODER_OIDC_SIGN_IN_TEXT
+              value: Login with Keycloak
+            - name: CODER_OIDC_USERNAME_FIELD
+              value: preferred_username
+            - name: CODER_PROMETHEUS_ADDRESS
+              value: 0.0.0.0:2112
+            - name: CODER_PROMETHEUS_COLLECT_AGENT_STATS
+              value: "true"
+            - name: CODER_PROMETHEUS_ENABLE
+              value: "true"
+            - name: CODER_PROXY_TRUSTED_HEADERS
+              value: X-Forwarded-For
+            - name: CODER_PROXY_TRUSTED_ORIGINS
+              value: 10.0.0.0/8,192.168.50.0/24
+            - name: CODER_SECURE_AUTH_COOKIE
+              value: "true"
+            - name: CODER_TELEMETRY_ENABLE
+              value: "false"
+            - name: CODER_UPDATE_CHECK
+              value: "false"
+            - name: CODER_PG_CONNECTION_URL
+              valueFrom:
+                secretKeyRef:
+                  key: uri
+                  name: coder-app
+            - name: CODER_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: client-secret
+                  name: coder-oidc
+          image: ghcr.io/coder/coder:v2.36.7@sha256:e8b2743529aea6a1e77bba764c8ec4a04dec65d27ca9caa0ec0b2dbcd3db0565
+          imagePullPolicy: IfNotPresent
+          lifecycle: {}
+          name: coder
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+            - containerPort: 2112
+              name: prometheus-http
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 0
+          resources:
+            limits:
+              memory: 2Gi
+            requests:
+              cpu: 250m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts: []
+      restartPolicy: Always
+      serviceAccountName: coder
+      terminationGracePeriodSeconds: 60
+      volumes: []

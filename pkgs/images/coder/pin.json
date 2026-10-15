@@ -1,0 +1,9 @@
+{
+  "version": "v2.36.7",
+  "digest": "sha256:e8b2743529aea6a1e77bba764c8ec4a04dec65d27ca9caa0ec0b2dbcd3db0565",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/coder/coder"
+  },
+  "follows": "charts/coder"
+}

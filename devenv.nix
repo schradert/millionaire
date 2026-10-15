@@ -225,6 +225,7 @@ in {
           "https://kubernetes-sigs.github.io/descheduler"
           "https://helm.ngc.nvidia.com/nvidia"
           "https://maximhq.github.io/bifrost/helm-charts"
+          "https://helm.coder.com/v2"
           "https://api.bitwarden.com"
           "https://identity.bitwarden.com"
           "^.+/dns-query$"
