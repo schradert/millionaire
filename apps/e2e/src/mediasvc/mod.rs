@@ -1,8 +1,9 @@
-//! Media apps that need no volumes, so they run on the cluster runner (the `media` family needs the volumes): Shoko (a tagged user and
+//! Media apps that need no volumes, so they run on the cluster runner (the `media` family needs the volumes): Seerr (per-user sign-in), Shoko (a tagged user and
 //! filter) and Ryot (a tagged user and collection). Tagged data through each API, deleted and
 //! checked gone.
 
 mod ryot;
+mod seerr;
 mod shoko;
 
 use crate::{
@@ -18,7 +19,7 @@ pub fn family() -> Family {
     Family {
         name: NAME,
         runner: "cluster",
-        about: "Shoko tagged user and filter; Ryot tagged user and collection (media apps without volumes)",
+        about: "Shoko tagged user and filter; Ryot tagged user and collection; Seerr per-user sign-in (media apps without volumes)",
         flows,
         cleanup: Some(sweep!(cleanup)),
         residue: Some(sweep!(residue)),
@@ -44,6 +45,14 @@ fn flows() -> Vec<FlowDef> {
             step!(ryot::tracking),
         )
         .cleanup(step!(ryot::cleanup)),
+        FlowDef::new(
+            NAME,
+            "seerr-sso",
+            Tier::Offline,
+            "the admin and family test users each sign in to Seerr through oauth2-proxy as their own account with the permissions their groups give; forged identity headers get nowhere; the accounts are deleted",
+            step!(seerr::per_user_sso),
+        )
+        .cleanup(step!(seerr::cleanup)),
     ]
 }
 
@@ -51,6 +60,7 @@ async fn passes(ctx: &Ctx, scope: &Scope, delete: bool) -> Vec<(&'static str, sv
     vec![
         ("shoko", shoko::sweep(ctx, scope, delete).await),
         ("ryot", ryot::sweep(ctx, scope, delete).await),
+        ("seerr", seerr::sweep(ctx, scope, delete).await),
         ("keycloak", svc::kc_users(ctx, scope, delete).await),
     ]
 }
