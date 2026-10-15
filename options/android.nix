@@ -153,6 +153,11 @@ in {
         deviceOwner = can.bool "Dhizuku is device owner (needs a factory reset or zero accounts): silent installs" {default = false;};
         stable = can.bool "never track pre-releases" {default = config.owner == "family";};
         topic = can.str "ntfy topic nudged when the app list changes" {default = "android-${name}";};
+        hostname = can.str "headscale node name (what `tailscale ip` resolves)" {default = name;};
+        vpn = {
+          alwaysOn = can.bool "Tailscale is the Always-on VPN" {default = true;};
+          lockdown = can.bool "Block connections without VPN (captive portals need it off for a moment)" {default = config.owner == "tristan";};
+        };
       };
     });
     bootstrap = can.attrs.anything "pinned bootstrap APKs (pkgs/<name>/pin.json)" {
@@ -177,6 +182,13 @@ in {
   };
   config.perSystem = {pkgs, ...}: {
     packages.android-site = pkgs.linkFarm "android-site" (lib.mapAttrs (n: pkgs.writeText n) cfg.site);
+    # read by `android` (devenv.nix): what one device should look like
+    legacyPackages.android.devices =
+      lib.mapAttrs (_: dev: {
+        inherit (dev) hostname vpn;
+        apps = map (obtainium dev) (appsOf dev);
+      })
+      cfg.devices;
     # read by pulumi/__main__.py (android_notify_<device>)
     legacyPackages.android.notify =
       lib.mapAttrs (n: dev: {
