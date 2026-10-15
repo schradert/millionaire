@@ -104,6 +104,13 @@
         key = "ryot-admin-token";
         data.token = "password";
       };
+      # The Jellyfin `admin` is Seerr's break-glass user 1 (the only one that may delete an admin account):
+      # the seerr-sso flow deletes the Seerr accounts its test users got, through Seerr's own port.
+      e2e-seerr = {
+        ns = "media";
+        key = "jellyfin-admin";
+        data.password = "password";
+      };
       # The `e2e` admin's API key in Immich (app-bootstrap immich >= 0.19.7): deletes the users
       # a test login creates.
       e2e-immich = {
@@ -400,6 +407,7 @@
         externalSecrets.e2e-shoko.spec = fromApp serviceSecrets.e2e-shoko;
         externalSecrets.e2e-immich.spec = fromApp serviceSecrets.e2e-immich;
         externalSecrets.e2e-ryot.spec = fromApp serviceSecrets.e2e-ryot;
+        externalSecrets.e2e-seerr.spec = fromApp serviceSecrets.e2e-seerr;
         cronJobs.${name}.spec = {
           schedule = "15 3 * * *";
           timeZone = "Etc/UTC";

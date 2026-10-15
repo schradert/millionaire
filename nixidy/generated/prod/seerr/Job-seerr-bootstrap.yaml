@@ -17,7 +17,7 @@ spec:
             - seerr
           env:
             - name: ADMIN_EMAIL
-              value: t0rdos@pm.me
+              value: seerr-admin@trdos.me
             - name: JELLYFIN_ADMIN_PASSWORD_FILE
               value: /secrets/jellyfin/password
             - name: JELLYFIN_ADMIN_USER
@@ -46,7 +46,7 @@ spec:
               value: /secrets/sonarr/apikey
             - name: SONARR_PROFILE
               value: WEB-1080p
-          image: harbor.trdos.me/library/app-bootstrap:0.22.3@sha256:aafd93839736ce8462f9837d58ca47d9326d7e2b8f9d7fd9740e10c9f5c95b4a
+          image: harbor.trdos.me/library/app-bootstrap:0.23.0@sha256:47776a5437e9d36f6636a96921c756c26aafc7eb89955efaafedbaa42e766d88
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
