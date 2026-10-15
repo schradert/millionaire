@@ -41,6 +41,29 @@ in {
         tlsConfig.insecureSkipVerify = true;
       };
     };
+    # A backup that has not completed within its interval (volsync_volume_out_of_sync is 1 until the
+    # next successful sync), e.g. a sourcePVC that does not exist. Sources run daily: 26h of out-of-sync
+    # means a missed day, not one slow upload.
+    applications.volsync.resources.prometheusRules.volsync = {
+      metadata.labels.release = "prometheus";
+      spec.groups = lib.toList {
+        name = "volsync";
+        rules = lib.toList {
+          alert = "VolSyncOutOfSync";
+          expr = "volsync_volume_out_of_sync{role=\"source\"} == 1";
+          "for" = "26h";
+          labels.severity = "warning";
+          annotations = {
+            summary = "VolSync backup {{ $labels.obj_namespace }}/{{ $labels.obj_name }} is out of sync";
+            description = ''
+              The ReplicationSource has not completed a backup to B2 within a day. Check its conditions:
+              kubectl -n {{ $labels.obj_namespace }} describe replicationsource {{ $labels.obj_name }} (a missing sourcePVC, a stuck
+              mover Job, restic lock). Restore procedures: docs/pvc-and-postgres-restore.md.
+            '';
+          };
+        };
+      };
+    };
     # Movers mount the live PVC (copyMethod Direct). Unprivileged, a mover needs an fsGroup that kubelet then applies
     # as a recursive chown of the workload's volume (re-owning it away from the app's own gid on every backup).
     # Privileged movers run as root with no fsGroup: nothing is chowned, any ownership is readable, and restores

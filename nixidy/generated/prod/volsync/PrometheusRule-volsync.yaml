@@ -1,0 +1,22 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    release: prometheus
+  name: volsync
+  namespace: storage
+spec:
+  groups:
+    - name: volsync
+      rules:
+        - alert: VolSyncOutOfSync
+          annotations:
+            description: |
+              The ReplicationSource has not completed a backup to B2 within a day. Check its conditions:
+              kubectl -n {{ $labels.obj_namespace }} describe replicationsource {{ $labels.obj_name }} (a missing sourcePVC, a stuck
+              mover Job, restic lock). Restore procedures: docs/pvc-and-postgres-restore.md.
+            summary: VolSync backup {{ $labels.obj_namespace }}/{{ $labels.obj_name }} is out of sync
+          expr: volsync_volume_out_of_sync{role="source"} == 1
+          for: 26h
+          labels:
+            severity: warning

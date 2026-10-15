@@ -13,6 +13,6 @@ spec:
       monthly: 1
       weekly: 1
       yearly: 1
-  sourcePVC: prosody-data
+  sourcePVC: prosody-data-jitsi-prosody-0
   trigger:
     schedule: 0 4 * * *
