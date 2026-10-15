@@ -25,6 +25,7 @@ mod ombi;
 mod openviking;
 mod profile;
 mod ryot;
+mod ryot_wire;
 mod seerr;
 mod shoko;
 mod syncthing;
