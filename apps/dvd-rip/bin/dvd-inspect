@@ -73,7 +73,9 @@ log "reading IFO metadata ($src)"
 # ASCII, so replace anything else with '?'.
 # libdvdread can print warnings ("CHECK_VALUE failed ...") on stdout before the
 # XML on malformed (home-burned/recorder) discs; drop everything before <?xml.
-lsdvd -x -Ox "$src" 2>"$dir/logs/lsdvd.err" | LC_ALL=C tr -c '\11\12\40-\176' '?' | sed -n '/^<?xml/,$p' | sed 's/&/\&amp;/g' >"$dir/disc.xml"
+# lsdvd can segfault on structure-protected discs; the empty disc.xml then
+# fails the xq check below and falls through to MakeMKV's title analysis.
+lsdvd -x -Ox "$src" 2>"$dir/logs/lsdvd.err" | LC_ALL=C tr -c '\11\12\40-\176' '?' | sed -n '/^<?xml/,$p' | sed 's/&/\&amp;/g' >"$dir/disc.xml" || true
 if ! xq . "$dir/disc.xml" >"$dir/disc.raw.json" 2>>"$dir/logs/lsdvd.err" ||
   [ "$(jq '[.lsdvd.track] | flatten | length' "$dir/disc.raw.json")" -ge 90 ]; then
   rm -f "$dir/disc.raw.json"
