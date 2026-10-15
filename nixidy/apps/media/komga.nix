@@ -27,8 +27,10 @@ in {
     # Native OIDC through Spring's client config (env on the container). Komga has
     # no role mapping: it links a login to the user with the same verified email, so
     # tristan's Keycloak login IS the admin the bootstrap claimed the server with.
-    # Unknown emails are rejected (KOMGA_OAUTH2_ACCOUNT_CREATION stays false) and
-    # password login stays on as break-glass. Explicit endpoints instead of
+    # Anyone else in the realm gets their own account on first login
+    # (KOMGA_OAUTH2_ACCOUNT_CREATION, verified emails only), with Komga's default
+    # roles FILE_DOWNLOAD and PAGE_STREAMING, never ADMIN; password login stays on
+    # as break-glass. Explicit endpoints instead of
     # issuer-uri: Spring would otherwise fetch discovery at startup and Komga
     # would fail to boot whenever Keycloak is down.
     applications.keycloak.resources.keycloakClients.komga.spec = {
@@ -82,7 +84,7 @@ in {
           controllers.komga.containers.komga = {
             image = pinned.images.komga;
             env = {
-              KOMGA_OAUTH2_ACCOUNT_CREATION = "false";
+              KOMGA_OAUTH2_ACCOUNT_CREATION = "true";
               "${registration}_CLIENT_NAME" = "Keycloak";
               "${registration}_CLIENT_ID" = "komga";
               "${registration}_CLIENT_SECRET".valueFrom.secretKeyRef = {
