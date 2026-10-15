@@ -208,6 +208,12 @@
           canivete.os = "macos";
           profiles.system.canivete.configuration.imports = [./static/morgenmuffel.nix];
         };
+        # aarch64 VM on morgenmuffel, an RKE2 agent (./static/muffin.nix, run by ./static/muffin-vm.nix).
+        # Restarted by darwin-rebuild of the Mac; never deployed with deploy-rs.
+        muffin = {
+          canivete.system = "aarch64-linux";
+          profiles.system.canivete.configuration.imports = [./static/muffin.nix];
+        };
         # FIXME reactivate
         # piper = {
         #   canivete.system = "aarch64-linux";

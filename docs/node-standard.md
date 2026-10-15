@@ -47,9 +47,13 @@ if it does not, redo the anchor, `updatekeys` both sops files, and `hostKey` in 
    (cilium's `devices` lists `br0 eno1 eth0`).
 3. A host that should build for the fleet: a record in `static/builders.nix`. Its `hostKey` is also its client identity towards peers.
 4. If it needs `default.yaml`: its age anchor in `.sops.yaml`, then `sops updatekeys` (needs an existing recipient's key).
-5. Headless Linux VM (for example on morgenmuffel): `server.nix` + `k8s-node.nix`, `disko.devices.disk.root.device = "/dev/vda"`,
-   installed by nixos-anywhere like the other nodes. Not built or tried yet; the NIC will be `eth0`-like and must match cilium's
-   device list.
+5. Headless Linux VM on a Mac (`muffin` on morgenmuffel, `static/muffin.nix` + `static/muffin-vm.nix`): not installed, run. The
+   NixOS side is `k8s-node.nix` + `server.nix` + `foreign-boot.nix` + nixpkgs' `qemu-vm.nix` (kernel and initrd straight from the
+   toplevel, an erofs `/nix/store` image built at start, one sparse qcow2 root disk), the Mac side a root launchd daemon, so
+   `darwin-rebuild switch` on the Mac deploys it (the daemon restarts on a new closure). The guest's ssh host key is generated on
+   the Mac (`/var/lib/muffin-vm/identity`), shared in over 9p, and is both sshd's key and its sops identity (`&muffin`). The NIC is
+   `vmnet-bridged` on the Mac's `en0` (works over Wi-Fi) with a fixed MAC, so it is an ordinary LAN node (`eth0`, in cilium's
+   device list); reserve that MAC on the router. See "Muffin" below.
 
 ## Reinstalling a desktop node onto the standard layout
 
@@ -122,3 +126,21 @@ on each node BEFORE its switch. One node at a time, never while another server i
   with the driver and toolkit disabled.
 - Boot ordering of the `data` pool import, dataset creation and the `/data/*` mounts on real hardware.
 - Cilium devices on the renamed `eno1`, and L2 announcements from a desktop.
+
+## Muffin (aarch64 VM on morgenmuffel)
+
+An RKE2 agent labelled `node.trdos.me/class=vm` with a `PreferNoSchedule` taint (like the desktops), 8 GB RAM and 4 vCPUs, sized for a
+16 GB Mac (qemu does not return guest page cache, so expect it to hold all 8 GB). Its logs: `/var/lib/muffin-vm/console.log` on the Mac.
+
+- Deploy: `darwin-rebuild switch --flake .#morgenmuffel` on morgenmuffel (the VM hard-stops and restarts; drain first if it matters).
+  A system daemon, not a home-manager agent, so it works from an ssh session.
+- Reset the node: stop the daemon, delete `/var/lib/muffin-vm/muffin.qcow2`, start it (`kubectl delete node muffin` first).
+- First run on a Mac without `/var/lib/muffin-vm/identity`: the daemon generates the key, the guest cannot decrypt anything yet.
+  Add `ssh-to-age < identity/ssh_host_ed25519_key.pub` to `.sops.yaml` (`&muffin`, `default.yaml`), `sops updatekeys`, rebuild.
+- arm64 images: the node ran the existing DaemonSets with two exceptions. `ghcr.io/angelnu/cni-plugins` (multus's installer) ships
+  x86-64 plugin binaries in its arm64 image, worked around on the node (containerd `bin_dirs`, `static/muffin.nix`); smartctl-exporter
+  v0.14.0 is amd64-only and is excluded from VMs (`nixidy/system/observability/smartctl-exporter.nix`).
+- GPU: none. The only documented path to the Apple GPU from a Linux guest is krunkit/libkrun's Venus virtio-gpu (Vulkan over
+  MoltenVK, per Lima's krunkit docs); Apple documents Virtualization.framework's Linux graphics device only as a display scanout
+  (no 3D found), and qemu's hvf path has no 3D here. Vulkan is not CUDA and nothing in the cluster (NVIDIA operator, device
+  plugins) schedules it, so the VM is CPU-only. Not tried.

@@ -81,6 +81,7 @@ The Cilium LoadBalancer pool is `192.168.50.240-254` (`nixidy/system/network/cil
 
 1. In the router's DHCP settings, exclude `192.168.50.240-192.168.50.254` from the dynamic range (or reserve them).
 2. Renew the leases of any host currently inside the range (morgenmuffel, axolotl).
+3. Reserve an address outside the range for the muffin VM's MAC `52:54:00:6d:75:66` (it got `192.168.50.86`); its node IP must not change.
 
 Unblocks: safe new LoadBalancer Services (the Syncthing LAN listener and the rsync ingest receiver use this pool).
 

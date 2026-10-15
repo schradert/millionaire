@@ -5,6 +5,8 @@ keys:
   - &falcon age1srke2eegqn7rwp8gn8hvxxs9le4w48ffj2jqvk7p87kp9gk9gemqrdpqcu
   - &axolotl age1stun0l8j2sspafr6aqh0yl49mh2dkqddlzuhfsggllly8dwrnf3sjldasu
   - &systeamadeck age1ktnn5xmfwnclq7j6wt8anl98qz8m2s4jpuwl304ptcxug2ue5vfsyq2x27
+  # The morgenmuffel VM (static/muffin.nix): the key is generated on the Mac and shared into the guest
+  - &muffin age188v8zc9m6pt38u72cqns8lq45thtwhss5yge9gtel32tm9rmhs3qwff7cu
 creation_rules:
   - path_regex: secrets/sops/default\.yaml
     key_groups:
@@ -15,6 +17,7 @@ creation_rules:
           # tailnet and attic keys) with their ssh host key
           - *falcon
           - *axolotl
+          - *muffin
   - path_regex: secrets/sops/personal\.yaml
     key_groups:
       - age:
