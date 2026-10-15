@@ -68,7 +68,7 @@ spec:
               value: /secrets/key/password
             - name: UPSTREAM
               value: http://127.0.0.1:5055
-          image: harbor.trdos.me/library/seerr-sso:0.1.0@sha256:ff796b3bd5c1d544c740bd4737a5c15cbc5a3b33f67a990383ef2a337853ffb3
+          image: harbor.trdos.me/library/seerr-sso:0.1.1@sha256:a6d1c3f29c8562136909b2af7fefba8b83f75bbc785ef6d1940e315b7ca8af97
           livenessProbe:
             tcpSocket:
               port: 5056
