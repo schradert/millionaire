@@ -8,9 +8,9 @@
     inherit (config.canivete.meta) domain;
     hostname = "qbittorrent.${domain}";
     port = 8080;
-    # Flip to true once the chosen provider's Bitwarden items below exist (docs/manual-steps.md).
-    # Until then: no ExternalSecret, no pod (replicas 0), no gatus check.
-    credentials = false;
+    # false: no ExternalSecret, no pod (replicas 0), no gatus check. The chosen provider's
+    # Bitwarden items below must exist (docs/manual-steps.md).
+    credentials = true;
     vpn = {
       # One of the `providers` below. protonvpn: NAT-PMP port forwarding, synced into
       # qBittorrent. airvpn: a static port reserved in the client area (`airvpnPort`).

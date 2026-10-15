@@ -412,6 +412,10 @@ data:
           description: ''
           href: https://prowlarr.trdos.me
           icon: prowlarr
+      - qbittorrent:
+          description: ''
+          href: https://qbittorrent.trdos.me
+          icon: qbittorrent
       - radarr:
           description: ''
           href: https://radarr.trdos.me

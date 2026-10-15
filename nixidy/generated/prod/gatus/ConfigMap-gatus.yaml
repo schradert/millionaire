@@ -341,6 +341,12 @@ data:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
+      name: qbittorrent
+      url: https://qbittorrent.trdos.me
+    - conditions:
+      - '[STATUS] == any(200, 302, 401)'
+      group: internal
+      interval: 1m
       name: radarr
       url: https://radarr.trdos.me
     - conditions:
