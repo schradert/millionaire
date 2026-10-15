@@ -27,6 +27,18 @@ in {
     account = "proton";
     host = "127.0.0.1";
     cert = "${config.xdg.dataHome}/protonmail-bridge/cert.pem";
+    # The bridge's macOS self-updater syncs Dir(Dir(Dir(os.Executable()))) (it
+    # assumes <X>.app/Contents/MacOS/bridge). From a nix store path that is
+    # /nix/store itself: it copied the whole store (.links, ~100+ MB/s, 7-9k IOPS)
+    # into $TMPDIR on every start, starving tccd -> WindowServer watchdog ->
+    # forced logout. Run a copy inside a tiny fake bundle so the bundle root is
+    # just the binary.
+    bridgeApp = pkgs.runCommand "protonmail-bridge-app" {} ''
+      d="$out/Proton Mail Bridge.app/Contents/MacOS"
+      mkdir -p "$d"
+      cp ${pkgs.protonmail-bridge}/bin/protonmail-bridge "$d/protonmail-bridge"
+    '';
+    bridgeExe = "${bridgeApp}/Proton Mail Bridge.app/Contents/MacOS/protonmail-bridge";
     sync = pkgs.writeShellScript "mail-sync" ''
       ${lib.getExe pkgs.isync} --all && ${lib.getExe pkgs.mu} index
     '';
@@ -83,7 +95,7 @@ in {
         launchd.agents.protonmail-bridge = {
           enable = true;
           config = {
-            ProgramArguments = [(lib.getExe pkgs.protonmail-bridge) "--noninteractive"];
+            ProgramArguments = [bridgeExe "--noninteractive"];
             RunAtLoad = true;
             KeepAlive = true;
           };
