@@ -58,7 +58,12 @@ async fn arr(c: &mut Clean<'_>, app: &'static str, collection: &str) -> R<()> {
     for item in a.get(ctx, collection).await?.as_array().cloned().unwrap_or_default() {
         if c.scope.hit_v(&item["path"]) || tagged(&item, &ids) {
             let id = item["id"].as_i64().unwrap_or(0);
-            let what = format!("{app} {} {:?} ({})", &collection[1..], item["title"].as_str().or(item["artistName"].as_str()).unwrap_or("?"), item["path"].as_str().unwrap_or(""));
+            let what = format!(
+                "{app} {} {:?} ({})",
+                &collection[1..],
+                item["title"].as_str().or(item["artistName"].as_str()).unwrap_or("?"),
+                item["path"].as_str().unwrap_or("")
+            );
             let path = format!("{collection}/{id}?deleteFiles=true&addImportExclusion=false&addImportListExclusion=false");
             c.act(what, async { a.delete(ctx, &path).await }).await;
         }
@@ -85,7 +90,10 @@ async fn seerr(c: &mut Clean<'_>) -> R<()> {
         if c.scope.hit_v(&r["rootFolder"]) {
             media.push((r["media"]["id"].clone(), r["media"]["tmdbId"].clone(), r["media"]["mediaType"].clone()));
             let path = format!("/request/{}", r["id"]);
-            c.act(format!("seerr request {} ({})", r["id"], r["rootFolder"]), async { send(s.req(ctx, Method::DELETE, &path), "seerr", "delete request").await.map(|_| ()) }).await;
+            c.act(format!("seerr request {} ({})", r["id"], r["rootFolder"]), async {
+                send(s.req(ctx, Method::DELETE, &path), "seerr", "delete request").await.map(|_| ())
+            })
+            .await;
         }
     }
     // The media row the request created, once no request (test or real) is left on it.
@@ -94,7 +102,10 @@ async fn seerr(c: &mut Clean<'_>) -> R<()> {
         let d = json(s.req(ctx, Method::GET, &format!("/{kind}/{tmdb}")), "seerr", "media details").await.unwrap_or_default();
         if d["mediaInfo"]["requests"].as_array().is_none_or(|r| r.is_empty() || c.dry) {
             let path = format!("/media/{id}");
-            c.act(format!("seerr media {id} (created by a test request)"), async { send(s.req(ctx, Method::DELETE, &path), "seerr", "delete media").await.map(|_| ()) }).await;
+            c.act(format!("seerr media {id} (created by a test request)"), async {
+                send(s.req(ctx, Method::DELETE, &path), "seerr", "delete media").await.map(|_| ())
+            })
+            .await;
         }
     }
     Ok(())
@@ -114,7 +125,10 @@ async fn jellyfin(c: &mut Clean<'_>) -> R<()> {
     for b in sets["Items"].as_array().cloned().unwrap_or_default() {
         if c.scope.hit_v(&b["Name"]) {
             let path = format!("/Items/{}", b["Id"].as_str().unwrap_or(""));
-            c.act(format!("jellyfin collection {}", b["Name"]), async { send(jf.req(ctx, Method::DELETE, &path), "jellyfin", "delete collection").await.map(|_| ()) }).await;
+            c.act(format!("jellyfin collection {}", b["Name"]), async {
+                send(jf.req(ctx, Method::DELETE, &path), "jellyfin", "delete collection").await.map(|_| ())
+            })
+            .await;
         }
     }
     Ok(())
@@ -136,7 +150,16 @@ async fn jellyfin_devices_inner(c: &mut Clean<'_>) -> R<()> {
         if own || c.scope.hit_v(&d["Id"]) {
             let path = format!("/Devices?id={}", enc(d["Id"].as_str().unwrap_or("")));
             // A device whose session Jellyfin already expired answers 401: it is gone, which is the goal.
-            c.act(format!("jellyfin device/session {}", d["Id"]), async { send(jf.req(ctx, Method::DELETE, &path), "jellyfin", "delete device").await.map(|_| ()).or_else(|e| if e.msg.starts_with("HTTP 401") { Ok(()) } else { Err(e) }) }).await;
+            c.act(format!("jellyfin device/session {}", d["Id"]), async {
+                send(jf.req(ctx, Method::DELETE, &path), "jellyfin", "delete device").await.map(|_| ()).or_else(|e| {
+                    if e.msg.starts_with("HTTP 401") {
+                        Ok(())
+                    } else {
+                        Err(e)
+                    }
+                })
+            })
+            .await;
         }
     }
     Ok(())
@@ -148,7 +171,8 @@ async fn kavita(c: &mut Clean<'_>) -> R<()> {
     for l in json(k.req(ctx, Method::GET, "/api/Library/libraries"), "kavita", "list libraries").await?.as_array().cloned().unwrap_or_default() {
         if c.scope.hit_v(&l["name"]) {
             let path = format!("/api/Library/delete?libraryId={}", l["id"]);
-            c.act(format!("kavita library {}", l["name"]), async { send(k.req(ctx, Method::DELETE, &path), "kavita", "delete library").await.map(|_| ()) }).await;
+            c.act(format!("kavita library {}", l["name"]), async { send(k.req(ctx, Method::DELETE, &path), "kavita", "delete library").await.map(|_| ()) })
+                .await;
         }
     }
     Ok(())
@@ -166,7 +190,8 @@ async fn komga(c: &mut Clean<'_>) -> R<()> {
     for key in json(k.req(ctx, Method::GET, "/api/v2/users/me/api-keys"), "komga", "list API keys").await?.as_array().cloned().unwrap_or_default() {
         if c.scope.hit_v(&key["comment"]) {
             let path = format!("/api/v2/users/me/api-keys/{}", key["id"].as_str().unwrap_or(""));
-            c.act(format!("komga API key {}", key["comment"]), async { send(k.req(ctx, Method::DELETE, &path), "komga", "delete API key").await.map(|_| ()) }).await;
+            c.act(format!("komga API key {}", key["comment"]), async { send(k.req(ctx, Method::DELETE, &path), "komga", "delete API key").await.map(|_| ()) })
+                .await;
         }
     }
     Ok(())
@@ -180,7 +205,10 @@ async fn abs(c: &mut Clean<'_>) -> R<()> {
         let folder_hit = l["folders"].as_array().into_iter().flatten().any(|f| c.scope.hit_v(&f["fullPath"]));
         if c.scope.hit_v(&l["name"]) || folder_hit {
             let path = format!("/api/libraries/{}", l["id"].as_str().unwrap_or(""));
-            c.act(format!("audiobookshelf library {}", l["name"]), async { send(a.req(ctx, Method::DELETE, &path), "audiobookshelf", "delete library").await.map(|_| ()) }).await;
+            c.act(format!("audiobookshelf library {}", l["name"]), async {
+                send(a.req(ctx, Method::DELETE, &path), "audiobookshelf", "delete library").await.map(|_| ())
+            })
+            .await;
         }
     }
     Ok(())
@@ -192,7 +220,8 @@ async fn maintainerr(c: &mut Clean<'_>) -> R<()> {
     for g in json(ctx.http.get(format!("{base}/api/rules")), "maintainerr", "list rule groups").await?.as_array().cloned().unwrap_or_default() {
         if c.scope.hit_v(&g["name"]) {
             let url = format!("{base}/api/rules/{}", g["id"]);
-            c.act(format!("maintainerr rule group {}", g["name"]), async { send(ctx.http.delete(&url), "maintainerr", "delete rule group").await.map(|_| ()) }).await;
+            c.act(format!("maintainerr rule group {}", g["name"]), async { send(ctx.http.delete(&url), "maintainerr", "delete rule group").await.map(|_| ()) })
+                .await;
         }
     }
     Ok(())
@@ -204,13 +233,17 @@ async fn qbittorrent(c: &mut Clean<'_>) -> R<()> {
     for t in q.get(ctx, "/torrents/info").await?.as_array().cloned().unwrap_or_default() {
         if c.scope.hit_v(&t["tags"]) || c.scope.hit_v(&t["category"]) || c.scope.hit_v(&t["save_path"]) {
             let h = t["hash"].as_str().unwrap_or("").to_string();
-            c.act(format!("qbittorrent torrent {} {:?} + data", h, t["name"].as_str().unwrap_or("")), async { q.post_form(ctx, "/torrents/delete", &[("hashes", &h), ("deleteFiles", "true")]).await.map(|_| ()) }).await;
+            c.act(format!("qbittorrent torrent {} {:?} + data", h, t["name"].as_str().unwrap_or("")), async {
+                q.post_form(ctx, "/torrents/delete", &[("hashes", &h), ("deleteFiles", "true")]).await.map(|_| ())
+            })
+            .await;
         }
     }
     let cats = q.get(ctx, "/torrents/categories").await?;
     for name in cats.as_object().map(|o| o.keys().cloned().collect::<Vec<_>>()).unwrap_or_default() {
         if c.scope.hit(&name) {
-            c.act(format!("qbittorrent category {name}"), async { q.post_form(ctx, "/torrents/removeCategories", &[("categories", &name)]).await.map(|_| ()) }).await;
+            c.act(format!("qbittorrent category {name}"), async { q.post_form(ctx, "/torrents/removeCategories", &[("categories", &name)]).await.map(|_| ()) })
+                .await;
         }
     }
     for t in q.get(ctx, "/torrents/tags").await?.as_array().cloned().unwrap_or_default() {
@@ -237,7 +270,10 @@ async fn maloja(c: &mut Clean<'_>) -> R<()> {
             let url = format!("{base}/apis/mlj_1/delete_scrobble");
             let body = json!({ "timestamp": ts });
             let cookie = cookie.clone();
-            c.act(format!("maloja scrobble {:?} at {ts}", s["track"]["title"].as_str().unwrap_or("")), async move { send(ctx.http.post(&url).header("Cookie", cookie).json(&body), "maloja", "delete scrobble").await.map(|_| ()) }).await;
+            c.act(format!("maloja scrobble {:?} at {ts}", s["track"]["title"].as_str().unwrap_or("")), async move {
+                send(ctx.http.post(&url).header("Cookie", cookie).json(&body), "maloja", "delete scrobble").await.map(|_| ())
+            })
+            .await;
         }
     }
     Ok(())
@@ -284,11 +320,15 @@ async fn navidrome(c: &mut Clean<'_>) -> R<()> {
         .await?;
     }
     let missing = json(nd.native(ctx, Method::GET, "/api/missing?_start=0&_end=1000"), "navidrome", "list missing files").await.unwrap_or_default();
-    let ids: Vec<String> = missing.as_array().into_iter().flatten().filter(|m| c.scope.hit_v(&m["path"])).filter_map(|m| m["id"].as_str().map(String::from)).collect();
+    let ids: Vec<String> =
+        missing.as_array().into_iter().flatten().filter(|m| c.scope.hit_v(&m["path"])).filter_map(|m| m["id"].as_str().map(String::from)).collect();
     if !ids.is_empty() {
         let q = ids.iter().map(|i| format!("id={i}")).collect::<Vec<_>>().join("&");
         let path = format!("/api/missing?{q}");
-        c.act(format!("navidrome missing-file rows {ids:?}"), async { send(nd.native(ctx, Method::DELETE, &path), "navidrome", "delete missing").await.map(|_| ()) }).await;
+        c.act(format!("navidrome missing-file rows {ids:?}"), async {
+            send(nd.native(ctx, Method::DELETE, &path), "navidrome", "delete missing").await.map(|_| ())
+        })
+        .await;
     }
     Ok(())
 }
@@ -321,6 +361,17 @@ pub async fn cleanup(ctx: &Ctx, scope: &Scope, dry: bool) -> Flow {
     step!("komga", komga(&mut c).await);
     step!("audiobookshelf", abs(&mut c).await);
     step!("maloja", maloja(&mut c).await);
+    step!(
+        "dvdrip",
+        async {
+            for what in super::flows_dvdrip::sweep(scope, dry).await? {
+                println!("  {} {what}", if dry { "would delete" } else { "deleted" });
+                c.actions.push(what);
+            }
+            Ok::<(), Fail>(())
+        }
+        .await
+    );
     files(&mut c);
     f.ok("fs", "cleanup", "marked top-level entries");
     step!("navidrome", navidrome(&mut c).await);
@@ -353,97 +404,198 @@ pub async fn residue(ctx: &Ctx, scope: &Scope) -> Flow {
         }};
     }
     for (app, coll) in [("radarr", "/movie"), ("sonarr", "/series"), ("lidarr", "/artist")] {
-        check!(app, async {
-            let a = Arr::new(app)?;
-            let ids = tag_ids(&a.get(ctx, "/tag").await?, scope);
-            let mut v: Vec<String> = a.get(ctx, coll).await?.as_array().into_iter().flatten().filter(|i| scope.hit_v(&i["path"]) || tagged(i, &ids)).map(|i| format!("{}", i["path"])).collect();
-            v.extend(a.get(ctx, "/rootfolder").await?.as_array().into_iter().flatten().filter(|r| scope.hit_v(&r["path"])).map(|r| format!("root folder {}", r["path"])));
-            v.extend(ids.iter().map(|i| format!("tag {i}")));
+        check!(
+            app,
+            async {
+                let a = Arr::new(app)?;
+                let ids = tag_ids(&a.get(ctx, "/tag").await?, scope);
+                let mut v: Vec<String> = a
+                    .get(ctx, coll)
+                    .await?
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter(|i| scope.hit_v(&i["path"]) || tagged(i, &ids))
+                    .map(|i| format!("{}", i["path"]))
+                    .collect();
+                v.extend(
+                    a.get(ctx, "/rootfolder")
+                        .await?
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter(|r| scope.hit_v(&r["path"]))
+                        .map(|r| format!("root folder {}", r["path"])),
+                );
+                v.extend(ids.iter().map(|i| format!("tag {i}")));
+                Ok(v)
+            }
+            .await
+        );
+    }
+    check!(
+        "seerr",
+        async {
+            let s = Seerr::session(ctx).await?;
+            let reqs = json(s.req(ctx, Method::GET, "/request?take=200&skip=0&filter=all"), "seerr", "list requests").await?;
+            Ok(reqs["results"].as_array().into_iter().flatten().filter(|r| scope.hit_v(&r["rootFolder"])).map(|r| format!("request {}", r["id"])).collect())
+        }
+        .await
+    );
+    check!(
+        "jellyfin",
+        async {
+            let jf = Jellyfin::login(ctx).await?;
+            let mut v: Vec<String> =
+                jf.virtual_folders(ctx).await?.iter().filter(|l| scope.hit_v(&l["Name"])).map(|l| format!("library {}", l["Name"])).collect();
+            // Items vanish once the library refresh after the delete finishes.
+            let items = poll("jellyfin", "items gone", Duration::from_secs(240), Duration::from_secs(10), || async {
+                let r = jf.get(ctx, "/Items?Recursive=true&IncludeItemTypes=Movie,Episode,Series,Audio,MusicAlbum,Book,AudioBook,BoxSet&Fields=Path").await?;
+                let left: Vec<String> = r["Items"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter(|i| scope.hit_v(&i["Path"]) || scope.hit_v(&i["Name"]))
+                    .map(|i| format!("item {} {}", i["Name"], i["Path"]))
+                    .collect();
+                Ok(if left.is_empty() { Some(left) } else { None })
+            })
+            .await;
+            if let Err(e) = items {
+                v.push(e.msg);
+            }
             Ok(v)
         }
-        .await);
-    }
-    check!("seerr", async {
-        let s = Seerr::session(ctx).await?;
-        let reqs = json(s.req(ctx, Method::GET, "/request?take=200&skip=0&filter=all"), "seerr", "list requests").await?;
-        Ok(reqs["results"].as_array().into_iter().flatten().filter(|r| scope.hit_v(&r["rootFolder"])).map(|r| format!("request {}", r["id"])).collect())
-    }
-    .await);
-    check!("jellyfin", async {
-        let jf = Jellyfin::login(ctx).await?;
-        let mut v: Vec<String> = jf.virtual_folders(ctx).await?.iter().filter(|l| scope.hit_v(&l["Name"])).map(|l| format!("library {}", l["Name"])).collect();
-        // Items vanish once the library refresh after the delete finishes.
-        let items = poll("jellyfin", "items gone", Duration::from_secs(240), Duration::from_secs(10), || async {
-            let r = jf.get(ctx, "/Items?Recursive=true&IncludeItemTypes=Movie,Episode,Series,Audio,MusicAlbum,Book,AudioBook,BoxSet&Fields=Path").await?;
-            let left: Vec<String> = r["Items"].as_array().into_iter().flatten().filter(|i| scope.hit_v(&i["Path"]) || scope.hit_v(&i["Name"])).map(|i| format!("item {} {}", i["Name"], i["Path"])).collect();
-            Ok(if left.is_empty() { Some(left) } else { None })
-        })
-        .await;
-        if let Err(e) = items {
-            v.push(e.msg);
+        .await
+    );
+    check!(
+        "kavita",
+        async {
+            let k = Kavita::login(ctx).await?;
+            Ok(json(k.req(ctx, Method::GET, "/api/Library/libraries"), "kavita", "libraries")
+                .await?
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter(|l| scope.hit_v(&l["name"]))
+                .map(|l| format!("library {}", l["name"]))
+                .collect())
         }
-        Ok(v)
-    }
-    .await);
-    check!("kavita", async {
-        let k = Kavita::login(ctx).await?;
-        Ok(json(k.req(ctx, Method::GET, "/api/Library/libraries"), "kavita", "libraries").await?.as_array().into_iter().flatten().filter(|l| scope.hit_v(&l["name"])).map(|l| format!("library {}", l["name"])).collect())
-    }
-    .await);
-    check!("komga", async {
-        let k = Komga::new()?;
-        let mut v: Vec<String> = json(k.req(ctx, Method::GET, "/api/v1/libraries"), "komga", "libraries").await?.as_array().into_iter().flatten().filter(|l| scope.hit_v(&l["name"]) || scope.hit_v(&l["root"])).map(|l| format!("library {}", l["name"])).collect();
-        v.extend(json(k.req(ctx, Method::GET, "/api/v2/users/me/api-keys"), "komga", "api keys").await?.as_array().into_iter().flatten().filter(|x| scope.hit_v(&x["comment"])).map(|x| format!("API key {}", x["comment"])));
-        Ok(v)
-    }
-    .await);
-    check!("audiobookshelf", async {
-        let a = Abs::login(ctx).await?;
-        let libs = json(a.req(ctx, Method::GET, "/api/libraries"), "audiobookshelf", "libraries").await?;
-        Ok(libs["libraries"].as_array().into_iter().flatten().filter(|l| scope.hit_v(&l["name"])).map(|l| format!("library {}", l["name"])).collect())
-    }
-    .await);
-    check!("maintainerr", async {
-        let g = json(ctx.http.get(format!("{}/api/rules", maintainerr_url())), "maintainerr", "rule groups").await?;
-        Ok(g.as_array().into_iter().flatten().filter(|g| scope.hit_v(&g["name"])).map(|g| format!("rule group {}", g["name"])).collect())
-    }
-    .await);
-    check!("maloja", async {
-        let list = json(ctx.http.get(format!("{}/apis/mlj_1/scrobbles?perpage=1000", maloja_url())), "maloja", "scrobbles").await?;
-        let v: Vec<String> = list["list"].as_array().into_iter().flatten().filter(|s| scope.hit_v(&s["track"]["title"])).map(|s| format!("scrobble {}", s["track"]["title"])).collect();
-        Ok(v)
-    }
-    .await);
-    check!("navidrome", async {
-        let nd = Navidrome::login(ctx).await?;
-        let r = nd.sub(ctx, "search3", &[("query", "e2e"), ("songCount", "200"), ("artistCount", "50"), ("albumCount", "50")]).await?;
-        let sr = &r["searchResult3"];
-        let mut v: Vec<String> = Vec::new();
-        for (kind, key, field) in [("song", "song", "title"), ("album", "album", "name"), ("artist", "artist", "name")] {
-            v.extend(sr[key].as_array().into_iter().flatten().filter(|x| scope.hit_v(&x[field])).map(|x| format!("{kind} {}", x[field])));
+        .await
+    );
+    check!(
+        "komga",
+        async {
+            let k = Komga::new()?;
+            let mut v: Vec<String> = json(k.req(ctx, Method::GET, "/api/v1/libraries"), "komga", "libraries")
+                .await?
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter(|l| scope.hit_v(&l["name"]) || scope.hit_v(&l["root"]))
+                .map(|l| format!("library {}", l["name"]))
+                .collect();
+            v.extend(
+                json(k.req(ctx, Method::GET, "/api/v2/users/me/api-keys"), "komga", "api keys")
+                    .await?
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter(|x| scope.hit_v(&x["comment"]))
+                    .map(|x| format!("API key {}", x["comment"])),
+            );
+            Ok(v)
         }
-        let missing = json(nd.native(ctx, Method::GET, "/api/missing?_start=0&_end=1000"), "navidrome", "missing").await.unwrap_or_default();
-        v.extend(missing.as_array().into_iter().flatten().filter(|m| scope.hit_v(&m["path"])).map(|m| format!("missing row {}", m["path"])));
-        Ok(v)
-    }
-    .await);
-    check!("qbittorrent", async {
-        let q = Qbt::login(ctx).await?;
-        let mut v: Vec<String> = q.get(ctx, "/torrents/info").await?.as_array().into_iter().flatten().filter(|t| scope.hit_v(&t["tags"]) || scope.hit_v(&t["category"])).map(|t| format!("torrent {}", t["name"])).collect();
-        v.extend(q.get(ctx, "/torrents/categories").await?.as_object().into_iter().flat_map(|o| o.keys()).filter(|k| scope.hit(k)).map(|k| format!("category {k}")));
-        Ok(v)
-    }
-    .await);
-    check!("fs", async {
-        let mut v = Vec::new();
-        for lib in LIBS {
-            if let Ok(rd) = fs::read_dir(format!("{}/{lib}", media_root())) {
-                v.extend(rd.flatten().map(|e| e.file_name().to_string_lossy().to_string()).filter(|n| scope.hit(n)).map(|n| format!("{lib}/{n}")));
+        .await
+    );
+    check!(
+        "audiobookshelf",
+        async {
+            let a = Abs::login(ctx).await?;
+            let libs = json(a.req(ctx, Method::GET, "/api/libraries"), "audiobookshelf", "libraries").await?;
+            Ok(libs["libraries"].as_array().into_iter().flatten().filter(|l| scope.hit_v(&l["name"])).map(|l| format!("library {}", l["name"])).collect())
+        }
+        .await
+    );
+    check!(
+        "maintainerr",
+        async {
+            let g = json(ctx.http.get(format!("{}/api/rules", maintainerr_url())), "maintainerr", "rule groups").await?;
+            Ok(g.as_array().into_iter().flatten().filter(|g| scope.hit_v(&g["name"])).map(|g| format!("rule group {}", g["name"])).collect())
+        }
+        .await
+    );
+    check!(
+        "maloja",
+        async {
+            let list = json(ctx.http.get(format!("{}/apis/mlj_1/scrobbles?perpage=1000", maloja_url())), "maloja", "scrobbles").await?;
+            let v: Vec<String> = list["list"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter(|s| scope.hit_v(&s["track"]["title"]))
+                .map(|s| format!("scrobble {}", s["track"]["title"]))
+                .collect();
+            Ok(v)
+        }
+        .await
+    );
+    check!(
+        "navidrome",
+        async {
+            let nd = Navidrome::login(ctx).await?;
+            let r = nd.sub(ctx, "search3", &[("query", "e2e"), ("songCount", "200"), ("artistCount", "50"), ("albumCount", "50")]).await?;
+            let sr = &r["searchResult3"];
+            let mut v: Vec<String> = Vec::new();
+            for (kind, key, field) in [("song", "song", "title"), ("album", "album", "name"), ("artist", "artist", "name")] {
+                v.extend(sr[key].as_array().into_iter().flatten().filter(|x| scope.hit_v(&x[field])).map(|x| format!("{kind} {}", x[field])));
             }
+            let missing = json(nd.native(ctx, Method::GET, "/api/missing?_start=0&_end=1000"), "navidrome", "missing").await.unwrap_or_default();
+            v.extend(missing.as_array().into_iter().flatten().filter(|m| scope.hit_v(&m["path"])).map(|m| format!("missing row {}", m["path"])));
+            Ok(v)
         }
-        Ok(v)
-    }
-    .await);
+        .await
+    );
+    check!(
+        "qbittorrent",
+        async {
+            let q = Qbt::login(ctx).await?;
+            let mut v: Vec<String> = q
+                .get(ctx, "/torrents/info")
+                .await?
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter(|t| scope.hit_v(&t["tags"]) || scope.hit_v(&t["category"]))
+                .map(|t| format!("torrent {}", t["name"]))
+                .collect();
+            v.extend(
+                q.get(ctx, "/torrents/categories")
+                    .await?
+                    .as_object()
+                    .into_iter()
+                    .flat_map(|o| o.keys())
+                    .filter(|k| scope.hit(k))
+                    .map(|k| format!("category {k}")),
+            );
+            Ok(v)
+        }
+        .await
+    );
+    check!("dvdrip", super::flows_dvdrip::sweep(scope, true).await);
+    check!(
+        "fs",
+        async {
+            let mut v = Vec::new();
+            for lib in LIBS {
+                if let Ok(rd) = fs::read_dir(format!("{}/{lib}", media_root())) {
+                    v.extend(rd.flatten().map(|e| e.file_name().to_string_lossy().to_string()).filter(|n| scope.hit(n)).map(|n| format!("{lib}/{n}")));
+                }
+            }
+            Ok(v)
+        }
+        .await
+    );
     let artists = json(ctx.http.get(format!("{}/apis/mlj_1/artists", maloja_url())), "maloja", "artists").await.unwrap_or_default();
     let orphans: Vec<String> = artists["list"].as_array().into_iter().flatten().filter(|a| scope.hit_v(a)).map(|a| a.to_string()).collect();
     if !orphans.is_empty() {

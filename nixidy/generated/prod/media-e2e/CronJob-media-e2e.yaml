@@ -27,6 +27,8 @@ spec:
                   value: tristan
                 - name: DOMAIN
                   value: trdos.me
+                - name: DVDRIP_IMAGE
+                  value: harbor.trdos.me/library/dvdrip:0.1.2@sha256:c76a8ac1cf7ef994d359155e76b796a415adcc7183e3f6cc3d62f24b0cd7c47d
                 - name: E2E_REPORT_CONFIGMAP
                   value: media/media-e2e-last-report
                 - name: E2E_RUNNER
@@ -37,7 +39,7 @@ spec:
                   value: "1000"
                 - name: PYROSCOPE_SERVER_ADDRESS
                   value: http://pyroscope.observability.svc.cluster.local:4040
-              image: harbor.trdos.me/library/e2e:0.9.4@sha256:18aba48477e53d17b91b0c5ecf437b4182a9ee3dd49feb1924721c83fb28a662
+              image: harbor.trdos.me/library/e2e:0.10.0@sha256:6aca7bc290073c034efc795d068eaec3b7d6001134b68c408c8e0407e17f4f72
               name: media-e2e
               resources:
                 limits:

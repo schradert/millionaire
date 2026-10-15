@@ -4,6 +4,7 @@ pub mod apps;
 pub mod cleanup;
 pub mod content;
 mod flows_arr;
+mod flows_dvdrip;
 mod flows_integrations;
 mod flows_media;
 mod flows_vpn;
@@ -52,6 +53,8 @@ fn flows() -> Vec<FlowDef> {
         d("vpn-tracker-ip", Full, "trackers see the VPN IP, never the home IP", step!(flows_vpn::tracker)),
         d("sso", Offline, "OIDC discovery; every media app's login lands on Keycloak", step!(flows_media::sso)),
         d("kodi", Offline, "dvd WebDAV serves a test ISO (basic auth, range GETs)", step!(flows_media::kodi)),
+        d("dvd-rip", Offline, "a synthetic DVD is encoded and published by dvdrip, then renamed and re-sorted", step!(flows_dvdrip::rip))
+            .cleanup(step!(flows_dvdrip::cleanup)),
         d("books-kavita", Offline, "Kavita imports an EPUB into a test library; OPDS lists it", step!(flows_media::kavita)),
         d("books-komga", Offline, "Komga imports an EPUB into a test library; OPDS lists it", step!(flows_media::komga)),
         d("audiobookshelf", Offline, "Audiobookshelf imports an audiobook into a test library", step!(flows_media::audiobookshelf)),
