@@ -99,7 +99,8 @@
             SONARR__LOG__LEVEL = "info";
             SONARR__SERVER__PORT = builtins.toString port;
             SONARR__SERVER__ALLOWEDHOSTS = lib.concatStringsSep "," [hostname "sonarr.media.svc.cluster.local" "sonarr.media.svc" "sonarr.media" "sonarr" "localhost"];
-            SONARR__UPDATE__BRANCH = "develop";
+            # Stable line: develop has already moved to v5, so the update check kept warning.
+            SONARR__UPDATE__BRANCH = "main";
             SONARR__POSTGRES__USER = "sonarr";
             SONARR__POSTGRES__MAINDB = "sonarr";
             SONARR__POSTGRES__LOGDB = "sonarr-log";

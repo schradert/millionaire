@@ -17,7 +17,7 @@ spec:
       template:
         metadata:
           annotations:
-            checksum/configMaps: c1d9266dba4945825332ada6a68898aff07911fd31f699036f36daa17e870f60
+            checksum/configMaps: 4f643501c5d684e3a5a16876a923a475499e280433e64ac6df5131cdb701f6fa
           labels:
             app.kubernetes.io/controller: recyclarr
             app.kubernetes.io/instance: recyclarr

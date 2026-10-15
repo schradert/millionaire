@@ -8,6 +8,22 @@
     inherit (config.canivete.meta) domain;
     hostname = "prowlarr.${domain}";
     port = 80;
+    # Indexers the bootstrap creates and keeps in sync (apps/app-bootstrap arr, >= 0.22.0), by Prowlarr
+    # definition name (Prowlarr > Indexers > Add Indexer lists them, or GET /api/v1/indexer/schema;
+    # `definitionName`). Per entry: name, definition, and optionally enable, priority, tags (labels,
+    # e.g. "flaresolverr"), settings (field name = value) and secrets (field name = Bitwarden item whose
+    # value is the credential, synced by ExternalSecret). Indexers added in the UI are left alone, and
+    # removing an entry here does not delete the indexer.
+    indexers = [
+      {
+        # Public, legal: the Internet Archive's torrents. Exercises the whole pipeline.
+        name = "Internet Archive";
+        definition = "internetarchive";
+      }
+    ];
+    slug = ix: field: lib.toLower (builtins.replaceStrings [" "] ["-"] "${ix.name}-${field}");
+    withSecretFiles = ix: ix // {secrets = lib.mapAttrs (field: _: "/secrets/indexers/${slug ix field}") (ix.secrets or {});};
+    secretIndexers = lib.filter (ix: (ix.secrets or {}) != {}) indexers;
   in {
     portal.apps.prowlarr.groups = ["admin"];
     gatus.endpoints.prowlarr = {
@@ -18,24 +34,42 @@
     applications.prowlarr = {
       namespace = "media";
       # Idempotent post-sync bootstrap (apps/app-bootstrap arr, >= 0.15.0): root folders and
-      # the qBittorrent download client in Sonarr/Radarr/Lidarr, and Prowlarr's application
-      # sync to them. API keys are the generated <app>-apikey Secrets.
+      # the qBittorrent download client in Sonarr/Radarr/Lidarr, qBittorrent's save path,
+      # Prowlarr's application sync to them, its download client, FlareSolverr proxy and the
+      # indexers above. API keys are the generated <app>-apikey Secrets.
       bootstrap = lib.mkIf (pinned.images ? app-bootstrap-arr) {
         image = with pinned.images.app-bootstrap-arr; "${repository}:${tag}@${digest}";
         args = ["arr"];
-        env = {
-          SONARR_API_KEY_FILE = "/secrets/sonarr/apikey";
-          RADARR_API_KEY_FILE = "/secrets/radarr/apikey";
-          LIDARR_API_KEY_FILE = "/secrets/lidarr/apikey";
-          PROWLARR_API_KEY_FILE = "/secrets/prowlarr/apikey";
-          QBITTORRENT_PASSWORD_FILE = "/secrets/qbittorrent/password";
-        };
-        secrets = {
-          sonarr = "sonarr-apikey";
-          radarr = "radarr-apikey";
-          lidarr = "lidarr-apikey";
-          prowlarr = "prowlarr-apikey";
-          qbittorrent = "qbittorrent-admin";
+        env =
+          {
+            SONARR_API_KEY_FILE = "/secrets/sonarr/apikey";
+            RADARR_API_KEY_FILE = "/secrets/radarr/apikey";
+            LIDARR_API_KEY_FILE = "/secrets/lidarr/apikey";
+            PROWLARR_API_KEY_FILE = "/secrets/prowlarr/apikey";
+            QBITTORRENT_PASSWORD_FILE = "/secrets/qbittorrent/password";
+          }
+          // lib.optionalAttrs (indexers != []) {PROWLARR_INDEXERS = builtins.toJSON (map withSecretFiles indexers);};
+        secrets =
+          {
+            sonarr = "sonarr-apikey";
+            radarr = "radarr-apikey";
+            lidarr = "lidarr-apikey";
+            prowlarr = "prowlarr-apikey";
+            qbittorrent = "qbittorrent-admin";
+          }
+          // lib.optionalAttrs (secretIndexers != []) {indexers = "prowlarr-indexers";};
+      };
+      resources.externalSecrets.prowlarr-indexers = lib.mkIf (secretIndexers != []) {
+        spec = {
+          secretStoreRef.name = "bitwarden";
+          secretStoreRef.kind = "ClusterSecretStore";
+          data = lib.concatMap (ix:
+            lib.mapAttrsToList (field: item: {
+              secretKey = slug ix field;
+              remoteRef.key = item;
+            })
+            ix.secrets)
+          secretIndexers;
         };
       };
       postgres = {

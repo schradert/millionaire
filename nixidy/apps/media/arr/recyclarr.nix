@@ -20,6 +20,14 @@
         base_url = "http://radarr.media.svc.cluster.local";
         api_key = "!env_var RADARR_API_KEY";
         quality_definition.type = "sqp-streaming";
+        # TRaSH naming for Jellyfin (IMDb ids). Applies to new imports; nothing is renamed in place.
+        media_naming = {
+          folder = "jellyfin-imdb";
+          movie = {
+            rename = true;
+            standard = "jellyfin-imdb";
+          };
+        };
         quality_profiles = [
           {
             trash_id = "e91c9adaca0231493f4af0d571b907f9"; # [SQP] SQP-1 WEB (2160p)
@@ -34,6 +42,16 @@
         base_url = "http://sonarr.media.svc.cluster.local";
         api_key = "!env_var SONARR_API_KEY";
         quality_definition.type = "series";
+        media_naming = {
+          series = "jellyfin-tvdb";
+          season = "default";
+          episodes = {
+            rename = true;
+            standard = "default";
+            daily = "default";
+            anime = "default";
+          };
+        };
         quality_profiles = [
           {
             trash_id = "72dae194fc92bf828f32cde7744e51a1"; # WEB-1080p

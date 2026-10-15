@@ -11,7 +11,7 @@ data:
   SONARR__POSTGRES__USER: sonarr
   SONARR__SERVER__ALLOWEDHOSTS: sonarr.trdos.me,sonarr.media.svc.cluster.local,sonarr.media.svc,sonarr.media,sonarr,localhost
   SONARR__SERVER__PORT: "80"
-  SONARR__UPDATE__BRANCH: develop
+  SONARR__UPDATE__BRANCH: main
 kind: ConfigMap
 metadata:
   labels:
