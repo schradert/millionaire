@@ -94,7 +94,10 @@ in {
               csi-cephfsplugin = plugin "50m";
               liveness-prometheus = sidecar;
             });
-            csi.cephFSKernelMountOptions = "ms_mode=prefer-crc";
+            # recover_session=clean: a kernel client that the MDS blocklists (an MDS failover past the reconnect
+            # window, 2026-10-15) reconnects with a fresh session instead of failing every access with EACCES until
+            # its pod is recreated. Dirty data of the lost session is dropped. Applies to mounts made after the rollout.
+            csi.cephFSKernelMountOptions = "ms_mode=prefer-crc,recover_session=clean";
             csi.enableCephfsDriver = true;
             csi.enableCephfsSnapshotter = true;
             csi.serviceMonitor.enabled = true;
@@ -166,6 +169,20 @@ in {
                   // {
                     metadataPool = withReplicas resource.spec.metadataPool;
                     dataPools = map withReplicas resource.spec.dataPools;
+                    # Rook's default anti-affinity is only a preference, and both daemons landed on octopus; when that
+                    # node stalled (2026-10-15) the standby died with the active MDS, the replacement missed the
+                    # clients' reconnect window and they were blocklisted. Keep the pair on different hosts.
+                    metadataServer =
+                      resource.spec.metadataServer
+                      // {
+                        placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution = lib.toList {
+                          labelSelector.matchLabels = {
+                            app = "rook-ceph-mds";
+                            rook_file_system = "ceph-filesystem";
+                          };
+                          topologyKey = "kubernetes.io/hostname";
+                        };
+                      };
                   };
               }
             else resource;
@@ -583,6 +600,20 @@ in {
             }) (lib.unique (map (o: o.node) retiredOsds)));
         # The chart's Ceph alert rules (health, device failure, slow ops), selected by Prometheus.
         prometheusRules.prometheus-ceph-rules.metadata.labels.release = "prometheus";
+        # The chart has no rule for blocklisting: an evicted CephFS client keeps its mount but every access fails
+        # until the pod is recreated, and nothing else notices.
+        prometheusRules.ceph-clients.metadata.labels.release = "prometheus";
+        prometheusRules.ceph-clients.spec.groups = lib.toList {
+          name = "ceph-clients";
+          rules = lib.toList {
+            alert = "CephClientsBlocklisted";
+            # Expired entries lower the count, so only growth fires.
+            expr = "increase(ceph_cluster_osd_blocklist_count[15m]) > 0";
+            labels.severity = "warning";
+            annotations.summary = "Ceph blocklisted clients";
+            annotations.description = "The blocklist grew by {{ $value }}: the MDS evicted CephFS clients (or a client was fenced). Mounts on the affected nodes may fail with EACCES until their pods restart; compare `ls` on each CephFS mount, or `dmesg | grep blocklisted` on the nodes.";
+          };
+        };
         storageClasses.ceph-bucket.parameters.region = lib.mkForce "us-west-004";
         storageClasses.ceph-block = {
           # TODO should I prevent this from being the default storageclass?
