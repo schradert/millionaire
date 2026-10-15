@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
-  image: harbor.trdos.me/library/app-bootstrap:0.22.0@sha256:54821207ee6084468b141d0241860900a0b8aa1d465cfde4769e529626aee9ac
-  spec: deaac41bbae3d3be095a5d4497487087969c1b617bc82b3f9154701c6660cc01
+  image: harbor.trdos.me/library/app-bootstrap:0.22.1@sha256:efcaab3b2ee14c6d12e21e323ee0c59948842dd9bf75a6f2de5f07ec590cde6f
+  spec: 365c6610b1b71fae4c7bd64ec0f7ef06fa0b5aa372edb8547f17f9a23b69c818
 kind: ConfigMap
 metadata:
   name: immich-bootstrap
