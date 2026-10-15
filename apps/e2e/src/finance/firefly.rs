@@ -80,7 +80,11 @@ pub async fn ledger(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let about = get_json(ff.req(ctx, Method::GET, "/about"), APP, "about").await?;
     f.ok(APP, "the e2e user's token works", format!("Firefly III {}", about["data"]["version"].as_str().unwrap_or("?")));
 
-    let today = rfc3339(unix_now())[..10].to_string();
+    // Firefly computes `current_balance` as of the end of *its* today, in the pod's timezone
+    // (k8tz injects America/Los_Angeles), which lags UTC: at the 03:15 UTC nightly run the UTC date
+    // is a day ahead, the opening balance and withdrawal are future-dated and the balance reads 0.
+    // Yesterday (UTC) is never later than today in any timezone.
+    let today = rfc3339(unix_now() - 86_400)[..10].to_string();
     let acct = get_json(
         ff.req(ctx, Method::POST, "/accounts").json(&json!({ "name": format!("{m}-account"), "type": "asset", "account_role": "defaultAsset", "opening_balance": "100.00", "opening_balance_date": today })),
         APP,
