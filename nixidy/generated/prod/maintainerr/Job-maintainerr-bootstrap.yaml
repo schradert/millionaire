@@ -50,7 +50,7 @@ spec:
               value: /secrets/tracearr/password
             - name: TRACEARR_USER
               value: tristan
-          image: harbor.trdos.me/library/app-bootstrap:0.38.0@sha256:6e3bb40107a39407c79659b0a607e9291a4fd9f625e6f79608c59f51b0110735
+          image: harbor.trdos.me/library/app-bootstrap:0.39.0@sha256:ac16ef9f70bc43ac22ab22f04b940c2e4ddf4008884a799a781cb141d17cf09f
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
