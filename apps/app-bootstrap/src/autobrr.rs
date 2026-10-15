@@ -88,7 +88,7 @@ pub async fn run() -> Result<()> {
     .await?;
     let a = Autobrr { http: &http, base, cookie };
 
-    let clients = a.get("/api/download_clients").await?;
+    let clients = a.get("/api/downloaders").await?;
     let basic = json!({ "auth": false, "username": "", "password": "" });
     let mut wanted: Vec<(&str, Value)> = Vec::new();
     if let Some(pass) = optional_secret("QBITTORRENT_PASSWORD")? {
@@ -115,11 +115,11 @@ pub async fn run() -> Result<()> {
         if has_name(&clients, name).is_some() {
             continue;
         }
-        a.send(reqwest::Method::POST, "/api/download_clients", &body).await?;
+        a.send(reqwest::Method::POST, "/api/downloaders", &body).await?;
         println!("autobrr: added the {name} download client");
     }
 
-    let clients = a.get("/api/download_clients").await?;
+    let clients = a.get("/api/downloaders").await?;
     let filters = a.get("/api/filters").await?;
     let specs = [
         ("Sonarr (TV)", "Sonarr", json!({ "resolutions": ["1080p", "2160p"], "sources": ["WEB"] })),

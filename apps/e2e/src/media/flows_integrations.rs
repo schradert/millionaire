@@ -143,7 +143,7 @@ pub async fn autobrr(ctx: &Ctx, f: &mut Flow) -> R<()> {
         .map(String::from)
         .at("autobrr", "session cookie")?;
     let get = |path: &str| ctx.http.request(Method::GET, format!("{base}{path}")).header("Cookie", cookie.clone());
-    let clients = json(get("/api/download_clients"), "autobrr", "download clients").await?;
+    let clients = json(get("/api/downloaders"), "autobrr", "download clients").await?;
     require("autobrr", "download clients", &names(&clients, "name"), &["qBittorrent", "Sonarr", "Radarr", "Lidarr"])?;
     let filters = json(get("/api/filters"), "autobrr", "filters").await?;
     require("autobrr", "filters", &names(&filters, "name"), &["Sonarr (TV)", "Radarr (Movies)", "Lidarr (Music)"])?;
