@@ -14,6 +14,7 @@
 {
   config,
   lib,
+  pkgs,
   ...
 }: let
   cfg = config.desktopNode;
@@ -64,12 +65,15 @@ in {
     canivete.kubernetes.yaml.node-taint = ["node.trdos.me/class=desktop:PreferNoSchedule"];
 
     hardware.nvidia-container-toolkit.enable = gpu;
-    # The operator's driver-validation insists on a non-empty /host/usr/bin/nvidia-smi (its host-driver
-    # check; without it, it waits forever for a driver container, which driver.enabled=false never
-    # starts). envfs's /usr/bin serves every entry as a 0-byte symlink, which that check rejects, so
-    # GPU nodes get the stock NixOS /usr/bin (just `env`) plus a real symlink.
-    services.envfs.enable = lib.mkIf gpu (lib.mkForce false);
-    systemd.tmpfiles.rules = lib.mkIf gpu ["L+ /usr/bin/nvidia-smi - - - - ${config.hardware.nvidia.package.bin}/bin/nvidia-smi"];
+    # The operator's driver validation (host-driver check) lstats /host/usr/bin/nvidia-smi and
+    # rejects a 0-byte file, and envfs reports every symlink as 0 bytes: patch it to report the
+    # target's length (as a real symlink does) and put nvidia-smi on its fallback path, which the
+    # validator's PATH lacks. Keeps envfs (shebang paths) on workstations that run the GPU.
+    # Local patch; no upstream issue/PR exists yet (draft in the PR body), drop once Mic92/envfs src/fs.rs symlink_attr reports real sizes.
+    services.envfs = lib.mkIf gpu {
+      package = pkgs.envfs.overrideAttrs (old: {patches = (old.patches or []) ++ [./envfs-symlink-size.patch];});
+      extraFallbackPathCommands = "ln -s ${config.hardware.nvidia.package.bin}/bin/nvidia-smi $out/nvidia-smi";
+    };
     # The runtime's default `auto` mode generates a CDI spec itself and finds no libcuda on NixOS
     # (no FHS lib dirs). `cdi` mode serves containers from the spec NixOS already writes to
     # /var/run/cdi, which names devices by index (pair with the device plugin's
