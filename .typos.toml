@@ -39,3 +39,5 @@ regist = "regist"
 mian = "mian"
 transportr = "transportr"
 Transportr = "Transportr"
+# nmap -Pn (skip host discovery)
+Pn = "Pn"
