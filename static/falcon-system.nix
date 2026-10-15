@@ -67,7 +67,10 @@ in {
     dataDatasets);
 
   # The only optical drive (LG DH50N, DVD only); rips land on the data pool.
-  services.dvd-rip.enable = true;
+  services.dvd-rip = {
+    enable = true;
+    uid = 1001; # tristan's uid since the 2026-10-14 reinstall
+  };
 
   boot.binfmt.emulatedSystems = ["aarch64-linux"];
   boot.initrd.availableKernelModules = ["sr_mod"];
