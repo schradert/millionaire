@@ -1,6 +1,6 @@
 # morgenmuffel: personal Mac.
 {
-  imports = [./darwin-workstation.nix];
+  imports = [./darwin-workstation.nix ./muffin-vm.nix];
   profile = "personal";
   # Installed by the old dotfiles repo
   system.stateVersion = 4;
