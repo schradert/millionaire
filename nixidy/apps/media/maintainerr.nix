@@ -1,4 +1,6 @@
-{config, ...}: {
+{config, ...}: let
+  inherit (config.canivete.meta) people;
+in {
   nixidy = {
     charts,
     lib,
@@ -17,8 +19,27 @@
     applications.maintainerr = {
       namespace = "media";
       volsync.pvcs.maintainerr.title = "maintainerr";
+      # Idempotent post-sync bootstrap (apps/app-bootstrap maintainerr, >= 0.22.0): the Radarr, Sonarr
+      # and Seerr connections (Jellyfin comes from jellyfin-bootstrap). Creates no rule group: rules
+      # delete media, so they stay a deliberate choice.
+      bootstrap = lib.mkIf (pinned.images ? app-bootstrap-maintainerr) {
+        image = with pinned.images.app-bootstrap-maintainerr; "${repository}:${tag}@${digest}";
+        args = ["maintainerr"];
+        env = {
+          RADARR_API_KEY_FILE = "/secrets/radarr/apikey";
+          SONARR_API_KEY_FILE = "/secrets/sonarr/apikey";
+          JELLYFIN_ADMIN_USER = "admin";
+          JELLYFIN_ADMIN_PASSWORD_FILE = "/secrets/jellyfin/password";
+          ADMIN_EMAIL = people.my.profiles.personal.email;
+        };
+        secrets = {
+          radarr = "radarr-apikey";
+          sonarr = "sonarr-apikey";
+          jellyfin = "jellyfin-admin";
+        };
+      };
       # Maintainerr has no login and returns its settings (API key, Jellyfin key) to any caller, so
-      # only oauth2-proxy (UI), the Jellyfin bootstrap (configures it) and the e2e Job may reach it.
+      # only oauth2-proxy (UI), the Jellyfin and Maintainerr bootstraps (configure it) and the e2e Job may reach it.
       resources.ciliumNetworkPolicies.maintainerr.spec = {
         endpointSelector.matchLabels."app.kubernetes.io/name" = "maintainerr";
         ingress = [
@@ -32,6 +53,7 @@
                 };
               }
               {matchLabels."batch.kubernetes.io/job-name" = "jellyfin-bootstrap";}
+              {matchLabels."batch.kubernetes.io/job-name" = "maintainerr-bootstrap";}
               {matchLabels."app.kubernetes.io/name" = "media-e2e";}
             ];
             toPorts = lib.toList {
