@@ -1,0 +1,4 @@
+# Matches the existing code (p99 line width ~156); rustfmt runs on touched files only (devenv.nix).
+edition = "2021"
+max_width = 160
+use_small_heuristics = "Max"
