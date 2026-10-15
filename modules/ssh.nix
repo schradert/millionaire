@@ -10,7 +10,12 @@
     ...
   }: {
     config = lib.mkIf config.profiles.workstation.enable {
-      programs.ssh.knownHosts = {
+      programs.ssh.knownHosts = lib.mapAttrs' (n: p:
+        lib.nameValuePair "lan-${n}" {
+          hostNames = [n p.lan];
+          publicKey = p.hostKey;
+        })
+      (import ../static/builders.nix).nodes // {
         # a port-forward to sirver, so it presents sirver's key (as in modules/builders.nix)
         edge = {
           hostNames = ["192.184.168.248"];
