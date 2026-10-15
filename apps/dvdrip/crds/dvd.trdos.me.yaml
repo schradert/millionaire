@@ -327,6 +327,11 @@
                     "nullable": true,
                     "type": "string"
                   },
+                  "encodeKey": {
+                    "description": "The spec's encode-relevant fields (mainTitle, protected) at the last encode.",
+                    "nullable": true,
+                    "type": "string"
+                  },
                   "encodedGeneration": {
                     "description": "The spec generation the last encode used (a change to mainTitle/protected re-encodes).",
                     "format": "int64",
@@ -334,6 +339,11 @@
                     "type": "integer"
                   },
                   "fingerprint": {
+                    "type": "string"
+                  },
+                  "heartbeat": {
+                    "description": "Renewed every 30 s by the agent while it backs the disc up (its lease).",
+                    "nullable": true,
                     "type": "string"
                   },
                   "label": {
@@ -360,7 +370,6 @@
                       "Encoded",
                       "Publishing",
                       "Done",
-                      "RescuePending",
                       "Failed"
                     ],
                     "type": "string"
@@ -370,31 +379,54 @@
                     "description": "The disc was encoded via MakeMKV (detected or forced copy protection).",
                     "type": "boolean"
                   },
+                  "publishKey": {
+                    "description": "The spec's layout fields (name, disc, titles) at the last publish.",
+                    "nullable": true,
+                    "type": "string"
+                  },
                   "published": {
                     "nullable": true,
                     "properties": {
                       "files": {
                         "default": [],
-                        "description": "Paths relative to media-movies.",
                         "items": {
-                          "type": "string"
+                          "description": "A file this disc put in media-movies (the only files publish ever moves or removes).",
+                          "properties": {
+                            "path": {
+                              "description": "Relative to media-movies.",
+                              "type": "string"
+                            },
+                            "segmentTitle": {
+                              "default": "",
+                              "type": "string"
+                            },
+                            "title": {
+                              "description": "The disc title it came from (0: the NFO).",
+                              "format": "uint32",
+                              "minimum": 0.0,
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "path",
+                            "title"
+                          ],
+                          "type": "object"
                         },
                         "type": "array"
                       },
                       "generation": {
-                        "description": "The Disc generation these paths were published from.",
+                        "default": 0,
+                        "description": "The Disc generation this was published from.",
                         "format": "int64",
                         "type": "integer"
                       },
                       "iso": {
-                        "description": "Paths relative to media-dvd.",
+                        "description": "Relative to media-dvd.",
                         "nullable": true,
                         "type": "string"
                       }
                     },
-                    "required": [
-                      "generation"
-                    ],
                     "type": "object"
                   },
                   "since": {
@@ -415,6 +447,15 @@
                           "format": "double",
                           "nullable": true,
                           "type": "number"
+                        },
+                        "glitches": {
+                          "description": "Damaged discs: where the encode glitches (seconds), marked as chapters.",
+                          "items": {
+                            "format": "uint64",
+                            "minimum": 0.0,
+                            "type": "integer"
+                          },
+                          "type": "array"
                         },
                         "output": {
                           "description": "Encoded file in the work dir (`encodes/<title>.mkv`), once it exists.",

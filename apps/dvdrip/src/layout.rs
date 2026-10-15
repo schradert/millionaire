@@ -148,7 +148,15 @@ mod tests {
     use crate::crd::TitleSpec;
 
     fn t(title: u32, role: Role, seconds: f64, aspect: Option<&str>) -> TitleStatus {
-        TitleStatus { title, role, seconds, output: role.encoded().then(|| encode_path(title)), encoded_seconds: None, aspect: aspect.map(String::from) }
+        TitleStatus {
+            title,
+            role,
+            seconds,
+            output: role.encoded().then(|| encode_path(title)),
+            encoded_seconds: None,
+            aspect: aspect.map(String::from),
+            glitches: vec![],
+        }
     }
 
     fn spec(name: &str, disc: u32) -> DiscSpec {
