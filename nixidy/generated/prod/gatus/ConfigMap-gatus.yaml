@@ -95,6 +95,12 @@ data:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
+      name: coder
+      url: https://coder.trdos.me/healthz
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
       name: contextforge
       url: https://mcp.trdos.me
     - conditions:

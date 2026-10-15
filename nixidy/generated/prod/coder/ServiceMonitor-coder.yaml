@@ -1,0 +1,14 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: coder
+  namespace: development
+spec:
+  endpoints:
+    - interval: 1m
+      port: metrics
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: metrics
+      app.kubernetes.io/instance: coder
+      app.kubernetes.io/name: coder

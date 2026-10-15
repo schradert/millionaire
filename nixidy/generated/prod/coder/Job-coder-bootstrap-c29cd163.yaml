@@ -1,0 +1,75 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  name: coder-bootstrap-c29cd163
+  namespace: development
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - command:
+            - /bin/bash
+            - -euo
+            - pipefail
+            - -c
+            - |
+              url=http://coder.development.svc.cluster.local
+              until curl -sf "$url/healthz" >/dev/null; do echo "waiting for coderd"; sleep 5; done
+              if [ "$(curl -s -o /dev/null -w '%{http_code}' "$url/api/v2/users/first")" = 404 ]; then
+                coder login "$url" --first-user-username admin --first-user-email "$ADMIN_EMAIL" \
+                  --first-user-password "$ADMIN_PASSWORD" --first-user-full-name Admin --first-user-trial=false
+              fi
+              CODER_SESSION_TOKEN=$(curl -sf -X POST "$url/api/v2/users/login" -H 'Content-Type: application/json' \
+                -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}" | sed -n 's/.*"session_token":"\([^"]*\)".*/\1/p')
+              test -n "$CODER_SESSION_TOKEN"
+              export CODER_URL=$url CODER_SESSION_TOKEN
+              if ! coder users show "$USER_NAME" >/dev/null 2>&1; then
+                coder users create --username "$USER_NAME" --email "$USER_EMAIL" --login-type oidc
+              fi
+              coder users edit-roles "$USER_NAME" --roles owner --yes
+          env:
+            - name: HOME
+              value: /tmp
+            - name: ADMIN_EMAIL
+              value: admin@trdos.me
+            - name: USER_NAME
+              value: tristan
+            - name: USER_EMAIL
+              value: t0rdos@pm.me
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: coder-admin
+          image: ghcr.io/coder/coder:v2.36.7@sha256:e8b2743529aea6a1e77bba764c8ec4a04dec65d27ca9caa0ec0b2dbcd3db0565
+          name: bootstrap
+          resources:
+            limits:
+              memory: 256Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - emptyDir: {}
+          name: tmp

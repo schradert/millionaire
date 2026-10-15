@@ -3,6 +3,7 @@
     ./e2e.nix
     ./e2e-catalog.nix
     ./development/atuin.nix
+    ./development/coder
     ./development/sveltekit-demo.nix
     ./development/forgejo.nix
     ./development/windmill.nix

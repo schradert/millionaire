@@ -226,6 +226,10 @@ data:
           description: ''
           href: https://atuin.trdos.me
           icon: atuin
+      - coder:
+          description: Cloud development workspaces
+          href: https://coder.trdos.me
+          icon: coder
       - forgejo:
           description: ''
           href: https://git.trdos.me

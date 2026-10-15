@@ -71,6 +71,7 @@ data:
     ensure_scopes chirpstack default openid profile email groups
     ensure_scopes cli default openid profile email groups
     ensure_scopes cli optional offline_access
+    ensure_scopes coder default openid profile email groups
     ensure_scopes contextforge default openid profile email groups
     ensure_scopes dashy default openid profile email groups
     ensure_scopes e2e default openid profile email groups
