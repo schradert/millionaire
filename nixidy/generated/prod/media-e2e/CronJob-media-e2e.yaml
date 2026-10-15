@@ -103,9 +103,6 @@ spec:
                 - mountPath: /secrets/navidrome-admin
                   name: navidrome-admin
                   readOnly: true
-                - mountPath: /secrets/multi-scrobbler
-                  name: multi-scrobbler
-                  readOnly: true
                 - mountPath: /secrets/maloja-admin
                   name: maloja-admin
                   readOnly: true
@@ -200,10 +197,6 @@ spec:
               secret:
                 optional: true
                 secretName: navidrome-admin
-            - name: multi-scrobbler
-              secret:
-                optional: true
-                secretName: multi-scrobbler
             - name: maloja-admin
               secret:
                 optional: true

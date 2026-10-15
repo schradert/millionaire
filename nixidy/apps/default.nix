@@ -39,6 +39,7 @@
     ./identity/keycloak-auth.nix
     ./identity/keycloak-invite.nix
     ./identity/oauth2-proxy.nix
+    ./media/scrobbling.nix
     ./media/maloja.nix
     ./media/multi-scrobbler.nix
     ./media/navidrome.nix

@@ -1,23 +1,43 @@
 {config, ...}: {
-  # Private scrobble database. Holds the canonical listening history; everything else
-  # (multi-scrobbler, Pano Scrobbler, Navidrome) writes here. Maloja then proxy-forwards
-  # to the pseudonymous ListenBrainz account for similar-artist recommendations and
+  # Private scrobble databases, one per user (nixidy/apps/media/scrobbling.nix). Maloja has no
+  # accounts, so the owner's Maloja is the original container and every other user gets a sidecar
+  # of the same pod with its own data directory (/mljdata/users/<user>), port, Service and host
+  # (`maloja-<user>`). multi-scrobbler (Jellyfin and Navidrome plays) writes to the right one, Pano
+  # Scrobbler uses the owner's through the scrobble route below. Maloja then proxy-forwards to the
+  # pseudonymous ListenBrainz account for similar-artist recommendations and
   # Fresh Releases RSS — that's MA's only outbound public link.
   #
   # The UI and read API are public in Maloja itself (its login only guards writes), so
-  # they sit behind oauth2-proxy, admin only. The scrobble endpoints (native,
-  # ListenBrainz, Last.fm) skip it: clients like Pano Scrobbler cannot do an OIDC login
-  # and Maloja requires an API key on each of those requests. multi-scrobbler and
-  # Navidrome use the in-cluster Service.
+  # they sit behind oauth2-proxy: the owner's for admins only, a user's for that user and admins.
+  # The scrobble endpoints (native, ListenBrainz, Last.fm) of the owner's skip it: clients like
+  # Pano Scrobbler cannot do an OIDC login and Maloja requires an API key on each of those
+  # requests. multi-scrobbler and Navidrome use the in-cluster Services.
   nixidy = {
     charts,
     lib,
     pinned,
+    scrobble,
     ...
   }: let
     inherit (config.canivete.meta) domain;
     hostname = "maloja.${domain}";
     port = 42010;
+    # Env var carrying a user's Maloja key into the init container.
+    keyVar = u: "KEY_${toString (lib.lists.findFirstIndex (x: x == u) null scrobble.users)}";
+    viaProxy = {
+      name = "oauth2-proxy";
+      namespace = "identity";
+      port = 4180;
+    };
+    uiRoute = host: {
+      hostnames = [host];
+      parentRefs = lib.toList {
+        name = "internal";
+        namespace = "kube-system";
+        sectionName = "https";
+      };
+      rules = lib.toList {backendRefs = [viaProxy];};
+    };
   in {
     portal.apps.maloja.groups = ["admin"];
     gatus.endpoints.maloja = {
@@ -25,6 +45,22 @@
       group = "internal";
       conditions = ["[STATUS] == any(200, 302)"];
     };
+    oauth2Proxy.upstreams =
+      {
+        "${hostname}" = {
+          url = "http://maloja.media.svc.cluster.local:${toString port}";
+          namespace = "media";
+        };
+      }
+      # A user's Maloja: that user and admins (a Maloja has no accounts of its own).
+      // lib.listToAttrs (map (u:
+        lib.nameValuePair (scrobble.host u) {
+          url = scrobble.url u;
+          namespace = "media";
+          groups = ["admin"];
+          users = [u];
+        })
+      scrobble.others);
     applications.maloja = {
       namespace = "media";
       volsync.pvcs.maloja.title = "maloja";
@@ -33,10 +69,12 @@
         values = {
           controllers.maloja = {
             annotations."reloader.stakater.com/auto" = "true";
-            # Registers the generated keys of multi-scrobbler and navidrome (Secrets
-            # multi-scrobbler, navidrome-maloja) as Maloja API keys before start. Maloja
-            # keeps keys in /mljdata/apikeys.yml (flat `identifier: key` lines, doreah
-            # KeyStore; the image's python has no yaml); other entries are left alone.
+            # Registers each user's generated scrobble key (Secret scrobble-maloja-<user>, what
+            # multi-scrobbler presents) as a Maloja API key in that user's data directory before
+            # start, plus the owner's Navidrome key (Secret navidrome-maloja). Maloja keeps keys in
+            # <data dir>/apikeys.yml (flat `identifier: key` lines, doreah KeyStore; the image's
+            # python has no yaml); other entries are left alone. The old `multi-scrobbler`
+            # identifier is dropped.
             initContainers.apikeys = {
               image = pinned.images.maloja;
               command = [
@@ -44,41 +82,80 @@
                 "-c"
                 ''
                   import os
-                  f = "/mljdata/apikeys.yml"
-                  try:
-                      lines = [l for l in open(f).read().splitlines() if l.strip() and l.strip() != "{}"]
-                  except FileNotFoundError:
-                      lines = []
-                  for name, var in (("multi-scrobbler", "MULTI_SCROBBLER_KEY"), ("navidrome", "NAVIDROME_KEY")):
-                      want = name + ": " + os.environ[var]
-                      if want not in lines:
-                          lines = [l for l in lines if not l.startswith(name + ":")] + [want]
-                  open(f, "w").write("\n".join(lines) + "\n")
+                  for d, keys in [${lib.concatMapStringsSep ", " (u: ''(${builtins.toJSON (scrobble.dataDir u)}, {"scrobbler": "${keyVar u}"${lib.optionalString (scrobble.isMe u) '', "navidrome": "NAVIDROME_KEY"''}})'') scrobble.users}]:
+                      os.makedirs(d, exist_ok=True)
+                      f = d + "/apikeys.yml"
+                      try:
+                          lines = [l for l in open(f).read().splitlines() if l.strip() and l.strip() != "{}"]
+                      except FileNotFoundError:
+                          lines = []
+                      for name, var in keys.items():
+                          want = name + ": " + os.environ[var]
+                          if want not in lines:
+                              lines = [l for l in lines if not l.startswith(name + ":")] + [want]
+                      lines = [l for l in lines if not l.startswith("multi-scrobbler:")]
+                      open(f, "w").write("\n".join(lines) + "\n")
                 ''
               ];
-              env = {
-                MULTI_SCROBBLER_KEY.valueFrom.secretKeyRef = {
-                  name = "multi-scrobbler";
-                  key = "MALOJA_API_KEY";
+              env =
+                lib.listToAttrs (map (u:
+                  lib.nameValuePair (keyVar u) {
+                    valueFrom.secretKeyRef = {
+                      name = scrobble.malojaSecret u;
+                      key = "token";
+                    };
+                  })
+                scrobble.users)
+                // {
+                  NAVIDROME_KEY.valueFrom.secretKeyRef = {
+                    name = "navidrome-maloja";
+                    key = "token";
+                  };
                 };
-                NAVIDROME_KEY.valueFrom.secretKeyRef = {
-                  name = "navidrome-maloja";
-                  key = "token";
+            };
+            containers =
+              {
+                maloja = {
+                  image = pinned.images.maloja;
+                  envFrom = [
+                    {configMapRef.name = "maloja";}
+                    {secretRef.name = "maloja";}
+                  ];
+                  probes.liveness.enabled = true;
+                  probes.readiness.enabled = true;
+                  probes.startup.enabled = true;
                 };
-              };
-            };
-            containers.maloja = {
-              image = pinned.images.maloja;
-              envFrom = [
-                {configMapRef.name = "maloja";}
-                {secretRef.name = "maloja";}
-              ];
-              probes.liveness.enabled = true;
-              probes.readiness.enabled = true;
-              probes.startup.enabled = true;
-            };
+              }
+              # One more Maloja per other user: same image and settings, own data directory and port.
+              // lib.listToAttrs (map (u:
+                lib.nameValuePair (scrobble.service u) {
+                  image = pinned.images.maloja;
+                  envFrom = [
+                    {configMapRef.name = "maloja";}
+                    {secretRef.name = "maloja";}
+                  ];
+                  env = {
+                    MALOJA_DATA_DIRECTORY = scrobble.dataDir u;
+                    MALOJA_PORT = toString (scrobble.port u);
+                    MALOJA_NAME = u;
+                  };
+                  # The default probes check the Service's first port, which is the owner's.
+                  probes = lib.genAttrs ["liveness" "readiness" "startup"] (_: {
+                    enabled = true;
+                    custom = true;
+                    spec.tcpSocket.port = scrobble.port u;
+                  });
+                })
+              scrobble.others);
           };
-          service.maloja.ports.http.port = port;
+          service =
+            {maloja.ports.http.port = port;}
+            // lib.listToAttrs (map (u:
+              lib.nameValuePair (scrobble.slug u) {
+                controller = "maloja";
+                ports.http.port = scrobble.port u;
+              })
+            scrobble.others);
           persistence = {
             data = {
               type = "persistentVolumeClaim";
@@ -108,41 +185,31 @@
             # Suppress timezone-quirk warnings on container start.
             MALOJA_TIMEZONE = "America/Los_Angeles";
           };
-          route.maloja = {
-            hostnames = [hostname];
-            parentRefs = lib.toList {
-              name = "internal";
-              namespace = "kube-system";
-              sectionName = "https";
-            };
-            rules = lib.toList {
-              backendRefs = lib.toList {
-                name = "oauth2-proxy";
-                namespace = "identity";
-                port = 4180;
-              };
-            };
-          };
-          route.maloja-scrobble = {
-            hostnames = [hostname];
-            parentRefs = lib.toList {
-              name = "internal";
-              namespace = "kube-system";
-              sectionName = "https";
-            };
-            rules = lib.toList {
-              matches = map (value: {
-                path = {
-                  type = "PathPrefix";
-                  inherit value;
+          route =
+            {
+              maloja = uiRoute hostname;
+              maloja-scrobble = {
+                hostnames = [hostname];
+                parentRefs = lib.toList {
+                  name = "internal";
+                  namespace = "kube-system";
+                  sectionName = "https";
                 };
-              }) ["/apis/mlj_1/newscrobble" "/apis/listenbrainz" "/apis/audioscrobbler" "/apis/audioscrobbler_legacy"];
-              backendRefs = lib.toList {
-                name = "maloja";
-                inherit port;
+                rules = lib.toList {
+                  matches = map (value: {
+                    path = {
+                      type = "PathPrefix";
+                      inherit value;
+                    };
+                  }) ["/apis/mlj_1/newscrobble" "/apis/listenbrainz" "/apis/audioscrobbler" "/apis/audioscrobbler_legacy"];
+                  backendRefs = lib.toList {
+                    name = "maloja";
+                    inherit port;
+                  };
+                };
               };
-            };
-          };
+            }
+            // lib.listToAttrs (map (u: lib.nameValuePair (scrobble.slug u) (uiRoute (scrobble.host u))) scrobble.others);
         };
       };
       # Random once, never refreshed: the admin password lives only in this secret.
@@ -163,7 +230,8 @@
           };
         };
       };
-      # Break-glass (and only) login: Maloja is single-user with no OIDC.
+      # Break-glass (and only) login: Maloja is single-user with no OIDC. The same password
+      # opens every user's Maloja.
       resources.pushSecrets.maloja-admin.spec = {
         secretStoreRefs = lib.toList {
           name = "bitwarden";
@@ -191,10 +259,6 @@
           remoteRef.property = "password";
         };
       };
-    };
-    oauth2Proxy.upstreams."${hostname}" = {
-      url = "http://maloja.media.svc.cluster.local:${toString port}";
-      namespace = "media";
     };
   };
 }
