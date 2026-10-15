@@ -16,6 +16,8 @@ spec:
         - args:
             - kapowarr
           env:
+            - name: DOWNLOAD_FOLDER
+              value: /media/downloads/kapowarr/
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: http://alloy.observability.svc.cluster.local:4318
             - name: PYROSCOPE_SAMPLE_RATE
