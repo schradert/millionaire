@@ -336,6 +336,34 @@
           ];
         };
 
+      # Weekly Bitwarden Secrets Manager backup (apps/bws-backup, nixidy/system/security/bws-backup.nix):
+      # bws list, age-encrypted, uploaded to B2. bws is unfree.
+      bws-backup = let
+        amd64Pkgs = import inputs.nixpkgs {
+          system = "x86_64-linux";
+          config.allowUnfreePredicate = p: lib.getName p == "bws";
+        };
+        tools = with amd64Pkgs; [bash coreutils jq bws age rclone cacert];
+        script = amd64Pkgs.writeShellApplication {
+          name = "bws-backup";
+          runtimeInputs = tools;
+          text = builtins.readFile ../apps/bws-backup/bws-backup.sh;
+        };
+      in
+        n2c.buildImage {
+          name = "${registry}/library/bws-backup";
+          tag = "0.1.0";
+          arch = "amd64";
+          config = {
+            Entrypoint = ["${script}/bin/bws-backup"];
+            Env = ["HOME=/tmp" "SSL_CERT_FILE=${amd64Pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"];
+          };
+          layers = [
+            (n2c.buildLayer {deps = tools;})
+            (n2c.buildLayer {deps = [script];})
+          ];
+        };
+
       # Keycloak with its build-time options baked in, so it boots `--optimized`.
       # The stock image re-augments on every start (chmod over every lib jar, an
       # overlay copy-up of ~285MB), which on a disk-saturated node outlived the
