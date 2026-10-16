@@ -285,6 +285,7 @@
             tailnet.gatewayRelay = "100.64.0.4";
             # Own containerd unit, so rke2 restarts keep pods running (docs/node-standard.md, "Next node roll").
             externalContainerd.enable = true;
+            nodeRemediation.eligible = true;
             # The adb key `android <device>` connects with (pulumi android_adb_key, docs/android-fleet.md)
             sops.secrets = lib.mkIf adbKeyWritten {
               android-adb-key = {
@@ -313,6 +314,7 @@
             # tailnet IP; external-dns-internal lists both A records. See tailnet.nix.
             tailnet.gatewayRelay = "100.64.0.5";
             externalContainerd.enable = true;
+            nodeRemediation.eligible = true;
           };
         };
 
