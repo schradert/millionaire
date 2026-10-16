@@ -5,6 +5,27 @@ data:
     spec:
       resources:
       - groupVersionKind:
+          group: k3s.cattle.io
+          kind: ETCDSnapshotFile
+          version: v1
+        labelsFromPath:
+          name:
+          - metadata
+          - name
+          node:
+          - spec
+          - nodeName
+        metricNamePrefix: etcd_snapshot_file
+        metrics:
+        - each:
+            gauge:
+              path:
+              - status
+              - creationTime
+            type: Gauge
+          help: status.creationTime of the snapshot
+          name: creation_timestamp_seconds
+      - groupVersionKind:
           group: argoproj.io
           kind: Application
           version: v1alpha1

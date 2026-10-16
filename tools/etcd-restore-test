@@ -1,0 +1,148 @@
+#!/usr/bin/env bash
+# etcd-restore-test [snapshot-name]: restore the newest off-site etcd snapshot (or the named one,
+# `offsite-<node>-<node>-<ts>`) into a throwaway etcd plus kube-apiserver on falcon and list what
+# `kubectl get ns` sees. Never touches the live cluster: a different data dir (under ~/work), loopback
+# ports 23790/23800/26443 and no rke2 involved. Everything is deleted on exit. See docs/etcd-restore.md.
+#
+# Runs from the devshell (`etcd-restore-test`): the Mac only reads the B2 key from Bitwarden and the live
+# namespace list, then ships this same file to falcon over ssh (key via stdin, never argv), where the
+# tools come from `nix shell`. RESTORE_HOST overrides the host (a Linux box with nix and ~/work).
+set -euo pipefail
+
+host=${RESTORE_HOST:-tristan@192.168.50.215}
+
+if [ "${1:-}" != --remote ]; then
+  secrets=$(bws secret list -o json)
+  field() { jq -r --arg k "$1" '.[] | select(.key == $k) | .value' <<<"$secrets"; }
+  id=$(field backblaze/bucket/application_key_id)
+  key=$(field backblaze/bucket/application_key)
+  [ -n "$id" ] && [ -n "$key" ] || { echo "no backblaze/bucket keys in Bitwarden" >&2; exit 1; }
+  # optional: with the cluster token the rehearsal also decrypts /bootstrap and restores the Secrets
+  token=$(sops decrypt --extract '["passwords"]["k8s-token"]' "$(dirname "${BASH_SOURCE[0]}")/../secrets/sops/default.yaml" 2>/dev/null || true)
+  live=$(kubectl get ns -o name 2>/dev/null | sed 's#^namespace/##' | tr '\n' ' ' || true)
+  key_opts=()
+  [ -r "$HOME/.ssh/personal" ] && key_opts=(-o IdentitiesOnly=yes -i "$HOME/.ssh/personal")
+  # shellcheck disable=SC2029 # the snapshot-name argument is meant to expand here
+  { printf 'export B2_ID=%q B2_KEY=%q LIVE_NS=%q K8S_TOKEN=%q\n' "$id" "$key" "$live" "$token"; cat "${BASH_SOURCE[0]}"; } \
+    | ssh "${key_opts[@]}" "$host" "nix shell nixpkgs#etcd nixpkgs#kubernetes nixpkgs#openssl nixpkgs#jq nixpkgs#curl -c \
+        nix shell --impure --expr 'let p = import <nixpkgs> {}; in p.python3.withPackages (ps: [ps.cryptography])' \
+        -c bash -s -- --remote $(printf '%q ' "$@")"
+  exit
+fi
+shift
+
+# ---- remote part (falcon) ----
+# A function, so bash has parsed everything before the first command runs: the script arrives on stdin
+# and a command that reads stdin (kubectl, etcdctl) would otherwise eat the rest of it.
+remote_main() {
+bucket=trdos-me--volsync
+s3=https://s3.us-west-004.backblazeb2.com
+sig=(--aws-sigv4 "aws:amz:us-west-004:s3" -u "$B2_ID:$B2_KEY")
+etcd_client=127.0.0.1:23790 etcd_peer=127.0.0.1:23800 api=127.0.0.1:26443
+
+for p in 23790 23800 26443; do
+  ! ss -ltn "sport = :$p" | grep -q LISTEN || { echo "port $p is busy" >&2; exit 1; }
+done
+
+mkdir -p "$HOME/work"
+work=$(mktemp -d -p "$HOME/work" etcd-restore-test.XXXXXX)
+pids=()
+cleanup() {
+  # the apiserver can hang on SIGTERM once its etcd is gone, so stop it first and kill what is left
+  for p in $(printf '%s\n' "${pids[@]}" | tac); do kill "$p" 2>/dev/null || true; done
+  sleep 3
+  for p in "${pids[@]}"; do kill -9 "$p" 2>/dev/null || true; done
+  wait 2>/dev/null || true
+  rm -rf "$work"
+}
+trap cleanup EXIT
+fail() { echo "FAIL: $*" >&2; exit 1; }
+
+name=${1:-}
+if [ -z "$name" ]; then
+  # newest by the unix timestamp at the end of the name
+  name=$(curl -fsS "${sig[@]}" "$s3/$bucket?list-type=2&prefix=etcd/offsite-&max-keys=1000" \
+    | grep -o '<Key>[^<]*' | sed 's#<Key>etcd/##' | awk -F- '{print $NF, $0}' | sort -n | tail -n 1 | cut -d' ' -f2)
+  [ -n "$name" ] || fail "no etcd/offsite-* object in $bucket"
+fi
+echo "snapshot: $name"
+curl -fsS "${sig[@]}" -o "$work/snap.db" "$s3/$bucket/etcd/$name"
+echo "downloaded: $(stat -c %s "$work/snap.db") bytes"
+
+etcdutl snapshot status "$work/snap.db" -w json | jq -r '"status: revision \(.revision), \(.totalKey) keys, \(.totalSize) bytes, hash \(.hash)"'
+etcdutl snapshot restore "$work/snap.db" --data-dir "$work/data" --name rehearsal \
+  --initial-cluster "rehearsal=http://$etcd_peer" --initial-advertise-peer-urls "http://$etcd_peer" >/dev/null 2>&1
+nice etcd --data-dir "$work/data" --name rehearsal --force-new-cluster \
+  --listen-client-urls "http://$etcd_client" --advertise-client-urls "http://$etcd_client" \
+  --listen-peer-urls "http://$etcd_peer" --initial-advertise-peer-urls "http://$etcd_peer" \
+  >"$work/etcd.log" 2>&1 &
+pids+=($!)
+for _ in $(seq 60); do etcdctl --endpoints "http://$etcd_client" endpoint health >/dev/null 2>&1 && break; sleep 1; done
+etcdctl --endpoints "http://$etcd_client" endpoint health >/dev/null 2>&1 || fail "restored etcd did not become healthy (log: $(tail -n 3 "$work/etcd.log"))"
+ctl() { etcdctl --endpoints "http://$etcd_client" "$@"; }
+registry=$(ctl get /registry/ --prefix --keys-only | grep -c .)
+bootstrap=$(ctl get /bootstrap --prefix --keys-only | grep -c .)
+[ "$registry" -gt 0 ] || fail "no /registry keys in the restored etcd"
+[ "$bootstrap" -gt 0 ] || fail "no /bootstrap key (rke2 CA data) in the restored etcd"
+enc=$(ctl get /registry/secrets/ --prefix -w json | jq '[.kvs[].value | @base64d | startswith("k8s:enc:aescbc:v1:")] | [length, map(select(.)) | length]')
+echo "etcd: healthy, $registry /registry keys, $bootstrap /bootstrap key; secrets in etcd (count, aescbc-encrypted) = $(jq -c . <<<"$enc")"
+# rke2 keeps the Secrets encryption config (the AES key) in /bootstrap, encrypted with the cluster token
+# (k3s pkg/cluster/encrypt.go: AES-GCM, pbkdf2-sha1 4096 rounds, "<salt>:<base64 nonce+ciphertext>").
+# With the token, recover it from the snapshot alone and let the apiserver read the Secrets; without it
+# the Secrets cannot be read, so drop them from this copy (the apiserver would not come up).
+enc_args=()
+if [ -n "${K8S_TOKEN:-}" ]; then
+  cat >"$work/bootstrap.py" <<'PY'
+import base64, hashlib, json, os, sys
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+out = sys.argv[1]
+kvs = json.load(sys.stdin)["kvs"]
+raw = base64.b64decode(kvs[0]["value"]).decode()
+salt, body = raw.split(":", 1)
+key = hashlib.pbkdf2_hmac("sha1", os.environ["K8S_TOKEN"].encode(), salt.encode(), 4096, 32)
+data = base64.b64decode(body)
+files = json.loads(AESGCM(key).decrypt(data[:12], data[12:], None))
+print("bootstrap: decrypted with the cluster token, %d entries: %s" % (len(files), " ".join(sorted(files))))
+if "EncryptionConfig" not in files:
+    sys.exit("no EncryptionConfig in /bootstrap")
+open(out, "wb").write(base64.b64decode(files["EncryptionConfig"]["Content"]))
+PY
+  ctl get /bootstrap/ --prefix -w json | python3 -I "$work/bootstrap.py" "$work/encryption-config.json" \
+    || fail "could not decrypt /bootstrap with the cluster token"
+  enc_args=(--encryption-provider-config "$work/encryption-config.json")
+else
+  echo "no K8S_TOKEN: Secrets are dropped from the copy (run with sops access to also restore them)"
+  ctl del /registry/secrets/ --prefix >/dev/null
+fi
+
+# kube-apiserver over the restored data: loopback only, one static token, AlwaysAllow, no controllers or kubelets.
+echo "rehearsal,rehearsal,rehearsal,system:masters" >"$work/tokens.csv"
+openssl genrsa -out "$work/sa.key" 2048 2>/dev/null
+openssl rsa -in "$work/sa.key" -pubout -out "$work/sa.pub" 2>/dev/null
+nice kube-apiserver --etcd-servers "http://$etcd_client" --bind-address 127.0.0.1 --secure-port 26443 \
+  --cert-dir "$work/certs" --token-auth-file "$work/tokens.csv" --authorization-mode AlwaysAllow --service-cluster-ip-range 10.43.0.0/16 \
+  --service-account-issuer https://rehearsal.invalid --service-account-key-file "$work/sa.pub" \
+  --service-account-signing-key-file "$work/sa.key" "${enc_args[@]}" >"$work/apiserver.log" 2>&1 &
+pids+=($!)
+k() { kubectl --server "https://$api" --insecure-skip-tls-verify --token rehearsal "$@"; }
+for _ in $(seq 120); do k get ns >/dev/null 2>&1 && break; sleep 1; done
+k get ns >/dev/null 2>&1 || fail "kube-apiserver did not serve the restored data (kubectl: $(k get ns 2>&1 | tail -n 2); log: $(tail -n 5 "$work/apiserver.log"))"
+
+restored=$(k get ns -o name | sed 's#^namespace/##' | sort)
+echo "kubectl get ns: $(wc -l <<<"$restored") namespaces: $(tr '\n' ' ' <<<"$restored")"
+echo "kubectl get nodes: $(k get nodes -o name | sed 's#^node/##' | tr '\n' ' ')"
+if [ -n "${K8S_TOKEN:-}" ]; then
+  readable=$(k get secrets -A -o name | wc -l)
+  total=$(jq '.[0]' <<<"$enc")
+  echo "secrets readable through the restored apiserver: $readable of $total"
+  [ "$readable" -eq "$total" ] || fail "only $readable of $total Secrets decrypt with the recovered key"
+fi
+echo "pvc: $(k get pvc -A -o name | wc -l), pv: $(k get pv -o name | wc -l), deployments: $(k get deploy -A -o name | wc -l), statefulsets: $(k get sts -A -o name | wc -l)"
+if [ -n "${LIVE_NS:-}" ]; then
+  live=$(tr ' ' '\n' <<<"$LIVE_NS" | grep . | sort)
+  echo "namespaces only in the live cluster (created after the snapshot): $(comm -13 <(echo "$restored") <(echo "$live") | tr '\n' ' ')"
+  echo "namespaces only in the snapshot (deleted since): $(comm -23 <(echo "$restored") <(echo "$live") | tr '\n' ' ')"
+fi
+echo "OK: $name restores and serves $(wc -l <<<"$restored") namespaces"
+}
+remote_main "$@"

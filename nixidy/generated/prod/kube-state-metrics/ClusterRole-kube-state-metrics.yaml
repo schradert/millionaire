@@ -219,3 +219,10 @@ rules:
     verbs:
       - list
       - watch
+  - apiGroups:
+      - k3s.cattle.io
+    resources:
+      - etcdsnapshotfiles
+    verbs:
+      - list
+      - watch
