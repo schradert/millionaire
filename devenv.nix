@@ -219,6 +219,19 @@ in {
             pass_filenames = false;
             always_run = true;
           };
+        # Every hostname in the rendered HTTPRoutes needs an entry in docs/client-matrix.json (the
+        # client-matrix artifact's data). always_run: the global `nixidy/generated` exclude would
+        # otherwise hide route changes from a files filter; the script reads ~100 small files.
+        client-matrix-lint =
+          onCommit
+          // {
+            enable = true;
+            name = "client-matrix-lint";
+            entry = "${lib.getExe pkgs.python3} tools/client-matrix-lint";
+            language = "system";
+            pass_filenames = false;
+            always_run = true;
+          };
         lychee.toml.accept = [200 403 405 406];
         lychee.toml.exclude = [
           # In-cluster service DNS (lychee normalizes with a trailing slash)

@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""Fail when a routed hostname has no entry in docs/client-matrix.json.
+
+The matrix (docs/client-matrix.json, published as the "trdos.me client matrix"
+artifact, see docs/connections.md) lists every hostname the internal gateway
+serves and the client for each service by type. Every hostname in the rendered
+nixidy/generated/prod/*/HTTPRoute-*.yaml must appear in an app's `hostnames`,
+or in `ignored` (host -> reason) for machine-only hosts. A hostname with a
+`<placeholder>` (maloja-<user>.trdos.me) matches any single DNS label there.
+
+Also fails on: an `ignored` entry that matches no route (the list can only
+shrink), a malformed entry, and a `where` that names a file or line that does
+not exist. Run from anywhere; takes no arguments.
+"""
+
+import glob
+import json
+import os
+import re
+import sys
+
+root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+matrix_path = os.path.join(root, "docs/client-matrix.json")
+TYPES = ("browser", "desktop", "android", "ios", "cli", "tui", "mcp", "extensions")
+errors = []
+
+try:
+    matrix = json.load(open(matrix_path))
+except (OSError, ValueError) as e:
+    sys.exit(f"client-matrix-lint: cannot read docs/client-matrix.json: {e}")
+apps, ignored = matrix.get("apps"), matrix.get("ignored", {})
+if not isinstance(apps, list) or not isinstance(ignored, dict):
+    sys.exit(
+        'client-matrix-lint: docs/client-matrix.json must be {"ignored": {host: reason}, "apps": [...]}'
+    )
+
+# ---- schema and `where` references
+for a in apps:
+    name = a.get("app", "?")
+    for key in ("app", "category", "hostnames", "exposure", "auth", "clients", "notes"):
+        if key not in a:
+            errors.append(f"{name}: missing key {key!r}")
+    for t, items in (a.get("clients") or {}).items():
+        if t not in TYPES:
+            errors.append(f"{name}: unknown client type {t!r}")
+        for i in items:
+            if isinstance(i, str):
+                continue
+            if i.get("provisioned") not in ("yes", "no"):
+                errors.append(
+                    f"{name}/{t}/{i.get('name')}: provisioned must be yes or no"
+                )
+            m = re.match(r"([\w./-]+\.\w+):(\d+)", i.get("where") or "")
+            if m:
+                path = os.path.join(root, m.group(1))
+                if not os.path.isfile(path):
+                    errors.append(
+                        f"{name}/{i['name']}: where names a missing file {m.group(1)}"
+                    )
+                elif int(m.group(2)) > sum(1 for _ in open(path, errors="replace")):
+                    errors.append(
+                        f"{name}/{i['name']}: where {m.group(1)}:{m.group(2)} is past the end of the file"
+                    )
+
+# ---- routed hostnames
+routed = {}
+for f in sorted(
+    glob.glob(os.path.join(root, "nixidy/generated/prod/*/HTTPRoute-*.yaml"))
+):
+    text = open(f).read()
+    for block in re.findall(r"^  hostnames:\n((?:    - .*\n)+)", text, re.M):
+        for h in re.findall(r"^    - (\S+)", block, re.M):
+            routed.setdefault(h.strip("'\""), os.path.relpath(f, root))
+if not routed:
+    errors.append(
+        "no hostnames found in nixidy/generated/prod/*/HTTPRoute-*.yaml (renderer layout changed?)"
+    )
+
+patterns = []
+for a in apps:
+    for h in a.get("hostnames", []):
+        h = re.sub(r"^https?://", "", h)
+        patterns.append(
+            re.compile("^" + re.sub(r"<[^>]+>", "[a-z0-9-]+", re.escape(h)) + "$")
+        )
+
+for h, f in sorted(routed.items()):
+    if h in ignored or any(p.match(h) for p in patterns):
+        continue
+    errors.append(
+        f'{h} ({f}) has no entry in docs/client-matrix.json: add an app with this hostname, or list it under "ignored" with a reason'
+    )
+for h, why in ignored.items():
+    if h not in routed:
+        errors.append(
+            f"ignored host {h!r} matches no HTTPRoute: remove it from docs/client-matrix.json"
+        )
+    if not why:
+        errors.append(f"ignored host {h!r} needs a reason")
+
+if errors:
+    print(
+        "client-matrix-lint: docs/client-matrix.json is out of date\n  "
+        + "\n  ".join(errors),
+        file=sys.stderr,
+    )
+    print(
+        "\nThe artifact is republished from that file (docs/connections.md, Client matrix).",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+print(f"client-matrix-lint: {len(routed)} routed hostnames covered by {len(apps)} apps")
