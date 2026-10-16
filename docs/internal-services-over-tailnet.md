@@ -117,6 +117,22 @@ into pods.
    the tailnet (the same path on-LAN and off-LAN) → a relay node → gateway. Nothing
    else to configure.
 
+## LAN DNS for devices off the tailnet (TV, guests)
+
+`nixidy/system/network/lan-dns.nix`: two CoreDNS pods (kube-system, one per node, off sirver
+when possible) behind a LoadBalancer pinned to **192.168.50.243** (UDP+TCP 53, announced by the
+default `CiliumL2AnnouncementPolicy`). `*.trdos.me` answers `192.168.50.241` (the internal
+gateway VIP, same template as the in-cluster CoreDNS), AAAA is NODATA, everything else forwards
+to 1.1.1.1 / 9.9.9.9. Kept public: `headscale.trdos.me` (the tailnet bootstrap, public A record on
+hyena) and `external.trdos.me` (Cloudflare tunnel CNAME); no route is attached to the external
+gateway (192.168.50.240) today, so nothing else needs the public answer. Apex and non-A types
+under trdos.me also forward. Gatus checks it (`lan-dns`).
+
+Router step (stock ASUS, manual): LAN → DHCP Server → DNS and WINS Server Setting →
+DNS Server 1 = `192.168.50.243`, DNS Server 2 = `1.1.1.1`. Clients that fall back to DNS 2 lose
+`*.trdos.me` but keep internet. Also set the DHCP pool end to `192.168.50.239` so the router
+never leases inside the LB-IPAM pool (`192.168.50.240-254`).
+
 ## Known gaps / TODO
 
 - **Off-LAN datapath is the bonobo + chinchilla relays** (round-robin), not the

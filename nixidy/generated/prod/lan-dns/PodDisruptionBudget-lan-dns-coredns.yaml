@@ -1,0 +1,15 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    app.kubernetes.io/instance: lan-dns
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: coredns
+  name: lan-dns-coredns
+  namespace: kube-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: lan-dns
+      app.kubernetes.io/name: coredns

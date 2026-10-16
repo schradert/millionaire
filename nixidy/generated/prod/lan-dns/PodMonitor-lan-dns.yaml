@@ -1,0 +1,13 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: lan-dns
+  namespace: kube-system
+spec:
+  podMetricsEndpoints:
+    - interval: 1m
+      port: tcp-9153
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: lan-dns
+      app.kubernetes.io/name: coredns
