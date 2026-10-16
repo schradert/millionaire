@@ -38,6 +38,7 @@
   isFalcon = name == "falcon";
   member = me != null || isFalcon;
   peers = lib.filterAttrs (n: _: n != name) pool.nodes;
+  builderPeers = lib.filterAttrs (n: _: n != name) pool.builders;
   alias = n: "${n}.tailnet";
   inherit (pool) falcon;
   machine = hostName: p: {
@@ -93,7 +94,7 @@ in {
 
       nix.distributedBuilds = true;
       nix.buildMachines =
-        lib.mapAttrsToList (n: machine (alias n)) peers
+        lib.mapAttrsToList (n: machine (alias n)) builderPeers
         # Same store URI => falcon's native and emulated entries share its slots.
         ++ lib.optionals (!isFalcon) (map (machine "falcon") [
           (falcon // {user = falcon.builderUser;})

@@ -335,7 +335,7 @@ in {
         done
         [ ''${#systems[@]} -gt 0 ] || systems=(aarch64-darwin x86_64-linux aarch64-linux)
         out=$(mktemp -d -t build-all.XXXXXX)
-        pool=$(echo '${builtins.toJSON (import ./static/builders.nix).nodes}' | $jq -r 'to_entries | map(.value |
+        pool=$(echo '${builtins.toJSON (import ./static/builders.nix).builders}' | $jq -r 'to_entries | map(.value |
           "ssh-ng://\(.user)@\(.lan) \(.systems | join(",")) /etc/ssh/ssh_host_ed25519_key \(.jobs) \(.speedFactor) \(.features | join(",")) - \(.hostKey | @base64)") | join(";")')
         cd "${config.devenv.root}"
         for sys in "''${systems[@]}"; do

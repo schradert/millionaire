@@ -163,7 +163,7 @@ spec:
             - -ec
           env:
             - name: BUILD_POOL
-              value: '[{"hostKey":"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMZHuAa6lN+oXGgR7QbNP+5WZcXuzq9E7EFCvh4dgNOK","lan":"192.168.50.204","user":"nix-remote-builder"},{"hostKey":"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBra12ioG15PJisgWHxeFjmPixqcbUzRGIi6X4HBQO6U","lan":"192.168.50.53","user":"nix-remote-builder"}]'
+              value: '[{"hostKey":"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBra12ioG15PJisgWHxeFjmPixqcbUzRGIi6X4HBQO6U","lan":"192.168.50.53","user":"nix-remote-builder"}]'
           envFrom:
             - secretRef:
                 name: argo-workflows-github
