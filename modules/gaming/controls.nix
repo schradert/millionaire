@@ -1,6 +1,5 @@
 # Steam Input layouts for the Deck (controller_neptune), written as VDF into
 # Steam's per-user autosave slot for each game.
-# Unported: the WIP sets/layers sugar in old/old/apps/gaming/steam/controllers.nix.
 {
   home = {
     config,

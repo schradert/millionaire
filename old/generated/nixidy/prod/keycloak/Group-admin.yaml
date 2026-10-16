@@ -1,8 +1,0 @@
-apiVersion: group.keycloak.crossplane.io/v1alpha1
-kind: Group
-metadata:
-  name: admin
-spec:
-  forProvider:
-    name: admin
-    realmId: primary

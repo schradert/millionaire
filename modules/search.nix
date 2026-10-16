@@ -1,6 +1,4 @@
-# Finders: rfv (ripgrep+fzf -> $EDITOR), television, superfile. Unported:
-# superfile matugen theme, television keybindings + channels (old schema)
-# (old/old/dev/search/{superfile,television}.nix).
+# Finders: rfv (ripgrep+fzf -> $EDITOR), television, superfile.
 {
   home = {
     config,

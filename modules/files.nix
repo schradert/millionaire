@@ -1,5 +1,4 @@
-# File and dev CLI utilities (+ nix-btm). Unported from old/old/dev/nix.nix:
-# nix extraOptions (keep-outputs, use-xdg-base-directories), sshServe.
+# File and dev CLI utilities (+ nix-btm).
 {
   home = {
     config,

@@ -1,6 +1,4 @@
 # Client defaults. Private keys are sops-provisioned: modules/workstation-keys.nix.
-# Unported from old/old/network/ssh.nix: per-node matchBlocks (static/builders.nix +
-# tailnet cover node access), global ForwardAgent, opentofu github/gitlab key upload.
 {
   # Pinned host keys for the deploy jump host (flake.nix sshOpts) and axolotl, so
   # `deploy` never prompts. Cluster nodes and falcon: static/builder.nix; Macs: modules/builders.nix.

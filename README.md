@@ -29,7 +29,6 @@
 43. TODO pulumi state is April-era for the nodes; it clears after a per-node deploy
 44. TODO gargoyle: reflash (its tailnet host key is pre-provisioned; hardware). Its aarch64-linux build is now native on the Mac's builder VM for the fleet once todo 34's `darwin-rebuild` is done; confirm with `build-all --system aarch64-linux`
 45. TODO echidna: install NixOS-WSL on the Windows box, `static/host-key.sh ssh echidna <user@address>`, deploy; its tailnet key is pre-provisioned
-46. TODO `old/` leftovers: Saradomin, gauntlet, platform.nix tofu branches, and the partial ports named at the top of each module
 
 47. TODO octopus's etcd is too slow for rollout bursts (ZFS root on PERC H710P spinning disks, fsync ~23 ms vs 2 ms on dingo's SSD): a chart bump restarting many apps made its kubelet miss lease renewals and evicted 116 pods. Make falcon (NVMe) the third etcd server and demote octopus to an agent when falcon joins; meanwhile consider `node-monitor-grace-period` on the controller manager
 48. TODO shoko/siyuan run with workarounds for the ZFS copy-up stall (todo 55): siyuan as root skipping its entrypoint, shoko with a 20-minute startup budget. After the containerd dataset migration, run both non-root (PUID/PGID or an init container) and drop the workarounds

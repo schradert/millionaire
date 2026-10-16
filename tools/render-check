@@ -34,7 +34,7 @@ from pathlib import Path
 GENERATED = "nixidy/generated/prod"
 # Paths that cannot change a render. Everything else counts as an input.
 NOT_INPUTS = re.compile(
-    r"^(docs/|old/|pulumi/|secrets/|esp32-s3/|org-bridge/|embedded/|\.github/|tools/(?!render-check)|.*\.md$)"
+    r"^(docs/|pulumi/|secrets/|esp32-s3/|org-bridge/|embedded/|\.github/|tools/(?!render-check)|.*\.md$)"
 )
 REF = re.compile(r"ref\+pulumistateapi://\S+?\+")
 

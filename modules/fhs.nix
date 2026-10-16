@@ -1,4 +1,3 @@
-# Unported: nix-alien (old/modules/nixos/fhs.nix; needs flake input).
 {
   nixos = {
     config,

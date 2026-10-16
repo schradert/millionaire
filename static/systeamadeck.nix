@@ -116,6 +116,7 @@
         runescape = {
           rscplus.enable = true;
           runelite.enable = true;
+          saradomin.enable = true;
           hdos.enable = true;
         };
         # World of Warcraft through Battle.net, ConsolePort for the controller

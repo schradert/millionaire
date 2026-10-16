@@ -1,9 +1,7 @@
-# Hyprland desktop shell: waybar (stylix-themed; replaces the AGS bar),
+# Hyprland desktop shell: waybar (stylix-themed),
 # swaync notifications, walker + elephant
 # launcher with a power menu, and media/brightness keys.
-# Unported: gauntlet (old/old/desktop/hyprland/gauntlet.nix; not in nixpkgs),
-# AGS's wallpaper picker. The wallpaper is stylix.image via hyprpaper (stylix),
-# which replaces the old swww daemon.
+# The wallpaper is stylix.image via hyprpaper (stylix); there is no picker.
 {
   home = {
     config,
