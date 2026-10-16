@@ -7,8 +7,6 @@ metadata:
   name: agents
 spec:
   minHealthy: 1
-  pauseRequests:
-    - 'staged: unpause after the reboot drill (docs/node-standard.md)'
   remediationTemplate:
     apiVersion: self-node-remediation.medik8s.io/v1alpha1
     kind: SelfNodeRemediationTemplate

@@ -2,7 +2,7 @@
 # (the node reboots itself, then its pods are force-moved with the out-of-service taint so RBD volumes detach).
 # Neither project ships a chart (OLM only), so both are their upstream `config/default` kustomizations. Only the
 # worker agents are ever remediated: control-plane/etcd nodes and desktops are outside the selector and run no
-# SNR agent. NHC starts paused (docs/node-standard.md "Node remediation").
+# SNR agent. Pause: docs/node-standard.md "Node remediation".
 {...}: {
   nixidy = {
     lib,
@@ -115,7 +115,6 @@
                 duration = "15m";
               }) ["False" "Unknown"];
               remediationTemplate = template;
-              pauseRequests = ["staged: unpause after the reboot drill (docs/node-standard.md)"];
             };
           };
           prometheusRules.node-healthcheck = {
