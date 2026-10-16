@@ -252,6 +252,8 @@ in {
           # (router admin UIs, moonraker, etc.) — unreachable from the dev box.
           "^https?://10\\."
           "^https?://192\\.168\\."
+          # Tailnet (CGNAT) addresses, e.g. AdGuard on hyena
+          "^https?://100\\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\\."
           "^https?://172\\.(1[6-9]|2[0-9]|3[01])\\."
           "^https?://[^/]+\\.internal(:[0-9]+)?"
           # pkgs/**/pin.json url-template/url-set sources ({version}, {name}).
