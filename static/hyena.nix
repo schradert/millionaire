@@ -48,6 +48,43 @@
   # AdGuard user rules (the live config is external-dns-managed, so these are
   # merged in on every start rather than living in the first-boot seed only).
   tailnetRewrites = map (host: "|${host}^$dnsrewrite=NOERROR;A;${tailnetIP},important") [ntfyHost statusHost];
+  # One outside-in probe per routed app hostname, generated from the client
+  # matrix (lint-enforced against the routes). Hostnames resolve through
+  # AdGuard to the gateway relays, like a client's would.
+  keycloakHost = "keycloak.${domain}";
+  clientMatrix = builtins.fromJSON (builtins.readFile ../docs/client-matrix.json);
+  appHosts = lib.listToAttrs (lib.concatMap (
+      app:
+        map (hostname: lib.nameValuePair (lib.removePrefix "https://" hostname) app.auth) (
+          lib.filter (hostname: !(lib.hasInfix "<" hostname) && (lib.hasPrefix "https://" hostname || lib.hasSuffix ".${domain}" hostname)) app.hostnames
+        )
+    )
+    clientMatrix.apps);
+  # Apps whose root answers 404 (the same as an unrouted host) are probed on a path that proves the backend.
+  appProbePaths = {
+    "faro.${domain}" = "/sdk";
+    "kosync.${domain}" = "/healthcheck";
+  };
+  appProbe = host: auth: let
+    # oauth2-proxy apps bounce an anonymous request to Keycloak; the rest serve
+    # a login page (200/redirect) or an API refusal (401/403).
+    proxied = builtins.match "(.*UI( via)? )?oauth2-proxy.*" auth != null;
+  in {
+    name = lib.removeSuffix ".${domain}" host;
+    url = "https://${host}${appProbePaths.${host} or "/"}";
+    group = "apps";
+    interval = "5m";
+    # Judge the app's own answer, not the page its redirect lands on.
+    client.ignore-redirect = true;
+    conditions =
+      (
+        if proxied
+        then ["[STATUS] == 302" "[BODY] == pat(*${keycloakHost}/realms/*)"]
+        else ["[STATUS] == any(200, 207, 302, 303, 307, 401, 403)"]
+      )
+      ++ ["[CERTIFICATE_EXPIRATION] > 168h"];
+    alerts = [{type = "ntfy";}];
+  };
 in {
   imports = [./vps.nix];
 
@@ -420,7 +457,23 @@ in {
           sirver = "100.64.0.2";
           octopus = "100.64.0.3";
           dingo = "100.64.0.6";
-        };
+        }
+        # SSO is the critical path of every app login, so probe it on its own.
+        ++ [
+          {
+            name = "keycloak-oidc";
+            url = "https://${keycloakHost}/realms/default/.well-known/openid-configuration";
+            group = "cluster";
+            interval = "1m";
+            conditions = [
+              "[STATUS] == 200"
+              "[BODY].issuer == https://${keycloakHost}/realms/default"
+              "[CERTIFICATE_EXPIRATION] > 168h"
+            ];
+            alerts = [{type = "ntfy";}];
+          }
+        ]
+        ++ lib.mapAttrsToList appProbe appHosts;
       # Heartbeat from the cluster's Alertmanager Watchdog; alerts if it stops.
       external-endpoints = [
         {
