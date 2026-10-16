@@ -96,7 +96,7 @@ in {
             POSTGRES_PORT = "5432";
             POSTGRES_DB = "ggrequestz";
             POSTGRES_USER = "ggrequestz";
-            REDIS_URL = "redis://ggrequestz-dragonfly:6379";
+            REDIS_URL = "redis://ggrequestz-cache:6379";
             AUTH_METHOD = "oidc";
             OIDC_ISSUER_URL = "https://keycloak.${domain}/realms/default";
             OIDC_CLIENT_ID = "ggrequestz";
@@ -126,7 +126,9 @@ in {
         };
       };
 
-      resources.dragonflies.ggrequestz-dragonfly.spec = {
+      # Named afresh: the operator does not roll a lone crash-looping pod to a new spec (the first 512Mi limit
+      # was too small), so the old CR was replaced rather than edited.
+      resources.dragonflies.ggrequestz-cache.spec = {
         replicas = 1;
         args = ["--proactor_threads" "2"];
         resources.requests.memory = "256Mi";

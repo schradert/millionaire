@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: f79efddc61419a6847db0930a991d56d77b483e9b97965edc1a91750ac97ff2c
+        checksum/configMaps: 3a349082d2151048a1885a94cd42acd78393b8196904ffb20072b4db3fec7d9a
       labels:
         app.kubernetes.io/controller: ggrequestz
         app.kubernetes.io/instance: ggrequestz
