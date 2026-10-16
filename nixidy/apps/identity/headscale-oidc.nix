@@ -6,7 +6,7 @@
 # Off until the pulumi step of docs/manual-steps.md 19 is done: flip `enable` to true, render, commit, sync.
 {config, ...}: let
   headscale = {
-    enable = false;
+    enable = true;
   };
 in {
   nixidy = {lib, ...}: let
