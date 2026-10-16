@@ -1,0 +1,7 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: node-healthcheck-selfsigned
+  namespace: medik8s
+spec:
+  selfSigned: {}
