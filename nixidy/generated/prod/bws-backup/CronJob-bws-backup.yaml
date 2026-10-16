@@ -1,0 +1,63 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: bws-backup
+  namespace: security
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 1800
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: bws-backup
+        spec:
+          containers:
+            - env:
+                - name: BWS_ACCESS_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      key: token
+                      name: external-secrets-bitwarden
+                - name: AGE_RECIPIENT
+                  value: age17nlj7qd3znnvf8njwgl56ms2vacp2uxgglzzap6j6vw9c5w9yprqed2r39
+                - name: BUCKET
+                  value: trdos-me--volsync
+                - name: B2_ENDPOINT
+                  value: https://s3.us-west-004.backblazeb2.com
+              envFrom:
+                - secretRef:
+                    name: bws-backup
+              image: harbor.trdos.me/library/bws-backup:0.1.0@sha256:2228b0f2ed1aafdc6252abed518036a651fffd6756edb4a3266b5c57c2e94c53
+              name: bws-backup
+              resources:
+                limits:
+                  memory: 256Mi
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - mountPath: /tmp
+                  name: tmp
+          restartPolicy: Never
+          securityContext:
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          volumes:
+            - emptyDir:
+                medium: Memory
+              name: tmp
+  schedule: 30 5 * * 0
+  successfulJobsHistoryLimit: 3
