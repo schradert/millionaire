@@ -1,0 +1,207 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: romarr
+    app.kubernetes.io/instance: romarr
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: romarr
+  name: romarr
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: romarr
+      app.kubernetes.io/instance: romarr
+      app.kubernetes.io/name: romarr
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/controller: romarr
+        app.kubernetes.io/instance: romarr
+        app.kubernetes.io/name: romarr
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - env:
+            - name: DAT_PATH
+              value: /dats
+            - name: GGREQUESTZ_URL
+              value: https://ggrequestz.trdos.me
+            - name: LIBRARY_KIND
+              value: romm
+            - name: LIBRARY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: romm-admin
+            - name: LIBRARY_PATH
+              value: /roms
+            - name: LIBRARY_URL
+              value: http://romm.media.svc.cluster.local:8080
+            - name: LIBRARY_USERNAME
+              value: tristan
+            - name: PROWLARR_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: apikey
+                  name: prowlarr-apikey
+            - name: PROWLARR_URL
+              value: http://prowlarr.media.svc.cluster.local
+            - name: QBITTORRENT_PASS
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: qbittorrent-admin
+            - name: QBITTORRENT_URL
+              value: http://qbittorrent.media.svc.cluster.local:8080
+            - name: QBITTORRENT_USER
+              value: admin
+            - name: ROMARR_OIDC_CLIENT_ID
+              value: romarr
+            - name: ROMARR_OIDC_DISPLAY_NAME
+              value: Keycloak
+            - name: ROMARR_OIDC_GROUP
+              value: admin
+            - name: ROMARR_OIDC_ISSUER
+              value: https://keycloak.trdos.me/realms/default
+            - name: ROMARR_OIDC_SCOPES
+              value: openid profile email groups
+            - name: TZ
+              value: America/Los_Angeles
+          envFrom:
+            - secretRef:
+                name: romarr-admin
+            - secretRef:
+                name: romarr-api
+            - secretRef:
+                name: romarr-oidc
+          image: ghcr.io/blizzhacker/romarr:1.6.0@sha256:d65a790672df21cd4a05fc89d5258df485b98ac6a5e92187e45442a2883b3773
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 6868
+          name: romarr
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 6868
+          resources:
+            limits:
+              memory: 2Gi
+            requests:
+              cpu: 50m
+              memory: 256Mi
+          startupProbe:
+            failureThreshold: 30
+            httpGet:
+              path: /api/health
+              port: 6868
+            periodSeconds: 10
+          volumeMounts:
+            - mountPath: /config
+              name: config
+            - mountPath: /dats
+              name: dats
+              readOnly: true
+            - mountPath: /roms/3ds
+              name: library
+              subPath: roms/3DS
+            - mountPath: /roms/gb
+              name: library
+              subPath: roms/GB
+            - mountPath: /roms/gba
+              name: library
+              subPath: roms/GBA
+            - mountPath: /roms/gbc
+              name: library
+              subPath: roms/GBC
+            - mountPath: /roms/n64
+              name: library
+              subPath: roms/N64
+            - mountPath: /roms/nds
+              name: library
+              subPath: roms/DS
+            - mountPath: /roms/nes
+              name: library
+              subPath: roms/NES
+            - mountPath: /roms/ngc
+              name: library
+              subPath: roms/GC
+            - mountPath: /roms/ps2
+              name: library
+              subPath: roms/PS2
+            - mountPath: /roms/ps3
+              name: library
+              subPath: roms/PS3
+            - mountPath: /roms/psp
+              name: library
+              subPath: roms/PSP
+            - mountPath: /roms/psx
+              name: library
+              subPath: roms/PS1
+            - mountPath: /roms/snes
+              name: library
+              subPath: roms/SNES
+            - mountPath: /roms/wii
+              name: library
+              subPath: roms/Wii
+            - mountPath: /roms/wiiu
+              name: library
+              subPath: roms/WiiU
+            - mountPath: /roms/xbox
+              name: library
+              subPath: roms/XB
+            - mountPath: /media/downloads
+              name: media-downloads
+            - mountPath: /roms
+              name: roms
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      initContainers:
+        - command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              cd /tmp
+              git clone -q --depth 1 --filter=blob:none --sparse https://github.com/libretro/libretro-database.git db || exit 0
+              cd db && git sparse-checkout set dat && cp dat/*.dat /dats/ || true
+          image: alpine/git:2.54.0@sha256:ce84fd6a057b4dc5cf5009da2dd832f1c6d096c1984bf50496cf3c256402264d
+          name: dats
+          volumeMounts:
+            - mountPath: /dats
+              name: dats
+            - mountPath: /tmp
+              name: tmp
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 1000
+        runAsUser: 1000
+      serviceAccountName: romarr
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: romarr
+        - emptyDir: {}
+          name: dats
+        - name: library
+          persistentVolumeClaim:
+            claimName: media-games
+        - name: media-downloads
+          persistentVolumeClaim:
+            claimName: media-downloads
+        - emptyDir: {}
+          name: roms
+        - emptyDir: {}
+          name: tmp

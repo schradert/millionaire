@@ -82,6 +82,7 @@
     # See https://github.com/Niek/obs-web to deploy on kubernetes instead.
     # ./media/obs-studio.nix
     ./media/owncast.nix
+    ./media/romarr.nix
     ./media/romm.nix
     ./media/ryot.nix
     ./media/letterboxd-sync.nix

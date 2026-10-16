@@ -435,6 +435,12 @@ data:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
+      name: romarr
+      url: https://romarr.trdos.me/api/health
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
       name: romm
       url: https://romm.trdos.me/api/heartbeat
     - conditions:

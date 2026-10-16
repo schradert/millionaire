@@ -348,6 +348,10 @@ data:
           description: Game requests
           href: https://ggrequestz.trdos.me
           icon: mdi-gamepad-variant
+      - ROMarr:
+          description: Game acquisition
+          href: https://romarr.trdos.me
+          icon: mdi-disc
       - RomM:
           description: Game library
           href: https://romm.trdos.me

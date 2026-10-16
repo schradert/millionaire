@@ -1884,6 +1884,28 @@
    "notes": "Web only. Search needs IGDB keys (docs/manual-steps.md, game metadata keys)."
   },
   {
+   "app": "romarr (game acquisition)",
+   "category": "media",
+   "hostnames": [
+    "romarr.trdos.me"
+   ],
+   "exposure": "tailnet",
+   "auth": "native OIDC (group admin only); API key for the GG Requestz webhook (in-cluster)",
+   "clients": {
+    "browser": [
+     "https://romarr.trdos.me"
+    ],
+    "desktop": [],
+    "android": [],
+    "ios": [],
+    "cli": [],
+    "tui": [],
+    "mcp": [],
+    "extensions": []
+   },
+   "notes": "Web only. Receives approved GG Requestz requests; indexers via Prowlarr."
+  },
+  {
    "app": "romm (game library)",
    "category": "media",
    "hostnames": [

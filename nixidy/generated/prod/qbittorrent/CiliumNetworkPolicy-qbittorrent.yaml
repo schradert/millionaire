@@ -46,6 +46,8 @@ spec:
             app.kubernetes.io/name: kapowarr
         - matchLabels:
             app.kubernetes.io/name: cleanuparr
+        - matchLabels:
+            app.kubernetes.io/name: romarr
       toPorts:
         - ports:
             - port: "8080"

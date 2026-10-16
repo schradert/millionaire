@@ -1,0 +1,8 @@
+{
+  "version": "1.6.0",
+  "digest": "sha256:d65a790672df21cd4a05fc89d5258df485b98ac6a5e92187e45442a2883b3773",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/blizzhacker/romarr"
+  }
+}

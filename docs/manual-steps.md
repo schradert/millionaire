@@ -300,3 +300,12 @@ hyena's ntfy denies everything unless a user's token or password grants it (`sta
 4. Flip `default` to `true` for `ntfy.auth` in `nixidy/system/observability/ntfy.nix`, render, commit with the touched `nixidy/generated/prod/*` and let ArgoCD sync. Alertmanager, the jobs and the bootstrap Jobs then send the publisher token. Run `e2e` (`notify` family) and check ntfy `alerts` on a phone.
 5. On each phone, in the ntfy app (Settings, Manage users): `https://ntfy.trdos.me` with user `reader` (`tristan` devices) or `family` (`family` devices) and the password from Bitwarden `ntfy/<user>/password`. A phone that is not logged in sees "not authorized" on its `android-<device>` topic.
 6. After the first `android_notify_*` pulumi run following the hyena deploy, the nudge posts as `publisher` through `ntfy-publish` on hyena.
+
+## 18. ROMarr: indexers and sources
+
+ROMarr is wired to Prowlarr, qBittorrent, RomM and GG Requestz. What it finds depends on what you add.
+
+1. **Indexers.** Add indexers that carry ROMs to Prowlarr (<https://prowlarr.trdos.me>), as in section 2. ROMarr queries Prowlarr directly (it is not an application in Prowlarr), so every indexer enabled there is searched. Prowlarr's default public indexers carry few ROMs.
+2. **Internet Archive and other sources** are ROM Hub plugins, which ROMarr installs and runs from its Hub tab (<https://romarr.trdos.me>, group `admin`). They are third-party code that runs in the pod with network access and the RomM credentials, so none is installed declaratively: review the plugin first, then install and enable it in Hub > Plugins. Plugins live in `/config/rom-hub` on the `romarr` volume (VolSync-backed).
+3. **Requests.** In GG Requestz an approved request reaches ROMarr; admin requests approve themselves. GG Requestz needs IGDB keys to search (section 17).
+4. **No-Intro DATs** come from libretro's database mirror each time the pod starts. For the official daily No-Intro packs (DAT-o-Matic needs a manual download), put the DATs in `DAT_PATH` yourself and drop the init container in `romarr.nix`.
