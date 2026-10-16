@@ -6,7 +6,7 @@ implemented). The module is `nixidy/system/network/netpol.nix`, the per-namespac
 
 ## Ingress
 
-Every namespace with listening workloads but `kube-system` is default-deny for ingress (`e2e` and `backup-verify` only run CronJobs that call out). `netpol.namespaces.<ns>.enforce` renders one
+Every namespace with listening workloads is default-deny for ingress (`e2e` and `backup-verify` only run CronJobs that call out). `netpol.namespaces.<ns>.enforce` renders one
 CiliumClusterwideNetworkPolicy (`nixidy/generated/prod/netpol`) that selects every pod of the namespace and allows only the
 baseline (kubelet probes and webhooks from `host`/`remote-node`/`kube-apiserver`, the Gateway's envoy as `ingress`, Prometheus and
 Gatus, oauth2-proxy on its upstream ports) plus the entry's `extraIngress`. Egress is not restricted anywhere yet (see "Egress").
@@ -68,6 +68,27 @@ Nothing else calls into the namespace: the CNPG and Dragonfly operators call out
 which have their own `cnpg`/`dragonfly` rules), VolSync movers run in the app namespaces and talk to B2, no HTTPRoute backend is
 a pod-network workload (`rook.<domain>` and `rados.<domain>` point at the host-network mgr and rgw; the baseline `ingress` entity
 stays for them should Ceph ever leave the host network), and there are no LoadBalancer Services.
+
+### kube-system
+
+Pod-network workloads (the only ones the policy selects): CoreDNS (cluster DNS), lan-dns (CoreDNS behind the LoadBalancer
+192.168.50.243), cloudflared, external-dns (Cloudflare) and external-dns-internal (AdGuard), k8tz, Hubble relay and UI,
+generic-device-plugin and the rke2 snapshot controller. `gateway = false`: no HTTPRoute backend is in `kube-system` (the
+`cilium-gateway-*` Services have no pods; Envoy is host-network).
+
+| Caller | Callee | Rule |
+| --- | --- | --- |
+| every pod, every node and host-network pod | CoreDNS :53 UDP and TCP | `extraIngress`: `all` on :53 |
+| LAN devices | lan-dns :53 through 192.168.50.243 | same rule: world when the announcing node serves the query itself, remote-node when it SNATs to a replica on another node (`externalTrafficPolicy: Cluster`; falcon held the L2 lease on 2026-10-16 and runs no replica) |
+| kubelet probes | every workload (CoreDNS :8080/:8181, cloudflared :8080, external-dns :7979/:8080, relay :4222, UI :8081, k8tz :8443, snapshot controller :8080) | baseline `host` |
+| apiserver | k8tz webhook :8443 (failurePolicy Ignore, 10 s timeout) | baseline |
+| Prometheus, Gatus | CoreDNS and lan-dns :9153, cloudflared :8080, external-dns :7979/:8080, relay :9966; Gatus's DNS check of lan-dns | baseline scrape |
+| Cilium agents (`hubble observe`), other nodes' agents | Hubble relay :4245 | baseline `host`/`remote-node` |
+| Hubble UI backend | Hubble relay :4245 (the Service's :80) | `extraIngress`, named |
+
+Not present: metrics-server (no APIService), NodeLocal DNS. `kubectl port-forward` to a pod reaches it over loopback and is not
+filtered. DNS is the dependency of everything: a wrong rule here stops ArgoCD from fetching the revert, so its PR carries a
+break-glass step (pause automated sync of `apps` and `netpol`, delete `netpol-kube-system`).
 
 ## Egress (design, not implemented)
 
