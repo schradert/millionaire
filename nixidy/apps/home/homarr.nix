@@ -77,6 +77,24 @@ in {
             AUTH_OIDC_SCOPE_OVERWRITE = "openid email profile groups";
             AUTH_OIDC_GROUPS_ATTRIBUTE = "groups";
           };
+          # The 1s probe timeout trips whenever dingo (control plane + etcd) is
+          # loaded, and the liveness failure SIGTERMs a healthy app (12 restarts).
+          livenessProbe = {
+            initialDelaySeconds = 30;
+            timeoutSeconds = 5;
+            failureThreshold = 6;
+          };
+          readinessProbe = {
+            initialDelaySeconds = 30;
+            timeoutSeconds = 5;
+          };
+          resources = {
+            requests = {
+              cpu = "100m";
+              memory = "512Mi";
+            };
+            limits.memory = "1Gi";
+          };
           database.type = "postgresql";
           envSecrets = {
             authOidcCredentials = {
