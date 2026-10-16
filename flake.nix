@@ -267,11 +267,39 @@
         bonobo = {
           remoteBuild = true;
           profiles.system.canivete.configuration = {
+            config,
+            flake,
+            lib,
+            ...
+          }: let
+            inherit (flake.config.canivete.meta.people) me;
+            user = config.users.users.${me};
+            # Key names in a sops file are cleartext. sops-nix fails activation on a missing key, so
+            # this is off until pulumi (android_adb_key_sops_write) has written the key and the file is committed.
+            adbKeyWritten = lib.hasInfix "\nandroid:\n    adb-key:" (builtins.readFile ./secrets/sops/default.yaml);
+          in {
             imports = [./static/facter ./static/k8s-node.nix ./static/server.nix];
             disko.devices.disk.root.device = "/dev/disk/by-id/ata-Micron_1100_SATA_256GB_165015496CBD";
             # Host-level TCP relay fronting the internal Cilium gateway on bonobo's
             # tailnet IP (external-dns-internal points *.trdos.me here). See tailnet.nix.
             tailnet.gatewayRelay = "100.64.0.4";
+            # The adb key `android <device>` connects with (pulumi android_adb_key, docs/android-fleet.md)
+            sops.secrets = lib.mkIf adbKeyWritten {
+              android-adb-key = {
+                key = "android/adb-key";
+                path = "${user.home}/.android/adbkey";
+                owner = me;
+                mode = "0600";
+              };
+            };
+            # sops-install-secrets creates missing parents as root; make it the user's first
+            system.activationScripts = lib.mkIf adbKeyWritten {
+              androidAdbDir = {
+                deps = ["users" "groups"];
+                text = "[ ! -d ${user.home} ] || install -d -o ${me} -g ${user.group} -m 0700 ${user.home}/.android";
+              };
+              setupSecrets.deps = ["androidAdbDir"];
+            };
           };
         };
         chinchilla = {
