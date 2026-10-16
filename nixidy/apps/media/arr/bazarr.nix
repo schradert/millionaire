@@ -31,6 +31,9 @@
           # The profile an earlier run named English is renamed, so the existing series and movies follow.
           BAZARR_LANGUAGES = "en,pt,pb,es,fr,de";
           BAZARR_PROFILE = "Language practice";
+          # An embedded subtitle does not count as present, so English also exists as a file: Lingarr
+          # translates the missing languages from a subtitle file, never from an embedded stream.
+          BAZARR_USE_EMBEDDED_SUBS = "false";
           SONARR_API_KEY_FILE = "/secrets/sonarr/apikey";
           RADARR_API_KEY_FILE = "/secrets/radarr/apikey";
         };

@@ -16,6 +16,7 @@
 //!    languages gets them added; when it exists next to `BAZARR_RENAME_FROM` (an earlier bootstrap made it with
 //!    fewer languages) the latter is removed and its defaults, series and movies move to it.
 //! 3. Make that profile the default for new series and movies, unless a default is already on.
+//!    Also `BAZARR_USE_EMBEDDED_SUBS` (`true`/`false`, unset leaves it): whether an embedded subtitle counts as present.
 //! 4. Link Sonarr and Radarr (`SONARR_API_KEY[_FILE]`/`RADARR_API_KEY[_FILE]`; host
 //!    `<app>.media.svc.cluster.local`, port 80), each only when its link is not up yet.
 //! 5. Enable the providers of `BAZARR_PROVIDERS` (default: the account-free ones) in addition to
@@ -213,6 +214,16 @@ pub async fn run() -> Result<()> {
             println!("bazarr: {profile_name} is the default profile for {kind}");
             form.push((format!("settings-general-{flag}"), "true".into()));
             form.push((format!("settings-general-{profile}"), profile_id.to_string()));
+        }
+    }
+
+    // 3b. Embedded subtitles: with `BAZARR_USE_EMBEDDED_SUBS=false` an embedded subtitle does not count as present, so
+    // Bazarr also downloads the language as a file (Lingarr translates from subtitle files, not from embedded streams).
+    if let Ok(want) = std::env::var("BAZARR_USE_EMBEDDED_SUBS") {
+        let want = want == "true";
+        if general["use_embedded_subs"] != json!(want) {
+            println!("bazarr: embedded subtitles {}", if want { "count as present" } else { "are ignored, subtitles are downloaded as files" });
+            form.push(("settings-general-use_embedded_subs".into(), want.to_string()));
         }
     }
 
