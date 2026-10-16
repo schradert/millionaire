@@ -59,24 +59,22 @@ does not lift the hold; README todo 11 owns that.
 
 ### Cutover (`podRoutes = false`)
 
-Node switches are deploy-rs and need the coordinator's go; nothing here is part of
-this change (default `true`, toplevels unchanged).
+Node switches need the coordinator's go. The module default stays `true` (hyena, cloud workers); the nodes set `false`.
 
 1. Preflight: `headscale nodes list-routes` on hyena (one approved `/24` per node, no
    cloud workers); `tailscale debug prefs | grep RouteAll` on any tailnet client you
    suspect (`false` on the nodes and hyena).
-2. Per node, one at a time (start with a desktop node, falcon or axolotl), a PR adding
-   `tailnet.podRoutes = false;` to that node's profile in `flake.nix`, then
-   `deploy` it. Verify: `tailscale debug prefs | jq .AdvertiseRoutes` is `null`,
+2. `tailnet.podRoutes = false` is set for every node in `static/k8s-node.nix` and reaches each node at its
+   deploy (the oneshot reruns at the switch); the order is in docs/node-standard.md, "Next node roll", desktops
+   first. Per node, verify: `tailscale debug prefs | jq .AdvertiseRoutes` is `null`,
    `ip route show 10.0.0.0/8` is empty on the node, `headscale nodes list-routes`
    no longer lists the node, `kubectl get nodes` Ready, `curl -sk https://<host>.trdos.me`
    through `100.64.0.4` and `.5`, and from falcon `curl` a pod on that node
    (`kubectl get pod -o wide`): it still answers over the LAN `/24` route, proving
    nothing rode the tailnet. Check Gatus (`status.trdos.me`) stays green.
-3. After all nodes: move the setting to `tailnet.podRoutes = false` in
-   `static/k8s-node.nix` (drop the per-node lines), and last deploy hyena with
-   `tailnet.podRoutes = false` in its profile so headscale stops auto-approving `10.0.0.0/8`.
-4. Rollback: set the flag back to `true` and redeploy the node (the oneshot waits for
+3. After all nodes: deploy hyena last with `tailnet.podRoutes = false` in its profile so headscale
+   stops auto-approving `10.0.0.0/8`.
+4. Rollback: set `tailnet.podRoutes = true` in the node's profile (`static/k8s-node.nix` only sets a default) and redeploy the node (the oneshot waits for
    the pod CIDR, re-advertises, re-adds the supernet route; hyena's approver must be
    back first, so roll hyena back before the nodes).
 

@@ -237,6 +237,95 @@ Not verified: all of the above on a live node. In particular that rke2 1.34.11 s
 systemd cgroup driver from the CRI as it does today, that the GPU operator validator passes with `nvidia` served by this unit,
 and that a switch does not restart rke2 (step 3).
 
+## Next node roll: externalContainerd, pod routes, remediation prep
+
+Repo side is merged and inert until a node is deployed; this is what the coordinator runs, one node at a time (README 6, 7, 9, 47, 55).
+What a deploy of each node now carries (all verified by building the toplevels on falcon, 2026-10-16):
+
+| Change | Nodes | Takes effect |
+| --- | --- | --- |
+| `tailnet.podRoutes = false` (`static/k8s-node.nix`) | every node | at the switch: `tailnet-pod-routes` is a oneshot whose script changed, so the switch reruns it and it withdraws the advertisement and the `10.0.0.0/8` route |
+| `externalContainerd.enable` (`flake.nix`) | chinchilla, bonobo | only at the cutover below; the switch writes `container-runtime-endpoint` into `config.yaml`, which rke2 reads at its next start |
+| `static/node-remediation.nix`: `/bin/bash`, `iTCO_wdt` loaded, systemd pinned to `/dev/watchdog0` | chinchilla, bonobo (`nodeRemediation.eligible`) | at the switch (`systemd-tmpfiles-resetup`); the pin equals what systemd already uses |
+| node label `remediation.medik8s.io/exclude-from-remediation=true` | every other node: sirver, octopus, dingo, falcon, axolotl, muffin | at the next **rke2 restart** (kubelet reads `node-label` at start) |
+| `node-monitor-grace-period=2m` and the 600 s not-ready/unreachable tolerations (README 47) | servers: dingo, octopus (sirver at its reinstall) | at the next rke2-server restart |
+
+**A switch alone does not restart rke2.** The `rke2-server`/`rke2-agent` unit files in the new toplevels are byte-identical to the ones running on
+octopus and bonobo (diffed 2026-10-16), and NixOS only restarts a unit whose file changed. So config.yaml changes (labels, grace period,
+container-runtime-endpoint) wait for a restart, which each node below does on purpose. Check `dry-activate` anyway: abort the node if it
+lists `rke2-*` among the units to restart.
+
+### Gates, before and after every node
+
+```sh
+export KUBECONFIG=...   # fetched from a server that is NOT the one being switched
+kubectl get nodes -o wide                                      # all Ready
+kubectl get cephcluster -A                                     # HEALTH_OK
+etcdctl() { local t=/var/lib/rancher/rke2/server/tls/etcd; kubectl -n kube-system exec etcd-$POD -- etcdctl \
+  --endpoints=https://127.0.0.1:2379 --cacert=$t/server-ca.crt --cert=$t/server-client.crt --key=$t/server-client.key "$@"; }
+POD=dingo etcdctl endpoint status --cluster -w table           # 3 rows, one leader, ERRORS empty
+```
+
+(The etcd image has no shell: the flags go on `etcdctl` itself. Run it from a pod of a server that is not being switched. Verified read-only on
+2026-10-16: leader dingo `aa1b465deb84b6ad`, octopus `f4e927b319bde64`, sirver `2f50e46c20143168`.) sirver's disk is failing: a server switch is
+only safe while all three members answer, so re-read the table immediately before each server step.
+
+### Order
+
+Per node: steps 1, 2, 5, 6 and 7 of "Rolling the fleet to a new nixpkgs" (build, gates, copy, detached switch, verify) plus the node-specific steps here.
+
+1. **axolotl**, then **falcon** (desktop agents; first nodes to lose their pod routes). After the switch: `ip route show 10.0.0.0/8` empty,
+   `tailscale debug prefs | jq .AdvertiseRoutes` null, `headscale nodes list-routes` on hyena no longer lists the node. Then `systemctl restart rke2-agent` for the label (its pods restart, 5 to 15 minutes; falcon: no dvdrip Job
+   running first, `kubectl get jobs -A`), and `kubectl get node <n> --show-labels | grep exclude-from-remediation`. Rollback: `podRoutes = true` and redeploy.
+2. **chinchilla**, then **bonobo** (agents, flagged; one at a time so one gateway relay stays up). Containerd dataset first, already done:
+   `findmnt /var/lib/rancher/rke2/agent/containerd` shows `root/local/containerd` (read 2026-10-16 on both). Then:
+   - switch; verify `ls -l /bin/bash`, `cat /sys/class/watchdog/watchdog1/{identity,state}` (`iTCO_wdt`, inactive), `ip route show 10.0.0.0/8` empty,
+     `grep container-runtime-endpoint /etc/rancher/rke2/config.yaml`. **Do not restart rke2 between this switch and the cutover**: rke2 would find
+     no CRI at the configured socket until `containerd.service` is restarted;
+   - the cutover and verification of "Running containerd as its own unit", steps 4 to 6 (stop rke2, `rke2-killall.sh`, restart `containerd`,
+     start rke2; then check the parent of containerd is PID 1 and one more `systemctl restart rke2-agent` leaves the shims up);
+   - gates, then the next node. Rollback: the "Rollback per node" paragraph above.
+3. **dingo** (etcd server, no flag yet: set `externalContainerd.enable` for it in a later roll, after chinchilla and bonobo have run clean).
+   Gates; if dingo is the etcd leader, move it first (below); switch; then `systemctl restart rke2-server` (grace period, tolerations, label);
+   wait for etcd 3/3 and the node Ready, 5 to 15 minutes for the pods.
+4. **octopus**, last: containerd dataset migration and the same server steps (next subsection).
+5. **sirver**: not rolled (26.05, failing disk). It has no SNR agent as long as the SNR config excludes control-plane nodes; if a DaemonSet pod
+   still lands there once medik8s is re-landed, label it once by hand (`kubectl label node sirver remediation.medik8s.io/exclude-from-remediation=true`);
+   its reinstall carries the label from config.
+6. **hyena**, after every node above: `tailnet.podRoutes = false` in its profile (`flake.nix`) so headscale stops auto-approving `10.0.0.0/8`
+   (`static/hyena.nix` keys the approver off the same option). Rollback order is the reverse (docs/tailscale-integration.md, "Pod routes").
+
+### Moving the etcd leader off a node
+
+Only the leader accepts `move-leader`, so run it in the leader's own pod against its own endpoint, and name a healthy member as target, never sirver:
+
+```sh
+POD=octopus etcdctl endpoint status -w table                  # IS LEADER true on this node?
+POD=octopus etcdctl move-leader aa1b465deb84b6ad              # target: dingo's member ID (re-read `member list` first)
+POD=dingo etcdctl endpoint status --cluster -w table          # leader is now the target; RAFT TERM went up by one
+```
+
+`move-leader` itself was not run while preparing this (only `endpoint status` and `member list` were, read-only, through this exact pod invocation).
+It changes the leader without a restart; if it errors with "not leader", the leadership already moved: re-read the table.
+
+### octopus: containerd dataset (README 55)
+
+octopus is on `root/safe/var/lib` (no `root/local/containerd`), an HDD pool that also hosts etcd, so the rsync is the known flap trigger.
+Nothing below has been run on octopus (a stray `du -sh` over its containerd dir during preparation already showed how slow the tree walk is; it was killed).
+
+1. Gates, and the etcd leader is NOT octopus (move it, previous subsection). Keep `POD=dingo etcdctl endpoint status --cluster` and
+   `kubectl -n kube-system logs etcd-octopus --since=2m | grep -c "took too long"` open in a second terminal for the whole copy.
+2. Measure without walking the tree on the HDD: `crictl imagefsinfo` (usedBytes of the image filesystem; not tried here) and `zfs list -Hpo avail root`;
+   the script needs 120% of the directory free (its `du` counts `copies=2` double, so expect about twice `usedBytes`). If it is short:
+   `crictl rmi --prune` and a nix GC (roll gotcha 2).
+3. Copy the script over and seed with the lowest IO class, rke2 still running:
+   `ionice -c3 nice -n 19 ./containerd-zfs-migrate.sh seed` (the script's own `du` inherits the class). If `took too long` counts climb or etcd
+   latency alarms, `Ctrl-C` the rsync: a partial copy stays in the new dataset and `seed` resumes it later.
+4. Switch octopus (the standard server steps above), then `ionice -c3 ./containerd-zfs-migrate.sh cutover` (stops rke2-server; 2 of 3 etcd
+   members stay up, so the leader must already be elsewhere), `systemctl start rke2-server`, verify as in "Migrating a live node to the containerd
+   dataset", then `cleanup` once satisfied. `rollback` undoes the cutover before cleanup.
+5. After it: README 48 (siyuan/shoko workarounds) can be removed.
+
 ## Not verified
 
 - No node has been installed through this path; the pulumi step was only rendered and syntax-checked, never run.
