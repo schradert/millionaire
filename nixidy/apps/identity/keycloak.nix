@@ -104,6 +104,11 @@ in {
         };
       };
       resources = {
+        # Restore point before the 26.8 schema migration (one-way). Taken once on merge; delete after the upgrade is verified.
+        backups.keycloak-pre-26-8.spec = {
+          cluster.name = "keycloak";
+          method = "barmanObjectStore";
+        };
         # Keycloak needs to pass a valid FQDN to Stalwart for email sending
         # app-template doesn't support setting these variables though
         deployments.keycloak.spec.template.spec = {
