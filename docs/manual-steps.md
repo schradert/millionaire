@@ -64,7 +64,12 @@ Wait for the nixpkgs/home-manager bump to land on main; another agent is doing i
 1. Sync the main checkout with main. It currently carries uncommitted local work, so land or stash that first.
 2. Run `darwin-rebuild switch --flake .`.
 
-Unblocks: the build mesh (#225/#227/#233/#247) and the new modules on the Mac.
+3. The Mac's `nix.linux-builder` VM restarts with an extra authorized-keys list (the pool's host keys), which makes it a native aarch64-linux
+   builder for falcon and the nodes (`morgenmuffelVm` in `static/builders.nix`; README 34). After falcon has switched too, verify on
+   falcon: `nix build --system aarch64-linux --no-link nixpkgs#hello -L` shows `building ... on 'ssh-ng://builder@192.168.50.249:31022'`,
+   and `sudo nix store ping --store ssh-ng://builder@192.168.50.249:31022 --option ssh-key /etc/ssh/ssh_host_ed25519_key` answers. If the port is not reachable, check `sudo launchctl list | grep linux-builder` on the Mac.
+
+Unblocks: the build mesh (#225/#227/#233/#247) and the new modules on the Mac; native aarch64-linux builds on falcon.
 
 ## 5. Replace osd.7's drive
 
@@ -84,6 +89,7 @@ The pool currently holds: `.240` external gateway, `.241` internal gateway, `.24
 1. In the router's DHCP settings, exclude `192.168.50.240-192.168.50.254` from the dynamic range (or reserve them).
 2. Renew the leases of any host currently inside the range (morgenmuffel, axolotl).
 3. Reserve an address outside the range for the muffin VM's MAC `52:54:00:6d:75:66` (it got `192.168.50.86`); its node IP must not change.
+4. Reserve morgenmuffel's own address (its new lease after step 2) and put it in `morgenmuffelVm.lan` in `static/builders.nix`: falcon and the nodes reach the Mac's builder VM by that IP (port 31022).
 
 Unblocks: safe new LoadBalancer Services (the Syncthing LAN listener and the rsync ingest receiver use this pool).
 

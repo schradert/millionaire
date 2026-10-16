@@ -1,5 +1,8 @@
 # morgenmuffel: personal Mac.
-{
+{...}: let
+  pool = import ./builders.nix;
+  vm = pool.morgenmuffelVm;
+in {
   imports = [./darwin-workstation.nix ./muffin-vm.nix];
   profile = "personal";
   # Installed by the old dotfiles repo
@@ -16,9 +19,13 @@
   services.karabiner-elements.enable = false;
   # Native aarch64-linux builds (gargoyle) in a VM instead of falcon's binfmt
   # emulation; speedFactor above falcon's emulated entry (static/builders.nix: 2).
+  # The VM's sshd is reachable on the LAN (port 31022): the pool's hosts build on it
+  # by their ssh host keys (static/builder.nix), on top of the Mac's own /etc/nix/builder_ed25519.
   nix.linux-builder = {
     enable = true;
-    maxJobs = 4;
-    speedFactor = 4;
+    maxJobs = vm.jobs;
+    inherit (vm) speedFactor;
+    config.users.users.${vm.user}.openssh.authorizedKeys.keys =
+      map (p: p.hostKey) (builtins.attrValues pool.nodes) ++ [pool.falcon.hostKey];
   };
 }

@@ -141,5 +141,20 @@ in rec {
     };
   };
 
+  # The Mac's `nix.linux-builder` VM (static/morgenmuffel.nix): native aarch64-linux. Its sshd is QEMU's
+  # hostfwd on the Mac's LAN address, port 31022 (the module binds all interfaces); `lan` is a DHCP lease
+  # (docs/manual-steps.md 5b), so reserve it. The host key is baked into nixpkgs' builder image, the user
+  # is `builder`. The Mac authorizes every host key above in the VM; clients are the pool's hosts (static/builder.nix).
+  morgenmuffelVm = {
+    lan = "192.168.50.249";
+    port = 31022;
+    hostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJBWcxb/Blaqt1auOtE+F8QUWrUotiC5qBJ+UuEWdVCb";
+    user = "builder";
+    jobs = 4;
+    speedFactor = 4;
+    systems = ["aarch64-linux"];
+    features = ["benchmark" "big-parallel"];
+  };
+
   axolotl.lan = "192.168.50.250";
 }
