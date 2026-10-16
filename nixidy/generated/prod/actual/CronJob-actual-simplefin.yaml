@@ -1,0 +1,79 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: actual-simplefin
+  namespace: finance
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 1200
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: actual-simplefin
+        spec:
+          automountServiceAccountToken: false
+          containers:
+            - command:
+                - sh
+                - -c
+                - cp /app/* /work/ && cd /work && npm ci --ignore-scripts --no-audit --no-fund --loglevel=error && node sync.mjs
+              env:
+                - name: ACTUAL_URL
+                  value: http://actual.finance.svc.cluster.local:5006
+                - name: ADMIN_PASSWORD_FILE
+                  value: /secrets/admin/password
+                - name: DATA_DIR
+                  value: /work/data
+                - name: HOME
+                  value: /work
+              image: node:24-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f
+              name: actual-simplefin
+              resources:
+                limits:
+                  memory: 1Gi
+                requests:
+                  cpu: 50m
+                  memory: 256Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - mountPath: /work
+                  name: work
+                - mountPath: /tmp
+                  name: tmp
+                - mountPath: /app
+                  name: app
+                  readOnly: true
+                - mountPath: /secrets/admin
+                  name: admin
+                  readOnly: true
+          restartPolicy: Never
+          securityContext:
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          volumes:
+            - emptyDir:
+                sizeLimit: 512Mi
+              name: work
+            - emptyDir: {}
+              name: tmp
+            - configMap:
+                name: actual-simplefin
+              name: app
+            - name: admin
+              secret:
+                secretName: actual-admin
+      ttlSecondsAfterFinished: 172800
+  schedule: 51 9 * * *
+  successfulJobsHistoryLimit: 1
