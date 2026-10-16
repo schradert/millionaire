@@ -105,7 +105,6 @@ in {
       # names it gitea-shared-storage); forgejo-1 is the CNPG database volume.
       volsync.pvcs.data-forgejo-0 = {
         title = "gitea-shared-storage";
-        restore = false;
       };
 
       helm.releases.forgejo = {

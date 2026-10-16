@@ -82,11 +82,9 @@ in {
       };
       volsync.pvcs.audiobookshelf = {
         title = "audiobookshelf-config";
-        restore = false;
       };
       volsync.pvcs.audiobookshelf-metadata = {
         title = "audiobookshelf-metadata";
-        restore = false;
       };
       helm.releases.audiobookshelf = {
         chart = charts.bjw-s-labs.app-template-patched;

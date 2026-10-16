@@ -95,7 +95,6 @@ in {
       namespace = "home";
       volsync.pvcs.syncthing = {
         title = "syncthing";
-        restore = false;
       };
       # GUI API key; org-bridge reads the same Secret.
       generatedSecrets.syncthing.key = "STGUIAPIKEY";

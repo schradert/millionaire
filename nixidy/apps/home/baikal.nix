@@ -17,7 +17,6 @@ in {
       namespace = "home";
       volsync.pvcs.baikal = {
         title = "baikal";
-        restore = false;
       };
       # Admin password (web admin and the DAV user `admin`); org-bridge reads the
       # same Secret. Break-glass and the CalDAV login for clients.
@@ -93,7 +92,12 @@ in {
               sectionName = "https";
             };
             rules = lib.toList {
-              matches = map (path: {path = {type = "PathPrefix"; value = path;};}) ["/dav.php" "/.well-known/caldav" "/.well-known/carddav"];
+              matches = map (path: {
+                path = {
+                  type = "PathPrefix";
+                  value = path;
+                };
+              }) ["/dav.php" "/.well-known/caldav" "/.well-known/carddav"];
               backendRefs = lib.toList {
                 name = "baikal";
                 port = 80;
@@ -117,7 +121,6 @@ in {
           };
         };
       };
-
     };
     oauth2Proxy.upstreams.${hostname} = {
       url = "http://baikal.home.svc.cluster.local:80";

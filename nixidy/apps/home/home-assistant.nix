@@ -45,7 +45,6 @@ in {
       postgres.avoidNodes = ["sirver"];
       volsync.pvcs.ha-config = {
         title = "ha";
-        restore = false;
       };
       helm.releases.ha = {
         chart = charts.bjw-s-labs.app-template-patched;

@@ -3,10 +3,18 @@
 Both back up to B2 bucket `trdos-me--volsync`: VolSync (restic) under `volsync--<app>--<pvc>`, CNPG (barman) under `cnpg/<cluster>/`.
 Both were rehearsed on 2026-10-10 into scratch objects; live data was not touched.
 
-## Warning: the committed ReplicationDestinations restore into the LIVE PVC
+## VolSync restores are deliberate
 
-`nixidy/system/storage/volsync.nix` makes `volsync--<app>--<pvc>-dst` with `destinationPVC = <live pvc>` and `trigger.manual = "1"`.
-Changing `trigger.manual` on one of those overwrites live data. To test or inspect a backup, use a separate scratch destination as below.
+`restore = false` is the default in `nixidy/system/storage/volsync.nix`: only the ReplicationSource is committed, so no object in Git can write into a live PVC.
+A restore is a change to the app's `volsync.pvcs.<name>` entry. `restore = true` renders `volsync--<app>--<pvc>-dst`, a one-shot ReplicationDestination
+(`trigger.manual = "1"`, `copyMethod = Direct`) that writes the latest snapshot into the existing PVC named by `restoreInto` (default: the live PVC).
+
+- Real restore (empty or corrupt live PVC, or a rebuild): scale the app to 0, set `restore = true`, merge. ArgoCD creates the `-dst` and it runs once
+  (done when `status.latestMoverStatus.result` is `Successful`). Scale the app back up, then delete `restore = true`; ArgoCD prunes the `-dst`.
+  To run it again while it still exists, set `resources.replicationDestinations."volsync--<app>--<pvc>-dst".spec.trigger.manual = "2"`.
+- Scratch restore (inspect or verify a backup): declare a same-sized scratch PVC (`resources.persistentVolumeClaims`) and set `restore = true; restoreInto = "<scratch pvc>";`.
+  The live volume is untouched. To repoint the workload, swap the PVC name in the workload and drop the live one deliberately.
+- Without a commit, use the hand-written scratch destination below (rehearsed). Never point one at a live PVC while the app runs.
 
 ## VolSync: restore into a scratch PVC (rehearsed with media/seerr)
 
@@ -34,16 +42,15 @@ spec:
 ```
 
 - `fsGroup` is required. Without it the mover (uid 101) cannot write the fresh volume's root and fails with
-  `no such file or directory` / "Fatal: There were N errors". The committed destinations work only because their live PVCs are
-  already group-writable.
+  `no such file or directory` / "Fatal: There were N errors". A `restore = true` destination sets none: namespaces with a backed-up PVC
+  carry `volsync.backube/privileged-movers`, so its mover runs as root (a live `-dst` pod showed `runAsUser: 0`, no fsGroup).
 - Done when `status.lastSyncTime` is set and `status.latestMoverStatus.result` is `Successful`.
 - Verify: run a throwaway pod (same image as the app, `runAsUser: 101`, `fsGroup: 101`, PVC mounted read-only) that runs
   `sha256sum` over the files, and run the same on the live pod with `kubectl exec`. All 9 files in seerr's config matched
   (db.sqlite3, -wal, -shm, settings.json, logs). Choose an app whose files are not being rewritten.
 - Clean up: `kubectl -n <ns> delete pod,replicationdestination,pvc -l dr-rehearsal=true`. Deleting the destination also removes its cache PVC.
 
-To restore for real: scale the app to 0, then either bump `trigger.manual` on the committed `-dst` (restores into the live PVC) or
-restore to a scratch PVC as above and repoint the workload.
+To restore for real, scale the app to 0 and use `restore = true` (above) or restore to a scratch PVC as above and repoint the workload.
 
 ## CNPG: restore into a scratch cluster (rehearsed with health/mealie)
 

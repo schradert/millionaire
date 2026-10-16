@@ -88,7 +88,8 @@ in {
                 default = ["persistentVolumeClaims" config.title];
               };
               inject = can.enable "Inject dataSourceRef into a PVC" {};
-              restore = can.enable "ReplicationDestination that restores the latest snapshot into the PVC" {default = true;};
+              restore = can.enable "One-shot ReplicationDestination restoring the latest snapshot into restoreInto (docs/pvc-and-postgres-restore.md)" {};
+              restoreInto = can.str "Existing PVC the restore writes into: the live one, or a same-sized scratch PVC" {default = config.title;};
               cacheAccessModes = can.list.str "Mover cache access modes (RWX sources need ReadWriteOnce on ceph-block)" {default = [];};
               schedule = can.str "Cron schedule of the backup" {default = "0 4 * * *";};
               retain = lib.mkOption {
@@ -103,7 +104,7 @@ in {
         };
         config = lib.mkIf config.volsync.enable {
           resources = lib.mkMerge (lib.flip lib.mapAttrsToList config.volsync.pvcs (pvcName: pvc: let
-            inherit (pvc) title inject path cacheAccessModes restore schedule retain;
+            inherit (pvc) title inject path cacheAccessModes restore restoreInto schedule retain;
             cache = lib.optionalAttrs (cacheAccessModes != []) {inherit cacheAccessModes;};
             region = "us-west-004";
             repository = "volsync--${name}--${pvcName}";
@@ -157,7 +158,8 @@ in {
                       inherit retain;
                     };
                 };
-                replicationDestinations = lib.mkIf restore {
+                # An injected dataSourceRef needs its ReplicationDestination too
+                replicationDestinations = lib.mkIf (restore || inject) {
                   "${repository}-dst".spec = {
                     # Override this to track restoration
                     trigger.manual = lib.mkDefault "1";
@@ -165,7 +167,7 @@ in {
                       cache
                       // {
                         copyMethod = "Direct";
-                        destinationPVC = title;
+                        destinationPVC = restoreInto;
                         inherit repository;
                       };
                   };

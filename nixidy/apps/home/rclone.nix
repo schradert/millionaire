@@ -26,7 +26,6 @@
       namespace = "home";
       volsync.pvcs.rclone = {
         title = "rclone";
-        restore = false;
       };
       helm.releases.rclone = {
         chart = charts.bjw-s-labs.app-template-patched;
