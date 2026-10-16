@@ -1,6 +1,6 @@
 [package]
 name = "e2e"
-version = "0.16.4"
+version = "0.17.0"
 description = "Platform end-to-end tests: tagged test data through real requests, then cleanup and a residue check"
 publish = false
 edition = "2021"

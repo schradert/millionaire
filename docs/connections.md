@@ -32,7 +32,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | forgejo (git) | oauth2-proxy (UI); git over https, `/api` and `/login/oauth/access_token` direct | done: tea via Forgejo's built-in `tea` OAuth app (`tea-login`, SSO), `nixidy/apps/development/forgejo.nix`; git over ssh/https | done: same | n-a | done: GitNex (`homelab` set) | tea's OAuth token (refreshed by tea) |
 | windmill, sveltekit-demo | OIDC / none | web | web | n-a | web | — |
 | bifrost | oauth2-proxy (bearer) | done: opencode provider `bifrost` (plugin adds `sso-token`), `modules/sso.nix` | done: same | n-a | n-a | `sso-token` |
-| contextforge (mcp) | oauth2-proxy (bearer) + OAuth virtual server; UI: Keycloak SSO | done: opencode MCP `contextforge` (`sso-token mcp https://mcp.trdos.me/servers/<id>/mcp`), `modules/opencode.nix`; live once `app-bootstrap-contextforge` is pinned | done: same | n-a | n-a | `sso-token` |
+| contextforge (mcp) | oauth2-proxy (bearer) + OAuth virtual server; UI: Keycloak SSO | done: opencode MCP `contextforge` (`sso-token mcp https://mcp.trdos.me/servers/<id>/mcp`), `modules/opencode.nix`; checked by the e2e flow `ai/contextforge-mcp` | done: same | n-a | n-a | `sso-token` |
 | librechat (chat) | OIDC (its own login page) | web | web | n-a | web | — |
 | promptfoo | oauth2-proxy | web | web | n-a | n-a | — |
 | Kubernetes MCP | kubeconfig | done: mcp-k8s-go (read-only, context `trdos`), `modules/opencode.nix` | done: same | n-a | n-a | kubeconfig |
