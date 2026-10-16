@@ -1,7 +1,16 @@
 {config, ...}: let
   inherit (config.canivete.meta) domain;
 in {
-  home = {...}: {
+  home = {
+    config,
+    lib,
+    ...
+  }: {
+    # vdirsyncer asks before creating a collection that is missing on one side, which a launchd
+    # agent cannot answer; the local directory exists first, so `discover` is silent.
+    home.activation.vdirsyncerCollections = lib.hm.dag.entryAfter ["writeBoundary"] ''
+      run mkdir -p "${config.accounts.calendar.basePath}/org"
+    '';
     accounts.calendar = {
       # Home-relative on purpose: HM prepends homeDirectory to non-absolute
       # paths ("~/..." would resolve to "$HOME/~/...").

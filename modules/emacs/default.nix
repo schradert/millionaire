@@ -10,6 +10,7 @@
   };
   home = {
     config,
+    flake,
     lib,
     pinned,
     pkgs,
@@ -38,6 +39,13 @@
         attrs
         ++ [")"]
       );
+    # The Syncthing `org` folder (modules/syncthing.nix) is the one place the org files live;
+    # Emacs, org-mem/org-node and the agenda all read it from there.
+    orgDirectory = "${config.home.homeDirectory}/${flake.config.syncthing.folders.org.path.${
+      if pkgs.stdenv.hostPlatform.isDarwin
+      then "darwin"
+      else "linux"
+    }}";
     nullOr = type:
       mkOption {
         type = types.nullOr type;
@@ -100,6 +108,9 @@
       }
       (mkIf config.profiles.workstation.enable {
         home.packages = [pkgs.nerd-fonts.symbols-only];
+        # org-agenda-files and org-mem read the directory at startup; a host Syncthing has not
+        # populated yet (the work Mac is not a device) still needs it to exist.
+        home.activation.orgDirectory = lib.hm.dag.entryAfter ["writeBoundary"] "run mkdir -p ${lib.escapeShellArg orgDirectory}";
         programs.doom-emacs = lib.mkMerge [
           {
             enable = true;
@@ -109,7 +120,7 @@
             extraBinPackages = with config.programs; [ripgrep.package git.package fd.package];
             tangle.config = ''
               ;; org-directory must be set before org loads.
-              (setq org-directory "${config.home.homeDirectory}/Projects/sabedoria")
+              (setq org-directory "${orgDirectory}")
               (setq! delete-by-moving-to-trash t)
             '';
             tangle.init = {
