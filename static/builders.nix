@@ -21,7 +21,8 @@
 # falcon (`falcon` below) is an RKE2 agent too (a GPU desktop, static/desktop-node.nix)
 # but sits outside this cap table: the biggest builder, uncapped, with idle
 # CPU/IO scheduling so its desktop stays responsive (static/builder.nix).
-# Hosts in neither table (axolotl) are not in the pool at all.
+# Hosts in neither table (axolotl) are not in the pool at all. `nodes` is every cluster host
+# (addresses, caps); `builders` is the subset that takes remote builds.
 #
 # lan/tailnet are the box's addresses; hostKey pins its ssh host key (also its
 # build-client identity towards peers, see static/builder.nix).
@@ -51,9 +52,8 @@ let
     speedFactor = cores / 4;
     user = "nix-remote-builder";
   };
-in {
+in rec {
   nodes = {
-    # TODO: remove sirver from the build pool until its failing root disk is replaced; see docs/backlog.md
     sirver = node {
       cores = 64;
       lan = "192.168.50.204";
@@ -115,6 +115,8 @@ in {
       memMax = "4G";
     };
   };
+  # sirver: out of the pool until its root disk is replaced (README 33)
+  builders = removeAttrs nodes ["sirver"];
 
   # Not in the cap table above (a desktop): x86_64 natively, aarch64-linux by binfmt emulation (no
   # kvm). The dev host reaches it as its login user (`Host falcon` is also its

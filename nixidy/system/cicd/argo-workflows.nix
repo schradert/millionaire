@@ -577,7 +577,7 @@ in {
                 # Big builders first; the gate uses the first that accepts its key.
                 env = lib.toList {
                   name = "BUILD_POOL";
-                  value = builtins.toJSON (lib.pipe (import ../../../static/builders.nix).nodes [
+                  value = builtins.toJSON (lib.pipe (import ../../../static/builders.nix).builders [
                     (lib.filterAttrs (_: n: lib.elem "big-parallel" n.features))
                     lib.attrValues
                     (lib.sort (a: b: a.cores > b.cores))

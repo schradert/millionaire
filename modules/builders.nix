@@ -25,6 +25,7 @@
     key = "/Users/${me}/.ssh/personal";
     jump = "${me}@192.184.168.248";
     hosts = pool.nodes // {inherit (pool) falcon;};
+    builders = pool.builders // {inherit (pool) falcon;};
 
     machine = name: p: {
       hostName = name;
@@ -43,7 +44,7 @@
       nix.distributedBuilds = true;
       nix.settings.builders-use-substitutes = true;
       nix.buildMachines =
-        lib.mapAttrsToList machine hosts
+        lib.mapAttrsToList machine builders
         ++ [emulated];
 
       programs.ssh.extraConfig =
