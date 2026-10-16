@@ -42,12 +42,12 @@ spec:
           image: jitsi/prosody:prosody-13.0.4@sha256:51dd47542eda780cf51815404459c415a2af49b77385b6c5ba091e79001a3a81
           imagePullPolicy: IfNotPresent
           livenessProbe:
-            failureThreshold: 12
+            failureThreshold: 6
             httpGet:
               path: /http-bind
               port: bosh-insecure
-            initialDelaySeconds: 120
             periodSeconds: 10
+            timeoutSeconds: 5
           name: prosody
           ports:
             - containerPort: 5222
@@ -66,16 +66,24 @@ spec:
               name: bosh-secure
               protocol: TCP
           readinessProbe:
+            failureThreshold: 6
             httpGet:
               path: /http-bind
               port: bosh-insecure
-            initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 5
           resources:
             requests:
               cpu: 25m
               memory: 48Mi
           securityContext: {}
+          startupProbe:
+            failureThreshold: 60
+            httpGet:
+              path: /http-bind
+              port: bosh-insecure
+            periodSeconds: 10
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /config
               name: config

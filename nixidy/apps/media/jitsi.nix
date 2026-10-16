@@ -7,6 +7,17 @@
     inherit (config.canivete.meta) domain;
     hostname = "jitsi.${domain}";
     xmppPasswords = ["recorder" "jibri" "jicofo" "component" "jigasi" "jvb"];
+    probe = {
+      periodSeconds = 10;
+      timeoutSeconds = 5;
+      failureThreshold = 6;
+    };
+    startupProbe = handler:
+      probe
+      // handler
+      // {
+        failureThreshold = 60;
+      };
     xmppRef = n: {
       secretKey = n;
       remoteRef.key = "jitsi-${n}";
@@ -70,25 +81,17 @@
           jvb.service.externalTrafficPolicy = null;
           prosody.enabled = true;
           prosody.persistence.enabled = true;
-          # prosody's 10-config init takes >30s here; the chart's default probes
-          # (no delay, 3 failures) kill it mid-init every time.
-          prosody.livenessProbe = {
-            httpGet = {
-              path = "/http-bind";
-              port = "bosh-insecure";
-            };
-            initialDelaySeconds = 120;
-            periodSeconds = 10;
-            failureThreshold = 12;
-          };
-          prosody.readinessProbe = {
-            httpGet = {
-              path = "/http-bind";
-              port = "bosh-insecure";
-            };
-            initialDelaySeconds = 30;
-            periodSeconds = 10;
-          };
+          # The chart's probes have 1s timeouts and no startup gate; on sirver's slow disk prosody's
+          # 10-config init (key and cert generation) takes ~4 min, so liveness killed it before it
+          # listened. startupProbes (added below, the chart has no value for them) hold the others off.
+          prosody.livenessProbe = probe;
+          prosody.readinessProbe = probe;
+          jicofo.livenessProbe = probe;
+          jicofo.readinessProbe = probe;
+          jvb.livenessProbe = probe;
+          jvb.readinessProbe = probe;
+          web.livenessProbe = probe;
+          web.readinessProbe = probe;
           # The jitsi/* images below are public + digest-pinned; "Never" can't pull
           # them on a node that lacks them -> ErrImageNeverPull (jitsi never ran).
           image.pullPolicy = "IfNotPresent";
@@ -160,6 +163,25 @@
         # jigasi (SIP) and jibri (recording) are deferred: parked at 0 replicas, config kept.
         deployments.jitsi-jitsi-meet-jigasi.spec.replicas = lib.mkForce 0;
         deployments.jitsi-jitsi-meet-jibri.spec.replicas = lib.mkForce 0;
+        statefulSets.jitsi-prosody.spec.template.spec.containers.prosody.startupProbe = startupProbe {
+          httpGet = {
+            path = "/http-bind";
+            port = "bosh-insecure";
+          };
+        };
+        deployments.jitsi-jitsi-meet-jicofo.spec.template.spec.containers.jitsi-meet.startupProbe = startupProbe {tcpSocket.port = 8888;};
+        deployments.jitsi-jitsi-meet-jvb.spec.template.spec.containers.jitsi-meet.startupProbe = startupProbe {
+          httpGet = {
+            path = "/about/health";
+            port = 8080;
+          };
+        };
+        deployments.jitsi-jitsi-meet-web.spec.template.spec.containers.jitsi-meet.startupProbe = startupProbe {
+          httpGet = {
+            path = "/";
+            port = 80;
+          };
+        };
         httpRoutes.jitsi-web.spec = {
           hostnames = [hostname];
           # Public rooms — exposed via external gateway, no oauth2-proxy.

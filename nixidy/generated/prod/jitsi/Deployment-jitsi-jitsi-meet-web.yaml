@@ -33,9 +33,12 @@ spec:
           image: jitsi/web:web-1.0.9126-1@sha256:2092fd409c0c9ec7f9325d88df1c8e8ee092a26e98931ae3954d4dc02f07de41
           imagePullPolicy: IfNotPresent
           livenessProbe:
+            failureThreshold: 6
             httpGet:
               path: /
               port: 80
+            periodSeconds: 10
+            timeoutSeconds: 5
           name: jitsi-meet
           ports:
             - containerPort: 80
@@ -45,14 +48,24 @@ spec:
               name: https
               protocol: TCP
           readinessProbe:
+            failureThreshold: 6
             httpGet:
               path: /
               port: 80
+            periodSeconds: 10
+            timeoutSeconds: 5
           resources:
             requests:
               cpu: 25m
               memory: 32Mi
           securityContext: {}
+          startupProbe:
+            failureThreshold: 60
+            httpGet:
+              path: /
+              port: 80
+            periodSeconds: 10
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /config
               name: config

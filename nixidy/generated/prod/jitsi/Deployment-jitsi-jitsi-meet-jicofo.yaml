@@ -36,21 +36,33 @@ spec:
           image: jitsi/jicofo:jicofo-1.0-1174-1@sha256:b4f9adfa4d752e87c82428aa7241a8a4e3aaafa9db370d57ba3c0e179d0d57da
           imagePullPolicy: IfNotPresent
           livenessProbe:
+            failureThreshold: 6
+            periodSeconds: 10
             tcpSocket:
               port: 8888
+            timeoutSeconds: 5
           name: jitsi-meet
           ports:
             - containerPort: 80
               name: http
               protocol: TCP
           readinessProbe:
+            failureThreshold: 6
+            periodSeconds: 10
             tcpSocket:
               port: 8888
+            timeoutSeconds: 5
           resources:
             requests:
               cpu: 25m
               memory: 1072Mi
           securityContext: {}
+          startupProbe:
+            failureThreshold: 60
+            periodSeconds: 10
+            tcpSocket:
+              port: 8888
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /config
               name: config
