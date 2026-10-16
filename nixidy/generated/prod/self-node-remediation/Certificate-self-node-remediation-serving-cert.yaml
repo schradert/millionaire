@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: self-node-remediation-serving-cert
+  namespace: medik8s
+spec:
+  dnsNames:
+    - self-node-remediation-webhook-service.medik8s.svc
+    - self-node-remediation-webhook-service.medik8s.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: self-node-remediation-selfsigned
+  secretName: self-node-remediation-webhook-server-cert

@@ -326,6 +326,54 @@ Nothing below has been run on octopus (a stray `du -sh` over its containerd dir 
    dataset", then `cleanup` once satisfied. `rollback` undoes the cutover before cleanup.
 5. After it: README 48 (siyuan/shoko workarounds) can be removed.
 
+## Node remediation
+
+`nixidy/system/cluster/medik8s.nix` runs medik8s Node Health Check (NHC) and Self Node Remediation (SNR) in the `medik8s` namespace
+(apps `node-healthcheck-operator`, `self-node-remediation`, CRDs in `medik8s-crds`). When a selected node's `Ready` condition stays
+`False` or `Unknown` for 15 minutes, NHC creates a `SelfNodeRemediation` from the `out-of-service` template: the node's SNR agent
+reboots it through the hardware watchdog, and the operator then sets the `node.kubernetes.io/out-of-service` taint so its pods are
+force-deleted and their RBD volumes detach and move.
+
+- **Selected**: the agents only (bonobo, chinchilla): no `node-role.kubernetes.io/control-plane` label and `node.trdos.me/class` not
+  `desktop`. The SNR agent DaemonSet gets the same requirements, AND-ed with the operator's own `remediation.medik8s.io/exclude-from-remediation NotIn true`
+  (read in the operator source, v0.13.0, `updateDsNodeSelectors`). The first landing (#958) still saw agent pods on every node, so the node label is the
+  second guard: `static/node-remediation.nix` sets it on every node that is not `nodeRemediation.eligible`.
+- **Never touched**: sirver, octopus, dingo (a reboot there is an etcd and OSD event to plan: sirver's disk is failing, octopus hangs on
+  a graceful reboot) and the desktops falcon and axolotl (they sleep and reboot at will, which would read as unhealthy).
+- **One at a time**: `minHealthy: 1` of the two selected nodes; with one already remediating, the other is never started.
+- **15 minutes**: well above the 4-minute `Unknown` that octopus' etcd flaps caused on 2026-10-11.
+- **Signals**: Alertmanager `NodeRemediationInProgress` (warning, via ntfy) and `NodeRemediationStuck`; `kubectl get nodehealthcheck,selfnoderemediation -A`.
+- **Pause** (running remediations continue): add an entry to `spec.pauseRequests` of NodeHealthCheck `agents` in `medik8s.nix` and merge. The
+  apps self-heal, so a `kubectl edit` of the CR is reverted.
+- **Remove**: delete the app files; ArgoCD prunes the three apps. The webhooks fail open, so a CR delete never waits on them.
+
+### Node config the agent needs (`static/node-remediation.nix`)
+
+- **Watchdog**: systemd holds `/dev/watchdog0` (`intel_oc_wdt` on bonobo and chinchilla; `WatchdogDevice=/dev/watchdog0`, `RuntimeWatchdogSec=15s`
+  as before), and the SNR config's `watchdogFilePath` is `/dev/watchdog1` (`iTCO_wdt`, 30 s). The two paths are fixed, so they never collide
+  whichever driver registers first. Opening `/dev/watchdog` itself would fail with EBUSY.
+- **Software fallback**: the agent runs `nsenter -m/proc/1/ns/mnt /bin/bash -c 'echo b > /proc/sysrq-trigger'`; a tmpfiles rule links `/bin/bash`.
+- **Excluded nodes** carry `remediation.medik8s.io/exclude-from-remediation=true` through rke2's `node-label`, applied at the node's next rke2 restart.
+  sirver (not rolled) is kept out by the control-plane requirement; if an agent pod still lands there, `kubectl label node sirver remediation.medik8s.io/exclude-from-remediation=true` once.
+
+### Staged: NHC is paused
+
+The NodeHealthCheck ships with a `pauseRequests` entry, so nothing is remediated. This change was held (#962) until every node had the config above, deployed
+and rke2 restarted (docs/node-standard.md "Next node roll"). Before merging it, check:
+
+```sh
+kubectl get nodes -L remediation.medik8s.io/exclude-from-remediation   # true on octopus, dingo, falcon, axolotl; empty on bonobo, chinchilla
+ssh bonobo 'ls -l /bin/bash; cat /sys/class/watchdog/watchdog1/identity; systemctl show -p WatchdogDevice'   # same on chinchilla
+```
+
+After the merge: `kubectl -n medik8s get ds,pods -o wide` shows agent pods only on bonobo and chinchilla and `kubectl get nhc` shows `Paused`. Then the drill,
+one node, with etcd 3/3 and Ceph HEALTH_OK:
+
+1. Unpause (delete the `pauseRequests` entry) and merge.
+2. On bonobo (or chinchilla): `systemctl stop rke2-agent` plus a network cut for over 15 minutes. An armed watchdog resets a node whose agent stalls for 30 s: that is the design.
+3. Expect `NodeRemediationInProgress`, a reboot, the out-of-service taint, pods rescheduled, and the taint removed when the node is Ready again.
+4. If it does not behave, re-add the `pauseRequests` entry.
+
 ## Not verified
 
 - No node has been installed through this path; the pulumi step was only rendered and syntax-checked, never run.

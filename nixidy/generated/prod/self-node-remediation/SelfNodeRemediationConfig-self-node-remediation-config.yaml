@@ -1,0 +1,17 @@
+apiVersion: self-node-remediation.medik8s.io/v1alpha1
+kind: SelfNodeRemediationConfig
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "1"
+  name: self-node-remediation-config
+  namespace: medik8s
+spec:
+  customDsNodeSelectorRequirements:
+    - key: node-role.kubernetes.io/control-plane
+      operator: DoesNotExist
+    - key: node.trdos.me/class
+      operator: NotIn
+      values:
+        - desktop
+  watchdogFilePath: /dev/watchdog1

@@ -1,0 +1,9 @@
+{
+  "version": "v0.13.0",
+  "digest": "sha256:9ad002dca9ea183c72e350f72e47aff7020397fd476b4a3ac4ebc3627412a5b0",
+  "source": {
+    "type": "oci-tag",
+    "repository": "quay.io/medik8s/self-node-remediation-operator"
+  },
+  "follows": "self-node-remediation"
+}
