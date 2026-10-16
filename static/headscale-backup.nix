@@ -2,8 +2,11 @@
 # keys): a consistent sqlite `.backup`, tarred, encrypted to the offline age key `age.bws-backup` (private half
 # in secrets/sops/personal.yaml, same key as the Bitwarden backup, apps/bws-backup) and uploaded to the VolSync
 # B2 bucket under headscale-backup/ (newest 30 kept). Restore test: the devshell script `headscale-backup-restore-test`.
-# Credentials: `b2.id` and `b2.key` from secrets/sops/default.yaml (the B2 admin key, docs/rebuild-from-git.md).
-# TODO narrow them to a key restricted to the headscale-backup/ prefix (`b2 key create --name-prefix`).
+# Credentials: the VolSync bucket key (BWS `backblaze/bucket/*`) that pulumi copies into secrets/sops/default.yaml
+# (`headscale_backup_b2_sops_write`). The S3 API rejects the B2 master key in sops (`b2.id`: "Malformed Access Key Id").
+# Everything below is off until those keys are in the file (sops-nix fails the whole host build on a missing key), so
+# this is a no-op until pulumi has written them and the file is committed.
+# TODO narrow it to a key restricted to the headscale-backup/ prefix (`b2 key create --name-prefix`).
 {
   config,
   flake,
@@ -11,6 +14,8 @@
   pkgs,
   ...
 }: let
+  # Key names in a sops file are cleartext.
+  keyWritten = lib.hasInfix "\nbackblaze:\n    bucket:\n        application_key_id:" (builtins.readFile ../secrets/sops/default.yaml);
   bucket = "${builtins.replaceStrings ["."] ["-"] flake.config.canivete.meta.domain}--volsync";
   recipient = "age17nlj7qd3znnvf8njwgl56ms2vacp2uxgglzzap6j6vw9c5w9yprqed2r39";
   backup = pkgs.writeShellApplication {
@@ -49,53 +54,55 @@
     '';
   };
 in {
-  sops.secrets = {
-    b2-key-id.key = "b2/id";
-    b2-key.key = "b2/key";
-  };
-  sops.templates."headscale-backup.env" = {
-    owner = "headscale";
-    content = ''
-      RCLONE_S3_ACCESS_KEY_ID=${config.sops.placeholder.b2-key-id}
-      RCLONE_S3_SECRET_ACCESS_KEY=${config.sops.placeholder.b2-key}
-    '';
-  };
-
-  systemd.services.headscale-backup = {
-    description = "Encrypted off-host backup of headscale state";
-    onFailure = ["headscale-backup-failed.service"];
-    serviceConfig = {
-      Type = "oneshot";
-      User = "headscale";
-      EnvironmentFile = config.sops.templates."headscale-backup.env".path;
-      ExecStart = lib.getExe backup;
-      TimeoutStartSec = "15min";
-      Nice = 10;
-      PrivateTmp = true;
-      ProtectSystem = "strict";
-      ProtectHome = true;
-      NoNewPrivileges = true;
-      # sqlite needs the WAL and shared-memory files next to the database.
-      ReadWritePaths = ["/var/lib/headscale"];
+  config = lib.mkIf keyWritten {
+    sops.secrets = {
+      b2-key-id.key = "backblaze/bucket/application_key_id";
+      b2-key.key = "backblaze/bucket/application_key";
     };
-  };
-  systemd.timers.headscale-backup = {
-    wantedBy = ["timers.target"];
-    timerConfig = {
-      OnCalendar = "*-*-* 02:30:00";
-      RandomizedDelaySec = "20m";
-      Persistent = true;
+    sops.templates."headscale-backup.env" = {
+      owner = "headscale";
+      content = ''
+        RCLONE_S3_ACCESS_KEY_ID=${config.sops.placeholder.b2-key-id}
+        RCLONE_S3_SECRET_ACCESS_KEY=${config.sops.placeholder.b2-key}
+      '';
     };
-  };
 
-  # hyena's own ntfy (tailnet-only, no auth), the topic Gatus alerts to.
-  systemd.services.headscale-backup-failed = {
-    description = "Alert that the headscale backup failed";
-    serviceConfig.Type = "oneshot";
-    path = [pkgs.curl];
-    script = ''
-      curl -fsS -H "Title: headscale backup failed" -H "Priority: 4" -H "Tags: warning" \
-        -d "headscale-backup.service failed on hyena: journalctl -u headscale-backup" http://127.0.0.1:2586/alerts
-    '';
+    systemd.services.headscale-backup = {
+      description = "Encrypted off-host backup of headscale state";
+      onFailure = ["headscale-backup-failed.service"];
+      serviceConfig = {
+        Type = "oneshot";
+        User = "headscale";
+        EnvironmentFile = config.sops.templates."headscale-backup.env".path;
+        ExecStart = lib.getExe backup;
+        TimeoutStartSec = "15min";
+        Nice = 10;
+        PrivateTmp = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        NoNewPrivileges = true;
+        # sqlite needs the WAL and shared-memory files next to the database.
+        ReadWritePaths = ["/var/lib/headscale"];
+      };
+    };
+    systemd.timers.headscale-backup = {
+      wantedBy = ["timers.target"];
+      timerConfig = {
+        OnCalendar = "*-*-* 02:30:00";
+        RandomizedDelaySec = "20m";
+        Persistent = true;
+      };
+    };
+
+    # hyena's own ntfy (tailnet-only, no auth), the topic Gatus alerts to.
+    systemd.services.headscale-backup-failed = {
+      description = "Alert that the headscale backup failed";
+      serviceConfig.Type = "oneshot";
+      path = [pkgs.curl];
+      script = ''
+        curl -fsS -H "Title: headscale backup failed" -H "Priority: 4" -H "Tags: warning" \
+          -d "headscale-backup.service failed on hyena: journalctl -u headscale-backup" http://127.0.0.1:2586/alerts
+      '';
+    };
   };
 }
