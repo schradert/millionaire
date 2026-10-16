@@ -193,12 +193,32 @@ in {
       policy_id() {
         kc get "$1/policy" -r $R -q name="$2" --fields id,name --format csv --noquotes | while IFS=, read -r id name; do if [ "$name" = "$2" ]; then echo "$id"; fi; done
       }
-      # A user policy for the client's service account and a scope permission over the listed subgroups, replaced when
-      # they differ. A user policy, not a client one: a user search is partially evaluated in SQL and only sees user
-      # policies, so with a client policy `view-members` lists nobody. Needs adminPermissionsEnabled on the realm, so
-      # the Job retries until it is on.
+      # A scope permission on groups (name, policy, scopes, comma-separated group ids), replaced when it differs.
+      ensure_permission() {
+        local base=$1 name=$2 policy=$3 want=$4 resources=$5 perm have have_pol have_res id n
+        perm=$(kc get "$base/permission/scope" -r $R -q name="$name" --fields id,name --format csv --noquotes | while IFS=, read -r id n; do if [ "$n" = "$name" ]; then echo "$id"; fi; done)
+        if [ -n "$perm" ]; then
+          have=$(kc get "$base/permission/scope/$perm/scopes" -r $R --fields name --format csv --noquotes | sort | paste -sd, -)
+          have_res=$(kc get "$base/permission/scope/$perm/resources" -r $R --fields name --format csv --noquotes | sort | paste -sd, -)
+          have_pol=$(kc get "$base/permission/scope/$perm/associatedPolicies" -r $R --fields name --format csv --noquotes | sort | paste -sd, -)
+          if [ "$have" = "$want" ] && [ "$have_res" = "$resources" ] && [ "$have_pol" = "$policy" ]; then
+            echo "permission $name unchanged"
+            return 0
+          fi
+          kc delete "$base/permission/scope/$perm" -r $R
+        fi
+        kc create "$base/permission/scope" -r $R -s name="$name" -s resourceType=Groups \
+          -s "resources=[\"$(sed 's/,/","/g' <<<"$resources")\"]" \
+          -s "scopes=[\"$(sed 's/,/","/g' <<<"$want")\"]" \
+          -s "policies=[\"$policy\"]"
+        echo "permission $name: [$want] on [$resources]"
+      }
+      # A user policy for the client's service account and permissions over the listed subgroups. A user policy, not a
+      # client one: a user search is partially evaluated in SQL and only sees user policies, so with a client policy
+      # `view-members` lists nobody. The parent group needs `view` too: without it creating a user in a subgroup is
+      # refused while the subgroups are empty. Needs adminPermissionsEnabled on the realm, so the Job retries until it is on.
       ensure_group_admin() {
-        local client=$1 parent=$2 scopes=$3 ap cid sa pid base pol perm want have have_pol have_res resources n id old
+        local client=$1 parent=$2 scopes=$3 ap cid sa pid base resources n id
         shift 3
         ap=$(kc get clients -r $R -q clientId=admin-permissions --fields id --format csv --noquotes)
         [ -n "$ap" ] || { echo "admin permissions not enabled yet"; exit 1; }
@@ -216,34 +236,12 @@ in {
         done
         resources=$(sed '/^$/d' <<<"$resources" | sort | paste -sd, -)
         base="clients/$ap/authz/resource-server"
-        pol=$(policy_id "$base" "$client-user")
-        if [ -z "$pol" ]; then
+        if [ -z "$(policy_id "$base" "$client-user")" ]; then
           kc create "$base/policy/user" -r $R -s name="$client-user" -s type=user -s logic=POSITIVE -s "users=[\"$sa\"]"
           echo "policy $client-user created"
         fi
-        perm=$(kc get "$base/permission/scope" -r $R -q name="$client-$parent" --fields id,name --format csv --noquotes | while IFS=, read -r id name; do if [ "$name" = "$client-$parent" ]; then echo "$id"; fi; done)
-        want=$(tr ' ' '\n' <<<"$scopes" | sort | paste -sd, -)
-        if [ -n "$perm" ]; then
-          have=$(kc get "$base/permission/scope/$perm/scopes" -r $R --fields name --format csv --noquotes | sort | paste -sd, -)
-          have_res=$(kc get "$base/permission/scope/$perm/resources" -r $R --fields name --format csv --noquotes | sort | paste -sd, -)
-          have_pol=$(kc get "$base/permission/scope/$perm/associatedPolicies" -r $R --fields name --format csv --noquotes | sort | paste -sd, -)
-          if [ "$have" = "$want" ] && [ "$have_res" = "$resources" ] && [ "$have_pol" = "$client-user" ]; then
-            echo "permission $client-$parent unchanged"
-          else
-            kc delete "$base/permission/scope/$perm" -r $R
-            perm=
-          fi
-        fi
-        if [ -z "$perm" ]; then
-          kc create "$base/permission/scope" -r $R -s name="$client-$parent" -s resourceType=Groups \
-            -s "resources=[\"$(sed 's/,/","/g' <<<"$resources")\"]" \
-            -s "scopes=[\"$(sed 's/,/","/g' <<<"$want")\"]" \
-            -s "policies=[\"$client-user\"]"
-          echo "permission $client-$parent: [$want] on [$resources]"
-        fi
-        # The client policy this replaced.
-        old=$(policy_id "$base" "$client")
-        [ -z "$old" ] || kc delete "$base/policy/$old" -r $R
+        ensure_permission "$base" "$client-$parent" "$client-user" "$(tr ' ' '\n' <<<"$scopes" | sort | paste -sd, -)" "$resources"
+        ensure_permission "$base" "$client-$parent-parent" "$client-user" view "$pid"
       }
       ${groupAdmins}
       # Group attributes (e.g. immich_role, abs_group): the operator reports the
