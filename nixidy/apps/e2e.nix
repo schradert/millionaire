@@ -17,6 +17,7 @@
 {config, ...}: {
   nixidy = args @ {
     lib,
+    ntfyToken,
     pinned,
     ...
   }: let
@@ -27,7 +28,7 @@
     report = "e2e-last-report";
     image = pinned.images.e2e or null;
     # Secret name -> mounted at /secrets/<name>.
-    secrets = ["e2e-keycloak" "e2e-forgejo-admin"] ++ lib.attrNames serviceSecrets;
+    secrets = ["e2e-keycloak" "e2e-forgejo-admin"] ++ lib.optional ntfyToken.enable "${name}-ntfy" ++ lib.attrNames serviceSecrets;
     # Service credentials the apps' own bootstrap already makes: secret -> store namespace, the
     # app's Secret, and {file = key in that Secret}. Mounted at /secrets/<secret>/<file>.
     fromApp = s: {
@@ -232,6 +233,7 @@
 
     applications.${name} = lib.mkIf (image != null) {
       namespace = name;
+      ntfySecret = "e2e";
       resources = {
         serviceAccounts.${name}.automountServiceAccountToken = false;
         # The flows create tagged Pods, PVCs, VolumeSnapshots, ConfigMaps, Secrets and ExternalSecrets in

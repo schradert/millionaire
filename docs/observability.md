@@ -49,6 +49,10 @@ Audit of 2026-10-13 (`kubectl -n cicd get applications`, 136 apps).
 "After" includes Tempo and Mimir, added by other work. A CNPG `Cluster` brings its own PodMonitor (`monitoring.enablePodMonitor`,
 default on, nixidy/system/storage/postgres.nix), so every database is scraped; the table says "CNPG database only" where that is all an app has.
 
+## ntfy publishers
+
+hyena's ntfy denies anonymous access once its users exist (`static/ntfy.nix`). The in-cluster publishers send the `publisher` token (the e2e suite its own `e2e` user), read from Bitwarden `ntfy/<user>/token` by the ExternalSecret `<app>-ntfy` that an Application gets from `ntfySecret` (`nixidy/system/observability/ntfy.nix`): Alertmanager as `http_config.authorization.credentials_file` on its four ntfy receivers, dvdrip, letterboxd-sync and backup-verify as `NTFY_TOKEN`, e2e from the mounted secret `e2e-ntfy`. The flag `ntfy.auth` is off until the hyena deploy is done (docs/manual-steps.md 18); with it off nothing here renders. The publishers' images must be at or above app-bootstrap 0.49.0, e2e 0.17.3, dvdrip 0.1.6 and backup-verify 0.2.1 (letterboxd-sync is not published yet) when it is flipped.
+
 ## Daily alert digest
 
 Alertmanager notifies ntfy only (`nixidy/system/observability/alertmanager.nix`). Once a day, at 08:00 America/Los_Angeles, the CronJob

@@ -44,6 +44,7 @@
     ./observability/loki.nix
     ./observability/mimir.nix
     ./observability/node-exporter.nix
+    ./observability/ntfy.nix
     ./observability/prometheus.nix
     ./observability/pyroscope.nix
     ./observability/smartctl-exporter.nix

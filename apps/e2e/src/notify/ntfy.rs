@@ -4,10 +4,10 @@
 
 use std::time::{Duration, Instant};
 
-use reqwest::Response;
+use reqwest::{RequestBuilder, Response};
 use serde_json::Value;
 
-use crate::ctx::{domain, send, var, At, Ctx, Fail, R};
+use crate::ctx::{domain, secret, send, var, At, Ctx, Fail, R};
 
 const APP: &str = "ntfy";
 
@@ -15,15 +15,25 @@ pub fn base() -> String {
     var("NTFY_URL", &format!("https://ntfy.{}", domain())).trim_end_matches('/').to_string()
 }
 
+/// The `e2e` ntfy user's token (secret `e2e-ntfy`, nixidy/apps/e2e.nix): hyena's ntfy refuses anonymous
+/// access once its access control is on. Without the secret the request goes out as before.
+fn authed(rb: RequestBuilder) -> RequestBuilder {
+    match secret("e2e-ntfy", "token") {
+        Some(t) => rb.bearer_auth(t),
+        None => rb,
+    }
+}
+
 pub async fn publish(ctx: &Ctx, topic: &str, title: &str, message: &str) -> R<Value> {
     let r =
-        send(ctx.http.post(format!("{}/{topic}", base())).header("Title", title).header("Tags", "test_tube").body(message.to_string()), APP, "publish").await?;
+        send(authed(ctx.http.post(format!("{}/{topic}", base())).header("Title", title).header("Tags", "test_tube").body(message.to_string())), APP, "publish")
+            .await?;
     r.json().await.at(APP, "publish response")
 }
 
 /// Open the topic's live JSON stream (returns once ntfy has sent its headers, i.e. subscribed).
 pub async fn subscribe(ctx: &Ctx, topic: &str, secs: u64) -> R<Stream> {
-    let r = send(ctx.http.get(format!("{}/{topic}/json", base())).timeout(Duration::from_secs(secs)), APP, "subscribe").await?;
+    let r = send(authed(ctx.http.get(format!("{}/{topic}/json", base())).timeout(Duration::from_secs(secs))), APP, "subscribe").await?;
     Ok(Stream { r, buf: String::new() })
 }
 
@@ -78,7 +88,7 @@ pub fn resolved(m: &Value) -> bool {
 
 /// The topic's cached messages (since the start of the cache).
 pub async fn poll(ctx: &Ctx, topic: &str) -> R<Vec<Value>> {
-    let body = send(ctx.http.get(format!("{}/{topic}/json?poll=1&since=all", base())), APP, "poll").await?.text().await.at(APP, "poll body")?;
+    let body = send(authed(ctx.http.get(format!("{}/{topic}/json?poll=1&since=all", base()))), APP, "poll").await?.text().await.at(APP, "poll body")?;
     Ok(body.lines().filter_map(|l| serde_json::from_str::<Value>(l).ok()).filter(|v| v["event"] == "message").collect())
 }
 
@@ -87,6 +97,20 @@ mod tests {
     use super::*;
     use serde_json::json;
     use tokio::{io::AsyncWriteExt, net::TcpListener};
+
+    #[test]
+    fn sends_the_token_when_mounted() {
+        let dir = std::env::temp_dir().join(format!("e2e-ntfy-token-{}", std::process::id()));
+        std::fs::create_dir_all(dir.join("e2e-ntfy")).unwrap();
+        std::fs::write(dir.join("e2e-ntfy/token"), "tk_abc\n").unwrap();
+        std::env::set_var("SECRETS_DIR", &dir);
+        let rb = authed(reqwest::Client::new().get("http://x/"));
+        assert_eq!(rb.build().unwrap().headers()["authorization"], "Bearer tk_abc");
+        std::env::set_var("SECRETS_DIR", dir.join("none"));
+        assert!(authed(reqwest::Client::new().get("http://x/")).build().unwrap().headers().get("authorization").is_none());
+        std::env::remove_var("SECRETS_DIR");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
 
     #[test]
     fn recognises_resolved() {

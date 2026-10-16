@@ -1,4 +1,4 @@
-//! One plain-text message to an ntfy topic. Never fails a run: a notification is not the work.
+//! One plain-text message to an ntfy topic (as the publisher `NTFY_TOKEN` when set). Never fails a run: a notification is not the work.
 
 pub async fn send(url: &str, topic: &str, title: &str, priority: u8, body: &str) {
     if url.is_empty() {
@@ -9,14 +9,12 @@ pub async fn send(url: &str, topic: &str, title: &str, priority: u8, body: &str)
         Ok(c) => c,
         Err(e) => return eprintln!("ntfy client: {e}"),
     };
-    let sent = client
-        .post(&target)
-        .header("Title", title)
-        .header("Priority", priority.to_string())
-        .header("Tags", "film_projector")
-        .body(body.to_string())
-        .send()
-        .await;
+    let mut request =
+        client.post(&target).header("Title", title).header("Priority", priority.to_string()).header("Tags", "film_projector").body(body.to_string());
+    if let Ok(token) = std::env::var("NTFY_TOKEN") {
+        request = request.bearer_auth(token);
+    }
+    let sent = request.send().await;
     match sent {
         Ok(r) if r.status().is_success() => {}
         Ok(r) => eprintln!("ntfy {target}: HTTP {}", r.status()),

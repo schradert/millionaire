@@ -9,6 +9,7 @@
 {config, ...}: {
   nixidy = {
     lib,
+    ntfyToken,
     pinned,
     ...
   }: let
@@ -55,11 +56,13 @@
               containers = lib.toList {
                 inherit name image;
                 envFrom = lib.toList {secretRef.name = name;};
-                env = lib.mapAttrsToList (name: value: {inherit name value;}) ({
-                    SELF_IMAGE = image;
-                    NTFY_URL = "https://ntfy.${domain}/alerts";
-                  }
-                  // env);
+                env =
+                  lib.mapAttrsToList (name: value: {inherit name value;}) ({
+                      SELF_IMAGE = image;
+                      NTFY_URL = "https://ntfy.${domain}/alerts";
+                    }
+                    // env)
+                  ++ ntfyToken.env name;
                 resources = {
                   requests = {
                     cpu = "100m";
@@ -149,6 +152,7 @@
   in {
     applications.${name} = lib.mkIf (pinned.images ? backup-verify) {
       namespace = name;
+      ntfySecret = "publisher";
       resources = {
         serviceAccounts.${name} = {};
         # Read-only view of the objects that describe the backups; no PVC, Secret or database access.

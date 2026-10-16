@@ -324,7 +324,7 @@
       in
         n2c.buildImage {
           name = "${registry}/library/backup-verify";
-          tag = "0.2.0";
+          tag = "0.2.1";
           arch = "amd64";
           config = {
             Entrypoint = ["${script}/bin/backup-verify"];
