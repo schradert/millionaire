@@ -215,7 +215,16 @@ elif [ "$use_dvdbackup" = 1 ] || grep -q '"Backup failed' "$dir/logs/backup.log"
     log "raw disc image worked"
   fi
 fi
-lsdvd "$iso" >/dev/null 2>&1 || die "backup at $iso is not a readable DVD image; see $dir/logs/backup.log"
+# Structure-protected discs (Pirates 4) have deliberately malformed tables that
+# crash lsdvd. A clean MakeMKV backup of an ISO with a VIDEO_TS is still good:
+# dvd-inspect falls back to MakeMKV's title analysis when lsdvd can't parse it.
+if ! lsdvd "$iso" >/dev/null 2>&1; then
+  if grep -aq '^MSG:5081,.*"Backup done' "$dir/logs/backup.log" && isoinfo -l -i "$iso" 2>/dev/null | grep -q VIDEO_TS; then
+    warn "lsdvd can't parse $iso (malformed tables); MakeMKV backup completed, accepting it"
+  else
+    die "backup at $iso is not a readable DVD image; see $dir/logs/backup.log"
+  fi
+fi
 errors=$(grep -ciE '^MSG:[0-9]+,[0-9]+,[0-9]+,"[^"]*(error|fail)' "$dir/logs/backup.log" || true)
 [ "$errors" -eq 0 ] || warn "$errors read errors during backup (scratched disc?) — check the encodes"
 
