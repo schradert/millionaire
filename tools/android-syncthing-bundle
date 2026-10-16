@@ -28,6 +28,12 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 
+def need(parent: ET.Element, path: str) -> ET.Element:
+    found = parent.find(path)
+    assert found is not None, path
+    return found
+
+
 def api_key(key_pem: bytes) -> str:
     return hmac.new(
         key_pem, b"android-syncthing-gui-apikey", hashlib.sha256
@@ -103,7 +109,7 @@ def bundle(spec: dict, cert: bytes, key: bytes, out: str) -> None:
         dev_tpl, folder_tpl = defaults.find("device"), defaults.find("folder")
         assert dev_tpl is not None and folder_tpl is not None
         me.set("name", spec["deviceName"])
-        root.find("gui/apikey").text = apikey
+        need(root, "gui/apikey").text = apikey
 
         hub = copy.deepcopy(dev_tpl)
         hub.set("id", spec["hub"]["id"])
@@ -125,7 +131,7 @@ def bundle(spec: dict, cert: bytes, key: bytes, out: str) -> None:
         folder.set("ignorePerms", "true")  # the app forces it on every folder at start
         for d in folder.findall("device"):
             folder.remove(d)
-        for i, did in enumerate((me.get("id"), spec["hub"]["id"])):
+        for i, did in enumerate((me.get("id", ""), spec["hub"]["id"])):
             d = ET.Element("device", {"id": did, "introducedBy": ""})
             ET.SubElement(d, "encryptionPassword")
             folder.insert(i, d)
@@ -138,7 +144,7 @@ def bundle(spec: dict, cert: bytes, key: bytes, out: str) -> None:
             "startBrowser": "false",
             "crashReportingEnabled": "false",
         }.items():
-            opts.find(name).text = value
+            need(opts, name).text = value
 
         tree.write(
             os.path.join(tmp, "config.xml"), encoding="utf-8", xml_declaration=False
