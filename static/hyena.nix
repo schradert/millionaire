@@ -86,7 +86,7 @@
     alerts = [{type = "ntfy";}];
   };
 in {
-  imports = [./vps.nix ./headscale-backup.nix ./ntfy.nix ./tailnet.nix];
+  imports = [./vps.nix ./headscale-backup.nix ./headscale-oidc.nix ./ntfy.nix ./tailnet.nix];
 
   # Hyena is a root-only bootstrap server; opting out of home-manager keeps
   # ungated home modules (helix + tree-sitter parsers, etc.) out of its closure.

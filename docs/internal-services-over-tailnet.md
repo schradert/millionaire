@@ -118,6 +118,22 @@ into pods.
    the tailnet (the same path on-LAN and off-LAN) → a relay node → gateway. Nothing
    else to configure.
 
+### Joining with Keycloak (OIDC)
+
+`static/headscale-oidc.nix` lets a person register a device with their Keycloak login instead of a pre-auth key (Keycloak
+client `headscale`, `nixidy/apps/identity/headscale-oidc.nix`; steps in `docs/manual-steps.md` 19). `tailscale up
+--login-server=https://headscale.trdos.me` prints a registration URL; open it in a browser that can reach Keycloak and sign in.
+Only members of the Keycloak group `admin` are accepted (`allowed_groups`), and headscale names the user after the Keycloak
+username. The ACL (`static/hyena.nix`) names users, so an OIDC user reaches nothing until a rule lists it (`tristan@` already
+does).
+
+The bootstrap catch: Keycloak is only reachable over the tailnet or the home network. A device that has neither yet cannot
+open the login page itself, so the URL is completed on any device that can (a laptop on the tailnet, or any device at home),
+and the device being added only has to run `tailscale up`. With nothing else around, use a pre-auth key (`default` for the
+cluster, `tristan` or `family` for people: `docs/android.md`). Headscale also reads the provider only when it starts, and
+Keycloak is behind the tailnet it serves, so after a hyena boot `headscale-oidc-retry` restarts it once when it came up
+without OIDC. Pre-auth keys never depend on Keycloak, so nodes and phones keep joining while it is down.
+
 ## LAN DNS for devices off the tailnet (TV, guests)
 
 `nixidy/system/network/lan-dns.nix`: two CoreDNS pods (kube-system, one per node, off sirver
