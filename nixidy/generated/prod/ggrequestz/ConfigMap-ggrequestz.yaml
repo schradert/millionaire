@@ -1,0 +1,27 @@
+apiVersion: v1
+data:
+  AUTH_METHOD: oidc
+  OIDC_ADMIN_GROUP: admin
+  OIDC_CLIENT_ID: ggrequestz
+  OIDC_ISSUER_URL: https://keycloak.trdos.me/realms/default
+  OIDC_PROVIDER_NAME: Keycloak
+  OIDC_REDIRECT_URI: https://ggrequestz.trdos.me/api/auth/callback
+  OIDC_SCOPES: openid email profile groups
+  ORIGIN: https://ggrequestz.trdos.me
+  POSTGRES_DB: ggrequestz
+  POSTGRES_HOST: ggrequestz-rw
+  POSTGRES_PORT: "5432"
+  POSTGRES_USER: ggrequestz
+  PUBLIC_SITE_URL: https://ggrequestz.trdos.me
+  REDIS_URL: redis://ggrequestz-dragonfly:6379
+  ROMM_SERVER_URL: http://romm.media.svc.cluster.local:8080
+  ROMM_SERVER_URL_PUBLIC: https://romm.trdos.me
+  UPDATE_CHECK_ENABLED: "false"
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: ggrequestz
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: ggrequestz
+  name: ggrequestz
+  namespace: media

@@ -67,6 +67,7 @@
     ./media/ombi.nix
     ./media/storage.nix
     ./media/audiobookshelf.nix
+    ./media/ggrequestz.nix
     ./media/immich.nix
     ./media/jellyfin.nix
     ./media/jitsi.nix

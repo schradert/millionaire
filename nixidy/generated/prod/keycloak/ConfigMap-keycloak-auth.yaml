@@ -76,6 +76,7 @@ data:
     ensure_scopes dashy default openid profile email groups
     ensure_scopes e2e default openid profile email groups
     ensure_scopes forgejo default openid profile email groups
+    ensure_scopes ggrequestz default openid profile email groups
     ensure_scopes grafana default openid profile email groups
     ensure_scopes harbor default openid profile email groups
     ensure_scopes homarr default openid profile email groups

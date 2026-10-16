@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: ggrequestz
+    app.kubernetes.io/instance: ggrequestz
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: ggrequestz
+  name: ggrequestz
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: ggrequestz
+      app.kubernetes.io/instance: ggrequestz
+      app.kubernetes.io/name: ggrequestz
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: f79efddc61419a6847db0930a991d56d77b483e9b97965edc1a91750ac97ff2c
+      labels:
+        app.kubernetes.io/controller: ggrequestz
+        app.kubernetes.io/instance: ggrequestz
+        app.kubernetes.io/name: ggrequestz
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - envFrom:
+            - configMapRef:
+                name: ggrequestz
+            - secretRef:
+                name: ggrequestz
+            - secretRef:
+                name: ggrequestz-session
+          image: ghcr.io/xtreemmak/ggrequestz:1.5.0@sha256:32a55965b4d76bbe3dc8d0552afd882f74d6ed8c494ee6a4355ba7573f038466
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+          name: ggrequestz
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              cpu: 50m
+              memory: 256Mi
+          startupProbe:
+            failureThreshold: 30
+            httpGet:
+              path: /api/health
+              port: 3000
+            periodSeconds: 10
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: ggrequestz

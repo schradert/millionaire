@@ -344,6 +344,10 @@ data:
           href: https://webmail.trdos.me
           icon: bulwark
     - Media:
+      - GG Requestz:
+          description: Game requests
+          href: https://ggrequestz.trdos.me
+          icon: mdi-gamepad-variant
       - RomM:
           description: Game library
           href: https://romm.trdos.me

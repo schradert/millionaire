@@ -1,0 +1,28 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: ggrequestz
+  namespace: identity
+spec:
+  clientSecretRef:
+    create: true
+    name: ggrequestz
+  definition:
+    clientId: ggrequestz
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+      - groups
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: GG Requestz
+    protocol: openid-connect
+    publicClient: false
+    redirectUris:
+      - https://ggrequestz.trdos.me/api/auth/callback
+    standardFlowEnabled: true
+    webOrigins:
+      - https://ggrequestz.trdos.me
+  realmRef:
+    name: default
