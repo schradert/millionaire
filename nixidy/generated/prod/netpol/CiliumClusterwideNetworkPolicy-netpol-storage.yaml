@@ -1,0 +1,34 @@
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: netpol-storage
+spec:
+  description: Default-deny ingress for storage; baseline plus extraIngress only (nixidy/system/network/netpol.nix)
+  endpointSelector:
+    matchExpressions:
+      - key: k8s:io.kubernetes.pod.namespace
+        operator: In
+        values:
+          - storage
+  ingress:
+    - fromEntities:
+        - host
+        - remote-node
+        - kube-apiserver
+        - ingress
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: prometheus
+            k8s:io.kubernetes.pod.namespace: observability
+        - matchLabels:
+            app.kubernetes.io/name: gatus
+            k8s:io.kubernetes.pod.namespace: observability
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/instance: clickhouse
+            app.kubernetes.io/name: operator
+            k8s:io.kubernetes.pod.namespace: storage
+      toPorts:
+        - ports:
+            - port: "8123"
+              protocol: TCP

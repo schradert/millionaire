@@ -1,0 +1,488 @@
+#!/usr/bin/env python3
+"""Replay observed Hubble flows against rendered CiliumClusterwideNetworkPolicies, offline.
+
+Vets a `netpol.namespaces` entry (nixidy/system/network/netpol.nix) before its namespace is
+enforced: every distinct flow shape seen in the namespace must be allowed by the rendered rules.
+
+  kubectl -n kube-system exec ds/cilium -c cilium-agent -- hubble observe --server \
+      $(kubectl -n kube-system get svc hubble-relay -o jsonpath='{.spec.clusterIP}'):80 \
+      --follow --namespace storage -o json | tools/netpol-replay aggregate shapes-storage.json
+  tools/netpol-replay replay --namespace storage shapes-storage.json [--without ports,entities,endpoints]
+  tools/netpol-replay calibrate policy-verdicts.json
+  tools/netpol-replay report --namespace storage shapes-storage.json
+
+aggregate  reads Hubble JSON on stdin and keeps the distinct flow shapes (source and destination
+           labels, protocol, port); rewrites its output file every 30 s and on EOF, SIGINT and
+           SIGTERM, and merges into an existing file, so captures can be repeated and combined.
+replay     checks the ingress flows of one namespace (observed TO_ENDPOINT, not replies; Hubble's
+           traffic_direction is unreliable on endpoints without a policy) against
+           nixidy/generated/prod/netpol (or --policies): allowed, dropped, or no policy selects the
+           destination. Exits 1 on a drop. `--without` removes every rule that has toPorts,
+           fromEntities or fromEndpoints: a negative control that must turn shapes into drops.
+calibrate  checks the replay against Cilium itself: reads `hubble observe --type policy-verdict -o json`
+           (Hubble names the policy that allowed each flow) and compares it with the replay's answer.
+report     lists the egress destinations of the namespace's workloads (for egress design).
+
+Matching follows Cilium: a selector key without a source prefix matches any label source; In,
+NotIn, Exists and DoesNotExist as in Kubernetes; fromEntities by reserved identity label (`cluster`
+is every endpoint carrying io.cilium.k8s.policy.cluster plus host, remote-node, kube-apiserver,
+health, init and unmanaged; `all` matches everything); a rule without from* matches any source;
+an empty toPorts matches any port. Not modelled: fromCIDR, fromCIDRSet, fromRequires, L7 rules,
+ingressDeny (a rule using only these never matches, so the replay errs towards reporting a drop).
+Host-network pods have no endpoint, and Cilium without the host firewall never filters them.
+replay needs PyYAML (`nix shell nixpkgs#python3Packages.pyyaml`).
+"""
+
+import argparse
+import glob
+import json
+import os
+import signal
+import sys
+import time
+
+NOISE = (
+    "pod-template-hash",
+    "controller-revision-hash",
+    "statefulset.kubernetes.io/pod-name",
+    "apps.kubernetes.io/pod-index",
+    "batch.kubernetes.io/controller-uid",
+    "controller-uid",
+)
+RESERVED = {
+    "host": "host",
+    "remote-node": "remote-node",
+    "kube-apiserver": "kube-apiserver",
+    "ingress": "ingress",
+    "world": "world",
+    "health": "health",
+    "init": "init",
+    "unmanaged": "unmanaged",
+}
+CLUSTER_RESERVED = (
+    "host",
+    "remote-node",
+    "kube-apiserver",
+    "health",
+    "init",
+    "unmanaged",
+)
+
+
+def labels_of(ep):
+    out = []
+    for lab in ep.get("labels") or []:
+        key = lab.split("=", 1)[0]
+        if any(key.endswith(n) for n in NOISE):
+            continue
+        out.append(lab)
+    return sorted(out)
+
+
+def endpoint(ep, ip, names):
+    ep = ep or {}
+    wl = ep.get("workloads") or []
+    return {
+        "labels": labels_of(ep),
+        "ns": ep.get("namespace", ""),
+        "workload": wl[0]["name"] if wl else "",
+        "kind": wl[0]["kind"] if wl else "",
+        "ip": ip if not ep.get("namespace") else "",
+        "names": sorted(names or []),
+    }
+
+
+def shape_key(s):
+    return json.dumps(s, sort_keys=True)
+
+
+def aggregate(args):
+    shapes = {}
+    if os.path.exists(args.out):
+        for s in json.load(open(args.out)):
+            shapes[shape_key(s["shape"])] = s
+    last = [time.time()]
+
+    def flush(*_):
+        tmp = args.out + ".tmp"
+        json.dump(sorted(shapes.values(), key=lambda s: -s["count"]), open(tmp, "w"))
+        os.replace(tmp, args.out)
+
+    def stop(*_):
+        flush()
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
+    n = 0
+    for line in sys.stdin:
+        try:
+            f = json.loads(line).get("flow")
+        except ValueError:
+            continue
+        if not f:
+            continue
+        l4 = f.get("l4") or {}
+        proto, port = "", 0
+        for p in ("TCP", "UDP", "SCTP"):
+            if p in l4:
+                proto, port = p, int(l4[p].get("destination_port", 0))
+        if not proto:
+            proto = "ICMP" if any(k.startswith("ICMP") for k in l4) else "other"
+        ip = f.get("IP") or {}
+        shape = {
+            "obs": f.get("trace_observation_point", ""),
+            "reply": bool(f.get("is_reply")),
+            "verdict": f.get("verdict", ""),
+            "proto": proto,
+            "port": port,
+            "src": endpoint(
+                f.get("source"), ip.get("source", ""), f.get("source_names")
+            ),
+            "dst": endpoint(
+                f.get("destination"),
+                ip.get("destination", ""),
+                f.get("destination_names"),
+            ),
+        }
+        k = shape_key(shape)
+        now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        e = shapes.get(k)
+        if e is None:
+            shapes[k] = {"shape": shape, "count": 1, "first": now, "last": now}
+        else:
+            e["count"] += 1
+            e["last"] = now
+        n += 1
+        if time.time() - last[0] > 30:
+            flush()
+            last[0] = time.time()
+    flush()
+
+
+def parse(lab):
+    src, _, rest = lab.partition(":")
+    key, _, value = rest.partition("=")
+    return src, key, value
+
+
+def values_of(labels, key):
+    """Values of the labels a selector key names: `src:name` matches that source, `name` any source."""
+    want_src, _, name = (
+        key.rpartition(":")
+        if key.split(":", 1)[0] in ("k8s", "any", "reserved", "unspec")
+        else ("", "", key)
+    )
+    if want_src == "any":
+        want_src = ""
+    out = []
+    for lab in labels:
+        src, k, v = parse(lab)
+        if k == name and (not want_src or src == want_src):
+            out.append(v)
+    return out
+
+
+def select(sel, labels):
+    """Cilium EndpointSelector against a label list; None selects nothing, {} selects everything."""
+    if sel is None:
+        return False
+    for key, value in (sel.get("matchLabels") or {}).items():
+        if value not in values_of(labels, key):
+            return False
+    for ex in sel.get("matchExpressions") or []:
+        key, op, vals = ex["key"], ex["operator"], ex.get("values") or []
+        has = values_of(labels, key)
+        if op == "In" and not any(v in vals for v in has):
+            return False
+        if op == "NotIn" and any(v in vals for v in has):
+            return False
+        if op == "Exists" and not has:
+            return False
+        if op == "DoesNotExist" and has:
+            return False
+    return True
+
+
+def entity_match(entity, labels):
+    reserved = {parse(lab)[1] for lab in labels if lab.startswith("reserved:")}
+    if entity == "all":
+        return True
+    if entity == "cluster":
+        return bool(reserved & set(CLUSTER_RESERVED)) or bool(
+            values_of(labels, "io.cilium.k8s.policy.cluster")
+        )
+    return RESERVED.get(entity) in reserved
+
+
+def port_match(rule, proto, port):
+    tps = rule.get("toPorts") or []
+    if not tps:
+        return True
+    for tp in tps:
+        ports = tp.get("ports") or []
+        if not ports:
+            return True
+        for p in ports:
+            if p.get("protocol", "TCP") not in ("ANY", proto):
+                continue
+            lo = int(p.get("port", 0))
+            hi = int(p.get("endPort", lo))
+            if lo == 0 or lo <= port <= hi:
+                return True
+    return False
+
+
+def src_match(rule, labels):
+    keys = ("fromEndpoints", "fromEntities", "fromCIDR", "fromCIDRSet", "fromRequires")
+    if not any(rule.get(k) for k in keys):
+        return True
+    if any(select(s, labels) for s in rule.get("fromEndpoints") or []):
+        return True
+    if any(entity_match(e, labels) for e in rule.get("fromEntities") or []):
+        return True
+    return False
+
+
+def load_policies(path):
+    import yaml
+
+    pols = []
+    for f in sorted(
+        glob.glob(os.path.join(path, "CiliumClusterwideNetworkPolicy-*.yaml"))
+    ):
+        d = yaml.safe_load(open(f))
+        pols.append((d["metadata"]["name"], d["spec"]))
+    return pols
+
+
+def evaluate(pols, dst_labels, src_labels, proto, port, strip):
+    selected = [
+        (n, s) for n, s in pols if select(s.get("endpointSelector"), dst_labels)
+    ]
+    if not selected:
+        return "no-policy", []
+    by = []
+    for name, spec in selected:
+        for i, rule in enumerate(spec.get("ingress") or []):
+            if any(rule.get(k) for k in strip):
+                continue
+            if src_match(rule, src_labels) and port_match(rule, proto, port):
+                by.append(f"{name}#{i}")
+    return ("allowed" if by else "dropped"), by
+
+
+def name_of(e):
+    for key in ("app.kubernetes.io/name", "app", "k8s-app", "control-plane"):
+        v = values_of(e["labels"], key)
+        if v:
+            return v[0]
+    return "?"
+
+
+def desc(e):
+    if e["ns"]:
+        return f"{e['ns']}/{e['workload'] or name_of(e)}"
+    res = [lab.split(":", 1)[1] for lab in e["labels"] if lab.startswith("reserved:")]
+    return "+".join(res) or e["ip"] or "?"
+
+
+def replay(args):
+    pols = load_policies(args.policies)
+    if not pols:
+        sys.exit(
+            f"netpol-replay: no CiliumClusterwideNetworkPolicy-*.yaml in {args.policies}"
+        )
+    shapes = json.load(open(args.shapes))
+    ns = args.namespace
+    results = {"allowed": [], "dropped": [], "no-policy": []}
+    for s in shapes:
+        sh = s["shape"]
+        if sh["obs"] != "TO_ENDPOINT" or sh["reply"] or sh["dst"]["ns"] != ns:
+            continue
+        verdict, by = evaluate(
+            pols,
+            sh["dst"]["labels"],
+            sh["src"]["labels"],
+            sh["proto"],
+            sh["port"],
+            args.strip,
+        )
+        results[verdict].append((s, by))
+    seen = set()
+    for verdict in ("dropped", "no-policy", "allowed"):
+        rows = []
+        for s, by in results[verdict]:
+            sh = s["shape"]
+            key = (desc(sh["src"]), desc(sh["dst"]), sh["proto"], sh["port"], verdict)
+            if key in seen:
+                continue
+            seen.add(key)
+            rows.append((s["count"], key, by))
+        if verdict == "allowed" and not args.all:
+            print(
+                f"{verdict}: {len(rows)} distinct (src, dst, proto, port) (use --all to list)"
+            )
+            continue
+        print(f"{verdict}: {len(rows)}")
+        for count, (src, dst, proto, port, _), by in sorted(rows, key=lambda r: r[1]):
+            print(
+                f"  {src} -> {dst} {proto}/{port} x{count}"
+                + (f"  by {by[0]}" if by else "")
+            )
+    total = sum(len(v) for v in results.values())
+    print(
+        f"shapes replayed: {total}; allowed {len(results['allowed'])}, dropped {len(results['dropped'])}, no-policy {len(results['no-policy'])}"
+    )
+    return 1 if results["dropped"] and not args.strip else 0
+
+
+def calibrate(args):
+    """Compare the replay with Cilium's own decisions: Hubble policy-verdict events name the policy that allowed each flow."""
+    pols = load_policies(args.policies)
+    if not pols:
+        sys.exit(
+            f"netpol-replay: no CiliumClusterwideNetworkPolicy-*.yaml in {args.policies}"
+        )
+    seen = {}
+    for line in open(args.events):
+        f = json.loads(line).get("flow") or {}
+        l4 = f.get("l4") or {}
+        proto = next((p for p in ("TCP", "UDP") if p in l4), None)
+        if f.get("is_reply") or not f.get("ingress_allowed_by") or not proto:
+            continue
+        by = set()
+        for a in f["ingress_allowed_by"]:
+            names = [
+                x.split("=", 1)[1]
+                for x in a.get("labels", [])
+                if "policy.name=" in x or "derived-from=" in x
+            ]
+            by.add(a.get("name") or (names[0] if names else "?"))
+        src, dst = (
+            endpoint(f.get("source"), "", []),
+            endpoint(f.get("destination"), "", []),
+        )
+        seen[
+            (
+                tuple(src["labels"]),
+                tuple(dst["labels"]),
+                proto,
+                int(l4[proto].get("destination_port", 0)),
+            )
+        ] = by
+    agree, off = 0, []
+    for (sl, dl, proto, port), by in seen.items():
+        verdict, rules = evaluate(pols, list(dl), list(sl), proto, port, [])
+        if by == {"allow-localhost-ingress"} or (
+            verdict == "allowed" and by <= {r.split("#")[0] for r in rules}
+        ):
+            agree += 1
+        else:
+            off.append(
+                (
+                    sorted(by),
+                    verdict,
+                    desc(
+                        endpoint(
+                            {
+                                "labels": list(sl),
+                                "namespace": next(
+                                    (
+                                        x.split("=")[1]
+                                        for x in sl
+                                        if "pod.namespace" in x
+                                    ),
+                                    "",
+                                ),
+                            },
+                            "",
+                            [],
+                        )
+                    ),
+                    proto,
+                    port,
+                )
+            )
+    print(
+        f"distinct flows: {len(seen)}; replay agrees with Cilium: {agree}; disagrees: {len(off)}"
+    )
+    for row in off:
+        print(
+            f"  Cilium: allowed by {row[0]}; replay: {row[1]} ({row[2]} -> {row[3]}/{row[4]})"
+        )
+    print(
+        "(a disagreement on a flow allowed by a namespaced CiliumNetworkPolicy or NetworkPolicy is expected: only CCNPs are loaded)"
+    )
+
+
+def report(args):
+    shapes = json.load(open(args.shapes))
+    rows = {}
+    for s in shapes:
+        sh = s["shape"]
+        if (
+            sh["obs"] == "TO_ENDPOINT"
+            or sh["reply"]
+            or sh["src"]["ns"] != args.namespace
+        ):
+            continue
+        d = sh["dst"]
+        dst = (
+            desc(d)
+            + (" " + d["ip"] if d["ip"] and not d["ns"] else "")
+            + (" " + ",".join(d["names"]) if d["names"] else "")
+        )
+        k = (sh["src"]["workload"] or name_of(sh["src"]), dst, sh["proto"], sh["port"])
+        rows[k] = rows.get(k, 0) + s["count"]
+    for (src, dst, proto, port), count in sorted(rows.items()):
+        print(f"{src} -> {dst} {proto}/{port} x{count}")
+
+
+def main():
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    a = sub.add_parser("aggregate")
+    a.add_argument("out")
+    a.set_defaults(fn=aggregate)
+    default_policies = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "nixidy/generated/prod/netpol",
+    )
+    r = sub.add_parser("replay")
+    r.add_argument("shapes")
+    r.add_argument("--namespace", required=True)
+    r.add_argument("--policies", default=default_policies)
+    r.add_argument(
+        "--without",
+        default="",
+        help="negative control: drop every rule that has toPorts, fromEntities or fromEndpoints (comma list: ports,entities,endpoints)",
+    )
+    r.add_argument("--all", action="store_true")
+    r.set_defaults(fn=replay)
+    c = sub.add_parser("calibrate")
+    c.add_argument("events")
+    c.add_argument("--policies", default=default_policies)
+    c.set_defaults(fn=calibrate)
+    p = sub.add_parser("report")
+    p.add_argument("shapes")
+    p.add_argument("--namespace", required=True)
+    p.set_defaults(fn=report)
+    args = ap.parse_args()
+    if args.cmd == "replay":
+        args.strip = [
+            {
+                "ports": "toPorts",
+                "entities": "fromEntities",
+                "endpoints": "fromEndpoints",
+            }[w]
+            for w in args.without.split(",")
+            if w
+        ]
+    sys.exit(args.fn(args) or 0)
+
+
+if __name__ == "__main__":
+    main()
