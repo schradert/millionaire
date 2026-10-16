@@ -404,7 +404,9 @@ fn ms_components(comps: &[Value]) -> R<(Vec<String>, Vec<String>)> {
     for c in comps {
         let (ty, name, status) = (c["type"].as_str().unwrap_or("?"), c["name"].as_str().unwrap_or("?"), c["status"].as_str().unwrap_or("?"));
         // `state` 7 is Error; `authed`/`initialized` are false until the component's auth and first connection succeed.
-        if c["authed"] == json!(false) || c["initialized"] == json!(false) || c["state"] == json!(7) {
+        // A component with no auth at all (the ListenBrainz endpoint sources, `hasAuth` false) is never `authed`.
+        let unauthed = c["authed"] == json!(false) && c["hasAuth"] != json!(false);
+        if unauthed || c["initialized"] == json!(false) || c["state"] == json!(7) {
             bad.push(format!("{ty} {name}: {status}"));
         }
         if c.get("tracksScrobbled").is_some() {
@@ -522,7 +524,8 @@ mod tests {
     fn multi_scrobbler_components() {
         let ok = json!([
             {"type": "jellyfin", "name": "jellyfin", "state": 1, "status": "Polling", "authed": true, "initialized": true, "tracksDiscovered": 0},
-            {"type": "maloja", "name": "maloja", "state": 1, "status": "Running", "authed": true, "initialized": true, "tracksScrobbled": 0}
+            {"type": "maloja", "name": "maloja", "state": 1, "status": "Running", "authed": true, "initialized": true, "tracksScrobbled": 0},
+            {"type": "endpointlz", "name": "navidrome-alice", "state": 1, "status": "Awaiting Data", "hasAuth": false, "authed": false, "initialized": true}
         ]);
         let (bad, clients) = ms_components(ok.as_array().unwrap()).unwrap();
         assert!(bad.is_empty());
