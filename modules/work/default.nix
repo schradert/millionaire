@@ -43,7 +43,7 @@
     config = lib.mkIf (config.profile == "work" && config.profiles.workstation.enable) {
       homebrew.casks = [
         "docker-desktop"
-        "slack"
+        # Slack is installed and owned by the employer's MDM (Iru); adopting it as a cask fails.
         "snowflake-snowsql"
       ];
       # TODO get this to work without homebrew
@@ -53,10 +53,8 @@
         "openssl"
         "unixodbc"
         "openjdk"
-        {
-          name = "wxmac";
-          args = ["build-from-source"];
-        }
+        # wxmac was renamed to wxwidgets upstream.
+        "wxwidgets"
       ];
     };
   };
