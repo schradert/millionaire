@@ -20,7 +20,7 @@ spec:
     protocol: openid-connect
     publicClient: false
     redirectUris:
-      - https://sure.trdos.me/auth/oidc/callback
+      - https://sure.trdos.me/auth/openid_connect/callback
     standardFlowEnabled: true
     webOrigins:
       - https://sure.trdos.me

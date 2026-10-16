@@ -5,7 +5,7 @@ data:
   DB_HOST: sure-rw
   DB_PORT: "5432"
   OIDC_ISSUER: https://keycloak.trdos.me/realms/default
-  OIDC_REDIRECT_URI: https://sure.trdos.me/auth/oidc/callback
+  OIDC_REDIRECT_URI: https://sure.trdos.me/auth/openid_connect/callback
   ONBOARDING_STATE: closed
   POSTGRES_USER: sure
   RAILS_ASSUME_SSL: "true"
