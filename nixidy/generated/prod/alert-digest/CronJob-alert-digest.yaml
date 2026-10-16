@@ -26,7 +26,7 @@ spec:
                   value: noreply@trdos.me
                 - name: DIGEST_TO
                   value: t0rdos@pm.me
-              image: harbor.trdos.me/library/app-bootstrap:0.46.0@sha256:7e23c32c7e2d4a6fb59cab09c526e35b72795d9396240910575951d53353d29c
+              image: harbor.trdos.me/library/app-bootstrap:0.47.0@sha256:abccac451f302019149ac49c5f54a80d4f04831a67fa585ae1add61e5f22685e
               name: alert-digest
               resources:
                 limits:
