@@ -166,10 +166,9 @@
         ];
       };
     };
-    # view-users is the one realm-wide role left (read only): in Keycloak 26.2 a search lists only users the
-    # caller may view through the Users resource type or a role, group `view-members` does not. All writes
-    # are fine-grained: members of the /e2e subgroups below, nobody else (manage-users would bypass that).
-    keycloak.serviceAccountRoles.${name} = ["view-users"];
+    # query-users only lets it call the search; what it sees and writes is fine-grained: members of the /e2e
+    # subgroups below, nobody else (view-users or manage-users would bypass that).
+    keycloak.serviceAccountRoles.${name} = ["query-users"];
     # Test users live in /e2e/<group>, copies of the real groups (same name so the groups claim reads the
     # same, same attributes so app mappings do). Creating a user in a group needs manage-members on that
     # group, which is why they are not the real admin/family groups.
