@@ -116,6 +116,9 @@ in {
     applications.sure = {
       namespace = "finance";
       postgres.enable = true;
+      # sirver (failing root disk) hosts the lone instance today; keep a standby elsewhere.
+      postgres.instances = 2;
+      postgres.avoidNodes = ["sirver"];
       postgres.database = "sure_production";
       volsync.pvcs.sure.title = "sure";
       generatedSecrets.sure-admin = {
