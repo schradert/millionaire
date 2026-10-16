@@ -370,6 +370,8 @@
           profiles.system.canivete.configuration = {
             imports = [./static/hyena.nix];
             disko.devices.disk.root.device = "/dev/sda";
+            # No node advertises pod routes any more (docs/tailscale-integration.md, "Pod routes"): stop auto-approving 10.0.0.0/8.
+            tailnet.podRoutes = false;
           };
         };
 
