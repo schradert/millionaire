@@ -18,6 +18,31 @@
       "app.kubernetes.io/name" = "dvdrip";
       "app.kubernetes.io/component" = component;
     };
+    # Discs imported from the bash pipeline without a good rip, to rip again when they are inserted
+    # (fingerprints, the suffix of the Disc's name): 21 (the old MakeMKV had expired, its dvdbackup
+    # copy is full of padded read errors) and NIGHTMARE (90 % rescued, the rest unreadable). Without
+    # this the agent ejects them as duplicates of the import. A disc ripped for real is an ordinary
+    # duplicate again, so entries can stay.
+    rerip = ["78908b129df8" "c950f29a8fd5"];
+    # Library names (and the disc number of a bonus disc) for discs waiting to be inserted, by
+    # fingerprint (falcon's /data/dvd-rips/<LABEL>/.discid): a new Disc starts with these instead of
+    # the label in title case ("Theillusionist D2"). Anything else is sorted with `kubectl patch`.
+    presets = {
+      "1e81002f26cd" = {
+        name = "The Illusionist (2006)";
+        disc = 2;
+      };
+      # Discs ripped again (rerip) take their preset too.
+      "78908b129df8".name = "21 (2008)";
+      f0c1551c027f.name = "Hitch (2005)";
+      ac42f9693e7a.name = "The Martian Child (2007)";
+      "13e61f2bb58e".name = "Vantage Point (2008)";
+      "07c30a5ac85c".name = "Rendition (2007)";
+    };
+    # ddrescue's time budget for a scratched disc, per attempt (the default is 60 and 15 minutes):
+    # a disc that hits it keeps its image and the read continues when it is reinserted.
+    rescueMinutes = 180;
+    trimMinutes = 30;
     # ntfy lives on hyena; pods don't resolve it (docs/observability.md).
     hostAliases = lib.toList {
       ip = "100.64.0.1";
@@ -126,7 +151,8 @@
               (rule [""] ["pods"] ["get" "list"])
             ];
             dvdrip-agent.rules = [
-              (rule dvd ["discs"] ["get" "list" "watch" "create"])
+              # patch: spec.hold=false on a disc ripped again on request (rerip).
+              (rule dvd ["discs"] ["get" "list" "watch" "create" "patch"])
               (rule dvd ["discs/status"] ["get" "patch"])
             ];
             dvdrip-job.rules = [
@@ -219,6 +245,11 @@
                         name = "DVDRIP_JELLYFIN_URL";
                         value = "http://jellyfin.media.svc.cluster.local:8096";
                       }
+                      # Files someone else put in the library, kept beside the rip (publish).
+                      {
+                        name = "NTFY_MEDIA_URL";
+                        value = "https://ntfy.${domain}/media";
+                      }
                       {
                         name = "OTEL_SERVICE_NAME";
                         value = "dvdrip-controller";
@@ -270,6 +301,28 @@
                         valueFrom.fieldRef.fieldPath = "spec.nodeName";
                       }
                       {
+                        name = "DVDRIP_RESCUE_MINUTES";
+                        value = toString rescueMinutes;
+                      }
+                      {
+                        name = "DVDRIP_TRIM_MINUTES";
+                        value = toString trimMinutes;
+                      }
+                      {
+                        name = "DVDRIP_RERIP";
+                        value = lib.concatStringsSep "," rerip;
+                      }
+                      {
+                        name = "DVDRIP_PRESETS";
+                        value = builtins.toJSON presets;
+                      }
+                      # The bash pipeline's rescue images (NIGHTMARE at 90 %, THEILLUSIONIST_D2) seed
+                      # the staging of a disc that comes back, so its read continues from there.
+                      {
+                        name = "DVDRIP_SEED_DIR";
+                        value = "/rips";
+                      }
+                      {
                         name = "OTEL_SERVICE_NAME";
                         value = "dvdrip-agent";
                       }
@@ -300,6 +353,11 @@
                       mountPath = "/run/udev";
                       readOnly = true;
                     }
+                    {
+                      name = "rips";
+                      mountPath = "/rips";
+                      readOnly = true;
+                    }
                   ];
                 };
                 volumes = [
@@ -319,6 +377,14 @@
                   {
                     name = "udev";
                     hostPath.path = "/run/udev";
+                  }
+                  {
+                    # falcon's bash-era rips; empty (created) on a node that never had them.
+                    name = "rips";
+                    hostPath = {
+                      path = "/data/dvd-rips";
+                      type = "DirectoryOrCreate";
+                    };
                   }
                 ];
               };
