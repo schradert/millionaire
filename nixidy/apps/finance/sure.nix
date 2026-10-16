@@ -125,7 +125,7 @@ in {
         publicClient = false;
         standardFlowEnabled = true;
         directAccessGrantsEnabled = false;
-        redirectUris = ["https://${hostname}/auth/oidc/callback"];
+        redirectUris = ["https://${hostname}/auth/openid_connect/callback"];
         webOrigins = ["https://${hostname}"];
         defaultClientScopes = ["openid" "profile" "email" "groups"];
       };
@@ -209,7 +209,7 @@ in {
             AUTH_JIT_MODE = "link_only";
             APP_DOMAIN = hostname;
             OIDC_ISSUER = "https://keycloak.${domain}/realms/default";
-            OIDC_REDIRECT_URI = "https://${hostname}/auth/oidc/callback";
+            OIDC_REDIRECT_URI = "https://${hostname}/auth/openid_connect/callback";
           };
 
           persistence.storage = {

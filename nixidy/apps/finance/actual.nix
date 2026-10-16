@@ -103,6 +103,28 @@ in {
       helm.releases.actual = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
+          # The bootstrap pre-creates the owner's user (owner=0) so OpenID lets it in, but then the
+          # first-login path that marks the owner never runs and the UI keeps offering "create the
+          # owner". Actual has no API to set the owner, so mark it in account.sqlite before start,
+          # only when no named owner exists (a no-op on a fresh volume or once an owner is set).
+          controllers.actual.initContainers.owner = {
+            image = pinned.images.actual-server;
+            workingDir = "/app";
+            env.OWNER = people.me;
+            command = [
+              "node"
+              "-e"
+              ''
+                const fs = require("fs"), db = "/data/server-files/account.sqlite";
+                if (!fs.existsSync(db)) process.exit(0);
+                const d = new (require("better-sqlite3"))(db);
+                const has = d.prepare("SELECT count(*) n FROM sqlite_master WHERE name = 'users'").get().n;
+                if (!has || d.prepare("SELECT count(*) n FROM users WHERE user_name <> ''' AND owner = 1").get().n) process.exit(0);
+                const r = d.prepare("UPDATE users SET owner = 1 WHERE user_name = ?").run(process.env.OWNER);
+                console.log("owner set:", r.changes);
+              ''
+            ];
+          };
           controllers.actual.containers.actual = {
             image = pinned.images.actual-server;
             probes.liveness.enabled = true;

@@ -41,8 +41,6 @@ in {
     applications.ha = {
       namespace = "home";
       postgres.enable = true;
-      postgres.instances = 2;
-      postgres.avoidNodes = ["sirver"];
       volsync.pvcs.ha-config = {
         title = "ha";
         restore = false;

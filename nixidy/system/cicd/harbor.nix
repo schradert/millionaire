@@ -41,8 +41,6 @@
     applications.harbor = {
       inherit namespace;
       postgres.enable = true;
-      postgres.instances = 2;
-      postgres.avoidNodes = ["sirver"];
       volsync.pvcs.harbor-registry.title = "harbor-registry";
 
       helm.releases.harbor = {

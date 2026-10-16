@@ -14,7 +14,7 @@
 
 Your cluster uses:
 
-- **Pod Network**: Cilium cluster-pool IPAM on `10.0.0.0/8`, a `/24` per node (the RKE2 `Node.podCIDR` `10.42.0.0/16` is ignored by Cilium)
+- **Pod Network**: Cilium on `10.42.0.0/16` (managed by Cilium CNI)
 - **Service Network**: `10.43.0.0/16` (Kubernetes ClusterIP services)
 - **LoadBalancer IPs**: `192.168.50.240-254` (Cilium LB-IPAM, home network)
 - **Node Network**: `192.168.50.0/24` (your home LAN)
@@ -79,7 +79,7 @@ nixidy.system.network.cilium.helm.values = {
 
 **The Problem:**
 
-- Your pod CIDR: `10.0.0.0/8` (Cilium cluster pool)
+- Your pod CIDR: `10.42.0.0/16`
 - Your service CIDR: `10.43.0.0/16`
 - Tailscale CIDR: `100.64.0.0/10`
 - Brother's pod CIDR: Must not overlap!
@@ -88,8 +88,8 @@ nixidy.system.network.cilium.helm.values = {
 
 ```nix
 # Coordinate with brother:
-# Your cluster:  10.0.0.0/8 (pods), 10.43.0.0/16 (services)
-# His cluster:   must sit outside 10.0.0.0/8 (the pods) and 10.43.0.0/16 (the services)
+# Your cluster:  10.42.0.0/16 (pods), 10.43.0.0/16 (services)
+# His cluster:   10.44.0.0/16 (pods), 10.45.0.0/16 (services)
 # Tailscale:     100.64.0.0/10 (node overlay network)
 # Home LB pool:  192.168.50.240/28
 # Tailscale LB:  100.64.1.240/28 (future, for cross-cluster gateways)
@@ -161,7 +161,7 @@ services.tailscale.enable = true;
 ip route show
 
 # You should see:
-# 10.x.y.0/24 per node via cilium (pod network, from 10.0.0.0/8)
+# 10.42.0.0/16 via cilium (pod network)
 # 192.168.50.0/24 via br0 (home network)
 # 100.64.0.0/10 via tailscale0 (Tailscale network)
 
