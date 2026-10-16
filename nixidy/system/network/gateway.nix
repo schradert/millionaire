@@ -32,6 +32,10 @@ in {
     applications.cilium = {
       helm.releases.cilium.values.gatewayAPI.enabled = true;
       helm.releases.cilium.values.gatewayAPI.gatewayClass.create = "true";
+      # Advertise ALPN (h2, http/1.1) on the TLS listeners: grpc-go >= 1.67 (grpcurl, ChirpStack clients)
+      # refuses a server that selects no ALPN protocol. Also turns on appProtocol handling; only
+      # mimir's gossip ring (tcp) and prometheus (http) declare one, neither is routed.
+      helm.releases.cilium.values.gatewayAPI.enableAlpn = true;
       resources.gateways = let
         gateway = {
           metadata.annotations."io.cilium/lb-ipam-ips" = "home-pool";
