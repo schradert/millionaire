@@ -53,6 +53,13 @@ device ──HTTP──▶ {100.64.0.4 bonobo | 100.64.0.5 chinchilla} ──rel
   its own config at runtime, so sops must not own the live file).
 - hyena is itself a tailnet member (it self-registers to its own headscale), so
   its hosted AdGuard is reachable at the stable mesh IP `100.64.0.1`.
+- headscale's embedded DERP also serves STUN on `0.0.0.0:3478/udp` (region 999, in
+  the DERP map clients receive). Verified 2026-10-15: `tailscale netcheck --verbose`
+  on bonobo and falcon logs `received STUN packet from 178.104.61.137:3478` and
+  lists `hyena` at ~176-181 ms; a hand-built STUN binding request from the Mac is
+  answered too. The server ignores requests without a `FINGERPRINT` attribute, so a
+  bare 20-byte probe looks like a dead port, and plain (incremental) `netcheck`
+  runs leave far regions blank; use `--verbose`.
 
 ## Cluster nodes opt OUT of the pushed resolver
 
