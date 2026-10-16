@@ -139,12 +139,22 @@
           }
         ];
       };
-      resources.ciliumLoadBalancerIPPools.home-pool.spec = {
-        blocks = lib.toList {
+      # .245 (a DHCP lease, likely an ESP board), .249 (morgenmuffel) and .250 (axolotl) are LAN hosts inside
+      # the old .240-.254 range; the router's DHCP pool now ends at .239 but existing leases stay.
+      resources.ciliumLoadBalancerIPPools.home-pool.spec.blocks = [
+        {
           start = "192.168.50.240";
+          stop = "192.168.50.244";
+        }
+        {
+          start = "192.168.50.246";
+          stop = "192.168.50.248";
+        }
+        {
+          start = "192.168.50.251";
           stop = "192.168.50.254";
-        };
-      };
+        }
+      ];
     };
   };
 }
