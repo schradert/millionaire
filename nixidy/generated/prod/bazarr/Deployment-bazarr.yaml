@@ -43,6 +43,10 @@ spec:
             tcpSocket:
               port: 6767
             timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 150m
+              memory: 288Mi
           startupProbe:
             failureThreshold: 60
             initialDelaySeconds: 0

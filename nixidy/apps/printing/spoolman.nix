@@ -23,6 +23,10 @@
             annotations."reloader.stakater.com/auto" = "true";
             containers.spoolman = {
               image = pinned.images.spoolman;
+              resources.requests = {
+                cpu = "25m";
+                memory = "144Mi";
+              };
               env.SPOOLMAN_DB_TYPE = "sqlite";
               env.SPOOLMAN_DIR = "/data";
               env.SPOOLMAN_METRICS_ENABLED = "TRUE";

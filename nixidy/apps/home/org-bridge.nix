@@ -26,6 +26,10 @@
             annotations."reloader.stakater.com/auto" = "true";
             containers.org-bridge = {
               image = pinned.images.org-bridge;
+              resources.requests = {
+                cpu = "25m";
+                memory = "32Mi";
+              };
               env = {
                 ORG_DIR = "/org";
                 STATE_DB_PATH = "/var/lib/org-bridge/state.db";

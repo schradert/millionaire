@@ -49,6 +49,10 @@ spec:
             httpGet:
               path: /healthz/ready
               port: http
+          resources:
+            requests:
+              cpu: 25m
+              memory: 160Mi
           startupProbe:
             failureThreshold: 30
             httpGet:

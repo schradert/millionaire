@@ -34,6 +34,10 @@
             };
             containers.zigbee2mqtt = {
               image = pinned.images.zigbee2mqtt;
+              resources.requests = {
+                cpu = "25m";
+                memory = "48Mi";
+              };
               env = {
                 ZIGBEE2MQTT_CONFIG_MQTT_SERVER = "mqtt://mosquitto.home.svc.cluster.local:1883";
                 ZIGBEE2MQTT_CONFIG_SERIAL_PORT = serialPort;

@@ -42,6 +42,10 @@ spec:
                       name: firefly-passport
               image: fireflyiii/data-importer:version-2.2.1@sha256:98cb3aa6dbd6681cbdc590a5d70dd7d964b637bac863d947bcbc20448ac56b8a
               name: firefly-simplefin
+              resources:
+                requests:
+                  cpu: 25m
+                  memory: 80Mi
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities:

@@ -22,6 +22,10 @@ spec:
                 - /rips
               image: harbor.trdos.me/library/dvdrip:0.1.5@sha256:f599147157443691d74098e6502b87efa5cafe670d8c6614328a43d927e1dbef
               name: import
+              resources:
+                requests:
+                  cpu: 860m
+                  memory: 144Mi
               volumeMounts:
                 - mountPath: /work
                   name: work

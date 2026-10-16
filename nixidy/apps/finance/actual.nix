@@ -127,6 +127,10 @@ in {
           };
           controllers.actual.containers.actual = {
             image = pinned.images.actual-server;
+            resources.requests = {
+              cpu = "25m";
+              memory = "272Mi";
+            };
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
             probes.startup.enabled = true;

@@ -119,6 +119,10 @@
             };
             containers.prowlarr = {
               image = pinned.images.prowlarr;
+              resources.requests = {
+                cpu = "160m";
+                memory = "192Mi";
+              };
               envFrom = [{secretRef.name = "prowlarr";} {configMapRef.name = "prowlarr";}];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;

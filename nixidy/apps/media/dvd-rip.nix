@@ -344,6 +344,10 @@
                   containers = lib.toList {
                     name = "import";
                     inherit image;
+                    resources.requests = {
+                      cpu = "860m";
+                      memory = "144Mi";
+                    };
                     args = ["import" "--dvd-root" "/media/dvd" "--rips" "/rips"];
                     volumeMounts = [
                       (work false).mount

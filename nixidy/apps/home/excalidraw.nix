@@ -22,6 +22,10 @@
         values = {
           controllers.excalidraw.containers.excalidraw = {
             image = pinned.images.excalidraw;
+            resources.requests = {
+              cpu = "25m";
+              memory = "48Mi";
+            };
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
             probes.startup.enabled = true;

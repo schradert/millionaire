@@ -214,6 +214,10 @@
             };
             containers.qbittorrent = {
               image = pinned.images.qbittorrent;
+              resources.requests = {
+                cpu = "45m";
+                memory = "32Mi";
+              };
               securityContext = nobody;
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
@@ -221,6 +225,10 @@
             };
             containers.gluetun = {
               image = pinned.images.gluetun;
+              resources.requests = {
+                cpu = "25m";
+                memory = "80Mi";
+              };
               env =
                 {
                   VPN_TYPE = "wireguard";

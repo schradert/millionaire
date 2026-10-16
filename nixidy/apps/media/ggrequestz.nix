@@ -134,6 +134,7 @@ in {
       resources.dragonflies.ggrequestz-cache.spec = {
         replicas = 1;
         args = ["--proactor_threads" "2"];
+        resources.requests.cpu = "25m";
         resources.requests.memory = "256Mi";
         resources.limits.memory = "1Gi";
       };

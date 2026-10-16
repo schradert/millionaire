@@ -27,6 +27,10 @@
             annotations."reloader.stakater.com/auto" = "true";
             containers.games-webdav = {
               image = pinned.images.webdav;
+              resources.requests = {
+                cpu = "160m";
+                memory = "224Mi";
+              };
               args = ["--config" "/config/webdav.yml"];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;

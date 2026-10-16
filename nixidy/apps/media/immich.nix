@@ -126,6 +126,10 @@ in {
             annotations."reloader.stakater.com/auto" = "true";
             containers.immich-server = {
               image = pinned.images.immich-server;
+              resources.requests = {
+                cpu = "90m";
+                memory = "816Mi";
+              };
               envFrom = [{configMapRef.name = "immich-server";}];
               probes.liveness = serverProbe {};
               probes.readiness = serverProbe {};
@@ -207,6 +211,10 @@ in {
             annotations."reloader.stakater.com/auto" = "true";
             containers.immich-machine-learning = {
               image = pinned.images.immich-machine-learning;
+              resources.requests = {
+                cpu = "130m";
+                memory = "288Mi";
+              };
               probes.liveness = mlProbe {};
               probes.readiness = mlProbe {};
               probes.startup = mlProbe {spec.failureThreshold = 60;};
@@ -230,6 +238,7 @@ in {
         # refuses that by default ("script tried accessing undeclared key", every background job
         # failed to enqueue: uploads answered 500, the version check never ran).
         args = ["--proactor_threads" "2" "--default_lua_flags=allow-undeclared-keys"];
+        resources.requests.cpu = "25m";
         resources.requests.memory = "512Mi";
         resources.limits.memory = "1Gi";
       };

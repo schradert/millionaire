@@ -22,6 +22,11 @@
     inherit (config.canivete.meta) domain;
     hostname = "maloja.${domain}";
     port = 42010;
+    # Every Maloja in the pod (the owner's and one per other user) idles at the same size.
+    resources.requests = {
+      cpu = "25m";
+      memory = "80Mi";
+    };
     # Env var carrying a user's Maloja key into the init container.
     keyVar = u: "KEY_${toString (lib.lists.findFirstIndex (x: x == u) null scrobble.users)}";
     viaProxy = {
@@ -109,6 +114,7 @@
               {
                 maloja = {
                   image = pinned.images.maloja;
+                  inherit resources;
                   envFrom = [
                     {configMapRef.name = "maloja";}
                     {secretRef.name = "maloja";}
@@ -122,6 +128,7 @@
               // lib.listToAttrs (map (u:
                 lib.nameValuePair (scrobble.service u) {
                   image = pinned.images.maloja;
+                  inherit resources;
                   envFrom = [
                     {configMapRef.name = "maloja";}
                     {secretRef.name = "maloja";}

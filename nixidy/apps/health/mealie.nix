@@ -82,6 +82,10 @@ in {
             annotations."reloader.stakater.com/auto" = "true";
             containers.mealie = {
               image = pinned.images.mealie;
+              resources.requests = {
+                cpu = "110m";
+                memory = "288Mi";
+              };
               envFrom = [{configMapRef.name = "mealie";}];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;

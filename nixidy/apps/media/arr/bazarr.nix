@@ -55,6 +55,10 @@
             };
             containers.bazarr = {
               image = pinned.images.bazarr;
+              resources.requests = {
+                cpu = "150m";
+                memory = "288Mi";
+              };
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
               probes.startup = {

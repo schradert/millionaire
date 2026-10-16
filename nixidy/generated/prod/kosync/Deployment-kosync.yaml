@@ -47,6 +47,10 @@ spec:
           readinessProbe:
             tcpSocket:
               port: http
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
           startupProbe:
             failureThreshold: 30
             periodSeconds: 10

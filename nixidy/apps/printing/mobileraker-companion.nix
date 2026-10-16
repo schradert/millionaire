@@ -12,6 +12,10 @@
         values = {
           controllers.mobileraker-companion.containers.mobileraker-companion = {
             image = pinned.images.mobileraker-companion;
+            resources.requests = {
+              cpu = "25m";
+              memory = "48Mi";
+            };
           };
           configMaps.mobileraker-companion.data."mobileraker.conf" = lib.generators.toINI {} {
             general.language = "en";

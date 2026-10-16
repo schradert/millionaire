@@ -78,6 +78,10 @@
               annotations."reloader.stakater.com/auto" = "true";
               containers.archive-ingest = {
                 image = pinned.images.rsyncd;
+                resources.requests = {
+                  cpu = "440m";
+                  memory = "608Mi";
+                };
                 ports = lib.toList {
                   name = "rsync";
                   containerPort = port;

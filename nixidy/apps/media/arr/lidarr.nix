@@ -56,6 +56,10 @@
             };
             containers.lidarr = {
               image = pinned.images.lidarr;
+              resources.requests = {
+                cpu = "75m";
+                memory = "224Mi";
+              };
               envFrom = [{secretRef.name = "lidarr";} {configMapRef.name = "lidarr";}];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;

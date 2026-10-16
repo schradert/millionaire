@@ -160,6 +160,10 @@ in {
             annotations."reloader.stakater.com/auto" = "true";
             containers.sure = {
               image = pinned.images.sure;
+              resources.requests = {
+                cpu = "25m";
+                memory = "352Mi";
+              };
               inherit envFrom;
               ports = lib.toList {
                 name = "http";
@@ -181,6 +185,10 @@ in {
             annotations."reloader.stakater.com/auto" = "true";
             containers.sure-worker = {
               image = pinned.images.sure;
+              resources.requests = {
+                cpu = "40m";
+                memory = "320Mi";
+              };
               args = ["bundle" "exec" "sidekiq"];
               inherit envFrom;
               probes.liveness.enabled = false;
@@ -318,6 +326,7 @@ in {
       resources.dragonflies.sure-dragonfly.spec = {
         replicas = 1;
         args = ["--proactor_threads" "2"];
+        resources.requests.cpu = "30m";
         resources.requests.memory = "256Mi";
         resources.limits.memory = "1Gi";
       };

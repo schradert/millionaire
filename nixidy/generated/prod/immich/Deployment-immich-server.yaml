@@ -52,6 +52,10 @@ spec:
             initialDelaySeconds: 0
             periodSeconds: 10
             timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: 90m
+              memory: 816Mi
           startupProbe:
             failureThreshold: 30
             httpGet:

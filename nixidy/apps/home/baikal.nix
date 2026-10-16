@@ -40,6 +40,10 @@ in {
             };
             containers.baikal = {
               image = pinned.images.baikal;
+              resources.requests = {
+                cpu = "25m";
+                memory = "80Mi";
+              };
               envFrom = [{secretRef.name = "baikal";}];
               # The install initContainer chowns config/ and Specific/; the image's
               # own chown -R over all of /var/www/baikal outlived the startup probe.

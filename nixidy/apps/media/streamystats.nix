@@ -130,6 +130,10 @@
             };
             containers.streamystats = {
               image = pinned.images.streamystats-nextjs;
+              resources.requests = {
+                cpu = "25m";
+                memory = "112Mi";
+              };
               envFrom = [{secretRef.name = "streamystats";} {configMapRef.name = "streamystats";}];
               probes = {
                 liveness = probe "/api/health" webPort;
@@ -225,6 +229,10 @@
             containers = lib.toList {
               name = "dump";
               image = postgresImage;
+              resources.requests = {
+                cpu = "25m";
+                memory = "32Mi";
+              };
               command = ["bash" "-c"];
               args = [
                 ''

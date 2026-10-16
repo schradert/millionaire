@@ -23,6 +23,10 @@
           controllers.webdav = {
             annotations."reloader.stakater.com/auto" = "true";
             containers.webdav = {
+              resources.requests = {
+                cpu = "25m";
+                memory = "32Mi";
+              };
               # NOTE: prior digest was corrupt (56 hex chars, not 64) -> InvalidImageName.
               # Pinned by tag until a correct digest is re-added.
               image = pinned.images.webdav;

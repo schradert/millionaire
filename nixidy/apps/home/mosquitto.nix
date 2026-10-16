@@ -33,6 +33,10 @@
             };
             containers.mosquitto = {
               image = pinned.images.mosquitto;
+              resources.requests = {
+                cpu = "25m";
+                memory = "32Mi";
+              };
               probes.liveness = probe;
               probes.readiness = probe;
               probes.startup = probe;

@@ -74,6 +74,10 @@ spec:
             tcpSocket:
               port: 80
             timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 55m
+              memory: 224Mi
           startupProbe:
             failureThreshold: 30
             initialDelaySeconds: 0

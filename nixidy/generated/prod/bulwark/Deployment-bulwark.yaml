@@ -62,6 +62,10 @@ spec:
             httpGet:
               path: /
               port: http
+          resources:
+            requests:
+              cpu: 25m
+              memory: 2576Mi
           startupProbe:
             failureThreshold: 30
             httpGet:

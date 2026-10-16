@@ -31,6 +31,10 @@ spec:
       containers:
         - image: ghcr.io/clon1998/mobileraker_companion:latest@sha256:4aad389e1da183d38e5ebb57fa16a78464e465874788a0deeaf3b8458883d821
           name: mobileraker-companion
+          resources:
+            requests:
+              cpu: 25m
+              memory: 48Mi
           volumeMounts:
             - mountPath: /opt/printer_data/config/mobileraker.conf
               name: config

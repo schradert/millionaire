@@ -43,6 +43,10 @@ spec:
             tcpSocket:
               port: 5006
             timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 25m
+              memory: 272Mi
           startupProbe:
             failureThreshold: 30
             initialDelaySeconds: 0

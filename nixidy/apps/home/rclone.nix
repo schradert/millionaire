@@ -38,6 +38,10 @@
           };
           controllers.rclone.containers.rclone = {
             image = pinned.images.rclone;
+            resources.requests = {
+              cpu = "25m";
+              memory = "48Mi";
+            };
             args = [
               "rcd"
               "--rc-addr=0.0.0.0:${toString port}"

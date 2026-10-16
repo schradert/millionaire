@@ -27,6 +27,10 @@
         values = {
           controllers.kosync.containers.kosync = {
             image = pinned.images.korrosync;
+            resources.requests = {
+              cpu = "25m";
+              memory = "32Mi";
+            };
             args = ["serve"];
             ports = lib.toList {
               name = "http";

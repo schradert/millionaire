@@ -73,6 +73,10 @@ spec:
                   value: home.trdos.me
               path: /api/healthcheck
               port: http
+          resources:
+            requests:
+              cpu: 35m
+              memory: 160Mi
           startupProbe:
             failureThreshold: 30
             initialDelaySeconds: 0

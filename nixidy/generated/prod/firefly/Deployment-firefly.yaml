@@ -85,6 +85,10 @@ spec:
               port: http
             initialDelaySeconds: 15
             timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: 80m
+              memory: 128Mi
           startupProbe:
             failureThreshold: 30
             httpGet:

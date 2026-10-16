@@ -92,6 +92,10 @@ in {
             };
             containers.ha = {
               inherit image;
+              resources.requests = {
+                cpu = "25m";
+                memory = "256Mi";
+              };
               envFrom = [{secretRef.name = "ha";}];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;

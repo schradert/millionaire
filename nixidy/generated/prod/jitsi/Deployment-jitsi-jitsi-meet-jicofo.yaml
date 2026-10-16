@@ -46,7 +46,10 @@ spec:
           readinessProbe:
             tcpSocket:
               port: 8888
-          resources: {}
+          resources:
+            requests:
+              cpu: 25m
+              memory: 1072Mi
           securityContext: {}
           volumeMounts:
             - mountPath: /config
