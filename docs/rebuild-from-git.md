@@ -70,7 +70,7 @@ Notes assembled from the repo on 2026-10-10. The sequence has never been run end
 
 ## Restoring Bitwarden Secrets Manager
 
-The CronJob `bws-backup` (`security`, Sundays 05:30 UTC, alerts `BwsBackupFailed`/`BwsBackupStale`) uploads `bws secret list -o json`
+The CronJob `bws-backup` (`security`, Sundays 05:30 America/Los_Angeles (the cluster default timezone), alerts `BwsBackupFailed`/`BwsBackupStale`) uploads `bws secret list -o json`
 (keys and values of every secret the machine account sees), encrypted to the age public key in `nixidy/system/security/bws-backup.nix`.
 Only the public key is in the cluster.
 
