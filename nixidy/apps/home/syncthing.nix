@@ -246,7 +246,7 @@ in {
             http.port = 8384;
             sync.port = sync.port;
           };
-          service.syncthing-lan = {
+          service.lan = {
             type = "LoadBalancer";
             annotations."lbipam.cilium.io/ips" = syncthing.devices.hub.lan;
             ports = {
