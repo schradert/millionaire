@@ -1,13 +1,120 @@
-use reqwest::Client;
+use md5::Md5;
+use reqwest::{Client, Method, Response, header};
+use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::orgparse::{OrgEntry, Timestamp};
 
+/// A `WWW-Authenticate: Digest` challenge.
+#[derive(Clone, Debug, PartialEq)]
+struct Challenge {
+    realm: String,
+    nonce: String,
+    opaque: Option<String>,
+    qop: bool,
+}
+
+/// Parse `Digest realm="x",qop="auth",nonce="n",opaque="o"`.
+fn parse_challenge(h: &str) -> Option<Challenge> {
+    let rest = h
+        .trim()
+        .strip_prefix("Digest ")
+        .or_else(|| h.trim().strip_prefix("digest "))?;
+    let mut kv = BTreeMap::new();
+    let mut s = rest;
+    while let Some((key, after)) = s.split_once('=') {
+        let key = key
+            .trim()
+            .trim_start_matches(',')
+            .trim()
+            .to_ascii_lowercase();
+        let after = after.trim_start();
+        let (val, tail) = if let Some(q) = after.strip_prefix('"') {
+            let end = q.find('"')?;
+            (&q[..end], &q[end + 1..])
+        } else {
+            let end = after.find(',').unwrap_or(after.len());
+            (&after[..end], &after[end..])
+        };
+        kv.insert(key, val.to_string());
+        s = tail.trim_start().trim_start_matches(',');
+    }
+    Some(Challenge {
+        realm: kv.get("realm")?.clone(),
+        nonce: kv.get("nonce")?.clone(),
+        opaque: kv.get("opaque").cloned(),
+        qop: kv
+            .get("qop")
+            .is_some_and(|q| q.split(',').any(|x| x.trim() == "auth")),
+    })
+}
+
+fn md5_hex(data: &str) -> String {
+    Md5::digest(data.as_bytes())
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
+}
+
+/// The `Authorization` header value answering `ch` for `method uri` (RFC 2617, MD5).
+fn digest_header(
+    ch: &Challenge,
+    user: &str,
+    pass: &str,
+    method: &str,
+    uri: &str,
+    nc: u64,
+    cnonce: &str,
+) -> String {
+    let ha1 = md5_hex(&format!("{user}:{}:{pass}", ch.realm));
+    let ha2 = md5_hex(&format!("{method}:{uri}"));
+    let nc = format!("{nc:08x}");
+    let response = if ch.qop {
+        md5_hex(&format!("{ha1}:{}:{nc}:{cnonce}:auth:{ha2}", ch.nonce))
+    } else {
+        md5_hex(&format!("{ha1}:{}:{ha2}", ch.nonce))
+    };
+    let mut h = format!(
+        "Digest username=\"{user}\", realm=\"{}\", nonce=\"{}\", uri=\"{uri}\", response=\"{response}\"",
+        ch.realm, ch.nonce
+    );
+    if ch.qop {
+        h.push_str(&format!(", qop=auth, nc={nc}, cnonce=\"{cnonce}\""));
+    }
+    if let Some(o) = &ch.opaque {
+        h.push_str(&format!(", opaque=\"{o}\""));
+    }
+    h
+}
+
+/// A client nonce: not a secret, only unique per request.
+fn cnonce() -> String {
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+    Sha256::digest(format!("{now}:{n}:{}", std::process::id()).as_bytes())
+        .iter()
+        .take(8)
+        .map(|b| format!("{b:02x}"))
+        .collect()
+}
+
 /// CalDAV client for pushing VEVENTs and VTODOs to a CalDAV server.
+///
+/// Baïkal (sabre/dav) offers HTTP Digest only (nixidy/apps/home/baikal-install.php), so a
+/// request is answered once with the server's challenge; Basic is sent when the server asks for it.
 pub struct CalDavClient {
     client: Client,
     base_url: String,
     username: String,
     password: String,
+    /// The last Digest challenge and the request counter (`nc`) used with it.
+    auth: Mutex<(Option<Challenge>, u64)>,
 }
 
 impl CalDavClient {
@@ -17,24 +124,83 @@ impl CalDavClient {
             base_url: base_url.trim_end_matches('/').to_string(),
             username: username.to_string(),
             password: password.to_string(),
+            auth: Mutex::new((None, 0)),
         }
+    }
+
+    fn authorization(&self, method: &str, uri: &str) -> Option<String> {
+        let mut a = self.auth.lock().unwrap();
+        let ch = a.0.clone()?;
+        a.1 += 1;
+        Some(digest_header(
+            &ch,
+            &self.username,
+            &self.password,
+            method,
+            uri,
+            a.1,
+            &cnonce(),
+        ))
+    }
+
+    /// One request, answering a Digest (or Basic) challenge with a single retry.
+    async fn send(
+        &self,
+        method: Method,
+        url: &str,
+        body: Option<&str>,
+    ) -> Result<Response, CalDavError> {
+        let uri = reqwest::Url::parse(url)
+            .map(|u| match u.query() {
+                Some(q) => format!("{}?{q}", u.path()),
+                None => u.path().to_string(),
+            })
+            .map_err(|e| CalDavError::Server(format!("bad CalDAV URL {url}: {e}")))?;
+        let mut basic = false;
+        for attempt in 0..2 {
+            let mut rb = self.client.request(method.clone(), url);
+            if let Some(b) = body {
+                rb = rb
+                    .header("Content-Type", "text/calendar; charset=utf-8")
+                    .body(b.to_string());
+            }
+            if basic {
+                rb = rb.basic_auth(&self.username, Some(&self.password));
+            } else if let Some(a) = self.authorization(method.as_str(), &uri) {
+                rb = rb.header(header::AUTHORIZATION, a);
+            }
+            let r = rb.send().await.map_err(CalDavError::Http)?;
+            if r.status().as_u16() == 401 && attempt == 0 {
+                let challenges: Vec<String> = r
+                    .headers()
+                    .get_all(header::WWW_AUTHENTICATE)
+                    .iter()
+                    .filter_map(|v| v.to_str().ok().map(str::to_string))
+                    .collect();
+                if let Some(ch) = challenges.iter().find_map(|h| parse_challenge(h)) {
+                    *self.auth.lock().unwrap() = (Some(ch), 0);
+                    continue;
+                }
+                if challenges
+                    .iter()
+                    .any(|h| h.trim().to_ascii_lowercase().starts_with("basic"))
+                {
+                    basic = true;
+                    continue;
+                }
+            }
+            return Ok(r);
+        }
+        unreachable!("the loop returns on its second attempt")
     }
 
     /// PUT a VEVENT to the CalDAV server.
     pub async fn put_event(&self, uid: &str, ical: &str) -> Result<(), CalDavError> {
         let url = format!("{}/{}.ics", self.base_url, uid);
-        let response = self
-            .client
-            .put(&url)
-            .basic_auth(&self.username, Some(&self.password))
-            .header("Content-Type", "text/calendar; charset=utf-8")
-            .body(ical.to_string())
-            .send()
-            .await
-            .map_err(CalDavError::Http)?;
+        let response = self.send(Method::PUT, &url, Some(ical)).await?;
 
         let status = response.status();
-        if status.is_success() || status.as_u16() == 201 || status.as_u16() == 204 {
+        if status.is_success() {
             Ok(())
         } else {
             let body = response.text().await.unwrap_or_default();
@@ -48,16 +214,10 @@ impl CalDavClient {
     /// DELETE a calendar resource from the CalDAV server.
     pub async fn delete_event(&self, uid: &str) -> Result<(), CalDavError> {
         let url = format!("{}/{}.ics", self.base_url, uid);
-        let response = self
-            .client
-            .delete(&url)
-            .basic_auth(&self.username, Some(&self.password))
-            .send()
-            .await
-            .map_err(CalDavError::Http)?;
+        let response = self.send(Method::DELETE, &url, None).await?;
 
         let status = response.status();
-        if status.is_success() || status.as_u16() == 204 || status.as_u16() == 404 {
+        if status.is_success() || status.as_u16() == 404 {
             Ok(())
         } else {
             let body = response.text().await.unwrap_or_default();
@@ -226,6 +386,93 @@ fn format_ical_dtend(ts: &Timestamp) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use wiremock::matchers::{header_regex, method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    #[test]
+    fn test_digest_rfc2617_vector() {
+        let ch = parse_challenge(
+            "Digest realm=\"testrealm@host.com\", qop=\"auth,auth-int\", \
+             nonce=\"dcd98b7102dd2f0e8b11d0f600bfb0c093\", \
+             opaque=\"5ccc069c403ebaf9f0171e9517f40e41\"",
+        )
+        .unwrap();
+        assert!(ch.qop);
+        let h = digest_header(
+            &ch,
+            "Mufasa",
+            "Circle Of Life",
+            "GET",
+            "/dir/index.html",
+            1,
+            "0a4f113b",
+        );
+        assert!(h.contains("response=\"6629fae49393a05397450978507c4ef1\""));
+        assert!(h.contains("nc=00000001"));
+        assert!(h.contains("opaque=\"5ccc069c403ebaf9f0171e9517f40e41\""));
+    }
+
+    #[test]
+    fn test_parse_challenge_rejects_basic() {
+        assert!(parse_challenge("Basic realm=\"x\"").is_none());
+    }
+
+    #[tokio::test]
+    async fn test_put_answers_digest_challenge() {
+        let server = MockServer::start().await;
+        Mock::given(method("PUT"))
+            .and(path("/cal/uid1.ics"))
+            .and(header_regex("authorization", "^Digest username=\"admin\""))
+            .respond_with(ResponseTemplate::new(201))
+            .expect(2)
+            .mount(&server)
+            .await;
+        Mock::given(method("PUT"))
+            .respond_with(ResponseTemplate::new(401).insert_header(
+                "WWW-Authenticate",
+                "Digest realm=\"BaikalDAV\", qop=\"auth\", nonce=\"abc\", opaque=\"def\"",
+            ))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let client = CalDavClient::new(&format!("{}/cal", server.uri()), "admin", "pw");
+        client.put_event("uid1", "BEGIN:VCALENDAR").await.unwrap();
+        // The challenge is kept: the second request is answered without another 401.
+        client.put_event("uid1", "BEGIN:VCALENDAR").await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_delete_answers_basic_challenge() {
+        let server = MockServer::start().await;
+        Mock::given(method("DELETE"))
+            .and(header_regex("authorization", "^Basic "))
+            .respond_with(ResponseTemplate::new(204))
+            .mount(&server)
+            .await;
+        Mock::given(method("DELETE"))
+            .respond_with(
+                ResponseTemplate::new(401).insert_header("WWW-Authenticate", "Basic realm=\"x\""),
+            )
+            .mount(&server)
+            .await;
+        let client = CalDavClient::new(&format!("{}/cal", server.uri()), "admin", "pw");
+        client.delete_event("uid1").await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_wrong_password_is_an_error() {
+        let server = MockServer::start().await;
+        Mock::given(method("PUT"))
+            .respond_with(ResponseTemplate::new(401).insert_header(
+                "WWW-Authenticate",
+                "Digest realm=\"BaikalDAV\", qop=\"auth\", nonce=\"abc\"",
+            ))
+            .mount(&server)
+            .await;
+        let client = CalDavClient::new(&format!("{}/cal", server.uri()), "admin", "bad");
+        let err = client.put_event("uid1", "x").await.unwrap_err();
+        assert!(err.to_string().contains("401"));
+    }
 
     fn test_entry() -> OrgEntry {
         OrgEntry {

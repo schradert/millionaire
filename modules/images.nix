@@ -439,7 +439,7 @@
         src = ../org-bridge;
         pkg = amd64Pkgs.rustPlatform.buildRustPackage {
           pname = "org-bridge";
-          version = "0.1.0";
+          version = "0.1.1";
           inherit src;
           cargoLock.lockFile = "${src}/Cargo.lock";
           nativeBuildInputs = [amd64Pkgs.pkg-config];
