@@ -266,7 +266,9 @@ async fn smtp(addr: &str, from: &str, to: &str, data: &str) -> Result<()> {
     let (r, mut w) = TcpStream::connect(addr).await?.into_split();
     let mut r = BufReader::new(r);
     expect(&mut r, 220).await?;
-    for (cmd, code) in [("EHLO alert-digest".to_string(), 250), (format!("MAIL FROM:<{from}>"), 250), (format!("RCPT TO:<{to}>"), 250), ("DATA".into(), 354)] {
+    // Stalwart rejects an EHLO name that is not a domain.
+    let domain = from.rsplit('@').next().unwrap_or("localhost");
+    for (cmd, code) in [(format!("EHLO {domain}"), 250), (format!("MAIL FROM:<{from}>"), 250), (format!("RCPT TO:<{to}>"), 250), ("DATA".into(), 354)] {
         w.write_all(format!("{cmd}\r\n").as_bytes()).await?;
         expect(&mut r, code).await?;
     }
@@ -433,7 +435,7 @@ mod tests {
         let msg = message("noreply@example.org", "me@example.org", "subj", "plain \u{2265}", "<b>html</b>", 1_000_000_000);
         smtp(&addr, "noreply@example.org", "me@example.org", &msg).await.unwrap();
         let seen = server.await.unwrap();
-        assert_eq!(&seen[..4], ["EHLO alert-digest", "MAIL FROM:<noreply@example.org>", "RCPT TO:<me@example.org>", "DATA"]);
+        assert_eq!(&seen[..4], ["EHLO example.org", "MAIL FROM:<noreply@example.org>", "RCPT TO:<me@example.org>", "DATA"]);
         assert!(seen.contains(&"Subject: subj".to_string()) && seen.contains(&"To: <me@example.org>".to_string()));
         assert_eq!(seen[seen.len() - 2..], [".", "QUIT"]);
         assert!(msg.contains("Content-Type: multipart/alternative; boundary=\"alert-digest-1000000000\"") && msg.ends_with("--alert-digest-1000000000--"));
