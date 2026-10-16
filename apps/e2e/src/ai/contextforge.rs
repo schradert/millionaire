@@ -157,7 +157,11 @@ pub async fn mcp(ctx: &Ctx, f: &mut Flow) -> R<()> {
     }
     f.ok(APP, "UI SSO lists keycloak and sends the login to the realm", "client contextforge");
 
-    let server = cf.list(ctx, "servers").await?.into_iter().find(|s| s["name"] == "homelab").at(APP, "virtual server homelab (bearer lists /servers)")?;
+    let servers = match cf.list(ctx, "servers").await {
+        Ok(s) => s,
+        Err(e) => return Err(Fail::new(&e.app, &e.step, format!("{}; {}", e.msg, diagnose(ctx, &cf).await))),
+    };
+    let server = servers.into_iter().find(|s| s["name"] == "homelab").at(APP, "virtual server homelab (bearer lists /servers)")?;
     let sid = server["id"].as_str().at(APP, "server id")?.to_string();
     f.ok(APP, "the Keycloak bearer lists the homelab virtual server", sid.clone());
 
@@ -196,6 +200,28 @@ pub async fn mcp(ctx: &Ctx, f: &mut Flow) -> R<()> {
     sign_in_redirect(&ctx.noredir, &format!("{}/servers/{sid}/mcp", cf.base), &issuer()).await?;
     f.ok(APP, "an anonymous call is 401 at ContextForge and sent to Keycloak at oauth2-proxy", "");
     Ok(())
+}
+
+/// Why ContextForge may refuse the Keycloak bearer: the token's claims, the answer when the same token
+/// skips oauth2-proxy, and the `keycloak` provider row as the platform admin sees it.
+async fn diagnose(ctx: &Ctx, cf: &Cf) -> String {
+    let claims = crate::web::jwt_claims(&cf.token)
+        .ok()
+        .map(|c| ["iss", "aud", "azp", "email", "email_verified"].map(|k| format!("{k}={}", c[k])).join(" "))
+        .unwrap_or_else(|| "token is not a JWT".into());
+    let direct = crate::ctx::var("CONTEXTFORGE_URL", "http://contextforge.ai.svc.cluster.local:8080");
+    let skip = match ctx.http.get(format!("{}/servers?limit=0", direct.trim_end_matches('/'))).bearer_auth(&cf.token).send_t().await {
+        Ok(r) => format!("HTTP {} without oauth2-proxy", r.status()),
+        Err(e) => chain(&e),
+    };
+    let provider = match Cf::login(ctx).await {
+        Ok(admin) => match get_json(admin.req(ctx, Method::GET, "/auth/sso/admin/providers/keycloak"), APP, "provider").await {
+            Ok(p) => ["is_enabled", "trusted_for_api_auth", "api_audience", "issuer"].map(|k| format!("{k}={}", p[k])).join(" "),
+            Err(e) => e.msg,
+        },
+        Err(e) => e.msg,
+    };
+    format!("token {claims}; {skip}; provider {provider}")
 }
 
 pub async fn cleanup(ctx: &Ctx, f: &mut Flow) -> R<()> {
