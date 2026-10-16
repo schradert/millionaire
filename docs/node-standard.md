@@ -30,6 +30,17 @@ Outside the layers, on purpose:
   `tailnet.enable` is set, so a personal device that becomes a node joins with the shared cluster-node key instead.
 - **Build pool.** `static/builders.nix` lists the members. The headless nodes are capped (`nodes`); falcon is a member without caps
   (`falcon`); any other host (axolotl) gets only name resolution (`sirver`, `<node>.tailnet`) and no builder access.
+- **Native aarch64-linux builds** come from the Mac's `nix.linux-builder` VM (`morgenmuffelVm` in `static/builders.nix`), not from
+  falcon's binfmt emulation (`falcon.emulated`, speedFactor 2, 6h+ for voron, and cache misses since the fleet's overlays differ from
+  cachix). The VM's sshd is QEMU's hostfwd on the Mac's LAN address, port 31022; its host key is fixed in nixpkgs' builder image
+  (pinned in `builders.nix`); `static/morgenmuffel.nix` authorizes every pool host key for the VM's `builder` user, so the pool hosts
+  reach it with their ssh host keys and it appears in their `/etc/nix/machines` (`static/builder.nix`) and in `build-all`'s pool
+  string (`devenv.nix`). It exists only while the Mac is awake and on the LAN; builds then fall back to falcon's emulation.
+  After the Mac's `darwin-rebuild` (the VM restarts with the new key list) and falcon's switch, verify on falcon:
+  `nix build --system aarch64-linux --no-link nixpkgs#hello -L` (the log shows `building ... on 'ssh-ng://builder@192.168.50.249:31022'`;
+  `nix store ping --store ssh-ng://builder@192.168.50.249:31022 --option ssh-key /etc/ssh/ssh_host_ed25519_key` as root answers),
+  or `build-all --system aarch64-linux`. The post-build hook that pushes to attic does not cover these builds (they run in the VM's
+  daemon, which has no hook): pushing aarch64 results waits for attic's move (README 33).
 
 ## Secrets
 

@@ -40,7 +40,7 @@
   peers = lib.filterAttrs (n: _: n != name) pool.nodes;
   builderPeers = lib.filterAttrs (n: _: n != name) pool.builders;
   alias = n: "${n}.tailnet";
-  inherit (pool) falcon;
+  inherit (pool) falcon morgenmuffelVm;
   machine = hostName: p: {
     inherit hostName;
     sshUser = p.user;
@@ -77,6 +77,12 @@ in {
             hostNames = ["falcon" falcon.lan];
             publicKey = falcon.hostKey;
           };
+        }
+        // {
+          builder-morgenmuffel-vm = {
+            hostNames = ["[${morgenmuffelVm.lan}]:${toString morgenmuffelVm.port}"];
+            publicKey = morgenmuffelVm.hostKey;
+          };
         };
       roles.nix-remote-builder.schedulerPublicKeys =
         map (p: p.hostKey) (lib.attrValues peers)
@@ -99,7 +105,9 @@ in {
         ++ lib.optionals (!isFalcon) (map (machine "falcon") [
           (falcon // {user = falcon.builderUser;})
           (falcon // falcon.emulated // {user = falcon.builderUser;})
-        ]);
+        ])
+        # Native aarch64-linux on the Mac's VM (outranks falcon's emulation; pinned host key above).
+        ++ [(machine "${morgenmuffelVm.lan}:${toString morgenmuffelVm.port}" morgenmuffelVm)];
     })
     (lib.mkIf (me != null) {
       systemd.services.nix-daemon.serviceConfig = {
