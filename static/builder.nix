@@ -110,6 +110,9 @@ in {
         ++ [(machine "${morgenmuffelVm.lan}:${toString morgenmuffelVm.port}" morgenmuffelVm)];
     })
     (lib.mkIf (me != null) {
+      # Ask the router for the address this record names: a cold boot otherwise takes a pool address (chinchilla came back
+      # as .161 on 2026-10-16 and lost its Ceph mon), and the names above, rke2's join and attic all use `lan`. sirver has a bridge.
+      systemd.network.networks."40-eno1".dhcpV4Config.RequestAddress = lib.mkIf (name != "sirver") me.lan;
       systemd.services.nix-daemon.serviceConfig = {
         CPUQuota = "${toString me.quota}%";
         CPUWeight = 10;
