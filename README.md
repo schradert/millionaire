@@ -42,7 +42,7 @@
 39. TODO Syncthing: the hub's sync port 22000 has no LoadBalancer, so devices reach it only through discovery and relays
 40. TODO contextforge: verify Keycloak SSO and `/servers/<id>/mcp` with `sso-token` live once `app-bootstrap-contextforge` is pinned (its `OIDC_*` env was ignored upstream; now `SSO_KEYCLOAK_*`)
 41. TODO verify the work Mac's userspace tailscaled (headscale via `trdos <cmd>`) end to end
-42. TODO verify chirpstack gRPC through the internal gateway
+42. TODO the internal gateway's TLS listener advertises no ALPN (`enable-gateway-api-alpn=false`), so strict gRPC clients (grpc-go >= 1.67, grpcurl) cannot reach chirpstack's gRPC API; enabling `gatewayAPI.enableAlpn` also turns on appProtocol (non-h2c backends go HTTP/1.1), so audit every route first
 43. TODO pulumi state is April-era for the nodes; it clears after a per-node deploy
 44. TODO gargoyle: reflash, then record its tailnet host key; aarch64-linux builds are native only from morgenmuffel (`nix.linux-builder`): the fleet (falcon) still emulates. For fleet use either expose the builder VM to the LAN (ssh on morgenmuffel forwarding to the VM's :31022, a `builders.nix` entry) or cross-compile gargoyle from x86_64 (`nixpkgs.buildPlatform`)
 45. TODO echidna: record its tailnet host key once the host exists

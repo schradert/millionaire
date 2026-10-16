@@ -1080,7 +1080,7 @@
       ],
       "provisioned": "no",
       "where": null,
-      "note": "unverified"
+      "note": "verified: a gRPC call through the gateway reaches ChirpStack (Unauthenticated); grpcurl needs GRPC_ENFORCE_ALPN_ENABLED=false because the gateway TLS listener advertises no ALPN"
      }
     ],
     "tui": [],
