@@ -60,6 +60,18 @@ device ──HTTP──▶ {100.64.0.4 bonobo | 100.64.0.5 chinchilla} ──rel
   answered too. The server ignores requests without a `FINGERPRINT` attribute, so a
   bare 20-byte probe looks like a dead port, and plain (incremental) `netcheck`
   runs leave far regions blank; use `--verbose`.
+- Gatus probes every routed app from outside the cluster (group `apps`, every
+  5 min, alerts to ntfy `alerts`). `static/hyena.nix` generates one endpoint per
+  `https://` or `<name>.trdos.me` hostname in `docs/client-matrix.json`, so the
+  matrix (lint-checked against the routes) stays the single list. Names resolve
+  through AdGuard to the gateway relays like a client's, so a wiped external-dns
+  record fails the probe. Redirects are not followed: an oauth2-proxy app must
+  answer `302` with a Keycloak redirect (its `auth` field in the matrix decides),
+  anything else `200/207/302/303/307/401/403`, and the certificate must have more
+  than 7 days left. `faro` and `kosync` answer `404` at `/` (identical to an
+  unrouted host), so they are probed at `/sdk` and `/healthcheck`
+  (`appProbePaths`). `keycloak-oidc` (group `cluster`, 1 min) checks the realm's
+  discovery document and issuer, since SSO gates every login.
 
 ## Cluster nodes opt OUT of the pushed resolver
 

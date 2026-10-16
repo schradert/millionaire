@@ -21,7 +21,6 @@
 21. TODO the one-time manual steps (credentials, enrollment, hardware, browser checks) in order: [docs/manual-steps.md](docs/manual-steps.md)
 22. TODO network policy phase 2: ingress default-deny for `storage` and `kube-system` (derive the callers from Hubble first: Rook/Ceph daemons, the CNPG and Dragonfly operators, CoreDNS, Cilium/Hubble, the Gateway) plus an egress design; ingress default-deny is enforced in every other namespace
 24. TODO rolling node upgrade to nixpkgs 26.11 after the bump (one node at a time, rke2 restarts likely). dingo's capped nix-daemon can't build its own system, so build on sirver and copy
-26. TODO outside-in Gatus probes on hyena for every app login page, not just the gateway and apiservers
 27. TODO Jellyfin hardware transcoding via falcon's NVIDIA GPU once falcon joins the cluster
 30. TODO back up Bitwarden Secrets Manager: a scheduled `bws` export, encrypted to an offline age key and stored outside Bitwarden, plus a restore test. It holds the restic password, so losing it makes every VolSync backup unreadable
 31. TODO back up hyena's headscale: a nightly consistent `.backup` of `/var/lib/headscale/db.sqlite` plus the noise/derp keys, encrypted and pushed off-host, plus a restore test
