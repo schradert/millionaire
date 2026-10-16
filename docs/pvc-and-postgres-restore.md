@@ -114,7 +114,12 @@ another database without barman, add an entry `namespace/cluster|repository|path
 
 ## Backup coverage gaps
 
-- ReplicationSources never synced as of 2026-10-15 (`kubectl get replicationsource -A`): tdarr-server only.
+- ReplicationSources that never synced: none. The tdarr-server source failed every mover with `config or key ... is damaged: ciphertext verification failed`: two movers ran
+  `restic init` on `volsync--tdarr--tdarr-server` in the same second (2026-10-15 19:39:53 UTC), leaving two key files and a config encrypted for only one of them, with the
+  same password as its sibling. It now uses `repositorySuffix = "--2"` (a fresh repository, `volsync--tdarr--tdarr-server--2`). The orphaned B2 path
+  `volsync--tdarr--tdarr-server/` (2 keys, 1 config, no snapshots) is reclaimable. For any future "damaged" repository, list its `keys/` before blaming the password.
+- `volsync--jitsi--prosody-src` showed a `lastSyncDuration` of 2701h: its first sync completed on 2026-10-15, 112 days after the object was created (2026-06-25). Until #852 its
+  `sourcePVC` was `prosody-data`, a claim that never existed, so the mover never started. Cosmetic now; the duration runs from creation to the first success.
 - CNPG ScheduledBackups with no recent backup: windmill and chirpstack (93d), immich (107d), hydra/keto/kratos (205d, clusters no longer exist).
 - No VolSync source, by decision: `frigate-media` (1Ti of rolling camera recordings: churn makes restic expensive and the clips have no value
   after their retention), `media-downloads` (transient), `media-sports` (re-acquirable), `dvd-rip-work` (rip scratch), and the model caches

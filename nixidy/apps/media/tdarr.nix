@@ -187,7 +187,11 @@
     };
     applications.tdarr = {
       namespace = "media";
-      volsync.pvcs.tdarr-server.title = "tdarr-server";
+      volsync.pvcs.tdarr-server = {
+        title = "tdarr-server";
+        # Two movers ran restic init on the original path at once (two key files, one config), leaving a repository nobody can open.
+        repositorySuffix = "--2";
+      };
       volsync.pvcs.tdarr-configs.title = "tdarr-configs";
       helm.releases.tdarr = {
         chart = charts.bjw-s-labs.app-template-patched;
