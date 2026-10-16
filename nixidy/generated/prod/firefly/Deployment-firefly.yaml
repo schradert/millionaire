@@ -32,6 +32,8 @@ spec:
         - env:
             - name: APP_KEY_FILE
               value: /secrets/app_key.txt
+            - name: APP_URL
+              value: https://firefly.trdos.me
             - name: AUTHENTICATION_GUARD
               value: remote_user_guard
             - name: AUTHENTICATION_GUARD_EMAIL
@@ -62,6 +64,8 @@ spec:
               value: "25"
             - name: SITE_OWNER
               value: t0rdos@pm.me
+            - name: TRUSTED_PROXIES
+              value: '**'
           envFrom:
             - secretRef:
                 name: firefly-passport
