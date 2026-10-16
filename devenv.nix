@@ -219,6 +219,19 @@ in {
             pass_filenames = false;
             always_run = true;
           };
+        # Every hostname in the rendered HTTPRoutes needs an entry in docs/client-matrix.json (the
+        # client-matrix artifact's data). always_run: the global `nixidy/generated` exclude would
+        # otherwise hide route changes from a files filter; the script reads ~100 small files.
+        client-matrix-lint =
+          onCommit
+          // {
+            enable = true;
+            name = "client-matrix-lint";
+            entry = "${lib.getExe pkgs.python3} tools/client-matrix-lint";
+            language = "system";
+            pass_filenames = false;
+            always_run = true;
+          };
         lychee.toml.accept = [200 403 405 406];
         lychee.toml.exclude = [
           # In-cluster service DNS (lychee normalizes with a trailing slash)
@@ -239,6 +252,8 @@ in {
           # (router admin UIs, moonraker, etc.) — unreachable from the dev box.
           "^https?://10\\."
           "^https?://192\\.168\\."
+          # Tailnet (CGNAT) addresses, e.g. AdGuard on hyena
+          "^https?://100\\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\\."
           "^https?://172\\.(1[6-9]|2[0-9]|3[01])\\."
           "^https?://[^/]+\\.internal(:[0-9]+)?"
           # pkgs/**/pin.json url-template/url-set sources ({version}, {name}).
