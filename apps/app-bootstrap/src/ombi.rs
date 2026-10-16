@@ -23,8 +23,8 @@
 //! 5. Sonarr, Radarr and Lidarr, when `<APP>_API_KEY[_FILE]` is set: host `<APP>_HOST`, quality
 //!    profile named `<APP>_PROFILE` (else the lowest id), root folder `<APP>_ROOT`; Lidarr also
 //!    its first metadata profile.
-//! 6. ntfy: `NTFY_URL`, topic `NTFY_TOPIC` (default `media`), priority `NTFY_PRIORITY` (default 2),
-//!    with the request and issue templates switched on.
+//! 6. ntfy: `NTFY_URL`, topic `NTFY_TOPIC` (default `media`), priority `NTFY_PRIORITY` (default 2), `NTFY_TOKEN` (or the file
+//!    `NTFY_TOKEN_FILE`) as the `Authorization: Bearer` header when set, with the request and issue templates switched on.
 //! 7. Accounts: every member of the Keycloak groups `ADMIN_GROUP` (default `admin`) and
 //!    `FAMILY_GROUP` (default `family`) gets an Ombi account (created when missing) with
 //!    `ADMIN_ROLES` or `FAMILY_ROLES`; a Keycloak user in neither group, with an Ombi account, is
@@ -373,8 +373,12 @@ async fn wire_ntfy(api: &Api) -> Result<()> {
     }
     let topic = var("NTFY_TOPIC", "media");
     let priority: i64 = var("NTFY_PRIORITY", "2").parse()?;
+    let authorization = crate::arr::optional_secret("NTFY_TOKEN")?.map(|t| format!("Bearer {t}"));
     api.ensure("/api/v1/Settings/notifications/ntfy", "/api/v1/Settings/notifications/ntfy", "ntfy", |s| {
         set(s, &[("enabled", json!(true)), ("baseUrl", json!(url)), ("topic", json!(topic)), ("priority", json!(priority))]);
+        if let Some(h) = &authorization {
+            s["authorizationHeader"] = json!(h);
+        }
         for t in s["notificationTemplates"].as_array_mut().into_iter().flatten() {
             // Exactly the declared set: Ombi seeds every template on.
             t["enabled"] = json!(notification_type(&t["notificationType"]).is_some_and(|n| NOTIFY_TYPES.contains(&n)));

@@ -17,7 +17,8 @@
 //!   reports a remote-path-mapping error.
 //! - Prowlarr applications "Sonarr", "Radarr", "Lidarr", "Bookshelf" and "Bookshelf Audio" (full sync), from
 //!   `/applications/schema` (the Bookshelf ones as Prowlarr's "Readarr", matched by name).
-//! - With `NTFY_URL` (`https://host/topic`), an "ntfy" notification in each app (grabs, imports, failures, health).
+//! - With `NTFY_URL` (`https://host/topic`), an "ntfy" notification in each app (grabs, imports, failures, health),
+//!   sending `NTFY_TOKEN` (or the file `NTFY_TOKEN_FILE`) as its access token; an existing notification gets the token on every run.
 //! - Prowlarr's own qBittorrent download client (category `prowlarr`, for grabs from its search page) and a
 //!   FlareSolverr indexer proxy (`FLARESOLVERR_URL`, tag `flaresolverr`).
 //! - Prowlarr indexers from `PROWLARR_INDEXERS`, a JSON list of `{name, definition, enable?, priority?,
@@ -349,8 +350,8 @@ const APPS: [App; 5] = [
     },
 ];
 
-/// ntfy notification fields: `serverUrl` and the topic from `NTFY_URL` (`https://host/topic`).
-fn ntfy_fields(url: &str) -> Option<impl Fn(&str) -> Option<Value>> {
+/// ntfy notification fields: `serverUrl` and the topic from `NTFY_URL` (`https://host/topic`), and the access token.
+fn ntfy_fields(url: &str, token: Option<String>) -> Option<impl Fn(&str) -> Option<Value>> {
     let (server, topic) = url.trim_end_matches('/').rsplit_once('/')?;
     if !server.contains("://") || topic.is_empty() {
         return None;
@@ -360,8 +361,21 @@ fn ntfy_fields(url: &str) -> Option<impl Fn(&str) -> Option<Value>> {
         "serverUrl" => Some(json!(server)),
         "topics" => Some(json!([topic])),
         "priority" => Some(json!(3)),
+        "accessToken" => token.as_ref().map(|t| json!(t)),
         _ => None,
     })
+}
+
+/// Give the existing ntfy notifications the access token. The apps return a token masked, so it is written on every run.
+async fn set_ntfy_token(http: &Client, s: &Servarr, token: &str) -> Result<()> {
+    let existing = s.get(http, "/notification").await?;
+    for n in existing.as_array().into_iter().flatten().filter(|n| n["implementation"] == json!("Ntfy")) {
+        let mut body = n.clone();
+        fill_fields(&mut body, &|f| (f == "accessToken").then(|| json!(token)));
+        let id = body["id"].as_i64().ok_or("ntfy notification without an id")?;
+        s.put(http, &format!("/notification/{id}?forceSave=true"), &body).await?;
+    }
+    Ok(())
 }
 
 /// Title with only lowercase letters and digits, so "Monty Pythons" and "Monty Python's" compare equal.
@@ -501,12 +515,20 @@ pub async fn run() -> Result<()> {
             Ok(false) => {}
             Err(e) => eprintln!("{l}: skipping the qBittorrent download client (is qbittorrent up?): {e}"),
         }
-        if let Some(set) = env::var("NTFY_URL").ok().as_deref().and_then(ntfy_fields) {
+        let ntfy_token = optional_secret("NTFY_TOKEN")?;
+        if let Some(set) = env::var("NTFY_URL").ok().as_deref().and_then(|url| ntfy_fields(url, ntfy_token.clone())) {
             let on = json!({ "onGrab": true, "onReleaseImport": true, "onDownload": true, "onUpgrade": true, "onHealthIssue": true,
                 "onHealthRestored": true, "onDownloadFailure": true, "onImportFailure": true, "onManualInteractionRequired": true });
             match ensure_provider(&http, &s, "/notification", "ntfy", "Ntfy", on, &set).await {
                 Ok(true) => println!("{l}: added the ntfy notification"),
-                Ok(false) => {}
+                Ok(false) => {
+                    if let Some(token) = &ntfy_token {
+                        match set_ntfy_token(&http, &s, token).await {
+                            Ok(()) => println!("{l}: ntfy notification has its access token"),
+                            Err(e) => eprintln!("{l}: could not set the ntfy access token: {e}"),
+                        }
+                    }
+                }
                 Err(e) => eprintln!("{l}: skipping the ntfy notification: {e}"),
             }
         }
@@ -568,12 +590,15 @@ mod tests {
 
     #[test]
     fn ntfy_url_split() {
-        let set = ntfy_fields("https://ntfy.example/media").unwrap();
+        let set = ntfy_fields("https://ntfy.example/media", None).unwrap();
         assert_eq!(set("serverUrl"), Some(json!("https://ntfy.example")));
         assert_eq!(set("topics"), Some(json!(["media"])));
+        assert_eq!(set("accessToken"), None);
         assert_eq!(set("other"), None);
-        assert!(ntfy_fields("media").is_none());
-        assert!(ntfy_fields("https://ntfy.example/").is_none());
+        assert!(ntfy_fields("media", None).is_none());
+        assert!(ntfy_fields("https://ntfy.example/", None).is_none());
+        let set = ntfy_fields("https://ntfy.example/media", Some("tk_abc".into())).unwrap();
+        assert_eq!(set("accessToken"), Some(json!("tk_abc")));
     }
 
     #[test]

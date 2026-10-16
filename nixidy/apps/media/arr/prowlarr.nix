@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    ntfyToken,
     pinned,
     ...
   }: let
@@ -34,6 +35,7 @@
     };
     applications.prowlarr = {
       namespace = "media";
+      ntfySecret = "publisher";
       # Idempotent post-sync bootstrap (apps/app-bootstrap arr, >= 0.15.0): root folders and
       # the qBittorrent download client in Sonarr/Radarr/Lidarr, qBittorrent's save path,
       # Prowlarr's application sync to them, its download client, FlareSolverr proxy and the
@@ -57,7 +59,8 @@
             PROWLARR_API_KEY_FILE = "/secrets/prowlarr/apikey";
             QBITTORRENT_PASSWORD_FILE = "/secrets/qbittorrent/password";
           }
-          // lib.optionalAttrs (indexers != []) {PROWLARR_INDEXERS = builtins.toJSON (map withSecretFiles indexers);};
+          // lib.optionalAttrs (indexers != []) {PROWLARR_INDEXERS = builtins.toJSON (map withSecretFiles indexers);}
+          // lib.optionalAttrs ntfyToken.enable {NTFY_TOKEN_FILE = "/secrets/ntfy/token";};
         secrets =
           {
             sonarr = "sonarr-apikey";
@@ -68,7 +71,8 @@
             prowlarr = "prowlarr-apikey";
             qbittorrent = "qbittorrent-admin";
           }
-          // lib.optionalAttrs (secretIndexers != []) {indexers = "prowlarr-indexers";};
+          // lib.optionalAttrs (secretIndexers != []) {indexers = "prowlarr-indexers";}
+          // lib.optionalAttrs ntfyToken.enable {ntfy = "prowlarr-ntfy";};
       };
       resources.externalSecrets.prowlarr-indexers = lib.mkIf (secretIndexers != []) {
         spec = {

@@ -19,7 +19,8 @@
 //! - Seeker: one search every 30 minutes across Sonarr and Radarr (round robin), missing items
 //!   first, then cutoff and custom-format-score upgrades, a library cycle of at least a week. It
 //!   keeps the indexers (1337x behind FlareSolverr) from being hammered. Lidarr is not supported.
-//! - Notifications: ntfy topic `media` on `NTFY_URL` for removed downloads and failed imports.
+//! - Notifications: ntfy topic `media` on `NTFY_URL` for removed downloads and failed imports; with `NTFY_TOKEN` (or
+//!   `NTFY_TOKEN_FILE`) it authenticates with that access token, and an existing provider is rewritten with it on every run.
 
 use crate::trace::SendTraced as _;
 use std::time::Duration;
@@ -234,17 +235,23 @@ pub async fn run() -> Result<()> {
 
     // ntfy.
     if let Ok(ntfy) = std::env::var("NTFY_URL") {
+        let token = optional_secret("NTFY_TOKEN")?;
         let providers = c.get("/api/configuration/notification_providers").await?;
-        if !providers["providers"].as_array().into_iter().flatten().any(|p| p["name"] == json!("ntfy")) {
-            c.post(
-                "/api/configuration/notification_providers/ntfy",
-                &json!({
-                    "name": "ntfy", "isEnabled": true, "serverUrl": ntfy, "topics": [var("NTFY_TOPIC", "media")],
-                    "authenticationType": "None", "priority": "Default", "tags": [],
-                    "onFailedImportStrike": true, "onQueueItemDeleted": true,
-                }),
-            )
-            .await?;
+        let existing = providers["providers"].as_array().into_iter().flatten().find(|p| p["name"] == json!("ntfy"));
+        if existing.is_none() || token.is_some() {
+            let body = json!({
+                "name": "ntfy", "isEnabled": true, "serverUrl": ntfy, "topics": [var("NTFY_TOPIC", "media")],
+                "authenticationType": if token.is_some() { "AccessToken" } else { "None" }, "accessToken": token.clone().unwrap_or_default(),
+                "priority": "Default", "tags": [],
+                "onFailedImportStrike": true, "onQueueItemDeleted": true,
+            });
+            match existing {
+                Some(p) => {
+                    let id = p["id"].as_str().ok_or("the ntfy provider has no id")?;
+                    c.put(&format!("/api/configuration/notification_providers/ntfy/{id}"), &body).await?
+                }
+                None => c.post("/api/configuration/notification_providers/ntfy", &body).await?,
+            };
             println!("cleanuparr: ntfy notifications on");
         }
     }

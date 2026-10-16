@@ -4,6 +4,7 @@ in {
   nixidy = {
     charts,
     lib,
+    ntfyToken,
     pinned,
     ...
   }: let
@@ -18,6 +19,7 @@ in {
     };
     applications.maintainerr = {
       namespace = "media";
+      ntfySecret = "publisher";
       volsync.pvcs.maintainerr.title = "maintainerr";
       # Idempotent post-sync bootstrap (apps/app-bootstrap maintainerr, >= 0.38.0 for Sportarr, Tracearr and Streamystats): the Radarr, Sonarr,
       # Sportarr, Seerr, Ombi, Tracearr and Streamystats connections (Jellyfin comes from jellyfin-bootstrap), the qBittorrent download
@@ -26,32 +28,36 @@ in {
       bootstrap = lib.mkIf (pinned.images ? app-bootstrap-maintainerr) {
         image = with pinned.images.app-bootstrap-maintainerr; "${repository}:${tag}@${digest}";
         args = ["maintainerr"];
-        env = {
-          RADARR_API_KEY_FILE = "/secrets/radarr/apikey";
-          SONARR_API_KEY_FILE = "/secrets/sonarr/apikey";
-          JELLYFIN_ADMIN_USER = "admin";
-          JELLYFIN_ADMIN_PASSWORD_FILE = "/secrets/jellyfin/password";
-          ADMIN_EMAIL = people.my.profiles.personal.email;
-          OMBI_API_KEY_FILE = "/secrets/ombi/apikey";
-          SPORTARR_API_KEY_FILE = "/secrets/sportarr/apikey";
-          TRACEARR_USER = people.me;
-          TRACEARR_PASSWORD_FILE = "/secrets/tracearr/password";
-          # In cluster only, no route: see streamystats.nix.
-          STREAMYSTATS_URL = "http://streamystats.media.svc.cluster.local:3000";
-          QBITTORRENT_PASSWORD_FILE = "/secrets/qbittorrent/password";
-          NTFY_URL = "https://ntfy.${domain}";
-          NTFY_TOPIC = "media";
-          NTFY_PRIORITY = "2";
-        };
-        secrets = {
-          radarr = "radarr-apikey";
-          sonarr = "sonarr-apikey";
-          jellyfin = "jellyfin-admin";
-          ombi = "ombi-apikey";
-          sportarr = "sportarr-apikey";
-          tracearr = "tracearr-admin";
-          qbittorrent = "qbittorrent-admin";
-        };
+        env =
+          {
+            RADARR_API_KEY_FILE = "/secrets/radarr/apikey";
+            SONARR_API_KEY_FILE = "/secrets/sonarr/apikey";
+            JELLYFIN_ADMIN_USER = "admin";
+            JELLYFIN_ADMIN_PASSWORD_FILE = "/secrets/jellyfin/password";
+            ADMIN_EMAIL = people.my.profiles.personal.email;
+            OMBI_API_KEY_FILE = "/secrets/ombi/apikey";
+            SPORTARR_API_KEY_FILE = "/secrets/sportarr/apikey";
+            TRACEARR_USER = people.me;
+            TRACEARR_PASSWORD_FILE = "/secrets/tracearr/password";
+            # In cluster only, no route: see streamystats.nix.
+            STREAMYSTATS_URL = "http://streamystats.media.svc.cluster.local:3000";
+            QBITTORRENT_PASSWORD_FILE = "/secrets/qbittorrent/password";
+            NTFY_URL = "https://ntfy.${domain}";
+            NTFY_TOPIC = "media";
+            NTFY_PRIORITY = "2";
+          }
+          // lib.optionalAttrs ntfyToken.enable {NTFY_TOKEN_FILE = "/secrets/ntfy/token";};
+        secrets =
+          {
+            radarr = "radarr-apikey";
+            sonarr = "sonarr-apikey";
+            jellyfin = "jellyfin-admin";
+            ombi = "ombi-apikey";
+            sportarr = "sportarr-apikey";
+            tracearr = "tracearr-admin";
+            qbittorrent = "qbittorrent-admin";
+          }
+          // lib.optionalAttrs ntfyToken.enable {ntfy = "maintainerr-ntfy";};
       };
       # Maintainerr has no login and returns its settings (API key, Jellyfin key) to any caller, so
       # only oauth2-proxy (UI), the Jellyfin and Maintainerr bootstraps (configure it) and the e2e Job may reach it.
