@@ -218,7 +218,9 @@ const NOTIFY_TYPES: [i64; 7] = [2, 4, 8, 16, 32, 64, 1024];
 
 /// The ntfy agent `NTFY_NAME` (default "ntfy media"), when `NTFY_URL` is set: topic `NTFY_TOPIC` (default
 /// `media`) at priority `NTFY_PRIORITY` (default 2, low; Maintainerr's agent sets no priority header, so it
-/// rides in the topic's query string). Added only when no configuration of that name exists. Returns its id.
+/// rides in the topic's query string). Added when no configuration of that name exists; with `NTFY_TOKEN` (or
+/// `NTFY_TOKEN_FILE`) the token is sent as a Bearer header and an existing configuration is rewritten with it
+/// on every run (`/configuration/add` with an id updates). Returns its id.
 async fn ntfy(http: &Client, base: &str) -> Result<Option<i64>> {
     let Ok(url) = std::env::var("NTFY_URL") else {
         return Ok(None);
@@ -228,23 +230,26 @@ async fn ntfy(http: &Client, base: &str) -> Result<Option<i64>> {
         let all = get(http, base, "/api/notifications/configurations").await?;
         Ok::<_, Box<dyn std::error::Error>>(all.as_array().into_iter().flatten().find(|n| n["name"] == json!(name)).and_then(|n| n["id"].as_i64()))
     };
-    if let Some(id) = find().await? {
-        return Ok(Some(id));
+    let token = optional_secret("NTFY_TOKEN")?;
+    let existing = find().await?;
+    if existing.is_some() && token.is_none() {
+        return Ok(existing);
     }
     let topic = format!("{}?priority={}", var("NTFY_TOPIC", "media"), var("NTFY_PRIORITY", "2"));
-    let r = http
-        .post(format!("{base}/api/notifications/configuration/add"))
-        .json(&json!({
-            "name": name, "agent": "ntfy", "enabled": true, "types": NOTIFY_TYPES, "aboutScale": 3,
-            "options": { "agent": "ntfy", "url": url, "topic": topic },
-        }))
-        .send_t()
-        .await?;
+    let mut options = json!({ "agent": "ntfy", "url": url, "topic": topic });
+    if let Some(t) = &token {
+        options["token"] = json!(t);
+    }
+    let mut body = json!({ "name": name, "agent": "ntfy", "enabled": true, "types": NOTIFY_TYPES, "aboutScale": 3, "options": options });
+    if let Some(id) = existing {
+        body["id"] = json!(id);
+    }
+    let r = http.post(format!("{base}/api/notifications/configuration/add")).json(&body).send_t().await?;
     let r: Value = ok(r, "POST /api/notifications/configuration/add").await?.json().await?;
     if r["code"] != json!(1) {
         return Err(format!("maintainerr refused the ntfy notification: {r}").into());
     }
-    println!("maintainerr: added the ntfy notification {name:?}");
+    println!("maintainerr: {} the ntfy notification {name:?}", if existing.is_some() { "updated" } else { "added" });
     find().await
 }
 

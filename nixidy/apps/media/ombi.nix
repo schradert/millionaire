@@ -18,6 +18,7 @@
   nixidy = {
     charts,
     lib,
+    ntfyToken,
     pinned,
     ...
   }: let
@@ -89,6 +90,7 @@
     };
     applications.ombi = {
       namespace = "media";
+      ntfySecret = "publisher";
       # Break-glass admin (the first-run wizard's user) and the API key Maintainerr and the e2e suite use.
       generatedSecrets.ombi-admin = {
         key = "password";
@@ -99,7 +101,9 @@
       volsync.pvcs.ombi.title = "ombi";
       # Idempotent post-sync bootstrap (apps/app-bootstrap ombi, >= 0.24.0).
       bootstrap = lib.mkIf bootstrapped {
-        inherit image env secrets;
+        inherit image;
+        env = env // lib.optionalAttrs ntfyToken.enable {NTFY_TOKEN_FILE = "/secrets/ntfy/token";};
+        secrets = secrets // lib.optionalAttrs ntfyToken.enable {ntfy = "ombi-ntfy";};
         args = ["ombi"];
       };
       # Ombi trusts the user header from whoever reaches it: only oauth2-proxy, the bootstrap and sync

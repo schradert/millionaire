@@ -2,6 +2,7 @@
   nixidy = {
     charts,
     lib,
+    ntfyToken,
     pinned,
     ...
   }: let
@@ -24,6 +25,7 @@
     };
     applications.cleanuparr = {
       namespace = "media";
+      ntfySecret = "publisher";
       generatedSecrets.cleanuparr-admin = {
         key = "password";
         bitwarden = "cleanuparr/admin-password";
@@ -36,23 +38,27 @@
       bootstrap = lib.mkIf (pinned.images ? app-bootstrap-cleanuparr) {
         image = with pinned.images.app-bootstrap-cleanuparr; "${repository}:${tag}@${digest}";
         args = ["cleanuparr"];
-        env = {
-          CLEANUPARR_URL = "http://cleanuparr.media.svc.cluster.local:${toString port}";
-          CLEANUPARR_PASSWORD_FILE = "/secrets/admin/password";
-          SONARR_API_KEY_FILE = "/secrets/sonarr/apikey";
-          RADARR_API_KEY_FILE = "/secrets/radarr/apikey";
-          LIDARR_API_KEY_FILE = "/secrets/lidarr/apikey";
-          QBITTORRENT_PASSWORD_FILE = "/secrets/qbittorrent/password";
-          NTFY_URL = "https://ntfy.${domain}";
-          NTFY_TOPIC = "media";
-        };
-        secrets = {
-          admin = "cleanuparr-admin";
-          sonarr = "sonarr-apikey";
-          radarr = "radarr-apikey";
-          lidarr = "lidarr-apikey";
-          qbittorrent = "qbittorrent-admin";
-        };
+        env =
+          {
+            CLEANUPARR_URL = "http://cleanuparr.media.svc.cluster.local:${toString port}";
+            CLEANUPARR_PASSWORD_FILE = "/secrets/admin/password";
+            SONARR_API_KEY_FILE = "/secrets/sonarr/apikey";
+            RADARR_API_KEY_FILE = "/secrets/radarr/apikey";
+            LIDARR_API_KEY_FILE = "/secrets/lidarr/apikey";
+            QBITTORRENT_PASSWORD_FILE = "/secrets/qbittorrent/password";
+            NTFY_URL = "https://ntfy.${domain}";
+            NTFY_TOPIC = "media";
+          }
+          // lib.optionalAttrs ntfyToken.enable {NTFY_TOKEN_FILE = "/secrets/ntfy/token";};
+        secrets =
+          {
+            admin = "cleanuparr-admin";
+            sonarr = "sonarr-apikey";
+            radarr = "radarr-apikey";
+            lidarr = "lidarr-apikey";
+            qbittorrent = "qbittorrent-admin";
+          }
+          // lib.optionalAttrs ntfyToken.enable {ntfy = "cleanuparr-ntfy";};
       };
       helm.releases.cleanuparr = {
         chart = charts.bjw-s-labs.app-template-patched;
