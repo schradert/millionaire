@@ -38,9 +38,11 @@ spec:
               value: /secrets/qbittorrent/password
             - name: RADARR_API_KEY_FILE
               value: /secrets/radarr/apikey
+            - name: RADARR_IMPORT_EXISTING
+              value: "true"
             - name: SONARR_API_KEY_FILE
               value: /secrets/sonarr/apikey
-          image: harbor.trdos.me/library/app-bootstrap:0.33.0@sha256:943d36f34262c76aaaba4d271aed960e16b9068d5064f3cd3297ef1877ffdad5
+          image: harbor.trdos.me/library/app-bootstrap:0.43.0@sha256:11657a7debdb9f1405c40d05314d2a7cc5ff2735d1466e1e9958bef080731fb7
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
