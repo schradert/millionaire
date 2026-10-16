@@ -50,3 +50,11 @@ spec:
               protocol: TCP
             - port: "8091"
               protocol: TCP
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "22000"
+              protocol: TCP
+            - port: "22000"
+              protocol: UDP
