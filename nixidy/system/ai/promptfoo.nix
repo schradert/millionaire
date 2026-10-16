@@ -36,7 +36,6 @@ in {
       namespace = "ai";
       volsync.pvcs.promptfoo = {
         title = "promptfoo";
-        restore = false;
       };
       helm.releases.promptfoo = {
         chart = charts.bjw-s-labs.app-template-patched;

@@ -33,9 +33,10 @@ Notes assembled from the repo on 2026-10-10. The sequence has never been run end
    `nixidy/generated/` is stale.
 6. **External Secrets then workloads.** Once the Bitwarden ClusterSecretStore is healthy, ExternalSecrets materialise every app secret.
 7. **Ceph.** Rook-Ceph (`storage` namespace) builds a new empty cluster. Only data covered by backups comes back:
-   - PVCs with a VolSync ReplicationSource: restore each (see `docs/pvc-and-postgres-restore.md`). The committed `-dst`
-     ReplicationDestinations restore into the live PVC when `trigger.manual` changes, and `inject` PVCs get a
-     `dataSourceRef` to them so first creation restores automatically.
+   - PVCs with a VolSync ReplicationSource: nothing restores by itself (`restore = false` is the module default). Set `restore = true`
+     on the `volsync.pvcs` entries to bring back (one commit; the new PVCs are empty, so scale those apps to 0 first), wait for each
+     `-dst` to report `Successful`, then remove the lines again (see `docs/pvc-and-postgres-restore.md`). A PVC with `inject` gets
+     its `-dst` and a `dataSourceRef` to it even with `restore = false`, so first creation restores automatically.
    - CNPG clusters: recreate with `bootstrap.recovery` from `s3://trdos-me--volsync/cnpg/<name>/`.
 8. **Verify** with Gatus, ArgoCD health, and spot checks of restored apps.
 

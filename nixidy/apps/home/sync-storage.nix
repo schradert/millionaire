@@ -8,8 +8,6 @@
         pvc = title: {
           inherit title;
           cacheAccessModes = ["ReadWriteOnce"];
-          # Restores are deliberate, never automatic: a restore into the live PVC overwrites it.
-          restore = false;
           # Staggered after the 04:00 library backups, with a week of history for files that change.
           schedule = "30 3 * * *";
           retain.daily = 7;

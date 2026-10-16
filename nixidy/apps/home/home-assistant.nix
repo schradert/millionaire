@@ -43,7 +43,6 @@ in {
       postgres.enable = true;
       volsync.pvcs.ha-config = {
         title = "ha";
-        restore = false;
       };
       helm.releases.ha = {
         chart = charts.bjw-s-labs.app-template-patched;

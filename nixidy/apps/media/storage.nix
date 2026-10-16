@@ -5,51 +5,41 @@
       volsync.pvcs.media-dvd = {
         title = "media-dvd";
         cacheAccessModes = ["ReadWriteOnce"];
-        # Restores of the ISO library are deliberate, never automatic.
-        restore = false;
       };
       # Libraries that cannot be re-downloaded from the *arr stack. Deliberately not backed up:
       # media-downloads (transient), media-tv and media-sports (re-acquirable, large).
       volsync.pvcs.media-music = {
         title = "media-music";
         cacheAccessModes = ["ReadWriteOnce"];
-        restore = false;
       };
       volsync.pvcs.media-books = {
         title = "media-books";
         cacheAccessModes = ["ReadWriteOnce"];
-        restore = false;
       };
       volsync.pvcs.media-audiobooks = {
         title = "media-audiobooks";
         cacheAccessModes = ["ReadWriteOnce"];
-        restore = false;
       };
       volsync.pvcs.media-comics = {
         title = "media-comics";
         cacheAccessModes = ["ReadWriteOnce"];
-        restore = false;
       };
       volsync.pvcs.media-manga = {
         title = "media-manga";
         cacheAccessModes = ["ReadWriteOnce"];
-        restore = false;
       };
       volsync.pvcs.media-podcasts = {
         title = "media-podcasts";
         cacheAccessModes = ["ReadWriteOnce"];
-        restore = false;
       };
       volsync.pvcs.media-games = {
         title = "media-games";
         cacheAccessModes = ["ReadWriteOnce"];
-        restore = false;
       };
       # The curated DVD MKVs: days of encoding and review, with the discs as the only other source.
       volsync.pvcs.media-movies = {
         title = "media-movies";
         cacheAccessModes = ["ReadWriteOnce"];
-        restore = false;
         # After the 04:00 backups, so the first ~470GB upload does not run beside the other seeds.
         schedule = "0 6 * * *";
       };

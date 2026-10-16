@@ -78,11 +78,9 @@ in {
       # Uploads/avatars plus the MongoDB data (crash-consistent copy of the live files).
       volsync.pvcs.librechat = {
         title = "librechat";
-        restore = false;
       };
       volsync.pvcs.librechat-mongodb = {
         title = "data-librechat-mongodb-0";
-        restore = false;
       };
       # LibreChat parses the creds key/IV as hex (32 and 16 bytes), hence digits only.
       generatedSecrets = {
