@@ -421,7 +421,15 @@ pub async fn ombi(ctx: &Ctx, f: &mut Flow) -> R<()> {
     // The movie.
     let radarr = Arr::new("radarr")?;
     let (_tag, root) = radarr_setup(ctx, &radarr).await?;
-    refuse_existing("radarr", &radarr.get(ctx, &format!("/movie?tmdbId={SINTEL_TMDB}")).await?, ctx, "Sintel")?;
+    let existing = radarr.get(ctx, &format!("/movie?tmdbId={SINTEL_TMDB}")).await?;
+    refuse_existing("radarr", &existing, ctx, "Sintel")?;
+    // The `seerr` flow runs before this one and leaves its (marked) Sintel in Radarr until the final cleanup. Radarr
+    // holds a movie once, so it would make "nothing reached Radarr" false and "reached Radarr" vacuously true: start
+    // from a Radarr without it.
+    if let Some(id) = existing.as_array().and_then(|a| a.first()).and_then(|m| m["id"].as_i64()) {
+        radarr.delete(ctx, &format!("/movie/{id}?deleteFiles=true&addImportExclusion=false")).await?;
+        f.ok("radarr", "this run's earlier Sintel removed", format!("movie {id}"));
+    }
     let list = json(ombi.admin(ctx, Method::GET, "/request/movie"), "ombi", "list movie requests").await?;
     if let Some(r) = ombi_request(&list, "theMovieDbId", &json!(SINTEL_TMDB)) {
         if !r["requestedUser"]["userName"].as_str().is_some_and(|n| n.contains(&ctx.marker)) {

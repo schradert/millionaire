@@ -122,9 +122,26 @@ pub async fn rip(ctx: &Ctx, f: &mut Flow) -> R<()> {
     exists(&moved.join(format!("{renamed}.mkv")), "renamed main feature")?;
     let trailers: Vec<String> =
         std::fs::read_dir(moved.join("trailers")).map(|rd| rd.flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect()).unwrap_or_default();
-    if trailers.len() != 1 || movie.exists() || Path::new(&media_root()).join("dvd").join(&library).exists() {
-        return Err(Fail::new("fs", "rename", format!("trailers {trailers:?}, old folders left: {}", movie.exists())));
+    if trailers.len() != 1 {
+        return Err(Fail::new("fs", "rename", format!("expected only Title 2 in trailers/, found {trailers:?}")));
     }
+    // The controller removes the old folders in its publish Job, but this Pod reads the same CephFS volumes through its own
+    // client, whose cached directory entries can lag a few seconds (a rename finishing within ~15s was seen reporting the
+    // emptied folder as still there). Give the old folders time to disappear before calling them left behind.
+    let old_dvd = Path::new(&media_root()).join("dvd").join(&library);
+    poll("fs", "old folders removed", Duration::from_secs(90), Duration::from_secs(3), || async {
+        let left: Vec<String> = [&movie, &old_dvd]
+            .into_iter()
+            .filter(|p| p.exists())
+            .map(|p| format!("{} {:?}", p.display(), std::fs::read_dir(p).map(|rd| rd.flatten().map(|e| e.file_name()).collect::<Vec<_>>())))
+            .collect();
+        if left.is_empty() {
+            Ok(Some(()))
+        } else {
+            Err(Fail::new("fs", "rename", format!("old folders left: {left:?}")))
+        }
+    })
+    .await?;
     f.ok("fs", "renamed and sorted", format!("{renamed}, trailers {trailers:?}"));
     Ok(())
 }
