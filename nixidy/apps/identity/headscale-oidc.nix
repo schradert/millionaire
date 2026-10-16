@@ -3,7 +3,7 @@
 # runs outside the cluster and needs the same value, so the operator reads the Secret `headscale-oidc` that an
 # ExternalSecret writes (`create = false`: it fails rather than inventing a different secret).
 #
-# Off until the pulumi step of docs/manual-steps.md 19 is done: flip `enable` to true, render, commit, sync.
+# On since 2026-10-16 (docs/manual-steps.md 19: the pulumi step is done and hyena is deployed).
 {config, ...}: let
   headscale = {
     enable = true;
