@@ -49,6 +49,31 @@ Audit of 2026-10-13 (`kubectl -n cicd get applications`, 136 apps).
 "After" includes Tempo and Mimir, added by other work. A CNPG `Cluster` brings its own PodMonitor (`monitoring.enablePodMonitor`,
 default on, nixidy/system/storage/postgres.nix), so every database is scraped; the table says "CNPG database only" where that is all an app has.
 
+## Daily alert digest
+
+Alertmanager notifies ntfy only (`nixidy/system/observability/alertmanager.nix`). Once a day, at 08:00 America/Los_Angeles, the CronJob
+`observability/alert-digest` (`nixidy/system/observability/alert-digest.nix`, image `app-bootstrap alert-digest`, code in
+`apps/app-bootstrap/src/alert_digest.rs`) sends one text+HTML email to `people.my.profiles.personal.email` through Stalwart
+(`stalwart.mail.svc:25`, no auth from inside the cluster; the mail leaves via the Proton relay). Sections, one line per alert
+(`severity alertname namespace/instance since <time> (<age>) summary`, times in UTC):
+
+- **Firing now**: Prometheus `/api/v1/alerts` in state `firing`, minus what Alertmanager suppresses. `since` is the alert's `ALERTS_FOR_STATE` value.
+- **Fired in the last 24h, resolved**: `max_over_time(ALERTS{alertstate="firing"}[24h])` minus what is firing now. The summary comes from the rule
+  (omitted when the rule's summary is a template).
+- **Silenced or inhibited**: firing in Prometheus but `suppressed` in Alertmanager `/api/v2/alerts`, tagged `[silenced]` or `[inhibited]`.
+
+`Watchdog` and `InfoInhibitor` (always firing by design) are left out, so a quiet day sends nothing; `severity=info` alerts are included.
+`alwaysSend = true` in `alert-digest.nix` (env `ALWAYS_SEND`) mails the empty digest too. Other knobs (env): `DIGEST_HOURS`, `IGNORE_ALERTS`,
+`PROMETHEUS_URL`, `ALERTMANAGER_URL`, `SMTP_ADDR`. A failed run is `KubeJobFailed` (ntfy `alerts`); `AlertDigestStale` fires when no run succeeded for
+three days. Test run (the log prints counts only; Stalwart's log shows the queued message and the relay):
+
+```sh
+kubectl -n observability create job --from=cronjob/alert-digest alert-digest-test
+kubectl -n observability logs job/alert-digest-test
+kubectl -n mail logs deploy/stalwart | tail
+kubectl -n observability delete job alert-digest-test
+```
+
 ## Adding a scrape
 
 1. Turn the native metrics on (env var, flag or config), exposing a named Service/container port.
@@ -65,6 +90,7 @@ default on, nixidy/system/storage/postgres.nix), so every database is scraped; t
 | App | Metrics | Gap |
 |---|---|---|
 | actual | none | no metrics endpoint upstream |
+| alert-digest | n/a | CronJob; kube-state-metrics job series drive the alerts |
 | alertmanager | PodMonitor |  |
 | alloy | ServiceMonitor (also exposes `pyroscope_ebpf_*`) |  |
 | android | none | static nginx; no stub_status exporter |

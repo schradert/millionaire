@@ -1,0 +1,54 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: alert-digest
+  namespace: observability
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 300
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: alert-digest
+        spec:
+          automountServiceAccountToken: false
+          containers:
+            - args:
+                - alert-digest
+              env:
+                - name: ALWAYS_SEND
+                  value: "false"
+                - name: DIGEST_FROM
+                  value: noreply@trdos.me
+                - name: DIGEST_TO
+                  value: t0rdos@pm.me
+              image: harbor.trdos.me/library/app-bootstrap:0.46.0@sha256:7e23c32c7e2d4a6fb59cab09c526e35b72795d9396240910575951d53353d29c
+              name: alert-digest
+              resources:
+                limits:
+                  memory: 128Mi
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+          restartPolicy: Never
+          securityContext:
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
+      ttlSecondsAfterFinished: 86400
+  schedule: 0 8 * * *
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 1
+  timeZone: America/Los_Angeles
