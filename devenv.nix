@@ -543,6 +543,35 @@ in {
         syncthing device-id --home "$dir" 2>/dev/null || syncthing --device-id --home "$dir"
       '';
 
+      # Restore test for the weekly Bitwarden Secrets Manager backup (nixidy/system/security/bws-backup.nix):
+      # fetches the newest object from the VolSync B2 bucket, decrypts it with the private key held in
+      # secrets/sops/personal.yaml (`age.bws-backup`, never in the cluster) and checks it parses and still
+      # holds the restic password and the B2 keys. Prints counts only, never values.
+      scripts.bws-backup-restore-test.exec = ''
+        set -euo pipefail
+        dir=$(mktemp -d); trap 'rm -rf "$dir"' EXIT
+        secrets=$(bws secret list -o json)
+        field() { jq -r --arg k "$1" '.[] | select(.key == $k) | .value' <<<"$secrets"; }
+        export RCLONE_S3_PROVIDER=Other RCLONE_S3_ENDPOINT=https://s3.us-west-004.backblazeb2.com RCLONE_S3_NO_CHECK_BUCKET=true
+        RCLONE_S3_ACCESS_KEY_ID=$(field backblaze/bucket/application_key_id); export RCLONE_S3_ACCESS_KEY_ID
+        RCLONE_S3_SECRET_ACCESS_KEY=$(field backblaze/bucket/application_key); export RCLONE_S3_SECRET_ACCESS_KEY
+        src=":s3:${builtins.replaceStrings ["."] ["-"] domain}--volsync/bws-backup"
+        newest=$(rclone lsf --files-only "$src" | sort | tail -n 1)
+        [ -n "$newest" ] || { echo "no object under $src" >&2; exit 1; }
+        echo "newest: $newest ($(rclone lsf --files-only --format sp "$src" | grep -F "$newest" | cut -d';' -f1) bytes)"
+        rclone copyto "$src/$newest" "$dir/backup.age"
+        umask 077
+        sops decrypt --extract '["age"]["bws-backup"]' "${config.devenv.root}/secrets/sops/personal.yaml" > "$dir/key"
+        age -d -i "$dir/key" -o "$dir/backup.json" "$dir/backup.age"
+        jq -e 'type == "array" and length > 0' "$dir/backup.json" >/dev/null
+        for k in volsync/restic/password backblaze/bucket/application_key_id backblaze/bucket/application_key; do
+          jq -e --arg k "$k" 'any(.[]; .key == $k and (.value | length) > 0)' "$dir/backup.json" >/dev/null || { echo "missing or empty: $k" >&2; exit 1; }
+        done
+        echo "OK: $(jq length "$dir/backup.json") secrets in $newest"
+        # live vs backup: keys present in Bitwarden now but absent from the backup (new since the backup)
+        echo "keys added since the backup: $(jq -n --slurpfile b "$dir/backup.json" --argjson l "$secrets" '[$l[].key] - [$b[0][].key] | length')"
+      '';
+
       # `android <device> [apply]`: compares a phone with android.devices.<device> over adb on the
       # tailnet (docs/android-fleet.md). adb runs on bonobo, which holds the paired key; apply opens
       # Obtainium's import of the missing apps on the phone. It never uninstalls or changes settings.
@@ -690,6 +719,8 @@ in {
         hcloud-upload-image
         android-tools # adb for the Android fleet (docs/android.md)
         syncthing # `syncthing-identity` generates device certificates
+        age # age-keygen; `bws-backup-restore-test` decrypts the Bitwarden backup
+        rclone # `bws-backup-restore-test` downloads it
       ];
 
       images.ha = "Home Assistant with custom components";

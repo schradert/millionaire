@@ -47,6 +47,7 @@
     ./observability/smartctl-exporter.nix
     ./observability/tempo.nix
     ./portal.nix
+    ./security/bws-backup.nix
     ./security/cert-manager.nix
     ./security/external-secrets
     ./security/generated-secrets.nix
