@@ -19,10 +19,7 @@ spec:
       app.kubernetes.io/instance: keycloak
       app.kubernetes.io/name: keycloak
   strategy:
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
-    type: RollingUpdate
+    type: Recreate
   template:
     metadata:
       labels:
@@ -67,7 +64,7 @@ spec:
           envFrom:
             - secretRef:
                 name: keycloak
-          image: harbor.trdos.me/library/keycloak:26.2.5-optimized-2@sha256:daad07a3346b59866646b7b39e43a02ef8928ba505e0b9796a46d71715673568
+          image: harbor.trdos.me/library/keycloak:26.8.1-optimized-2@sha256:a911f158f02b9da7ce94a35c06edea58d23d8e60e24d78ca6a7806768ae22339
           livenessProbe:
             httpGet:
               path: /health/live
