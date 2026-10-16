@@ -186,6 +186,8 @@ in {
     bootstrapSpec = {
       backoffLimit = 6;
       activeDeadlineSeconds = 1200;
+      # Stable label for the identity network policy (Job names differ: the CronJob's carry a timestamp).
+      template.metadata.labels."app.kubernetes.io/name" = "sure-bootstrap";
       template.spec = {
         restartPolicy = "OnFailure";
         automountServiceAccountToken = false;
