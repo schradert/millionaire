@@ -124,7 +124,9 @@ in {
       fallback = true;
       post-build-hook = toString hook;
     };
-  sops.secrets = lib.mkIf (builtins.pathExists ./generated.json) {attic-auth-token.key = "attic/auth-token";};
+  # Pilot of modules/bws-secrets.nix (docs/secrets.md): with bwsSecrets.enable the same file is fetched from Bitwarden.
+  sops.secrets = lib.mkIf (builtins.pathExists ./generated.json && !config.bwsSecrets.enable) {attic-auth-token.key = "attic/auth-token";};
+  bwsSecrets.secrets = lib.mkIf (builtins.pathExists ./generated.json) {attic-auth-token.key = "attic/auth-token";};
   # TODO move over old dotfiles modules
   # dotfiles.profiles.server.enable = true;
 }
