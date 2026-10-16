@@ -1,0 +1,18 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: volsync--firefly--firefly-src
+  namespace: finance
+spec:
+  restic:
+    copyMethod: Direct
+    pruneIntervalDays: 8
+    repository: volsync--firefly--firefly
+    retain:
+      daily: 1
+      monthly: 1
+      weekly: 1
+      yearly: 1
+  sourcePVC: firefly
+  trigger:
+    schedule: 0 4 * * *
