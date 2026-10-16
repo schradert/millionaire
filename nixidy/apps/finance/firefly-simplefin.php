@@ -13,17 +13,17 @@
 
 const SA = '/var/run/secrets/kubernetes.io/serviceaccount';
 const MAX_ACCOUNTS = 20;
-const WINDOW_DAYS = 60; // <= 90, the Bridge's per-request limit
+const WINDOW_DAYS = 45; // the Bridge recommends <= 45 (hard limit 90) per request
 
 function out(string $m): void { fwrite(STDOUT, "$m\n"); }
 function fail(string $m): never { fwrite(STDERR, "simplefin-import: $m\n"); exit(1); }
 
-function http(string $method, string $url, array $headers = [], string $body = ''): array
+function http(string $method, string $url, array $headers = [], string $body = '', array $ssl = []): array
 {
     $ctx = stream_context_create(['http' => [
         'method' => $method, 'header' => implode("\r\n", $headers) . "\r\n", 'content' => $body,
         'ignore_errors' => true, 'timeout' => 60,
-    ]]);
+    ], 'ssl' => $ssl]);
     $res = @file_get_contents($url, false, $ctx);
     $status = 0;
     if (isset($http_response_header[0]) && preg_match('#\s(\d{3})\s#', $http_response_header[0], $m)) {
@@ -36,10 +36,15 @@ $ns = trim(file_get_contents(SA . '/namespace'));
 $kubeBase = 'https://' . getenv('KUBERNETES_SERVICE_HOST') . ':' . getenv('KUBERNETES_SERVICE_PORT') . "/api/v1/namespaces/$ns/secrets";
 function kube(string $method, string $url, ?array $body = null, string $type = 'application/json'): array
 {
-    return http($method, $url, [
+    // The API server's cert is signed by the cluster CA, not a public one.
+    $res = http($method, $url, [
         'Authorization: Bearer ' . trim(file_get_contents(SA . '/token')),
         "Content-Type: $type", 'Accept: application/json',
-    ], null === $body ? '' : json_encode($body));
+    ], null === $body ? '' : json_encode($body), ['cafile' => SA . '/ca.crt']);
+    if (0 === $res[0]) {
+        fail("kube API $method request failed (no HTTP status)");
+    }
+    return $res;
 }
 
 // --- 1. access URL ---
@@ -77,7 +82,7 @@ if ('' === $access || ($have['token_sha256'] ?? '') !== $hash) {
         if (409 === $cst) {
             [$cst] = kube('PATCH', "$kubeBase/$name", ['stringData' => $data], 'application/merge-patch+json');
         }
-        if ($cst >= 300) {
+        if ($cst < 200 || $cst >= 300) {
             fail("could not store the access URL (HTTP $cst); the setup token is spent: generate a new one");
         }
     }
