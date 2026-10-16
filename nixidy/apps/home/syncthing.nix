@@ -9,6 +9,10 @@
 # sync-saves (sync-storage.nix) and org-files are mounted under /var/syncthing, and the
 # bootstrap Job (apps/app-bootstrap syncthing) declares the folders and the devices through the
 # REST API. Only devices with an ID recorded in the table are accepted.
+#
+# The sync port is also a LoadBalancer on the LAN, `syncthing-lan` (TCP and QUIC on 22000): the address is
+# the hub's `lan` in the table, from the Cilium pool (docs/manual-steps.md 5b). Each client's hub device
+# lists it first, so LAN hosts connect directly and only off-LAN ones need discovery and relays.
 {config, ...}: let
   inherit (config.canivete.meta) domain;
   inherit (config) syncthing;
@@ -71,6 +75,17 @@ in {
     bootstrapped = pinned.images ? app-bootstrap-syncthing;
   in {
     portal.apps.syncthing.groups = ["admin"];
+    # The LAN reaches the LoadBalancer as "world" (as forgejo's SSH and owncast's RTMP); the peers' certificates narrow it.
+    # The rule is namespace-wide, so it opens 22000 in `home`.
+    netpol.namespaces.home.extraIngress = lib.toList {
+      fromEntities = ["world"];
+      toPorts = lib.toList {
+        ports = map (protocol: {
+          port = toString sync.port;
+          inherit protocol;
+        }) ["TCP" "UDP"];
+      };
+    };
     gatus.endpoints.syncthing = {
       url = "https://${hostname}";
       group = "internal";
@@ -189,8 +204,13 @@ in {
                 }
                 {
                   name = "sync";
-                  containerPort = 22000;
+                  containerPort = sync.port;
                   protocol = "TCP";
+                }
+                {
+                  name = "quic";
+                  containerPort = sync.port;
+                  protocol = "UDP";
                 }
               ];
               probes.liveness = {
@@ -224,7 +244,21 @@ in {
 
           service.syncthing.ports = {
             http.port = 8384;
-            sync.port = 22000;
+            sync.port = sync.port;
+          };
+          service.syncthing-lan = {
+            type = "LoadBalancer";
+            annotations."lbipam.cilium.io/ips" = syncthing.devices.hub.lan;
+            ports = {
+              sync = {
+                port = sync.port;
+                protocol = "TCP";
+              };
+              quic = {
+                port = sync.port;
+                protocol = "UDP";
+              };
+            };
           };
 
           persistence = {

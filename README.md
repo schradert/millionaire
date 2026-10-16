@@ -39,7 +39,6 @@
 36. TODO hy3/hyprspace: revisit the `pkgs/hyprspace` pin and hold (and nixpkgs' hy3) when Hyprland 0.56 lands
 37. TODO lift the Jovian hold (systeamadeck)
 38. TODO Waterfly (Firefly III Android app) is blocked by oauth2-proxy: it sends a Firefly personal access token, which oauth2-proxy cannot verify
-39. TODO Syncthing: the hub's sync port 22000 has no LoadBalancer, so devices reach it only through discovery and relays
 40. TODO contextforge: verify Keycloak SSO and `/servers/<id>/mcp` with `sso-token` live once `app-bootstrap-contextforge` is pinned (its `OIDC_*` env was ignored upstream; now `SSO_KEYCLOAK_*`)
 41. TODO verify the work Mac's userspace tailscaled (headscale via `trdos <cmd>`) end to end
 42. TODO verify chirpstack gRPC through the internal gateway

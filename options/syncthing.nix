@@ -17,6 +17,11 @@ in {
           default = null;
           description = "device ID (`syncthing --device-id` on the device); null until recorded, and a device without one is not accepted";
         };
+        lan = mkOption {
+          type = types.nullOr types.str;
+          default = null;
+          description = "fixed LAN address the device's sync port is reached on (the hub's LoadBalancer, in the Cilium pool); clients dial it before discovery and relays";
+        };
         os = can.enum ["linux" "darwin" "android"] "picks each folder's path" {default = "linux";};
         profiles = mkOption {
           type = types.listOf (types.enum profiles);
