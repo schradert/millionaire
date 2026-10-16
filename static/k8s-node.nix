@@ -12,7 +12,7 @@
   containerdDir = "/var/lib/rancher/rke2/agent/containerd";
   isServer = config.services.rke2.role == "server";
 in {
-  imports = [./builder.nix ./tailnet.nix ./rke2-fips-overlay.nix ./etcd-watchdog.nix ./etcd-snapshot.nix] ++ (with flake.inputs.srvos.nixosModules; [roles-nix-remote-builder]);
+  imports = [./builder.nix ./tailnet.nix ./rke2-fips-overlay.nix ./etcd-watchdog.nix ./etcd-snapshot.nix ./containerd-external.nix] ++ (with flake.inputs.srvos.nixosModules; [roles-nix-remote-builder]);
   canivete.kubernetes.enable = true;
   # Join the cluster tailnet so cloud burst workers can reach the RKE2
   # supervisor and pod traffic routes natively across sites (no MagicDNS,
