@@ -32,7 +32,7 @@ spec:
                 - name: DOMAIN
                   value: trdos.me
                 - name: DVDRIP_IMAGE
-                  value: harbor.trdos.me/library/dvdrip:0.1.5@sha256:f599147157443691d74098e6502b87efa5cafe670d8c6614328a43d927e1dbef
+                  value: harbor.trdos.me/library/dvdrip:0.1.6@sha256:383209bd18afffcbe77823a423c04486191813a7abe0db5c46e997f01be39415
                 - name: E2E_REPORT_CONFIGMAP
                   value: media/media-e2e-last-report
                 - name: E2E_RUNNER
