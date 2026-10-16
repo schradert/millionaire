@@ -309,3 +309,22 @@ ROMarr is wired to Prowlarr, qBittorrent, RomM and GG Requestz. What it finds de
 2. **Internet Archive and other sources** are ROM Hub plugins, which ROMarr installs and runs from its Hub tab (<https://romarr.trdos.me>, group `admin`). They are third-party code that runs in the pod with network access and the RomM credentials, so none is installed declaratively: review the plugin first, then install and enable it in Hub > Plugins. Plugins live in `/config/rom-hub` on the `romarr` volume (VolSync-backed).
 3. **Requests.** In GG Requestz an approved request reaches ROMarr; admin requests approve themselves. GG Requestz needs IGDB keys to search (section 17).
 4. **No-Intro DATs** come from libretro's database mirror each time the pod starts. For the official daily No-Intro packs (DAT-o-Matic needs a manual download), put the DATs in `DAT_PATH` yourself and drop the init container in `romarr.nix`.
+
+## 19. Headscale OIDC (README todo 16)
+
+Joining the tailnet with a Keycloak login (`static/headscale-oidc.nix`, Keycloak client `headscale`; background and the bootstrap catch in `docs/internal-services-over-tailnet.md`, "Joining with Keycloak"). Pre-auth keys keep working. The hyena side stays off until the secret is in sops, the cluster side until the flag is flipped.
+
+1. Generate the client secret and write it to sops. `pulumi preview` first should show 1 RandomPassword, 1 Secret and the `headscale_oidc_sops_write` Command:
+
+   ```sh
+   cd pulumi
+   pulumi up \
+     --target 'urn:pulumi:prod::millionaire::random:index/randomPassword:RandomPassword::headscale_oidc_client_secret' \
+     --target 'urn:pulumi:prod::millionaire::bitwarden:index/secret:Secret::headscale/oidc/client-secret' \
+     --target 'urn:pulumi:prod::millionaire::command:local:Command::headscale_oidc_sops_write'
+   ```
+
+   Commit the changed `secrets/sops/default.yaml`.
+2. Flip `enable` to `true` in `nixidy/apps/identity/headscale-oidc.nix`, render, commit with `nixidy/generated/prod/keycloak` and sync. Check the `headscale` client exists (<https://keycloak.trdos.me/admin/master/console/#/default/clients>) and `kubectl -n identity get externalsecret headscale-oidc` is `SecretSynced`.
+3. Deploy hyena only. `journalctl -u headscale -b` must not say `failed to set up OIDC provider`.
+4. Try it with a test device: `tailscale up --login-server=https://headscale.trdos.me`, open the printed URL on a tailnet device, sign in as `tristan`, then `headscale users list` and `headscale nodes list` on hyena show the new user and node. Open question until then: headscale already has a CLI-created user `tristan`; if the login fails on the name, `headscale users rename` the old one (the ACL names `tristan@`, so rename the OIDC user back afterwards) or register the device with a pre-auth key instead. Remove the test node afterwards (`headscale nodes delete`).

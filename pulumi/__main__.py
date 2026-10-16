@@ -233,6 +233,27 @@ class Millionaire:
             environment=ntfy_env,
         )
 
+        # Headscale's OIDC client secret (static/headscale-oidc.nix on hyena, the Keycloak client
+        # in nixidy/apps/identity/headscale-oidc.nix): one value for both sides, so pulumi makes
+        # it and the cluster reads it from Bitwarden.
+        headscale_oidc_client_secret = rand.RandomPassword(
+            "headscale_oidc_client_secret", length=48, special=False, opts=PROTECTED
+        )
+        Secret(
+            "headscale/oidc/client-secret",
+            headscale_oidc_client_secret.result,
+            "Keycloak client secret of headscale's OIDC login",
+        )
+        headscale_oidc_sops_write = command.local.Command(
+            "headscale_oidc_sops_write",
+            create=(
+                f'cd "{millionaire.Nix.root}" && '
+                "printf '%s' \"$OIDC_SECRET\" | jq -Rs . | "
+                "sops set secrets/sops/default.yaml '[\"headscale-oidc-client-secret\"]' --value-stdin"
+            ),
+            environment={"OIDC_SECRET": headscale_oidc_client_secret.result},
+        )
+
         hyena = millionaire.NixOS(
             "hyena",
             hyena_server.ipv4_address.apply(lambda ip: f"root@{ip}"),
@@ -242,6 +263,7 @@ class Millionaire:
                 adguard_password_hash_sops_write,
                 cloudflare_token_sops_write,
                 headscale_backup_b2_sops_write,
+                headscale_oidc_sops_write,
                 ntfy_sops_write,
             ],
         )

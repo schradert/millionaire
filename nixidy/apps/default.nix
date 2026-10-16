@@ -34,6 +34,7 @@
     ./home/syncthing.nix
     ./home/webdav.nix
     ./home/zwave-js-ui.nix
+    ./identity/headscale-oidc.nix
     ./identity/keycloak.nix
     ./identity/keycloak-operator.nix
     ./identity/keycloak-auth.nix
