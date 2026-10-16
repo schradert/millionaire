@@ -8,7 +8,7 @@
     # One-time bulk ingest of the DVD ISOs, MKVs and game library from falcon and the Deck
     # (docs/manual-steps.md, "Archive ingest"). Flip to true for the ingest, back to false after.
     # While false the Deployment sits at 0 replicas with no LoadBalancer Service and no firewall hole.
-    enabled = false;
+    enabled = true;
     # The image is built by modules/images.nix (`image publish rsyncd`); the Deployment renders
     # once its pin exists, as for the forgejo bootstrap image.
     published = pinned.images ? rsyncd;

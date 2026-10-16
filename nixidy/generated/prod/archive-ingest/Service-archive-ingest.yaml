@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    lbipam.cilium.io/ips: 192.168.50.253
+  labels:
+    app.kubernetes.io/instance: archive-ingest
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: archive-ingest
+    app.kubernetes.io/service: archive-ingest
+  name: archive-ingest
+  namespace: media
+spec:
+  ports:
+    - name: rsync
+      port: 873
+      protocol: TCP
+      targetPort: 873
+  selector:
+    app.kubernetes.io/controller: archive-ingest
+    app.kubernetes.io/instance: archive-ingest
+    app.kubernetes.io/name: archive-ingest
+  type: LoadBalancer
