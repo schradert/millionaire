@@ -4,6 +4,16 @@ metadata:
   name: gatus
   namespace: observability
 spec:
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - preference:
+            matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                  - sirver
+          weight: 100
   backup:
     barmanObjectStore:
       destinationPath: s3://trdos-me--volsync/cnpg/gatus/
