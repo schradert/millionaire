@@ -9,16 +9,25 @@
     };
   };
 
+  # The agent discovers the collections once (modules/calendar.nix pre-creates the local ones, so
+  # discovery never asks a question) and then syncs every five minutes. launchd's PATH has neither
+  # the profile nor `bws-get`, which the Baïkal password comes from.
   darwin = {
+    flake,
     lib,
     pkgs,
     ...
-  }: {
+  }: let
+    inherit (flake.config.canivete.meta.people) me;
+    vdirsyncer = lib.getExe pkgs.vdirsyncer;
+    status = "$HOME/.local/share/vdirsyncer/status";
+  in {
     launchd.agents.vdirsyncer = {
       serviceConfig = {
-        ProgramArguments = ["${lib.getExe pkgs.vdirsyncer}" "sync"];
+        ProgramArguments = ["/bin/sh" "-c" "[ -d ${status} ] || ${vdirsyncer} discover; ${vdirsyncer} sync"];
         StartInterval = 300;
         RunAtLoad = true;
+        EnvironmentVariables.PATH = lib.concatStringsSep ":" ["/Users/${me}/.nix-profile/bin" "/etc/profiles/per-user/${me}/bin" "/usr/bin" "/bin"];
       };
     };
   };
