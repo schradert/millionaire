@@ -24,7 +24,7 @@
 # build side (caps, peers' keys, buildMachines). The cap table (`nodes`) holds the
 # headless nodes; falcon is a member without caps (a desktop; idle-scheduled
 # instead); anything else (axolotl, a VM) keeps just the name resolution below,
-# which rke2 (https://sirver:9345) and the attic substituter need.
+# which rke2 (https://sirver:9345) and the attic substituter (chinchilla) need.
 {
   config,
   flake,
@@ -54,7 +54,7 @@ in {
   config = lib.mkMerge [
     {
       # Bare peer names resolve to their LAN address: rke2 joins via
-      # https://sirver:9345 and the attic substituter is http://sirver:8199, and
+      # https://sirver:9345 and the attic substituter is http://chinchilla:8199, and
       # nodes run accept-dns=false, so nothing else resolves them.
       networking.hosts =
         lib.mapAttrs' (n: p: lib.nameValuePair p.tailnet [(alias n)]) peers

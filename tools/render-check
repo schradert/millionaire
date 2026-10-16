@@ -124,7 +124,7 @@ def main():
         attr = f".#legacyPackages.{system}.nixidyEnvs.{system}.prod.config.build.canonicalPackage"
         fresh_tar = remote(
             f"cd {work} && nix build {shlex.quote(attr)} --no-pure-eval --accept-flake-config -o canonical "
-            f"2>&1 >/dev/null | grep -v -E 'binary cache|sirver:8199|nixfmt|accept-flake-config' >&2; "
+            f"2>&1 >/dev/null | grep -v -E 'binary cache|:8199|nixfmt|accept-flake-config' >&2; "
             f"test -d canonical && tar -ch -C canonical .",
             capture_output=True,
         ).stdout

@@ -76,8 +76,8 @@ client ──tailnet──▶ AdGuard (*.trdos.me → relays 100.64.0.4/.5) ─�
 | Image `/nix` only (coruscant) | Rejected: every restart re-substitutes the devenv closure into the container layer (and overlayfs copy-up on these nodes is the known slow path). |
 
 Substituters: cache.nixos.org, nix-community, devenv. The personal attic cache
-on sirver is not reachable today (falcon's builds log `sirver:8199` connection
-refused) and is out of scope; add it to the image's `nix.conf` when it is back.
+(`http://chinchilla:8199/main`, `static/attic-server.nix`) is out of scope; add it to the
+image's `nix.conf` if wanted.
 Heavy builds: the workspace builds with its own CPU (falcon: 32 cores); remote
 builders (falcon, the nodes) need a per-workspace builder key, a later step.
 

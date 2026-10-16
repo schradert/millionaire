@@ -417,7 +417,7 @@ class Millionaire:
                 triggers=[cloud_worker_toplevel],
             )
 
-        # --- Attic binary cache (must exist before sirver deploy) ---
+        # --- Attic binary cache (server key must exist before the chinchilla deploy) ---
         attic_server_key = command.local.Command(
             "attic_server_key",
             create=(
@@ -445,10 +445,19 @@ class Millionaire:
         sirver = millionaire.NixOS(
             "sirver",
             "root@nixos",
+            depends_on=[hyena.refresh, headscale_cluster_node_key_sops],
+        )
+
+        # chinchilla hosts atticd (static/attic-server.nix): deployed before the
+        # attic token below, which is minted on it.
+        chinchilla = millionaire.NixOS(
+            "chinchilla",
+            "root@nixos",
             depends_on=[
                 attic_sops_write,
                 hyena.refresh,
                 headscale_cluster_node_key_sops,
+                sirver.refresh,
             ],
         )
 
@@ -465,18 +474,18 @@ class Millionaire:
             "sirver tailnet IPv4 (pinned by cloud-burst workers)",
         )
 
-        # --- Attic post-deploy setup (after sirver has atticd running) ---
+        # --- Attic post-deploy setup (after chinchilla has atticd running) ---
         # Generate admin token, then use attic client to create/configure cache
         attic_token = command.local.Command(
             "attic_token",
             create=(
-                "ssh -i ~/.ssh/personal sirver '"
+                "ssh -i ~/.ssh/personal chinchilla '"
                 'sudo atticd-atticadm make-token --sub admin --validity "10y" '
                 '--push "*" --pull "*" --delete "*" '
                 '--create-cache "*" --configure-cache "*" --configure-cache-retention "*" --destroy-cache "*"'
                 "'"
             ),
-            opts=pulumi.ResourceOptions(depends_on=[sirver.refresh]),
+            opts=pulumi.ResourceOptions(depends_on=[chinchilla.refresh]),
         )
         Secret(
             "attic/auth-token",
@@ -488,7 +497,7 @@ class Millionaire:
             "attic_setup",
             create=attic_token.stdout.apply(
                 lambda token: (
-                    f"ssh -i ~/.ssh/personal sirver '"
+                    f"ssh -i ~/.ssh/personal chinchilla '"
                     f'nix-shell -p attic-client --run "'
                     f"attic login local http://localhost:8199 {token.strip()} && "
                     f"(attic cache create main 2>/dev/null; true) && "
@@ -516,7 +525,7 @@ class Millionaire:
             "attic_public_key",
             create=attic_token.stdout.apply(
                 lambda token: (
-                    "ssh -i ~/.ssh/personal sirver "
+                    "ssh -i ~/.ssh/personal chinchilla "
                     "'nix-shell -p attic-client --run \""
                     f"attic login local http://localhost:8199 {token.strip()} && "
                     "attic cache info main"
@@ -552,7 +561,6 @@ class Millionaire:
         millionaire.NixOS("octopus", "root@nixos", depends_on=other_node_deps)
         millionaire.NixOS("dingo", "root@nixos", depends_on=other_node_deps)
         millionaire.NixOS("bonobo", "root@nixos", depends_on=other_node_deps)
-        millionaire.NixOS("chinchilla", "root@nixos", depends_on=other_node_deps)
 
         # falcon (GPU desktop, RKE2 agent) is a live, in-use host: it is registered
         # only for its one deliberate reinstall onto the standard layout, never

@@ -13,7 +13,7 @@
 #
 # Node names: nix-darwin has no `networking.hosts` at the locked rev, so an
 # activation script keeps a marked block in /etc/hosts. Bare names are LAN addresses
-# (the attic substituter is http://sirver:8199), `<name>.tailnet` the tailnet ones, as on
+# (the attic substituter is http://chinchilla:8199), `<name>.tailnet` the tailnet ones, as on
 # the nodes themselves (static/builder.nix). falcon's tailnet IP changes, so it is LAN only.
 #
 # The caps that keep builds from starving etcd live on the nodes themselves

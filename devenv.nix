@@ -680,7 +680,7 @@ in {
                 # Personal attic cache (only in this project, not system-wide)
                 ATTIC_PUBKEY=$(cat "${config.devenv.root}/static/generated.json" 2>/dev/null | ${lib.getExe pkgs.jq} -r '.attic_pubkey // empty' 2>/dev/null)
                 if [ -n "$ATTIC_PUBKEY" ]; then
-                  export NIX_CONFIG="extra-substituters = http://sirver:8199/main
+                  export NIX_CONFIG="extra-substituters = http://chinchilla:8199/main
         extra-trusted-public-keys = $ATTIC_PUBKEY"
                 fi
 

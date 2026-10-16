@@ -95,7 +95,7 @@ in {
       set -f # disable globbing
       [ -f /run/secrets/attic-auth-token ] || exit 0
       ATTIC_TOKEN=$(cat /run/secrets/attic-auth-token)
-      ${pkgs.coreutils}/bin/timeout 20 ${attic} login --set-default main "http://sirver:8199" "$ATTIC_TOKEN" 2>/dev/null || exit 0
+      ${pkgs.coreutils}/bin/timeout 20 ${attic} login --set-default main "http://chinchilla:8199" "$ATTIC_TOKEN" 2>/dev/null || exit 0
       if [ -n "''${OUT_PATHS:-}" ]; then
         # post-build-hook blocks the build until it returns: never let a slow cache stall builds
         ${pkgs.coreutils}/bin/timeout 120 ${attic} push main $OUT_PATHS 2>/dev/null || true
@@ -103,9 +103,9 @@ in {
     '';
   in
     lib.mkIf atticEnabled {
-      substituters = ["http://sirver:8199/main"];
+      substituters = ["http://chinchilla:8199/main"];
       trusted-public-keys = [publicKey];
-      # attic lives on one host (sirver, on a failing disk): bound every wait on it so a hung cache
+      # attic lives on one host (chinchilla, static/attic-server.nix): bound every wait on it so a hung cache
       # is skipped instead of stalling activations (home-manager hit its 10-minute timeout at boot).
       connect-timeout = 5;
       stalled-download-timeout = 60;

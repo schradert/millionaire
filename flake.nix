@@ -236,22 +236,13 @@
         # };
         sirver = {
           remoteBuild = true;
-          profiles.system.canivete.configuration = {config, ...}: {
+          profiles.system.canivete.configuration = {
             imports = [./static/facter ./static/k8s-node.nix ./static/server.nix];
             boot.initrd.availableKernelModules = ["sr_mod"];
             disko.devices.disk.root.device = "/dev/disk/by-id/scsi-35000c50067faa64b";
             # Mini switch on spare LAN to connect another system (dingo)
             networking.bridges.br0.interfaces = ["eno3" "eno4"];
             networking.interfaces.br0.useDHCP = true;
-
-            # Attic binary cache server
-            services.atticd = {
-              enable = true;
-              environmentFile = config.sops.secrets.attic-server-key.path;
-              settings.listen = "[::]:8199";
-            };
-            sops.secrets.attic-server-key.key = "attic/server-key";
-            networking.firewall.allowedTCPPorts = [8199];
           };
         };
         octopus = {
@@ -286,7 +277,7 @@
         chinchilla = {
           remoteBuild = true;
           profiles.system.canivete.configuration = {
-            imports = [./static/facter ./static/k8s-node.nix ./static/server.nix];
+            imports = [./static/facter ./static/k8s-node.nix ./static/server.nix ./static/attic-server.nix];
             disko.devices.disk.root.device = "/dev/disk/by-id/ata-MTFDDAK256TBN-1AR1ZABHA_UGXVK01J7BDCER";
             # Second gateway relay (round-robin with bonobo) on chinchilla's
             # tailnet IP; external-dns-internal lists both A records. See tailnet.nix.
