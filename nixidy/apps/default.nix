@@ -531,6 +531,57 @@
       }
     ];
   };
+  nixidy.netpol.namespaces.kube-system = {
+    enforce = true;
+    # Cilium, its Envoy, etcd, the control plane and multus run on the host network and have no endpoint
+    # (the host firewall is off), so only the pod-network workloads are selected: CoreDNS, lan-dns,
+    # cloudflared, external-dns, k8tz, Hubble, the device plugin and the snapshot controller. None of them
+    # is a Gateway backend, and the apiserver reaches the k8tz webhook through the baseline entities.
+    gateway = false;
+    extraIngress = [
+      # DNS from anywhere: CoreDNS for every pod (the nodes' and host-network pods' queries come in as host/remote-node),
+      # and lan-dns (LoadBalancer 192.168.50.243) for LAN devices, as world when the announcing node serves them itself,
+      # as remote-node when it SNATs them to a replica on another node (externalTrafficPolicy Cluster)
+      {
+        fromEntities = ["all"];
+        toPorts = [
+          {
+            ports = [
+              {
+                port = "53";
+                protocol = "UDP";
+              }
+              {
+                port = "53";
+                protocol = "TCP";
+              }
+            ];
+          }
+        ];
+      }
+      # Hubble UI's backend streams flows from the relay (the Service's :80 is the pod's :4245)
+      {
+        fromEndpoints = [
+          {
+            matchLabels = {
+              "k8s:io.kubernetes.pod.namespace" = "kube-system";
+              "k8s-app" = "hubble-ui";
+            };
+          }
+        ];
+        toPorts = [
+          {
+            ports = [
+              {
+                port = "4245";
+                protocol = "TCP";
+              }
+            ];
+          }
+        ];
+      }
+    ];
+  };
   nixidy.applications.namespaces.resources.namespaces = {
     development = {};
     e2e = {};
