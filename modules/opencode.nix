@@ -15,10 +15,27 @@ in {
     # Decrypted by the system's sops (modules/api-keys.nix); a host that is not
     # a recipient of personal.yaml simply has no keys instead of a broken shell
     secrets = lib.optionalAttrs (osConfig != null) osConfig.sops.secrets;
-    apiKey = name: lib.optionalAttrs (secrets ? "api-${name}") {"${lib.toUpper name}_API_KEY" = "$(cat ${secrets."api-${name}".path})";};
+    names = builtins.filter (name: secrets ? "api-${name}") ["anthropic" "context7" "openai"];
+    var = name: "${lib.toUpper name}_API_KEY";
+    path = name: secrets."api-${name}".path;
+    # Quiet when the file is not there yet: the login shell can start before sops-install-secrets
+    # has run after a reboot, and home-manager sources these only once per session.
+    apiKey = name: {${var name} = "$(cat ${path name} 2>/dev/null)";};
+    # zsh: load one key from its file if it is still unset; true once every key is set
+    loadKey = name: "[[ -z \"\$${var name}\" && -r ${path name} ]] && export ${var name}=\"$(<${path name})\"";
+    allSet = lib.concatMapStringsSep " && " (name: "-n \"\$${var name}\"") names;
   in {
     config = lib.mkIf config.profiles.workstation.enable {
-      home.sessionVariables = lib.mergeAttrsList (map apiKey ["anthropic" "context7" "openai"]);
+      home.sessionVariables = lib.mergeAttrsList (map apiKey names);
+      # ...so pick up any key still empty before each prompt, once its file exists.
+      programs.zsh.initContent = lib.mkIf (names != []) ''
+        _api_keys_lazy() {
+          ${lib.concatMapStringsSep "\n  " loadKey names}
+          [[ ${allSet} ]] && add-zsh-hook -d precmd _api_keys_lazy
+        }
+        autoload -Uz add-zsh-hook
+        add-zsh-hook precmd _api_keys_lazy
+      '';
       home.packages = [pkgs.opencode-desktop];
       programs = {
         claude-code.enable = true;
