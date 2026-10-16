@@ -630,6 +630,9 @@ pub struct BackupArgs {
     /// Where master.iso (and a rescue's raw.iso/raw.map) go.
     #[arg(long)]
     pub out: PathBuf,
+    /// Continue the partial image (raw.iso + raw.map) already in --out: read only what is missing.
+    #[arg(long)]
+    pub resume: bool,
 }
 
 /// `dvdrip backup`: the agent's backup chain by hand (formerly dvd-backup), no API involved.
@@ -637,7 +640,11 @@ pub async fn backup_cmd(a: BackupArgs) -> Result<()> {
     let label = disc_label(&a.source).await;
     let st = Staging { dir: a.out, device: a.source, label };
     let start = Instant::now();
-    let o = backup::backup(&st, &Limits::default(), |p| tracing::debug!(progress = p)).await?;
+    let o = if a.resume {
+        backup::resume_rescue(&st, &Limits::default()).await?
+    } else {
+        backup::backup(&st, &Limits::default(), |p| tracing::debug!(progress = p)).await?
+    };
     let sha = crate::publish::sha256(&st.master())?;
     println!(
         "{}",

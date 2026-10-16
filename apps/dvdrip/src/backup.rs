@@ -169,7 +169,8 @@ pub async fn backup(st: &Staging, limits: &Limits, progress: impl Fn(f64)) -> Re
     } else {
         Outcome { method: "makemkv", read_errors, damage: None }
     };
-    if !readable(&iso, &log_path, false).await {
+    // A rescued or raw image has no MakeMKV report: its VIDEO_TS.IFO is the check.
+    if !readable(&iso, &log_path, matches!(outcome.method, "rescue" | "raw")).await {
         bail!("the backup is not a readable DVD image (see logs/backup.log)");
     }
     if outcome.read_errors > 0 {
