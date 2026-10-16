@@ -175,6 +175,75 @@ in {
         end
       end
     '';
+
+    bootstrapSpec = {
+      backoffLimit = 6;
+      activeDeadlineSeconds = 1200;
+      template.spec = {
+        restartPolicy = "OnFailure";
+        automountServiceAccountToken = false;
+        securityContext = {
+          runAsNonRoot = true;
+          runAsUser = 1000;
+          runAsGroup = 1000;
+          seccompProfile.type = "RuntimeDefault";
+        };
+        containers = lib.toList {
+          name = "bootstrap";
+          image = with pinned.images.sure; "${repository}:${tag}@${digest}";
+          args = ["./bin/rails" "runner" bootstrapScript];
+          inherit envFrom;
+          env =
+            lib.optional simplefin {
+              name = "SIMPLEFIN_SETUP_TOKEN";
+              valueFrom.secretKeyRef = {
+                name = "sure-simplefin";
+                key = "token";
+              };
+            }
+            ++ [
+              {
+                name = "ADMIN_EMAIL";
+                value = people.my.profiles.personal.email;
+              }
+              {
+                name = "ADMIN_NAME";
+                value = people.my.name;
+              }
+              {
+                name = "KEYCLOAK_URL";
+                value = "http://keycloak.identity.svc.cluster.local:8080";
+              }
+              {
+                name = "KEYCLOAK_USER";
+                value = "admin";
+              }
+              {
+                name = "KEYCLOAK_PASSWORD";
+                valueFrom.secretKeyRef = {
+                  name = "sure-keycloak-admin";
+                  key = "password";
+                };
+              }
+              {
+                name = "OIDC_USERNAME";
+                value = people.me;
+              }
+              {
+                name = "ADMIN_PASSWORD";
+                valueFrom.secretKeyRef = {
+                  name = "sure-admin";
+                  key = "password";
+                };
+              }
+            ];
+          securityContext = {
+            allowPrivilegeEscalation = false;
+            capabilities.drop = ["ALL"];
+          };
+        };
+      };
+    };
   in {
     applications.keycloak.resources.keycloakClients.sure.spec = {
       realmRef.name = "default";
@@ -317,73 +386,18 @@ in {
           "argocd.argoproj.io/hook" = "PostSync";
           "argocd.argoproj.io/hook-delete-policy" = "BeforeHookCreation";
         };
+        spec = bootstrapSpec;
+      };
+
+      # The same bootstrap daily: a SimpleFIN account added in the Bridge later (a new card) is set up
+      # in Sure without waiting for the next deploy. At an odd minute, after Sure's own daily sync.
+      resources.cronJobs.sure-bootstrap = lib.mkIf simplefin {
         spec = {
-          backoffLimit = 6;
-          activeDeadlineSeconds = 1200;
-          template.spec = {
-            restartPolicy = "OnFailure";
-            automountServiceAccountToken = false;
-            securityContext = {
-              runAsNonRoot = true;
-              runAsUser = 1000;
-              runAsGroup = 1000;
-              seccompProfile.type = "RuntimeDefault";
-            };
-            containers = lib.toList {
-              name = "bootstrap";
-              image = with pinned.images.sure; "${repository}:${tag}@${digest}";
-              args = ["./bin/rails" "runner" bootstrapScript];
-              inherit envFrom;
-              env =
-                lib.optional simplefin {
-                  name = "SIMPLEFIN_SETUP_TOKEN";
-                  valueFrom.secretKeyRef = {
-                    name = "sure-simplefin";
-                    key = "token";
-                  };
-                }
-                ++ [
-                  {
-                    name = "ADMIN_EMAIL";
-                    value = people.my.profiles.personal.email;
-                  }
-                  {
-                    name = "ADMIN_NAME";
-                    value = people.my.name;
-                  }
-                  {
-                    name = "KEYCLOAK_URL";
-                    value = "http://keycloak.identity.svc.cluster.local:8080";
-                  }
-                  {
-                    name = "KEYCLOAK_USER";
-                    value = "admin";
-                  }
-                  {
-                    name = "KEYCLOAK_PASSWORD";
-                    valueFrom.secretKeyRef = {
-                      name = "sure-keycloak-admin";
-                      key = "password";
-                    };
-                  }
-                  {
-                    name = "OIDC_USERNAME";
-                    value = people.me;
-                  }
-                  {
-                    name = "ADMIN_PASSWORD";
-                    valueFrom.secretKeyRef = {
-                      name = "sure-admin";
-                      key = "password";
-                    };
-                  }
-                ];
-              securityContext = {
-                allowPrivilegeEscalation = false;
-                capabilities.drop = ["ALL"];
-              };
-            };
-          };
+          schedule = "17 10 * * *";
+          concurrencyPolicy = "Forbid";
+          successfulJobsHistoryLimit = 1;
+          failedJobsHistoryLimit = 3;
+          jobTemplate.spec = bootstrapSpec // {ttlSecondsAfterFinished = 172800;};
         };
       };
 
