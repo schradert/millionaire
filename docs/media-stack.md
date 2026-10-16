@@ -14,7 +14,7 @@ Legend:
 
 | App | Auth | Per-user | Bootstrap | Data | Library | Acquisition | Requests | Tracking | Metrics / dash | E2E |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Jellyfin | OIDC (SSO plugin) | yes, roles from groups | jellyfin-bootstrap (wizard, libraries, SSO, plugins: TMDb Box Sets, Webhook) | PVC + VolSync | movies, tv, dvd (ro) | Radarr, Sonarr, Sportarr | Seerr, Ombi | → Ryot (Webhook sink, new) and → each user's own Maloja (multi-scrobbler, one Jellyfin source per user); → Trakt behind `traktPlugin` | ServiceMonitor, dashboard | movie-chain, sonarr-chain, oidc-jellyfin |
+| Jellyfin | OIDC (SSO plugin) | yes, roles from groups | jellyfin-bootstrap (wizard, libraries, SSO, plugins: TMDb Box Sets, Webhook; encoding, remote bitrate cap, local networks, downloads, Maintainerr key) | PVC + VolSync | movies, tv, dvd (ro) | Radarr, Sonarr, Sportarr | Seerr, Ombi | → Ryot (Webhook sink, new) and → each user's own Maloja (multi-scrobbler, one Jellyfin source per user); → Trakt behind `traktPlugin` | ServiceMonitor, dashboard | movie-chain, sonarr-chain, oidc-jellyfin |
 | Radarr / Sonarr | Gate (`AUTH__METHOD=External`) | no (admin tool) | `app-bootstrap arr` | CNPG + VolSync | movies / tv + downloads | Prowlarr, qBittorrent | Seerr, Ombi, Ryot "Request" (new) | n/a | exportarr, dashboard; ntfy `media` (new) | integrations-arr |
 | Bazarr | Gate | no | `app-bootstrap bazarr` | PVC + VolSync | movies, tv | OpenSubtitles (no account yet) | n/a | n/a | none (exportarr needs a key) | bazarr (skips) |
 | Seerr / Ombi | Header via sidecar / header | yes (seerr-sso, Ombi roles from groups) | yes | PVC + VolSync | none | Radarr, Sonarr | themselves | n/a | none | seerr, seerr-sso |
@@ -138,11 +138,22 @@ Every person's plays go to that person's own history, and nothing is shared or a
 
 Files are deleted 30 days after an event aired (`retentionDays` in the module), because the sports volume is a 250Gi quota on a small Ceph pool.
 
-### Jellyfin transcoding
+### Jellyfin transcoding and remote clients
 
 `nixidy/apps/media/jellyfin.nix`. The pod runs on falcon only (`nvidia` runtime class, node selector `nvidia.com/gpu.present`, no `nvidia.com/gpu` request, same as Tdarr's node), so ffmpeg can use the RTX A2000's NVENC and NVDEC and the card stays shared with the desktop, dvdrip and Tdarr. The image's `jellyfin-ffmpeg` lists `h264_nvenc`, `hevc_nvenc` and `av1_nvenc` (the A2000 can decode AV1 but not encode it).
 
 Trade-off: with a required node selector Jellyfin is Pending while falcon is down. The config PVC (RBD) and the media volumes (CephFS) attach to whichever node the pod lands on, and the Deployment is `Recreate`, so a move needs no manual step.
+
+The bootstrap Job applies these server settings (each is read, compared and written only when different; the values are the `let` bindings at the top of `jellyfin.nix`):
+
+- Encoding (`/System/Configuration/encoding`): `HardwareAccelerationType=nvenc`, hardware and HEVC encoding on, NVDEC for `hardwareDecodingCodecs` (h264, hevc, vp9, av1), tone mapping on.
+- `remoteBitrateMbps` (8): `RemoteClientBitrateLimit`, the most a remote client may stream, whatever its own quality setting says (above it Jellyfin transcodes down, now on the GPU).
+- `localNetworkSubnets` (`192.168.50.0/24`): `LocalNetworkSubnets`, the only networks Jellyfin treats as local; the tailnet (100.64.0.0/10) is therefore remote. `LocalNetworkAddresses` is a bind-address list, not a LAN classifier, so it is left alone.
+- `enableContentDownloading` (true): the per-user policy that lets the Jellyfin and Findroid apps download media for offline use. It is a user policy, not a server setting, so the bootstrap sets it on every existing user; a user created later (first SSO login) is covered on the next bootstrap run.
+
+What "remote" means here: Jellyfin decides per request from the peer address. Everything reaches it through the gateway, which presents a pod address (a read-back of the session list showed `10.0.x.x` for a client on the LAN), so with a cap set every gateway client counts as remote, LAN included; only a connection straight to the pod from a `localNetworkSubnets` address would be local. The cap is therefore a global ceiling, not a Japan-only one. Telling Japan from the LAN would need the client address to survive the gateway (and the bonobo relay), which is a networking change not made here.
+
+Maintainerr's API key rotates by generation: `maintainerrKeyGeneration` is stored in the key's name (`Maintainerr (gen N)`; the key made before generations existed counts as 1). When the configured number has no key yet, the bootstrap creates it, points Maintainerr at it and only then deletes the older keys. Bump the number to rotate again.
 
 ### Tracearr
 

@@ -17,8 +17,20 @@ spec:
           env:
             - name: ADMIN_PASSWORD_FILE
               value: /secrets/admin/password
+            - name: ENABLE_CONTENT_DOWNLOADING
+              value: "true"
+            - name: ENCODING_DECODING_CODECS
+              value: h264,hevc,vp9,av1
+            - name: ENCODING_HW_ACCEL
+              value: nvenc
+            - name: ENCODING_TONEMAPPING
+              value: "true"
             - name: JELLYFIN_URL
               value: http://jellyfin.media.svc.cluster.local:8096
+            - name: LOCAL_NETWORK_SUBNETS
+              value: 192.168.50.0/24
+            - name: MAINTAINERR_KEY_GENERATION
+              value: "2"
             - name: MAINTAINERR_URL
               value: http://maintainerr.media.svc.cluster.local:6246
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -29,11 +41,13 @@ spec:
               value: "1000"
             - name: PYROSCOPE_SERVER_ADDRESS
               value: http://pyroscope.observability.svc.cluster.local:4040
+            - name: REMOTE_BITRATE_LIMIT
+              value: "8000000"
             - name: SSO_ISSUER
               value: https://keycloak.trdos.me/realms/default
             - name: SSO_SECRET_FILE
               value: /secrets/oidc/client_secret
-          image: harbor.trdos.me/library/jellyfin-bootstrap:0.6.0@sha256:99c4f0555292fdf1466c646ab2c2b8fa5104e351d05113dae6080a61076eb9b7
+          image: harbor.trdos.me/library/jellyfin-bootstrap:0.7.0@sha256:0b3466ac137cd52e1a9bcc6e6f0012cd6ff3e89d5ae0c8894794ea991a93bec4
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
