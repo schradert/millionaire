@@ -167,7 +167,6 @@ kubectl -n observability delete job alert-digest-test
 | kubelet-csr-approver | ServiceMonitor |  |
 | librechat | none | no metrics endpoint upstream (MongoDB sidecar has no exporter) |
 | lidarr | ServiceMonitor (exportarr sidecar) + CNPG |  |
-| logseq | none | static app; no metrics |
 | libretranslate | none | no metrics endpoint upstream |
 | lingarr | none | no metrics endpoint upstream |
 | loki | PodMonitor (store, canary, memcached exporters) |  |
@@ -232,7 +231,6 @@ kubectl -n observability delete job alert-digest-test
 | unpackerr | ServiceMonitor (:5656 /metrics) |  |
 | volsync | ServiceMonitor (TLS + token, :8443) |  |
 | volsync-crds | CRDs only | none needed |
-| webdav | none | WebDAV server; no metrics |
 | windmill | PodMonitor (workers) + CNPG |  |
 | zigbee2mqtt | none | no Prometheus endpoint (device state flows over MQTT; Mosquitto is scraped) |
 | zwave-js-ui | none | no Prometheus endpoint upstream |
@@ -257,7 +255,7 @@ kube-scheduler, kube-controller-manager and kube-proxy (disabled in prometheus.n
 ## Logs
 
 Every container's stdout/stderr is shipped; nothing found that logs only to files. Of 199 running containers, 24 had no line in
-24h and all of them print to stdout (they are quiet: dashy, homepage, webdav, cert-manager, Alertmanager, ...). Jibri (recordings, parked at 0
+24h and all of them print to stdout (they are quiet: dashy, homepage, cert-manager, Alertmanager, ...). Jibri (recordings, parked at 0
 replicas) is the one candidate: upstream writes its logs under /var/log/jitsi (not checked here, it is not running).
 
 nixidy/system/observability/alloy.nix, `loki.process "pods"`:

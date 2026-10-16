@@ -693,38 +693,6 @@
    "notes": "GUI via oauth2-proxy; sync protocol direct on the LAN at 192.168.50.242:22000 (TCP and QUIC, LoadBalancer syncthing-lan, hub.lan in modules/syncthing.nix) for provisioned desktops, global discovery/relays elsewhere (Syncthing-Fork has no fixed address declared)."
   },
   {
-   "app": "webdav (dav)",
-   "category": "files",
-   "hostnames": [
-    "dav.trdos.me"
-   ],
-   "exposure": "tailnet",
-   "auth": "oauth2-proxy (Keycloak SSO, forward-auth) (non-browser clients cannot pass)",
-   "clients": {
-    "browser": [
-     "https://dav.trdos.me"
-    ],
-    "desktop": [],
-    "android": [
-     {
-      "name": "Material Files (WebDAV)",
-      "platforms": [
-       "android"
-      ],
-      "provisioned": "yes",
-      "where": "modules/android.nix:143 (sets: homelab; devices: pixel,s21)",
-      "note": "cannot authenticate through oauth2-proxy"
-     }
-    ],
-    "ios": [],
-    "cli": [],
-    "tui": [],
-    "mcp": [],
-    "extensions": []
-   },
-   "notes": ""
-  },
-  {
    "app": "actual",
    "category": "finance",
    "hostnames": [
@@ -1240,49 +1208,6 @@
       "note": "unverified; needs HA 2025.2+ integration + auth"
      }
     ],
-    "extensions": []
-   },
-   "notes": ""
-  },
-  {
-   "app": "logseq (web)",
-   "category": "home",
-   "hostnames": [
-    "logseq.trdos.me"
-   ],
-   "exposure": "tailnet",
-   "auth": "oauth2-proxy (Keycloak SSO, forward-auth)",
-   "clients": {
-    "browser": [
-     "https://logseq.trdos.me"
-    ],
-    "desktop": [
-     {
-      "name": "Logseq desktop",
-      "platforms": [
-       "macos",
-       "linux"
-      ],
-      "provisioned": "no",
-      "where": null,
-      "note": "no cask/package found"
-     }
-    ],
-    "android": [
-     {
-      "name": "Logseq (native)",
-      "platforms": [
-       "android"
-      ],
-      "provisioned": "yes",
-      "where": "modules/android.nix:321 (sets: pixel; devices: pixel)",
-      "note": "in pixel set; sync target is org files via syncthing, not this web instance (unverified)"
-     }
-    ],
-    "ios": [],
-    "cli": [],
-    "tui": [],
-    "mcp": [],
     "extensions": []
    },
    "notes": ""
