@@ -194,6 +194,12 @@ data:
       name: gatus
       url: https://gatus.trdos.me
     - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
+      name: ggrequestz
+      url: https://ggrequestz.trdos.me/api/health
+    - conditions:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m

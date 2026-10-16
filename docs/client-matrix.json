@@ -1862,6 +1862,28 @@
    "notes": ""
   },
   {
+   "app": "ggrequestz (game requests)",
+   "category": "media",
+   "hostnames": [
+    "ggrequestz.trdos.me"
+   ],
+   "exposure": "tailnet",
+   "auth": "native OIDC (groups claim: admin)",
+   "clients": {
+    "browser": [
+     "https://ggrequestz.trdos.me"
+    ],
+    "desktop": [],
+    "android": [],
+    "ios": [],
+    "cli": [],
+    "tui": [],
+    "mcp": [],
+    "extensions": []
+   },
+   "notes": "Web only. Search needs IGDB keys (docs/manual-steps.md, game metadata keys)."
+  },
+  {
    "app": "romm (game library)",
    "category": "media",
    "hostnames": [

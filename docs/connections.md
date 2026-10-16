@@ -62,6 +62,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | owncast, jitsi | own | web | web | n-a | todo (no Jitsi app in catalog) | — |
 | music-assistant | oauth2-proxy | web | web | n-a | via Home Assistant | — |
 | romm | OIDC (native; admin from group `admin`) | web | web | todo: Tender + RetroDECK (Deck node PR) | todo: Argosy Launcher (client token) | bws `romm/tristan/client-token` (app-bootstrap romm >= 0.45.0: tristan's token, for Tender and Argosy) |
+| ggrequestz | OIDC (native; admin from group `admin`) | web | web | web | web | — |
 | dvd-webdav, games-webdav | own | n-a | n-a | games: `modules/gaming/consoles.nix` (library off) | n-a | — |
 | prometheus | oauth2-proxy | done: promtool (offline checks; queries via `kubectl port-forward`), `modules/kubernetes.nix` | done: same | n-a | n-a | — |
 | alertmanager | oauth2-proxy | web (amtool skipped: API behind oauth2-proxy) | web | n-a | n-a | — |

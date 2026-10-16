@@ -112,5 +112,12 @@ mounted read-only at `/romm/library/roms` (the pin names stay as they are; `bios
   cannot do OIDC (Tender, Argosy, Grout) use a client token: the bootstrap mints one
   for tristan into Bitwarden `romm/tristan/client-token`. Others make theirs under
   Profile > Client API Tokens.
+- **Requests.** GG Requestz (`ggrequestz.trdos.me`, `nixidy/apps/media/ggrequestz.nix`) is where
+  people ask for a game: Keycloak login (group `admin` is an admin, everyone else a
+  viewer), Postgres and its own Dragonfly. It reads RomM with tristan's client token
+  (Secret `romm-tristan-client-token`, `roms.read`) to show what the library already
+  has. Search needs IGDB keys (`igdb = true` in `ggrequestz.nix`, same Bitwarden keys as
+  RomM); without them the app runs but cannot search. The `ggrequestz-bootstrap` Job
+  adds tristan's admin row, so the first login is not whoever arrives first.
 - **PC saves** are not RomM's: ludusavi backs them up per host
   (`modules/syncthing.nix`, `services.ludusavi`, into the synced `ludusavi` folder).
