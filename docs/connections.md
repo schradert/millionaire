@@ -9,7 +9,7 @@ Credentials: Keycloak SSO where the client speaks OIDC; CLIs and API clients pre
 
 | Host | OS | Profiles | Tailnet |
 |---|---|---|---|
-| millionaire | macOS | work, workstation | Mill's tailnet on the system tailscaled; headscale on a second, userspace tailscaled (`modules/tailnet.nix`), used through `trdos <cmd>` (SOCKS5 :1055, HTTP :1056) |
+| millionaire | macOS | work, workstation | Mill's tailnet on the system tailscaled; headscale on a second, userspace tailscaled (`modules/tailnet.nix`), used through `trdos <cmd>` (SOCKS5 :1055, HTTP :1056); `trdos-check` verifies it. Names under `trdos.me` do not resolve through it yet (Open questions) |
 | morgenmuffel | macOS | personal, workstation | done: `modules/tailnet.nix` (host lands with the hosts workstream) |
 | falcon, axolotl | NixOS | client, workstation | done: `static/tailnet-personal.nix` |
 | systeamadeck | NixOS (Jovian) | client, gaming | done: `static/tailnet-personal.nix` (a `personal.yaml` recipient; joins once the host is switched to this config) |
@@ -73,7 +73,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 
 ## Open questions
 
-- millionaire: headscale runs as a second, userspace tailscaled next to Mill's, so only proxy-aware clients reach `*.trdos.me`, through `trdos <cmd>`. ssh needs `ProxyCommand nc -X 5 -x localhost:1055 %h %p`; Node CLIs (immich), GUI apps and browsers need a SOCKS proxy set per app.
+- millionaire: headscale runs as a second, userspace tailscaled next to Mill's, so only proxy-aware clients reach `*.trdos.me`, through `trdos <cmd>`. That path does not work for names yet: tailscaled's proxy dialer resolves only IPs and netmap names, and hands every other name to the system resolver (Mill's MagicDNS), so `git.trdos.me` fails with `lookup git.trdos.me: no such host` while the same request to the relay IP (`curl --connect-to git.trdos.me:443:100.64.0.4:443`) works. Needs `dns.extra_records` in headscale (static/hyena.nix) or a hosts block on the Mac; `trdos-check` shows which. ssh needs `ProxyCommand nc -X 5 -x localhost:1055 %h %p`; Node CLIs (immich), GUI apps and browsers need a SOCKS proxy set per app.
 - oauth2-proxy accepts `Authorization: Bearer $(sso-token)` (`--skip-jwt-bearer-tokens`, audience `oauth2-proxy`), so API and MCP clients pass it as Keycloak user `tristan` with the same `groups` checks. Apps that only take their own API keys or JWTs in `Authorization` still cannot get through (Waterfly, WebDAV clients).
 - contextforge 1.0.11 accepts Keycloak tokens on `/mcp` only for a virtual server with `oauth_enabled` (`oauth_config.authorization_servers` = the realm, `resource` = `oauth2-proxy`), and resolves the user from its own database. app-bootstrap contextforge creates that server (`homelab`, every registered tool, resource and prompt), trusts the `keycloak` SSO provider for API tokens and creates tristan as an admin; Keycloak SSO for the UI comes from `SSO_KEYCLOAK_*` (`nixidy/system/ai/contextforge.nix`).
 - qbittorrent.trdos.me is routed behind oauth2-proxy with a tile and a Gatus check; `credentials` in `nixidy/apps/media/qbittorrent.nix` is true (the VPN items in Bitwarden: docs/manual-steps.md).

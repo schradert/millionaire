@@ -198,7 +198,7 @@ a terminal), or the browser.
 | --- | --- |
 | falcon, axolotl (NixOS) | `coder login https://coder.trdos.me`, then `ssh coder.<ws>` / Zed (`modules/coder.nix` writes the `coder.*` SSH block, so no `config-ssh`). **Gap found**: both are now cluster nodes with `accept-dns=false`, so `*.trdos.me` does not resolve on them (falcon's resolver is 1.1.1.1); they need split DNS for `trdos.me` → 100.64.0.1 |
 | morgenmuffel (personal Mac) | as above once its headscale tailscaled is deployed |
-| millionaire (work Mac) | headscale is a userspace tailscaled behind `trdos` (SOCKS 1055 / CONNECT 1056). The Go CLI honours `HTTPS_PROXY` (CONNECT), so `trdos coder …` and a ProxyCommand of `trdos coder ssh --stdio …` should work; unverified |
+| millionaire (work Mac) | headscale is a userspace tailscaled behind `trdos` (SOCKS 1055 / CONNECT 1056). The Go CLI honours `HTTPS_PROXY` (CONNECT), but the userspace tailscaled cannot resolve `*.trdos.me` yet (docs/connections.md, Open questions), so `trdos coder …` fails on the name until that is fixed |
 | Pixel, Deck | §9 |
 
 ## 11. Work Mac (`millionaire`) redeploy
