@@ -50,3 +50,5 @@ transportr = "transportr"
 Transportr = "Transportr"
 # nmap -Pn (skip host discovery)
 Pn = "Pn"
+# Python CA bundle package (pkgs/romm-tender), not "certify"
+certifi = "certifi"

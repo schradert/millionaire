@@ -90,7 +90,34 @@
       hltb.enable = true;
       vibrant-deck.enable = true;
       volume-boost.enable = true;
+      # RomM into Steam as shortcuts that launch through RetroDECK. Not on the Decky store, so the
+      # release zip (pkgs/romm-tender). Sign in to romm.trdos.me in the plugin (docs/games.md).
+      romm-tender = {
+        enable = true;
+        package = pinned.romm-tender;
+      };
     };
+  };
+  # RetroDECK (Flathub) is what Tender launches games through; Tender reads its system or user install.
+  # First run of RetroDECK is its own setup (docs/games.md).
+  services.flatpak.enable = true;
+  systemd.services.retrodeck-install = {
+    description = "Install RetroDECK from Flathub";
+    wantedBy = ["multi-user.target"];
+    wants = ["network-online.target"];
+    after = ["network-online.target"];
+    path = [pkgs.flatpak];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      Restart = "on-failure";
+      RestartSec = "5min";
+    };
+    script = ''
+      flatpak remote-add --system --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      flatpak info --system net.retrodeck.retrodeck >/dev/null 2>&1 \
+        || flatpak install --system --noninteractive --assumeyes flathub net.retrodeck.retrodeck
+    '';
   };
   # TODO cookie auth instead of anonymous (loopback only)
   services.pipewire.extraConfig.pipewire-pulse."11-decky-volume-boost"."pulse.cmd" = lib.toList {

@@ -100,6 +100,7 @@ in {
     actual = web "actual" "Actual";
     frigate = web "frigate" "Frigate";
     mealie = web "mealie" "Mealie";
+    romm = web "romm" "RomM";
     atrium = gh "retransmit/Atrium" "app.atrium" {
       name = "Atrium (*arr, qBittorrent)";
       settings = apk "arm64-v8a";
@@ -158,6 +159,10 @@ in {
     olauncher = gh "tanujnotes/Olauncher" "app.olauncher" {name = "Olauncher";};
 
     # handheld
+    argosy = gh "rommapp/argosy-launcher" "com.nendo.argosy" {
+      name = "Argosy Launcher (RomM)";
+      settings = apk "arm64\\.apk$";
+    };
     chiaki = fdroid "com.metallic.chiaki" {name = "Chiaki";}; # chiaki-ng ships no Android APK
     retroarch = {
       id = "com.retroarch";
@@ -461,9 +466,9 @@ in {
 
   android.sets = {
     base = ["obtainium" "dhizuku" "tailscale" "ntfy" "heliboard"];
-    homelab = ["jellyfin" "immich" "home-assistant" "syncthing" "orgzly" "davx5" "fossify-calendar" "bitwarden" "waterfly" "mihon" "komelia" "audiobookshelf" "tempus" "mobileraker" "actual" "frigate" "mealie" "atrium" "floccus" "phylax" "findroid" "navic" "flux-news" "umai" "absorb" "qbitcontroller" "music-assistant" "seerr" "pano-scrobbler" "gitnex" "open-alert-viewer" "gatus" "adguard-home-manager" "material-files" "fossify-contacts" "rikkahub" "ltt-rs"];
+    homelab = ["jellyfin" "immich" "home-assistant" "syncthing" "orgzly" "davx5" "fossify-calendar" "bitwarden" "waterfly" "mihon" "komelia" "audiobookshelf" "tempus" "mobileraker" "actual" "frigate" "mealie" "romm" "atrium" "floccus" "phylax" "findroid" "navic" "flux-news" "umai" "absorb" "qbitcontroller" "music-assistant" "seerr" "pano-scrobbler" "gitnex" "open-alert-viewer" "gatus" "adguard-home-manager" "material-files" "fossify-contacts" "rikkahub" "ltt-rs"];
     eink = ["koreader" "librera" "orgzly" "olauncher"];
-    handheld = ["chiaki" "retroarch" "dolphin" "ppsspp" "azahar" "moonlight"];
+    handheld = ["argosy" "chiaki" "retroarch" "dolphin" "ppsspp" "azahar" "moonlight"];
     pixel = ["dolphin" "ppsspp" "aegis" "amarok" "amber" "amethyst" "animetail" "anytype" "arcanechat" "aria2app" "artemis" "ashell" "aurora-store" "aves" "avnc" "batt" "bgg" "blocker" "book-story" "bookwyrm" "catima" "cemu" "chrono" "colorblendr" "daijishou" "dankchat" "delta-chat" "delta-icons" "doodle" "element-x" "eternity" "fairemail" "fitotrack" "flashy" "flycast" "fmd" "fossify-camera" "fossify-filemanager" "fossify-messages" "fossify-paint" "fossify-phone" "gadgetbridge" "gamenative" "gif-wallpaper" "goguma" "harmonic" "husky" "i2pd" "image-toolbox" "install-with-options" "insular" "jerboa" "jtx" "k9" "kde-connect" "key-mapper" "komi-store" "koreader-fdroid" "kvaesitso" "kvaesitso-openweathermap" "kvaesitso-publictransport" "labnex" "lemmy-redirect" "libchecker" "libretorrent" "libretrack" "libretube" "logseq" "loop-habits" "mastodon-redirect" "mattermost" "melonds" "mindustry" "mitch" "mmrl" "myne" "neko" "nethersx2" "newpipe" "nix-on-droid" "octodroid" "odin" "openfoodfacts" "openlib" "opennutritracker" "opentracks" "opentracks-osm" "organic-maps" "oss-dict" "peertube-redirect" "phoneprofilesplus" "pixel-guide" "pocket-casts" "podverse" "primal" "protonvpn" "raccoon" "rethinkdns" "rssaid" "ruffle" "runnerup" "savertuner" "schildichat" "sd-maid" "seal" "secondscreen" "shizuku" "shizutools" "simplelogin" "simplewear" "simplex" "siyuan" "smartspacer" "spam-blocker" "spotube" "stack" "submersion" "system-ui-tuner" "taskbar" "tasks" "termux" "thumb-key" "thunderbird-beta" "translate-you" "transportr" "tusky" "unciv" "wall-you" "wger" "yetcalc" "ytdlnis"];
     family = ["obtainium" "tailscale" "ntfy" "heliboard" "jellyfin" "immich" "home-assistant" "bitwarden" "mealie" "syncthing"];
   };

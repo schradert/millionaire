@@ -1923,20 +1923,29 @@
       "platforms": [
        "linux"
       ],
-      "provisioned": "no",
-      "where": null,
-      "note": "Steam Deck; RomM into Steam"
+      "provisioned": "yes",
+      "where": "static/systeamadeck.nix:95",
+      "note": "Steam Deck; RomM into Steam as RetroDECK shortcuts. Signs in in the plugin (pairing code or the client token); not seeded"
      }
     ],
     "android": [
+     {
+      "name": "RomM (web app)",
+      "platforms": [
+       "android"
+      ],
+      "provisioned": "yes",
+      "where": "modules/android.nix:103 (sets: homelab; devices: pixel,s21)",
+      "note": "RomM is a PWA"
+     },
      {
       "name": "Argosy Launcher",
       "platforms": [
        "android"
       ],
-      "provisioned": "no",
-      "where": null,
-      "note": "GitHub release APK; pairs with a RomM client token"
+      "provisioned": "yes",
+      "where": "modules/android.nix:162 (sets: handheld; devices: odin)",
+      "note": "Handheld launcher; pairs with a RomM client token"
      }
     ],
     "ios": [],

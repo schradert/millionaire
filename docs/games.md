@@ -101,7 +101,7 @@ mounted read-only at `/romm/library/roms` (the pin names stay as they are; `bios
   (`.bin` + `.cue`), which is how RomM treats a directory.
 - **Scans.** The `romm-bootstrap` Job queues the first scan; a scheduled rescan runs
   at 03:00 for titles that land later (inotify does not see another pod's writes on
-  CephFS). Rescan now: Library > Scan in the UI.
+  CephFS). Rescan now: the scan page of the web UI, or `POST /api/tasks/scan`.
 - **Metadata.** Without keys RomM matches by file name and hash (Hasheous) and takes
   covers from Libretro. IGDB, ScreenScraper, SteamGridDB and RetroAchievements add
   descriptions and artwork: docs/manual-steps.md, "Game metadata keys".
@@ -110,8 +110,8 @@ mounted read-only at `/romm/library/roms` (the pin names stay as they are; `bios
   Break-glass: Bitwarden `romm/admin-password`.
 - **Clients.** Saves and states live in RomM (`romm-assets`, VolSync). Clients that
   cannot do OIDC (Tender, Argosy, Grout) use a client token: the bootstrap mints one
-  for tristan into Bitwarden `romm/tristan/client-token`. Others make theirs under
-  Profile > Client API Tokens.
+  for tristan into Bitwarden `romm/tristan/client-token`. Others make theirs in the
+  web UI (docs.romm.app, "Client API tokens").
 - **Requests.** GG Requestz (`ggrequestz.trdos.me`, `nixidy/apps/media/ggrequestz.nix`) is where
   people ask for a game: Keycloak login (group `admin` is an admin, everyone else a
   viewer), Postgres and its own Dragonfly. It reads RomM with tristan's client token
@@ -143,5 +143,15 @@ mounted read-only at `/romm/library/roms` (the pin names stay as they are; `bios
     upload"), take `nix hash path` of the directory, and add the key and hash to
     `pkgs/roms/pin.json` as in "Adding a title". Titles that are only for RomM need
     none of this.
+- **Steam Deck.** `static/systeamadeck.nix` installs Tender (Decky plugin, pinned release
+  zip `pkgs/romm-tender`; not on the Decky store) and RetroDECK (Flathub, installed by
+  `retrodeck-install.service`). Tender puts the RomM library into Steam as RetroDECK
+  shortcuts and syncs saves through RomM. Once, on the Deck: run RetroDECK once to finish
+  its own setup, then Tender > Settings > Connections: URL `https://romm.trdos.me`, sign
+  in with a pairing code (generated for a client token in the RomM web UI, valid five
+  minutes) or paste the token from Bitwarden `romm/tristan/client-token`. Tender keeps its settings in
+  `~/.config/romm-tender`, which the plugin rewrites, so they are not seeded. This sits
+  beside the Steam ROM Manager shortcuts of the pinned titles (`programs.steam.external`).
+  Android: RomM is a web app in the homelab set; Argosy Launcher is in the handheld set (Odin).
 - **PC saves** are not RomM's: ludusavi backs them up per host
   (`modules/syncthing.nix`, `services.ludusavi`, into the synced `ludusavi` folder).
