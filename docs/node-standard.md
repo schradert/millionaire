@@ -36,9 +36,9 @@ Outside the layers, on purpose:
   (pinned in `builders.nix`); `static/morgenmuffel.nix` authorizes every pool host key for the VM's `builder` user, so the pool hosts
   reach it with their ssh host keys and it appears in their `/etc/nix/machines` (`static/builder.nix`) and in `build-all`'s pool
   string (`devenv.nix`). It exists only while the Mac is awake and on the LAN; builds then fall back to falcon's emulation.
-  After the Mac's `darwin-rebuild` (the VM restarts with the new key list) and falcon's switch, verify on falcon:
-  `nix build --system aarch64-linux --no-link nixpkgs#hello -L` (the log shows `building ... on 'ssh-ng://builder@192.168.50.249:31022'`;
-  `nix store ping --store ssh-ng://builder@192.168.50.249:31022 --option ssh-key /etc/ssh/ssh_host_ed25519_key` as root answers),
+  After the Mac's `darwin-rebuild` (the VM restarts with the new key list, done 2026-10-16) and falcon's switch, verify on falcon:
+  `nix build --system aarch64-linux --no-link <a derivation cache.nixos.org does not have> -L` (the log shows `building ... on 'ssh-ng://builder@192.168.50.52:31022'`;
+  `nix store info --store 'ssh-ng://builder@192.168.50.52:31022?ssh-key=/etc/ssh/ssh_host_ed25519_key'` as root answers: the key is a store parameter, `--option ssh-key` is ignored),
   or `build-all --system aarch64-linux`. The post-build hook that pushes to attic does not cover these builds (they run in the VM's
   daemon, which has no hook): pushing aarch64 results to attic (now on chinchilla) is a manual step.
 
