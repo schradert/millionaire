@@ -22,6 +22,11 @@ spec:
               value: https://ntfy.trdos.me/dvd
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: http://alloy.observability.svc.cluster.local:4318
+            - name: NTFY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: token
+                  name: dvdrip-ntfy
             - name: NODE_NAME
               valueFrom:
                 fieldRef:

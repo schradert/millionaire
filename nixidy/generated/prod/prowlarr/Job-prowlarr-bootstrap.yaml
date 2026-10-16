@@ -22,6 +22,8 @@ spec:
               value: /secrets/bookshelf-audio/apikey
             - name: LIDARR_API_KEY_FILE
               value: /secrets/lidarr/apikey
+            - name: NTFY_TOKEN_FILE
+              value: /secrets/ntfy/token
             - name: NTFY_URL
               value: https://ntfy.trdos.me/media
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -62,6 +64,9 @@ spec:
             - mountPath: /secrets/lidarr
               name: lidarr
               readOnly: true
+            - mountPath: /secrets/ntfy
+              name: ntfy
+              readOnly: true
             - mountPath: /secrets/prowlarr
               name: prowlarr
               readOnly: true
@@ -93,6 +98,9 @@ spec:
         - name: lidarr
           secret:
             secretName: lidarr-apikey
+        - name: ntfy
+          secret:
+            secretName: prowlarr-ntfy
         - name: prowlarr
           secret:
             secretName: prowlarr-apikey

@@ -25,6 +25,11 @@ spec:
                   value: harbor.trdos.me/library/backup-verify:0.2.1@sha256:eb3406538ba0282dac7edb463e90822d46decc39e9bea08b2ff34f70cc30543a
                 - name: STEPS
                   value: dump
+                - name: NTFY_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      key: token
+                      name: backup-verify-ntfy
               envFrom:
                 - secretRef:
                     name: backup-verify

@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
   image: harbor.trdos.me/library/app-bootstrap:0.49.0@sha256:9fe2fbd2af21012ffb6ebab087e97f9adc88a06c3dd192e14e8e199496f56f56
-  spec: df00df471c97402f76350669348bb36b8764a55648ca63b50532840b70016cef
+  spec: 8637c24d3dad34c2e6bcafc60ad270d8b7d0eea7ce1e637aecd09bb3ed4f09ec
 kind: ConfigMap
 metadata:
   name: ombi-bootstrap

@@ -62,6 +62,9 @@ spec:
                 - mountPath: /secrets/e2e-forgejo-admin
                   name: e2e-forgejo-admin
                   readOnly: true
+                - mountPath: /secrets/e2e-ntfy
+                  name: e2e-ntfy
+                  readOnly: true
                 - mountPath: /secrets/e2e-actual
                   name: e2e-actual
                   readOnly: true
@@ -131,6 +134,10 @@ spec:
               secret:
                 optional: true
                 secretName: e2e-forgejo-admin
+            - name: e2e-ntfy
+              secret:
+                optional: true
+                secretName: e2e-ntfy
             - name: e2e-actual
               secret:
                 optional: true

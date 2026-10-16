@@ -109,6 +109,9 @@ spec:
           volumeMounts:
             - mountPath: /etc/alertmanager
               name: config
+            - mountPath: /etc/ntfy
+              name: ntfy
+              readOnly: true
             - mountPath: /alertmanager
               name: storage
       hostAliases:
@@ -123,6 +126,9 @@ spec:
         - configMap:
             name: alertmanager
           name: config
+        - name: ntfy
+          secret:
+            secretName: alertmanager-ntfy
   volumeClaimTemplates:
     - apiVersion: v1
       kind: PersistentVolumeClaim

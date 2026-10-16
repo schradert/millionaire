@@ -22,6 +22,8 @@ spec:
               value: http://cleanuparr.media.svc.cluster.local:11011
             - name: LIDARR_API_KEY_FILE
               value: /secrets/lidarr/apikey
+            - name: NTFY_TOKEN_FILE
+              value: /secrets/ntfy/token
             - name: NTFY_TOPIC
               value: media
             - name: NTFY_URL
@@ -55,6 +57,9 @@ spec:
             - mountPath: /secrets/lidarr
               name: lidarr
               readOnly: true
+            - mountPath: /secrets/ntfy
+              name: ntfy
+              readOnly: true
             - mountPath: /secrets/qbittorrent
               name: qbittorrent
               readOnly: true
@@ -80,6 +85,9 @@ spec:
         - name: lidarr
           secret:
             secretName: lidarr-apikey
+        - name: ntfy
+          secret:
+            secretName: cleanuparr-ntfy
         - name: qbittorrent
           secret:
             secretName: qbittorrent-admin
