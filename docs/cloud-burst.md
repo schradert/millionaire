@@ -42,7 +42,8 @@ SOPS write → node deploys → sirver IP capture.
       autoApprover approves their routes by user `default@`, not by tag; the
       `tag:cluster` owner is kept for future CAPI workers). Pod CIDRs are
       Cilium's `10.0.0.0/8` pool, not the vestigial RKE2 `10.42.0.0/16`.
-- [ ] each node advertises its pod /24 and it is auto-approved
+- [ ] each node advertises its pod /24 and it is auto-approved (`tailnet.podRoutes`, default true; must
+      be true on the nodes while workers exist)
       (`headscale nodes list-routes`)
 - [ ] home↔home pod traffic still on the LAN: `tcpdump -i tailscale0` quiet
       for sibling pod CIDRs; `cilium status` green; `kubectl get nodes`

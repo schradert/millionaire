@@ -1,9 +1,10 @@
 # Cluster tailnet membership — joins cluster nodes to headscale so cloud burst
 # workers (CAPI-managed Hetzner VMs, see later cloud-burst PRs) can reach the
 # RKE2 supervisor and exchange pod traffic with home nodes. Cilium stays in
-# native routing mode everywhere: each node advertises its own pod /24 as a
-# tailscale subnet route, making the tailnet the pod-CIDR-aware fabric for
-# cross-site traffic only.
+# native routing mode everywhere: with `podRoutes` each node advertises its own
+# pod /24 as a tailscale subnet route, making the tailnet the pod-CIDR-aware
+# fabric for cross-site traffic only. Nothing consumes those routes while every
+# node shares the home LAN (docs/tailscale-integration.md, "Pod routes").
 {
   config,
   flake,
@@ -54,6 +55,17 @@ in {
         ClusterIP services (10.43/16) are eBPF-handled by kubeProxyReplacement
         before the route table — so only non-local pod CIDRs (cloud workers)
         actually fall through to the tailnet.
+      '';
+    };
+    podRoutes = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Advertise this node's Cilium pod /24 as a tailscale subnet route (and, with
+        podSupernetRoute, route the pod supernet into tailscale0). Only cloud-burst
+        workers on another L2 consume these routes. False withdraws them: the oneshot
+        clears the advertisement and the supernet route, and hyena stops auto-approving
+        the pod supernet. Cutover: docs/tailscale-integration.md, "Pod routes".
       '';
     };
     podSupernetRoute = lib.mkOption {
@@ -121,20 +133,30 @@ in {
           # the up-flag. Idempotent; do it before the (up to 20-min) pod-CIDR wait.
           tailscale set --accept-dns=false
 
-          cidr=""
-          for _ in $(seq 120); do
-            cidr=$(ip -json route show dev cilium_host | jq -r 'first(.[].dst | select(test("/"))) // empty')
-            [ -n "$cidr" ] && break
-            sleep 10
-          done
-          [ -n "$cidr" ] || { echo "no cilium_host pod CIDR after 20m" >&2; exit 1; }
-          # Advertise only this node's pod /24 (headscale auto-approves it).
-          # The internal-gateway VIP is NO LONGER advertised as a /32 subnet
-          # route: off-LAN clients reach internal services via the gateway relay's
-          # native tailnet IP (gatewayRelay above), not by routing to the VIP.
-          tailscale set --advertise-routes="$cidr"
-          ${lib.optionalString cfg.podSupernetRoute "ip route replace ${cfg.podSupernet} dev tailscale0"}
-        '';
+          ${
+            if cfg.podRoutes
+            then ''
+              cidr=""
+              for _ in $(seq 120); do
+                cidr=$(ip -json route show dev cilium_host | jq -r 'first(.[].dst | select(test("/"))) // empty')
+                [ -n "$cidr" ] && break
+                sleep 10
+              done
+              [ -n "$cidr" ] || { echo "no cilium_host pod CIDR after 20m" >&2; exit 1; }
+              # Advertise only this node's pod /24 (headscale auto-approves it).
+              # The internal-gateway VIP is NO LONGER advertised as a /32 subnet
+              # route: off-LAN clients reach internal services via the gateway relay's
+              # native tailnet IP (gatewayRelay above), not by routing to the VIP.
+              tailscale set --advertise-routes="$cidr"
+              ${lib.optionalString cfg.podSupernetRoute "ip route replace ${cfg.podSupernet} dev tailscale0"}
+            ''
+            else ''
+              # Withdraw: tailscaled persists the advertisement, and the supernet
+              # route outlives the unit, so clear both on running nodes.
+              tailscale set --advertise-routes=
+              ip route del ${cfg.podSupernet} dev tailscale0 2>/dev/null || true
+            ''
+          }'';
       };
 
       # Cross-site TCP would otherwise negotiate LAN-sized MSS and depend on

@@ -10,6 +10,76 @@
 > `10.0.0.0/8` (its `ipv4NativeRoutingCIDR`), **not** the `10.42.0.0/16` used
 > below (that's the vestigial RKE2 `Node.podCIDR`). Treat this as a sketch.
 
+## Pod routes (`tailnet.podRoutes`)
+
+Every cluster node's `tailnet-pod-routes` oneshot (`static/tailnet.nix`) runs
+`tailscale set --advertise-routes=<its Cilium pod /24>` and, via `podSupernetRoute`,
+`ip route replace 10.0.0.0/8 dev tailscale0`; hyena's headscale `autoApprovers`
+approve `10.0.0.0/8` for `default@` and `tag:cluster` (`static/hyena.nix`).
+`tailnet.podRoutes` (default `true` = this behaviour) turns all three off.
+
+**Who consumes pod/service routes over the tailnet today: nothing found.**
+
+- Every cluster node shares the home LAN; Cilium `autoDirectNodeRoutes` installs
+  `10.0.N.0/24 via <LAN IP>` on each peer (checked on bonobo and falcon, 2026-10-16),
+  more specific than the `/8` supernet route, so pod traffic between nodes never
+  enters `tailscale0`. `kubectl get nodes` lists 7 nodes, all `192.168.50.x`.
+- Services (`10.43/16`) are eBPF-handled (`kubeProxyReplacement`) before the route table.
+- Pods reaching the tailnet (AdGuard API on `100.64.0.1`, verified from a pod per
+  `external-dns-internal.nix`) sit outside `ipv4NativeRoutingCIDR` (`10.0.0.0/8`), so
+  they should be SNATed to the node IP (inferred, not packet-captured): replies then
+  need no pod route.
+- The user's devices and hyena's Gatus reach the gateway through the relays
+  (`100.64.0.4/.5`, host sockets), never pod IPs. hyena runs `RouteAll=false` and has
+  no `10.x` route; falcon too. The `family` ACL allows only AdGuard/ntfy/relay ports.
+- Cloud-burst workers (`static/cloud-worker.nix`, `--accept-routes`) are the only
+  designed consumer and none is deployed.
+- Not checkable from here: whether the personal Mac/phone clients (`RouteAll` is
+  client-dependent) accept the routes; nothing known uses them.
+
+**Why not a Tailscale operator `Connector`:** the operator mints per-proxy auth keys
+through the Tailscale control API with an OAuth client, which headscale does not
+implement (headscale issue #1202 asks for it). That is why it was removed
+in #65 (059ad246: its `operator-oauth` secret could never exist) and why no operator
+is re-added here. If cloud-burst returns, keep node subnet routes (`podRoutes = true`
+on the nodes, `accept-routes` on workers) or run a plain `tailscale/tailscale`
+container as an in-cluster subnet router (`TS_ROUTES=10.0.0.0/8`, `TS_EXTRA_ARGS=--login-server=...`,
+pulumi-generated pre-auth key through an ExternalSecret; one Deployment per router,
+headscale picks primary/backup). The container route is a sketch, untested here, and
+needs a return-path check for pods answering `100.64/10` clients.
+
+**The tailscale hold stays.** `pkgs/tailscale/pin.json` holds `<1.98` because
+tailscaled 1.98 sets `net.ipv4.conf.all.src_valid_mark=1`, which breaks Cilium's
+Envoy (tailscale#19796). The nodes keep tailscaled with or without pod routes: the
+gateway relays bind the node's tailnet IP (`gatewayRelay` on bonobo/chinchilla),
+pods reach AdGuard and builders reach each other over it. Per the issue thread the
+sysctl is written on every start, even for a plain node with no subnet routes
+(reported by users, not maintainer-confirmed), so moving routing off the hosts
+does not lift the hold; README todo 11 owns that.
+
+### Cutover (`podRoutes = false`)
+
+Node switches are deploy-rs and need the coordinator's go; nothing here is part of
+this change (default `true`, toplevels unchanged).
+
+1. Preflight: `headscale nodes list-routes` on hyena (one approved `/24` per node, no
+   cloud workers); `tailscale debug prefs | grep RouteAll` on any tailnet client you
+   suspect (`false` on the nodes and hyena).
+2. Per node, one at a time (start with a desktop node, falcon or axolotl), a PR adding
+   `tailnet.podRoutes = false;` to that node's profile in `flake.nix`, then
+   `deploy` it. Verify: `tailscale debug prefs | jq .AdvertiseRoutes` is `null`,
+   `ip route show 10.0.0.0/8` is empty on the node, `headscale nodes list-routes`
+   no longer lists the node, `kubectl get nodes` Ready, `curl -sk https://<host>.trdos.me`
+   through `100.64.0.4` and `.5`, and from falcon `curl` a pod on that node
+   (`kubectl get pod -o wide`): it still answers over the LAN `/24` route, proving
+   nothing rode the tailnet. Check Gatus (`status.trdos.me`) stays green.
+3. After all nodes: move the setting to `tailnet.podRoutes = false` in
+   `static/k8s-node.nix` (drop the per-node lines), and last deploy hyena with
+   `tailnet.podRoutes = false` in its profile so headscale stops auto-approving `10.0.0.0/8`.
+4. Rollback: set the flag back to `true` and redeploy the node (the oneshot waits for
+   the pod CIDR, re-advertises, re-adds the supernet route; hyena's approver must be
+   back first, so roll hyena back before the nodes).
+
 ## Current State (Phase 1 ✅)
 
 Your cluster uses:
