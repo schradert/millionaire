@@ -1,6 +1,7 @@
 * Org
 Terminal DoomEmacs: org-node knowledge base + GTD task/agenda workflow.
-=org-directory= is set in Nix (modules/emacs/default.nix) before org loads.
+=org-directory= and =org-todo-keywords= are set in Nix (modules/emacs/default.nix, lib/org.nix) so
+org-bridge reads the same keywords.
 
 ** Workflow: TODO states, clocking, projects, agenda
 #+begin_src emacs-lisp :tangle config.el
@@ -46,9 +47,6 @@ to \"todo recursive\", give it a TODO keyword and a leading progress indicator."
            (with-current-buffer "*Org Agenda*" (org-agenda-redo)))))
 
   (setq org-log-into-drawer t
-        org-todo-keywords
-        '((sequence "DRAFTING(d@)" "PLANNED(p!)" "IN-PROGRESS(i!/@)" "WAITING(w@)"
-           "|" "COMPLETED(c@)" "REJECTED(r@)" "MISSED(m@)"))
         org-todo-repeat-to-state "PLANNED"
         org-columns-default-format
         "%40ITEM(Task) %TODO %3PRIORITY %17Effort{:} %CLOCKSUM %CLOCKSUM_T %TAGS"

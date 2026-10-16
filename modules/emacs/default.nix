@@ -121,6 +121,9 @@
             tangle.config = ''
               ;; org-directory must be set before org loads.
               (setq org-directory "${orgDirectory}")
+              ;; lib/org.nix: org-bridge parses with the same keywords.
+              (after! org
+                (setq org-todo-keywords '((sequence ${lib.concatMapStringsSep " " (w: "\"${w}\"") (lib.splitString " " (import ../../lib/org.nix).todoKeywords)}))))
               (setq! delete-by-moving-to-trash t)
             '';
             tangle.init = {

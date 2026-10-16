@@ -34,6 +34,8 @@ spec:
               value: http://baikal.home.svc.cluster.local:80/dav.php/calendars/admin/org/
             - name: ORG_DIR
               value: /org
+            - name: ORG_TODO_KEYWORDS
+              value: DRAFTING(d@) PLANNED(p!) IN-PROGRESS(i!/@) WAITING(w@) | COMPLETED(c@) REJECTED(r@) MISSED(m@)
             - name: RUST_LOG
               value: info
             - name: STATE_DB_PATH

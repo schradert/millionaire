@@ -27,6 +27,10 @@ pub struct Config {
     #[arg(long, env = "CALDAV_PASSWORD")]
     pub caldav_password: String,
 
+    /// TODO keywords as in `org-todo-keywords`: active states, `|`, done states
+    #[arg(long, env = "ORG_TODO_KEYWORDS")]
+    pub todo_keywords: Option<String>,
+
     /// Path to the SQLite state database
     #[arg(
         long,
