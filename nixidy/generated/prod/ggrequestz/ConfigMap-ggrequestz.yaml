@@ -8,6 +8,7 @@ data:
   OIDC_REDIRECT_URI: https://ggrequestz.trdos.me/api/auth/callback
   OIDC_SCOPES: openid email profile groups
   ORIGIN: https://ggrequestz.trdos.me
+  PM2_INSTANCES: "2"
   POSTGRES_DB: ggrequestz
   POSTGRES_HOST: ggrequestz-rw
   POSTGRES_PORT: "5432"
