@@ -12,6 +12,11 @@ in {
     # Stay behind oauth2-proxy until the bootstrap image is pinned: an unbootstrapped
     # server lets anyone set the server password and claim it.
     bootstrapped = pinned.images ? app-bootstrap-actual;
+    # false: no ExternalSecret, nothing passed to the bootstrap. true once Bitwarden holds
+    # `actual/simplefin/token` (docs/manual-steps.md, "Bank sync (SimpleFIN)"). SimpleFIN secrets are
+    # GLOBAL in Actual (26.10.0 scopes only Pluggy.ai per budget file): every Actual user could sync
+    # these banks, so nobody else gets Actual accounts with bank sync until SimpleFIN is file-scoped.
+    simplefin = true;
   in {
     portal.apps.actual = {
       title = "Actual Budget";
@@ -64,18 +69,34 @@ in {
       bootstrap = lib.mkIf bootstrapped {
         image = with pinned.images.app-bootstrap-actual; "${repository}:${tag}@${digest}";
         args = ["actual"];
-        env = {
-          ACTUAL_URL = "http://actual.finance.svc.cluster.local:5006";
-          ACTUAL_PUBLIC_URL = "https://${hostname}";
-          ADMIN_USER = people.me;
-          ADMIN_PASSWORD_FILE = "/secrets/admin/password";
-          OIDC_AUTHORITY = "https://keycloak.${domain}/realms/default";
-          OIDC_CLIENT_ID = "actual";
-          OIDC_CLIENT_SECRET_FILE = "/secrets/oidc/client_secret";
-        };
-        secrets = {
-          admin = "actual-admin";
-          oidc = "actual-oidc";
+        env =
+          lib.optionalAttrs simplefin {
+            SIMPLEFIN_TOKEN_FILE = "/secrets/simplefin/token";
+          }
+          // {
+            ACTUAL_URL = "http://actual.finance.svc.cluster.local:5006";
+            ACTUAL_PUBLIC_URL = "https://${hostname}";
+            ADMIN_USER = people.me;
+            ADMIN_PASSWORD_FILE = "/secrets/admin/password";
+            OIDC_AUTHORITY = "https://keycloak.${domain}/realms/default";
+            OIDC_CLIENT_ID = "actual";
+            OIDC_CLIENT_SECRET_FILE = "/secrets/oidc/client_secret";
+          };
+        secrets =
+          lib.optionalAttrs simplefin {
+            simplefin = "actual-simplefin";
+          }
+          // {
+            admin = "actual-admin";
+            oidc = "actual-oidc";
+          };
+      };
+      resources.externalSecrets.actual-simplefin = lib.mkIf simplefin {
+        spec.data = lib.toList {
+          secretKey = "token";
+          remoteRef.key = "actual/simplefin/token";
+          sourceRef.storeRef.name = "bitwarden";
+          sourceRef.storeRef.kind = "ClusterSecretStore";
         };
       };
       volsync.pvcs.actual.title = "actual";

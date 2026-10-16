@@ -74,7 +74,35 @@ spec:
                   puts "sure-bootstrap: linked oidc identity"
                 end
               end
+
+              # Owner's SimpleFIN (flag `simplefin`): Family#create_simplefin_item! is what the Settings UI
+              # calls; it claims the setup token (single use) and queues Sure's own sync. Runs only if the
+              # family has no SimpleFIN item at all, so it claims once. The item name carries a hash prefix
+              # of the token. A new token in Bitwarden does not replace an existing item: use the item's
+              # Edit in the UI. Account setup (types) is a UI step. Failures are logged, never fail the Job.
+              if ENV["SIMPLEFIN_SETUP_TOKEN"].to_s.strip != ""
+                begin
+                  token = ENV.fetch("SIMPLEFIN_SETUP_TOKEN").strip
+                  name = "SimpleFIN (Bitwarden #{Digest::SHA256.hexdigest(token)[0, 8]})"
+                  family = User.find_by!(email: email).family
+                  if family.simplefin_items.exists?(name: name)
+                    puts "sure-simplefin: this token was already claimed"
+                  elsif family.simplefin_items.exists?
+                    puts "sure-simplefin: family already has a SimpleFIN item, not claiming (replace it with Edit in the UI)"
+                  else
+                    family.create_simplefin_item!(setup_token: token, item_name: name)
+                    puts "sure-simplefin: claimed the setup token, created #{name}, sync queued"
+                  end
+                rescue StandardError => e
+                  warn "sure-simplefin: #{e.class} (see docs/manual-steps.md, Bank sync)"
+                end
+              end
           env:
+            - name: SIMPLEFIN_SETUP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: token
+                  name: sure-simplefin
             - name: ADMIN_EMAIL
               value: t0rdos@pm.me
             - name: ADMIN_NAME
