@@ -36,6 +36,7 @@ in {
       applications.gatus = {
         namespace = "observability";
         postgres.enable = true;
+        postgres.avoidNodes = ["sirver"];
         helm.releases.gatus = {
           chart = pinned.charts.gatus;
           values = {
