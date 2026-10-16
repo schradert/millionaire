@@ -11,7 +11,7 @@
     hostname = "firefly.${domain}";
     # false: no ExternalSecret, RBAC or CronJob. true once Bitwarden holds `firefly/simplefin/token`
     # (docs/manual-steps.md, "Bank sync (SimpleFIN)"): imports the Bridge's accounts into Firefly daily.
-    simplefin = false;
+    simplefin = true;
     probe = lib.recursiveUpdate {
       enabled = true;
       custom = true;
