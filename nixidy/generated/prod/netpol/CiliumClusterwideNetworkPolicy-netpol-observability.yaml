@@ -1,0 +1,80 @@
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: netpol-observability
+spec:
+  description: Default-deny ingress for observability; baseline plus extraIngress only (nixidy/system/network/netpol.nix)
+  endpointSelector:
+    matchExpressions:
+      - key: k8s:io.kubernetes.pod.namespace
+        operator: In
+        values:
+          - observability
+  ingress:
+    - fromEntities:
+        - host
+        - remote-node
+        - kube-apiserver
+        - ingress
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: prometheus
+            k8s:io.kubernetes.pod.namespace: observability
+        - matchLabels:
+            app.kubernetes.io/name: gatus
+            k8s:io.kubernetes.pod.namespace: observability
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: observability
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: oauth2-proxy
+            k8s:io.kubernetes.pod.namespace: identity
+      toPorts:
+        - ports:
+            - port: "9093"
+              protocol: TCP
+            - port: "80"
+              protocol: TCP
+            - port: "9090"
+              protocol: TCP
+    - fromEndpoints:
+        - matchExpressions:
+            - key: k8s:io.kubernetes.pod.namespace
+              operator: Exists
+      toPorts:
+        - ports:
+            - port: "4317"
+              protocol: TCP
+            - port: "4318"
+              protocol: TCP
+            - port: "4040"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: e2e
+            k8s:io.kubernetes.pod.namespace: e2e
+      toPorts:
+        - ports:
+            - port: "3100"
+              protocol: TCP
+            - port: "9090"
+              protocol: TCP
+            - port: "9093"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            app: rook-ceph-mgr
+            k8s:io.kubernetes.pod.namespace: storage
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: oauth2-proxy
+            k8s:io.kubernetes.pod.namespace: identity
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP
