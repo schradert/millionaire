@@ -92,12 +92,13 @@ have_pkg() { [ -n "$(a shell pm path "$1" 2>/dev/null || true)" ]; }
 # the SAF-free file API of Syncthing-Fork, behind `adb forward`: needs the derived API key
 st_open() { st_port=$(adb -s "$1" forward tcp:0 tcp:8384 </dev/null 2>/dev/null) || st_port=""; }
 st_close() { [ -z "${st_port:-}" ] || adb -s "$1" forward --remove "tcp:$st_port" </dev/null >/dev/null 2>&1 || true; }
+slashes=//
 # st_get <path>: GET on the phone's Syncthing REST API; the key goes through a config file descriptor, not argv
 st_get() {
-  local scheme
+  local proto
   [ -n "${st_port:-}" ] && [ -n "${st_key:-}" ] || return 1
-  for scheme in https http; do
-    curl -sfk --max-time 8 -K <(printf 'header = "X-API-Key: %s"\n' "$st_key") "$scheme://127.0.0.1:$st_port$1" 2>/dev/null && return 0
+  for proto in https http; do
+    curl -sfk --max-time 8 -K <(printf 'header = "X-API-Key: %s"\n' "$st_key") "${proto}:${slashes}127.0.0.1:${st_port}$1" 2>/dev/null && return 0
   done
   return 1
 }
