@@ -784,7 +784,7 @@
     "firefly-importer-tristan.trdos.me"
    ],
    "exposure": "tailnet",
-   "auth": "oauth2-proxy (Keycloak SSO, forward-auth) (importer host too)",
+   "auth": "oauth2-proxy (Keycloak SSO, forward-auth) (importer host too); /api/v1 direct (PAT)",
    "clients": {
     "browser": [
      "https://firefly.trdos.me",
@@ -799,7 +799,7 @@
       ],
       "provisioned": "yes",
       "where": "modules/android.nix:81 (sets: homelab; devices: pixel,s21)",
-      "note": "blocked: sends Firefly PAT, which oauth2-proxy cannot verify (docs/connections.md:40)"
+      "note": "sends a Firefly PAT to /api/v1, which skips oauth2-proxy (docs/connections.md:40)"
      }
     ],
     "ios": [],

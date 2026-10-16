@@ -30,7 +30,6 @@
 34. TODO falcon voron aarch64 builds miss the binary cache (overlays) and take 6h+ under emulation; give it a cache or a native aarch64 builder
 35. TODO canivete: make its default `sops.defaultSopsFile` content-only upstream, then drop the `mkForce` copy in `modules/sops.nix`
 36. TODO hyprspace: drop `pkgs/hyprspace` and `pinnedPlugin` in `modules/hyprland/plugins.nix` once nixpkgs' hyprspace is newer than 2026-10 (needs the Hyprland 0.56 plugin API)
-38. TODO Waterfly (Firefly III Android app) is blocked by oauth2-proxy: it sends a Firefly personal access token, which oauth2-proxy cannot verify
 40. TODO contextforge: verify Keycloak SSO and `/servers/<id>/mcp` with `sso-token` live once `app-bootstrap-contextforge` is pinned (its `OIDC_*` env was ignored upstream; now `SSO_KEYCLOAK_*`)
 41. TODO verify the work Mac's userspace tailscaled (headscale via `trdos <cmd>`) end to end
 42. TODO the internal gateway's TLS listener advertises no ALPN (`enable-gateway-api-alpn=false`), so strict gRPC clients (grpc-go >= 1.67, grpcurl) cannot reach chirpstack's gRPC API; enabling `gatewayAPI.enableAlpn` also turns on appProtocol (non-h2c backends go HTTP/1.1), so audit every route first
