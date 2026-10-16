@@ -45,6 +45,18 @@
         values = {
           controllers.jellyfin = {
             annotations."reloader.stakater.com/auto" = "true";
+            # Transcodes on falcon's GPU (NVENC/NVDEC): on the nvidia runtime without a device request,
+            # so the card stays shared with the desktop, dvdrip and tdarr. Pending while falcon is down.
+            pod = {
+              runtimeClassName = "nvidia";
+              nodeSelector."nvidia.com/gpu.present" = "true";
+              tolerations = lib.toList {
+                key = "node.trdos.me/class";
+                operator = "Equal";
+                value = "desktop";
+                effect = "PreferNoSchedule";
+              };
+            };
             # /metrics is off until system.xml says EnableMetrics (no env or flag for it).
             # Skipped on first boot, when Jellyfin has not written the file yet.
             initContainers.metrics = {
@@ -57,6 +69,10 @@
             };
             containers.jellyfin = {
               image = pinned.images.jellyfin;
+              env = {
+                NVIDIA_VISIBLE_DEVICES = "all";
+                NVIDIA_DRIVER_CAPABILITIES = "compute,video,utility";
+              };
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
               # Plugins and libraries have made first start take over 30s; the default (3 x 10s) killed it in a loop.
