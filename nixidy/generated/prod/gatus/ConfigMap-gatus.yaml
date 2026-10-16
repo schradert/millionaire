@@ -315,12 +315,6 @@ data:
       - '[STATUS] == any(200, 302, 401)'
       group: internal
       interval: 1m
-      name: logseq
-      url: https://logseq.trdos.me
-    - conditions:
-      - '[STATUS] == any(200, 302, 401)'
-      group: internal
-      interval: 1m
       name: mainsail
       url: https://mainsail.trdos.me
     - conditions:
@@ -527,12 +521,6 @@ data:
       interval: 1m
       name: tracearr
       url: https://tracearr.trdos.me/health
-    - conditions:
-      - '[STATUS] == any(200, 302, 401)'
-      group: internal
-      interval: 1m
-      name: webdav
-      url: https://dav.trdos.me
     - conditions:
       - '[STATUS] == 200'
       group: internal

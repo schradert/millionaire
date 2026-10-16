@@ -17,7 +17,6 @@
     ./home/frigate.nix
     ./home/govee2mqtt.nix
     ./home/home-assistant.nix
-    ./home/logseq.nix
     ./home/org-bridge.nix
     ./home/org-storage.nix
     ./home/sync-storage.nix
@@ -32,7 +31,6 @@
     ./home/homarr.nix
     ./home/homepage.nix
     ./home/syncthing.nix
-    ./home/webdav.nix
     ./home/zwave-js-ui.nix
     ./identity/headscale-oidc.nix
     ./identity/keycloak.nix

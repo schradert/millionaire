@@ -43,11 +43,10 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | miniflux (rss) | password | done: newsboat + elfeed, `modules/feeds.nix` | done: `modules/feeds.nix` | n-a | done: Flux News (`homelab` set) | bws `miniflux/tristan-password` (miniflux.nix) |
 | baikal (cal) | Digest on `/dav.php` | done: khal + vdirsyncer, `modules/calendar.nix` | done: same | n-a | done: DAVx5 + Fossify | bws `baikal/admin-password` (baikal.nix generatedSecrets) |
 | syncthing (sync) | oauth2-proxy (GUI) | done: `services.syncthing` from the folder table, hub as the only device, `modules/syncthing.nix` (the host's device ID goes in the table first: docs/manual-steps.md step 11) | done: same | n-a | done: Syncthing-Fork (only `org`; add its ID to the table) | hub identity: cert-manager `syncthing-identity`, Bitwarden `syncthing/hub/{cert,key}` |
-| webdav (dav) | oauth2-proxy | n-a (clients cannot pass oauth2-proxy) | n-a | n-a | n-a | — |
 | home-assistant (hass) | OIDC | done: companion cask, `modules/desktop-clients.nix` | web | n-a | done: Home Assistant | — |
 | homepage, homarr, dashy | OIDC (dashy's catalog exports go through oauth2-proxy) | web | web | n-a | web | — |
 | android (Obtainium pages) | none (read-only, nothing secret) | web | web | n-a | web | — |
-| chirpstack, excalidraw, frigate, logseq, rclone, siyuan, zigbee2mqtt, zwave-js-ui | OIDC / oauth2-proxy | web | web | n-a | web (frigate tile) | — |
+| chirpstack, excalidraw, frigate, rclone, siyuan, zigbee2mqtt, zwave-js-ui | OIDC / oauth2-proxy | web | web | n-a | web (frigate tile) | — |
 | kosync | KOReader account | n-a | n-a | n-a | done: KOReader (`eink` set) | — |
 | keycloak | — | web (SSO for everything) | web | web | web | — |
 | bulwark (webmail) | OIDC | web (mail clients: mail workstream) | web | n-a | web | — |

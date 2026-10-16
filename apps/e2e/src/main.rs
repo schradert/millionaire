@@ -17,7 +17,6 @@
 
 mod ai;
 mod ctx;
-mod dav;
 mod feedserver;
 mod files;
 mod finance;

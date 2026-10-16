@@ -116,7 +116,6 @@ pub fn families() -> Vec<Family> {
         crate::home::family(),
         crate::finance::family(),
         crate::proxy::family(),
-        crate::dav::family(),
         crate::games::family(),
         crate::kubernetes::family(),
         crate::registry::family(),

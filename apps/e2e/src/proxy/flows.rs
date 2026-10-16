@@ -189,7 +189,6 @@ rows! {
     chirpstack: "chirpstack" => "chirpstack",
     excalidraw: "excalidraw" => "excalidraw",
     frigate: "frigate" => "frigate",
-    logseq: "logseq" => "logseq",
     rclone: "rclone" => "rclone",
     siyuan: "siyuan" => "siyuan",
     zigbee2mqtt: "zigbee2mqtt" => "zigbee",

@@ -305,10 +305,6 @@ data:
           description: ''
           href: https://kosync.trdos.me
           icon: kosync
-      - logseq:
-          description: ''
-          href: https://logseq.trdos.me
-          icon: logseq
       - rclone:
           description: Cloud storage remotes
           href: https://rclone.trdos.me
@@ -321,10 +317,6 @@ data:
           description: ''
           href: https://sync.trdos.me
           icon: syncthing
-      - webdav:
-          description: ''
-          href: https://dav.trdos.me
-          icon: webdav
       - zigbee2mqtt:
           description: ''
           href: https://zigbee.trdos.me
