@@ -278,7 +278,7 @@ RomM works without any key: it matches titles by file name and hash through Hash
    - **SteamGridDB** (covers): API key from your profile preferences at <https://www.steamgriddb.com>. Store `romm/steamgriddb/api-key`.
    - **RetroAchievements** (achievements): Web API key from <https://retroachievements.org/settings>. Store `romm/retroachievements/api-key`.
 2. In `nixidy/apps/media/romm.nix` list the providers in `providers` (for example `["igdb" "steamgriddb"]`), render, commit, merge. RomM restarts with the keys. For IGDB also set `igdb = true` in `nixidy/apps/media/ggrequestz.nix`: GG Requestz searches games through the same Twitch application and cannot search without it.
-3. In RomM, Library > Scan > Complete (or Unmatched) rescans with the new sources.
+3. In RomM, run a complete (or unmatched) scan from the web UI to rescan with the new sources.
 
 ## 18. ntfy access control (README todo 16)
 

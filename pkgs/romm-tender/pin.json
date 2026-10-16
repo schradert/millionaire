@@ -1,0 +1,11 @@
+{
+  "version": "0.33.0",
+  "hash": "sha256-evnsYDrnE/lrsizwCW/LOuJB2Syb1SZrF/DXhNzpqb8=",
+  "source": {
+    "type": "url-template",
+    "url": "https://github.com/danielcopper/romm-tender/releases/download/tender-v{version}/Tender.zip",
+    "owner": "danielcopper",
+    "repo": "romm-tender",
+    "tagPrefix": "tender-v"
+  }
+}
