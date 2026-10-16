@@ -12,7 +12,7 @@ A node is built from independent layers; a host file (`static/<host>.nix`) picks
 | --- | --- | --- | --- |
 | Disk | `modules/disko.nix` | ZFS pool `root`: `system/{root,var}`, `local/nix`, `safe/{home,var/lib}` (copies=2), `temp/tmp` (sync=disabled), ESP on `/boot` | every node and hyena |
 | Disk (legacy) | `static/zfs-legacy.nix`, `disko.legacyLayout = true` | flat `root/{root,home,tmp}` as installed by the old dotfiles; mounts only | falcon, axolotl until their reinstall |
-| Node | `static/k8s-node.nix` | RKE2 via `canivete.kubernetes` (agent unless `services.rke2.role` is set), cluster tailnet (`tailnet.nix`: cluster-node key, pod routes, `accept-dns=false`), build-pool membership and name resolution (`builder.nix`), attic substituter and push hook, chrony, kubelet resolv.conf, etcd watchdog/snapshot | every RKE2 host |
+| Node | `static/k8s-node.nix` | RKE2 via `canivete.kubernetes` (agent unless `services.rke2.role` is set), cluster tailnet (`tailnet.nix`: cluster-node key, pod routes, `accept-dns=false`), build-pool membership and name resolution (`builder.nix`), attic substituter and push hook, chrony, kubelet resolv.conf, etcd watchdog/snapshot, opt-in `externalContainerd` (`static/containerd-external.nix`) | every RKE2 host |
 | Role | `static/server.nix` | srvos server profile (headless) | sirver, octopus, dingo, bonobo, chinchilla |
 | Role | `static/desktop-node.nix` | no sleep, NetworkManager leaves cilium alone, LAN NIC renamed `eno1` (cilium's device list), NVIDIA container toolkit + `nvidia` containerd runtime when `profiles.nvidia` is on | falcon, axolotl |
 | Host | `static/<host>.nix` | disk device, hostId, hardware | one per host |
@@ -171,6 +171,71 @@ on each node BEFORE its switch. One node at a time, never while another server i
 3. Switch the node (runbook), then `systemctl is-active rke2-server rke2-agent`, starting the unit if the switch left it stopped.
 4. Verify: `findmnt /var/lib/rancher/rke2/agent/containerd`, `zfs get sync,copies root/local/containerd`, node Ready, pods Running.
 5. `cleanup` once satisfied (deletes `containerd.premigration`, freeing its `copies=2` space). `rollback` undoes step 2 before it.
+
+## Running containerd as its own unit (`externalContainerd`)
+
+By default rke2 runs its embedded containerd as its own child: an rke2 crash kills containerd and orphans every shim, and static pods
+(etcd) block on log pipes nobody reads (`static/etcd-watchdog.nix` drains only etcd's). `externalContainerd.enable = true` on a node
+(set it in that node's block in `flake.nix`; default off everywhere, so merging the module changes no node) runs the NixOS
+`containerd.service` instead, configured like rke2's, and points rke2 at it. Shims and containers then survive rke2 restarts and crashes.
+
+What the flag sets (`static/containerd-external.nix`, ported from the config.toml rke2 1.34.11 generates on chinchilla and falcon):
+
+- rke2 `container-runtime-endpoint: unix:///run/k3s/containerd/containerd.sock` in `/etc/rancher/rke2/config.yaml`. rke2 then does not
+  start its own containerd. The socket path is the old embedded one, so `crictl` (`/var/lib/rancher/rke2/agent/etc/crictl.yaml`) and
+  anything that mounts the socket keep working; the alternative (a new socket plus `container-runtime-endpoint`) would have worked
+  the same and changed every consumer.
+- containerd config version 3, root `/var/lib/rancher/rke2/agent/containerd` (the ZFS dataset: images and snapshots are reused),
+  state `/run/k3s/containerd`, overlayfs snapshotter, runc with `SystemdCgroup`, `use_local_image_pull`, stream server on
+  `127.0.0.1:10010`, pause image `index.docker.io/rancher/mirrored-pause:3.10.2` (what rke2 1.34.11 uses; the task text said 3.6, the
+  live config says 3.10.2). CNI is containerd's default: binaries in `/opt/cni/bin` (multus installs them), config in `/etc/cni/net.d`.
+- `nvidia` and `nvidia-cdi` runtimes (`BinaryName` in the toolkit's `tools` output) on hosts with `hardware.nvidia-container-toolkit`
+  (falcon): the same handlers rke2 generates today when it finds `nvidia-container-runtime` on its PATH.
+- Registry mirrors: none are configured live (no `registries.yaml`), Harbor resolves through `networking.hosts`, which containerd shares.
+  Mirrors, when needed, go in `virtualisation.containerd.settings` (`registry.config_path` plus `hosts.toml` files).
+- Not carried over: the Windows `runhcs-wcow-process` runtime, and rke2's `certs.d` registry path (nothing is in it).
+- `LimitNOFILE=1048576` on the unit, rke2's value: containers inherit the runtime's limit.
+- `containerd.service` is ordered before rke2 and wanted by it, and has `restartIfChanged = false`: a switch never restarts it
+  (containerd restarts keep running pods: shims reconnect), you restart it on purpose. Ordering is declared on the containerd side so
+  that enabling the flag does not change rke2's unit.
+- Two build-time assertions pin what the port was done for: rke2 1.34 and containerd 2.x. A bump fails the toplevel of a flagged node
+  until the port is re-read. On every rke2 bump: re-read the config rke2 generates (pause image, runtime options, new defaults;
+  `containerd -c <live> config dump` against the unit's dump should differ only in `imports`, `registry.config_path` and the Windows
+  runtime) and check that nixpkgs' containerd still meets the new kubelet's CRI requirement (each Kubernetes release lists the minimum
+  containerd version; embedded rke2 1.34.11 ships 2.2.7-k3s1, nixpkgs has 2.4.1).
+
+Migrating a node (untested on a live node; agents first, then dingo and octopus one at a time with etcd 3/3 between, sirver at its
+reinstall). Drain is not needed: the pods restart in place, which is what any rke2 restart after `rke2-killall.sh` already does.
+
+1. Gates as in the roll: etcd 3/3, all nodes Ready, ceph known state, kubeconfig on a server that is not this one. For dingo/octopus
+   move the etcd leader off first. Do the containerd dataset migration first if the node is not on it yet (octopus).
+2. Set `externalContainerd.enable = true` for the node, build the toplevel on falcon, copy it right before the switch (roll gotcha 1).
+3. Switch with rke2 running. The flag is inert for running processes: `config.yaml` is read at rke2's start and `containerd.service`
+   is not restarted. `dry-activate` must not list `rke2-*` among the units to restart; abort if it does. Afterwards
+   `grep container-runtime-endpoint /etc/rancher/rke2/config.yaml` shows the endpoint and `systemctl is-active containerd` is still the
+   old unused instance.
+4. Cut over (this node's pods go down for 5 to 15 minutes, roll gotcha 3):
+   `systemctl stop rke2-<role>` (the embedded containerd dies with it, its shims stay), then `rke2-killall.sh` (kills those shims and
+   unmounts `/run/k3s`; this is the last time it is valid on this node), `pgrep -a containerd-shim` empty, then
+   `systemctl restart containerd` (new config, same root dir) and `crictl images | wc -l` (the old image count), then
+   `systemctl start rke2-<role>`.
+5. Verify: `ps -o ppid= -p $(pgrep -x containerd)` is 1, not rke2; `journalctl -u rke2-<role>` shows no embedded containerd start;
+   node Ready; static pods on a server Running; etcd 3/3; a pod on falcon with `runtimeClassName: nvidia` runs. Then
+   `systemctl restart rke2-<role>` once and check pods and shims stay up (`pgrep -a containerd-shim | wc -l` unchanged): that is the
+   point of the change.
+6. Logs move: `journalctl -u containerd` replaces `/var/lib/rancher/rke2/agent/containerd/containerd.log`.
+
+On a flagged node never run `rke2-killall.sh` or `containerd-zfs-migrate.sh cutover` (the script refuses): killall finds shims by rke2's
+data dir path, misses nixpkgs' shims, and unmounts `/run/k3s` under a running containerd. To wipe a node's pods reboot it.
+
+Rollback per node: flag off, then `systemctl stop rke2-<role> containerd`, `pkill -9 -f containerd-shim-runc-v2`, `rke2-killall.sh`
+(nothing is running now, so it is safe), switch to the flag-off toplevel (containerd.service goes back to the unused defaults,
+`config.yaml` loses the endpoint), `systemctl start rke2-<role>` (rke2 starts its embedded containerd on the same root dir).
+
+Not verified: all of the above on a live node. In particular that rke2 1.34.11 starts cleanly against the external endpoint (its
+`--container-runtime-endpoint` help text: "Disable embedded containerd and use the CRI socket at the given path"), that kubelet picks the
+systemd cgroup driver from the CRI as it does today, that the GPU operator validator passes with `nvidia` served by this unit,
+and that a switch does not restart rke2 (step 3).
 
 ## Not verified
 

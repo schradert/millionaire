@@ -21,6 +21,7 @@
 # Sized for a 16 GB Mac: 8 GB RAM and 4 vCPUs, fixed (qemu does not give guest page cache
 # back, so the VM can be expected to hold all 8 GB once it has been up for a while).
 {
+  config,
   flake,
   lib,
   modulesPath,
@@ -91,7 +92,8 @@ in {
   # 1.9.1), so every pod sandbox on an arm64 node fails with "exec format error". containerd
   # takes a plugin from the first bin dir that has it: nixpkgs' arm64 build goes first, while
   # cilium-cni and multus-shim (arm64 in their own images) still resolve from /opt/cni/bin.
-  # rke2's generated containerd config imports this directory.
+  # rke2's generated containerd config imports this directory; with externalContainerd the
+  # same setting goes into the unit's config.
   systemd.tmpfiles.rules = let
     dropIn = pkgs.writeText "10-cni-bin-dirs.toml" ''
       [plugins.'io.containerd.cri.v1.runtime'.cni]
@@ -102,4 +104,7 @@ in {
     "d ${dir} 0755 root root -"
     "L+ ${dir}/10-cni-bin-dirs.toml - - - - ${dropIn}"
   ];
+  virtualisation.containerd = lib.mkIf config.externalContainerd.enable {
+    settings.plugins."io.containerd.cri.v1.runtime".cni.bin_dirs = ["${pkgs.cni-plugins}/bin" "/opt/cni/bin"];
+  };
 }

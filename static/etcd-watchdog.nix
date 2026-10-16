@@ -1,4 +1,5 @@
-# rke2-server is containerd's parent: when rke2 dies, containerd dies with it and
+# rke2-server is containerd's parent (unless externalContainerd.enable, see
+# containerd-external.nix): when rke2 dies, containerd dies with it and
 # nothing reads the static pods' stderr pipes. etcd then blocks on a log write,
 # raft stalls, and rke2 can't restart without a local etcd. Detect that state
 # and drain the pipe from whichever process still holds its read end.

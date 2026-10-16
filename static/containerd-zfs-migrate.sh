@@ -23,6 +23,8 @@ RSYNC=(rsync -aHAX --numeric-ids --info=stats1 --exclude='/lost+found')
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 [ "$(id -u)" = 0 ] || die "run as root"
+# rke2-killall.sh would unmount /run/k3s under a live containerd of its own unit (docs/node-standard.md)
+case "${1:-}" in cutover | rollback) ! grep -qs container-runtime-endpoint /etc/rancher/rke2/config.yaml || die "externalContainerd is on";; esac
 
 case "${1:-}" in
 seed)
