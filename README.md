@@ -61,6 +61,8 @@
 57. TODO the e2e Keycloak client `e2e` now writes only through fine-grained admin permissions (Keycloak 26.2.5, v2): it creates, changes and deletes users only in the `/e2e/admin` and `/e2e/family` groups (test users are members of those, copies of the real groups), and its realm-wide `manage-users` is gone. What is left: it holds `view-users` (read all users), because a 26.2 search lists nothing for a caller whose only right is group `view-members`; retry without it on a newer Keycloak.
 58. TODO the two 4-core SSD nodes are saturated on CPU *requests* (dingo 3785m/4000m, chinchilla 3885m/4000m), so new pods (CoreDNS, Alloy) spill onto sirver/octopus. Biggest avoidable requests: Loki's two memcached caches at 500m each, rook-ceph-mon 1100m, rook-ceph-mgr 700m, the two ceph-csi node plugins 300m each. Right-size them (and consider a `LimitRange` default) so placement preferences actually hold.
 
+Open follow-ups across the repo, grouped, with links to details: [docs/backlog.md](docs/backlog.md)
+
 ## Conventions
 
 Agents and contributors: every app that needs a first-user or admin setup gets both of these, with no manual first-run wizard.
