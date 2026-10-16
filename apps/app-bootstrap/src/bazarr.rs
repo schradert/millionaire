@@ -101,16 +101,24 @@ fn with_profile(existing: &Value, name: &str, rename_from: &str, languages: &[St
         let id = all[i]["profileId"].as_i64().unwrap_or(1);
         let have: Vec<String> = all[i]["items"].as_array().into_iter().flatten().filter_map(|it| it["language"].as_str().map(String::from)).collect();
         let lacking = missing(&have, languages);
+        let mut items = all[i]["items"].as_array().cloned().unwrap_or_default();
         let mut changed = false;
-        if !lacking.is_empty() {
-            let mut items = all[i]["items"].as_array().cloned().unwrap_or_default();
-            let first = items.iter().filter_map(|it| it["id"].as_i64()).max().unwrap_or(0) + 1;
-            for (id, l) in (first..).zip(lacking) {
-                items.push(json!({ "id": id, "language": l, "audio_exclude": "False", "hi": "False", "forced": "False", "audio_only_include": "False" }));
+        // An item an older bootstrap saved without the flags Bazarr reads later breaks its subtitle search
+        // (KeyError 'audio_only_include').
+        for item in items.iter_mut().filter_map(Value::as_object_mut) {
+            for flag in ["audio_exclude", "audio_only_include", "hi", "forced"] {
+                if !item.contains_key(flag) {
+                    item.insert(flag.into(), json!("False"));
+                    changed = true;
+                }
             }
-            all[i]["items"] = Value::Array(items);
+        }
+        let first = items.iter().filter_map(|it| it["id"].as_i64()).max().unwrap_or(0) + 1;
+        for (id, l) in (first..).zip(lacking) {
+            items.push(json!({ "id": id, "language": l, "audio_exclude": "False", "hi": "False", "forced": "False", "audio_only_include": "False" }));
             changed = true;
         }
+        all[i]["items"] = Value::Array(items);
         if let Some(old) = old_id {
             all.retain(|p| p["profileId"].as_i64() != Some(old));
             return Profiles { all, id, changed: true, superseded: Some(old) };
@@ -316,6 +324,7 @@ mod tests {
         let items = p.all[0]["items"].as_array().unwrap();
         assert_eq!(items.iter().map(|i| i["language"].as_str().unwrap()).collect::<Vec<_>>(), ["en", "pt", "es"]);
         assert_eq!(items[2]["id"], 3);
+        assert!(items.iter().all(|i| i["audio_only_include"] == "False"), "the flags Bazarr reads are set on every item");
         // Settled: a rerun changes nothing.
         let again = with_profile(&Value::Array(p.all), "Practice", "English", &langs);
         assert!((again.all.len(), again.changed, again.superseded) == (1, false, None));
