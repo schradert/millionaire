@@ -23,7 +23,6 @@
 24. TODO rolling node upgrade to nixpkgs 26.11 after the bump (one node at a time, rke2 restarts likely). dingo's capped nix-daemon can't build its own system, so build on sirver and copy
 27. TODO Jellyfin hardware transcoding via falcon's NVIDIA GPU once falcon joins the cluster
 30. TODO back up Bitwarden Secrets Manager: a scheduled `bws` export, encrypted to an offline age key and stored outside Bitwarden, plus a restore test. It holds the restic password, so losing it makes every VolSync backup unreadable
-31. TODO back up hyena's headscale: a nightly consistent `.backup` of `/var/lib/headscale/db.sqlite` plus the noise/derp keys, encrypted and pushed off-host, plus a restore test
 33. TODO hardware: an SSD for etcd on octopus (its ZFS boot disk amplifies etcd writes about 15x), larger or SSD drives for sirver (it caps usable Ceph capacity at about 5.7TB with size 2), a replacement for osd.7, more Mac disk for parallel nix work (or move heavy builds fully off the Mac)
 34. TODO falcon voron aarch64 builds miss the binary cache (overlays) and take 6h+ under emulation; give it a cache or a native aarch64 builder
 35. TODO canivete: make its default `sops.defaultSopsFile` content-only upstream, then drop the `mkForce` copy in `modules/sops.nix`

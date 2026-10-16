@@ -164,6 +164,7 @@ The Macs are the root of trust: they decrypt `secrets/sops/*.yaml` with tristan'
 
 - Rotate secrets (README todo 17).
 - Lock down ntfy on hyena (README todo 16).
+- Headscale backup: after deploying hyena, run `systemctl start headscale-backup` there once (or wait for 02:30), then `headscale-backup-restore-test` in the devshell. It must print `OK` with the node count; the first real run also settles that the B2 key and the offline age key work. Repeat it after changing the backup.
 - ContextForge: check whether its native OIDC is active behind oauth2-proxy (a double login prompt means it is).
 - Stalwart admin UI: it has no route yet, so use `kubectl -n mail port-forward svc/stalwart 8080` with Bitwarden `stalwart/admin/password`.
 
