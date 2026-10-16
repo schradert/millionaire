@@ -44,6 +44,8 @@
         done
       '';
       _module.args.pulumi = pulumi;
+      # Removing an app from the repo removes its resources. The `apps` Application is written by hand (system/cicd/app-of-apps.nix) and keeps none.
+      nixidy.defaults.finalizer = "foreground";
       nixidy.target = {
         repository = "https://github.com/schradert/millionaire.git";
         rootPath = "./nixidy/generated/${config.nixidy.env}";
