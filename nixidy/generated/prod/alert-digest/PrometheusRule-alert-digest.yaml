@@ -1,0 +1,22 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    release: prometheus
+  name: alert-digest
+  namespace: observability
+spec:
+  groups:
+    - name: alert-digest
+      rules:
+        - alert: AlertDigestStale
+          annotations:
+            description: 'CronJob observability/alert-digest last succeeded over three days ago (suspended, failing, or not scheduled). Check: kubectl -n observability get cronjob,job,pod -l app.kubernetes.io/name=alert-digest; docs/observability.md.'
+            summary: The daily alert digest has not been sent for three days
+          expr: |
+            (time() - kube_cronjob_status_last_successful_time{namespace="observability",cronjob="alert-digest"} > 3 * 86400)
+            or
+            ((time() - kube_cronjob_created{namespace="observability",cronjob="alert-digest"} > 3 * 86400) unless on (namespace, cronjob) kube_cronjob_status_last_successful_time{namespace="observability",cronjob="alert-digest"})
+          for: 1h
+          labels:
+            severity: warning
