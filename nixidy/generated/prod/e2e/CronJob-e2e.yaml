@@ -23,7 +23,7 @@ spec:
                 - name: DOMAIN
                   value: trdos.me
                 - name: E2E_IMAGE
-                  value: harbor.trdos.me/library/e2e:0.17.2@sha256:1df42200e4b130922f8151d7e8707e8a2f7019156de1206e38e86b655b215551
+                  value: harbor.trdos.me/library/e2e:0.17.3@sha256:cc4f48e650175aa679f0cb54c0677b08a8bea867c23c07532303a2a113c61626
                 - name: E2E_REPORT_CONFIGMAP
                   value: e2e/e2e-last-report
                 - name: E2E_RUNNER
@@ -36,7 +36,7 @@ spec:
                   value: "1000"
                 - name: PYROSCOPE_SERVER_ADDRESS
                   value: http://pyroscope.observability.svc.cluster.local:4040
-              image: harbor.trdos.me/library/e2e:0.17.2@sha256:1df42200e4b130922f8151d7e8707e8a2f7019156de1206e38e86b655b215551
+              image: harbor.trdos.me/library/e2e:0.17.3@sha256:cc4f48e650175aa679f0cb54c0677b08a8bea867c23c07532303a2a113c61626
               name: e2e
               resources:
                 limits:
