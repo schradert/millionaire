@@ -99,6 +99,111 @@ in {
           sourceRef.storeRef.kind = "ClusterSecretStore";
         };
       };
+      # Daily SimpleFIN link + sync (actual-simplefin/sync.mjs, @actual-app/api against the server with the
+      # break-glass password): creates the budget file if there is none, links every Bridge account not
+      # linked yet (investments and loans off budget) and runs one batch bank sync. Budget files only
+      # change through the app engine, hence node + the api package (package-lock.json, npm ci) instead of
+      # the Rust bootstrap. Keep package.json equal to the actual-server pin (the script checks). Needs an
+      # unencrypted budget file. Bridge budget: 1 list + 1 per new link + 1 batch sync per run.
+      resources.configMaps.actual-simplefin = lib.mkIf (simplefin && bootstrapped) {
+        data = {
+          "sync.mjs" = builtins.readFile ./actual-simplefin/sync.mjs;
+          "package.json" = builtins.readFile ./actual-simplefin/package.json;
+          "package-lock.json" = builtins.readFile ./actual-simplefin/package-lock.json;
+        };
+      };
+      resources.cronJobs.actual-simplefin = lib.mkIf (simplefin && bootstrapped) {
+        spec = {
+          schedule = "51 9 * * *";
+          concurrencyPolicy = "Forbid";
+          successfulJobsHistoryLimit = 1;
+          failedJobsHistoryLimit = 3;
+          jobTemplate.spec = {
+            backoffLimit = 0;
+            activeDeadlineSeconds = 1200;
+            ttlSecondsAfterFinished = 172800;
+            template = {
+              metadata.labels."app.kubernetes.io/name" = "actual-simplefin";
+              spec = {
+                restartPolicy = "Never";
+                automountServiceAccountToken = false;
+                securityContext = {
+                  runAsNonRoot = true;
+                  runAsUser = 1000;
+                  runAsGroup = 1000;
+                  seccompProfile.type = "RuntimeDefault";
+                };
+                containers = lib.toList {
+                  name = "actual-simplefin";
+                  image = with pinned.images.node; "${repository}:${tag}@${digest}";
+                  resources = {
+                    requests = {
+                      cpu = "50m";
+                      memory = "256Mi";
+                    };
+                    limits.memory = "1Gi";
+                  };
+                  # --ignore-scripts: better-sqlite3 ships its prebuilt binaries and node-gyp would need a toolchain.
+                  command = [
+                    "sh"
+                    "-c"
+                    "cp /app/* /work/ && cd /work && npm ci --ignore-scripts --no-audit --no-fund --loglevel=error && node sync.mjs"
+                  ];
+                  env = lib.mapAttrsToList (name: value: {inherit name value;}) {
+                    ACTUAL_URL = "http://actual.finance.svc.cluster.local:5006";
+                    ADMIN_PASSWORD_FILE = "/secrets/admin/password";
+                    DATA_DIR = "/work/data";
+                    HOME = "/work";
+                  };
+                  volumeMounts = [
+                    {
+                      name = "work";
+                      mountPath = "/work";
+                    }
+                    {
+                      name = "tmp";
+                      mountPath = "/tmp";
+                    }
+                    {
+                      name = "app";
+                      mountPath = "/app";
+                      readOnly = true;
+                    }
+                    {
+                      name = "admin";
+                      mountPath = "/secrets/admin";
+                      readOnly = true;
+                    }
+                  ];
+                  securityContext = {
+                    allowPrivilegeEscalation = false;
+                    capabilities.drop = ["ALL"];
+                    readOnlyRootFilesystem = true;
+                  };
+                };
+                volumes = [
+                  {
+                    name = "work";
+                    emptyDir.sizeLimit = "512Mi";
+                  }
+                  {
+                    name = "tmp";
+                    emptyDir = {};
+                  }
+                  {
+                    name = "app";
+                    configMap.name = "actual-simplefin";
+                  }
+                  {
+                    name = "admin";
+                    secret.secretName = "actual-admin";
+                  }
+                ];
+              };
+            };
+          };
+        };
+      };
       volsync.pvcs.actual.title = "actual";
       helm.releases.actual = {
         chart = charts.bjw-s-labs.app-template-patched;
