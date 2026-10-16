@@ -106,6 +106,8 @@ in {
             OIDC_ADMIN_GROUP = "admin";
             ROMM_SERVER_URL = "http://romm.media.svc.cluster.local:8080";
             ROMM_SERVER_URL_PUBLIC = "https://romm.${domain}";
+            # PM2 starts one worker per core ("max"): 32 on a big node, which OOM-kills the pod.
+            PM2_INSTANCES = "2";
             UPDATE_CHECK_ENABLED = "false";
           };
 
