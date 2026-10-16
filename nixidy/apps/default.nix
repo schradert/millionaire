@@ -499,6 +499,37 @@
       }
     ];
   };
+  nixidy.netpol.namespaces.storage = {
+    enforce = true;
+    # Only pod-network workloads are selected: Ceph (mons, mgr, mds, osds, rgw, exporter, crash collectors) and
+    # the CSI node plugins run on the host network (`network.provider = "host"`) and have no Cilium endpoint
+    # (the host firewall is off), so the policy never filters Ceph traffic. What it covers are the operators,
+    # the CSI provisioners, VolSync and ClickHouse; the CNPG webhook (:9443) is called by the apiserver.
+    # The ClickHouse operator reconciles and scrapes the server over HTTP
+    extraIngress = [
+      {
+        fromEndpoints = [
+          {
+            matchLabels = {
+              "k8s:io.kubernetes.pod.namespace" = "storage";
+              "app.kubernetes.io/name" = "operator";
+              "app.kubernetes.io/instance" = "clickhouse";
+            };
+          }
+        ];
+        toPorts = [
+          {
+            ports = [
+              {
+                port = "8123";
+                protocol = "TCP";
+              }
+            ];
+          }
+        ];
+      }
+    ];
+  };
   nixidy.applications.namespaces.resources.namespaces = {
     development = {};
     e2e = {};
