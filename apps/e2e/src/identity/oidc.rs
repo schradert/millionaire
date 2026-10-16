@@ -193,8 +193,9 @@ fn visible(html: &str) -> String {
 }
 
 /// Sure is configured `AUTH_JIT_MODE=link_only`: Keycloak authenticates the test user, but Sure
-/// has no account linked to it and refuses to create one, so the login page comes back with an
-/// error and the user still has no session. Nothing is created in Sure.
+/// has no account linked to it and refuses to create one: the callback (`OIDC_REDIRECT_URI`)
+/// parks the identity in the session and shows `/oidc_account/link`, which says account creation
+/// is disabled, and the user still has no session. Nothing is created in Sure.
 pub async fn sure(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let kc = Kc::connect()?;
     let u = kc::users(ctx, &kc).await?;
@@ -208,7 +209,7 @@ pub async fn sure(ctx: &Ctx, f: &mut Flow) -> R<()> {
         .at("sure", "OpenID Connect button on the sign-in page")?;
     let fields: Vec<(String, String)> = button.fields.into_iter().map(|(n, v, _)| (n, v)).collect();
     let post = sess.post_form(ctx, &page.url.join("/auth/openid_connect").at("sure", "url")?, &fields).await?;
-    let stop = format!("{base}/auth/oidc/callback");
+    let stop = format!("{base}/auth/openid_connect/callback");
     let end = sess.follow(ctx, post, &stop).await?;
     let cb = match web::keycloak_login_at(ctx, &mut sess, end, &user.username, &user.password, &stop).await? {
         Login::Done(u) => u,
@@ -216,21 +217,21 @@ pub async fn sure(ctx: &Ctx, f: &mut Flow) -> R<()> {
     };
     f.ok("keycloak", "login accepted for the Sure client", user.username.clone());
     let hop = sess.get(ctx, &cb).await?;
-    let back = hop.location.clone().filter(|l| l.path().starts_with("/sessions/new")).ok_or_else(|| {
+    let back = hop.location.clone().filter(|l| l.path() == "/oidc_account/link").ok_or_else(|| {
         Fail::new(
             "sure",
             "OIDC callback",
             format!(
-                "expected a redirect to the sign-in page (no account for an unlinked user), got HTTP {} {:?}",
+                "expected a redirect to the account link page (no account for an unlinked user), got HTTP {} {:?}",
                 hop.status,
                 hop.location.as_ref().map(Url::as_str)
             ),
         )
     })?;
-    let login_page = sess.get(ctx, &back).await?;
-    let text = visible(&login_page.body);
-    if !text.contains("Could not authenticate via OpenID Connect") {
-        return Err(Fail::new("sure", "refusal message", format!("sign-in page shows: {}", excerpt(&text))));
+    let link_page = sess.get(ctx, &back).await?;
+    let text = visible(&link_page.body);
+    if !text.contains("New account creation via single sign-on is disabled") {
+        return Err(Fail::new("sure", "refusal message", format!("link page shows: {}", excerpt(&text))));
     }
     f.ok("sure", "unlinked Keycloak user refused", "AUTH_JIT_MODE=link_only: no account created");
     let home = sess.get(ctx, &Url::parse(&format!("{base}/")).at("sure", "url")?).await?;
