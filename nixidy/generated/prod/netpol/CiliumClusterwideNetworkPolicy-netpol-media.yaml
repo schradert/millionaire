@@ -89,5 +89,11 @@ spec:
         - world
       toPorts:
         - ports:
+            - port: "873"
+              protocol: TCP
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
             - port: "1935"
               protocol: TCP
