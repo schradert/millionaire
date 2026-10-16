@@ -57,21 +57,22 @@ done
 A hash mismatch prints the `got:` hash; a title missing from the library
 prints `empty or missing directory`.
 
-## Installers (not uploaded yet)
+## Installers
 
-`installers/` does not exist in the PVC, so `pkgs/game-installers` and
-`pkgs/cemu-keys` (Wizard101, Pirate101, Battle.net, `cemu-keys.txt`) cannot
-build and their shortcuts and the Cemu keys fail on the Deck. Upload them from
-a LAN host through the `games` rsync module (`docs/manual-steps.md` section
-10), then check the hashes (Battle.net's installer changes upstream, so expect
-a mismatch there; fix the pin with the `got:` hash):
+`installers/` holds `InstallWizard101.exe`, `InstallPirate101.exe` and
+`Battle.net-Setup.exe` (uploaded 2026-10-16, served by `games.trdos.me`), the
+vendors' public installers (`pkgs/game-installers`). The vendors replace them
+in place, so their hashes drift: re-download, re-prefetch and update the pin
+(`got:` hash from a failed build also works). `cemu-keys.txt`
+(`pkgs/cemu-keys`) is user-supplied and **not uploaded yet**: put your own
+`keys.txt` into `installers/` through the `games` rsync module
+(`docs/manual-steps.md` section 10); until then the Cemu keys do not build.
 
 ```sh
 mkdir -p ~/games-upload/installers && cd ~/games-upload/installers
-curl -L -o InstallWizard101.exe 'https://drive.google.com/uc?id=1iVWSiEcGjwk_LKcp1937y4q3N3rt_JmQ'
-curl -L -o InstallPirate101.exe 'https://drive.google.com/uc?id=1Nk_WThZYfW5xJII7G-JiL2rATpU3mA3k'
-curl -L -o cemu-keys.txt 'https://drive.google.com/uc?id=1869wHy8omyBJVX7bnfLQ-nwsnW3d95V4'
-curl -L -o Battle.net-Setup.exe 'https://downloader.battle.net/download/getInstaller?os=win&installer=Battle.net-Setup.exe'
+curl -fL -o InstallWizard101.exe https://akamai.wizard101.com/InstallWizard101.exe   # www.wizard101.com/downloadGame redirects here
+curl -fL -o InstallPirate101.exe https://akamai.pirate101.com/InstallPirate101.exe   # www.pirate101.com/downloadGame redirects here
+curl -fL -o Battle.net-Setup.exe 'https://downloader.battle.net/download/getInstaller?os=win&installer=Battle.net-Setup.exe'
 chmod +x *.exe
 nix store prefetch-file --executable file://$PWD/InstallWizard101.exe   # likewise Pirate101, Battle.net
 nix store prefetch-file file://$PWD/cemu-keys.txt                        # no --executable

@@ -142,7 +142,7 @@ One-time bulk copy of the DVD ISOs, the curated MKVs and the game library from f
      <source dir>/ rsync://transfer@192.168.50.253/<module>/
    ```
 
-   Still outstanding for `games`: `installers/` (`InstallWizard101.exe`, `InstallPirate101.exe`, `Battle.net-Setup.exe`, `cemu-keys.txt`; `/installers` is empty on games.trdos.me, so the Wizard101, Pirate101 and Battle.net shortcuts and the Cemu keys do not build on the Deck). Download them as in `docs/games.md` (Installers), then push only that directory with the command above (`<source dir>` = `~/games-upload/installers`, module `games`, destination `rsync://transfer@192.168.50.253/games/installers/`) and run the pin check from the same section; Battle.net's hash drifts upstream, so update its pin with the `got:` hash.
+   `games/installers/` is uploaded (Wizard101, Pirate101, Battle.net, 2026-10-16; how: `docs/games.md`, Installers). Still outstanding: `cemu-keys.txt`, user-supplied (your own Cemu `keys.txt`; the pin `pkgs/cemu-keys` expects its hash, prefetch it as in `docs/games.md` and update the pin if it differs). Push it with the command above (`<source dir>` = a directory holding only that file, module `games`, destination `rsync://transfer@192.168.50.253/games/installers/`), which needs steps 3 and 6 again.
 
    Rerun the same command to resume. Verify with `-n --itemize-changes` added (an empty listing means no differences; add `-c` on a sample of ISOs to compare checksums, not just size and mtime).
 6. Flip `enabled` back to `false`, render, commit, sync: the Service, the address and the ingress rule go away.
