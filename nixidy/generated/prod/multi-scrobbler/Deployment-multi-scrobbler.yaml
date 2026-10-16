@@ -36,12 +36,12 @@ spec:
                 name: multi-scrobbler
           image: ghcr.io/foxxmd/multi-scrobbler:0.19.2@sha256:449274cb8b5b855cc361056862aed6a11e5dcc0a72e2acb279ac78edf834a1c7
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 9078
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           name: multi-scrobbler
           readinessProbe:
             failureThreshold: 3
@@ -49,14 +49,20 @@ spec:
             periodSeconds: 10
             tcpSocket:
               port: 9078
-            timeoutSeconds: 1
+            timeoutSeconds: 5
+          resources:
+            limits:
+              memory: 768Mi
+            requests:
+              cpu: 100m
+              memory: 256Mi
           startupProbe:
-            failureThreshold: 3
+            failureThreshold: 30
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 9078
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /config
               name: config
