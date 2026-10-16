@@ -20,14 +20,20 @@ in {
       namespace = "identity";
       postgres.enable = true;
       postgres.instances = 2;
+      # CNPG's cron has a seconds field first: the default `0 0 * * *` runs every hour.
+      postgres.backup.schedule = "0 0 0 * * *";
       helm.releases.keycloak = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
           controllers.keycloak = {
             annotations."reloader.stakater.com/auto" = "true";
-            # 26.8 migrates the schema and changes the cache protocol: it must not run beside 26.2.
-            # Back to RollingUpdate (surge 1, unavailable 0) once it is live; patch releases roll without downtime.
-            strategy = "Recreate";
+            # New pod must be Ready before the old one goes: SSO never drops on a
+            # rollout, and a bad image never takes it down.
+            strategy = "RollingUpdate";
+            rollingUpdate = {
+              surge = 1;
+              unavailable = 0;
+            };
             containers.keycloak = {
               # Build options (KC_DB, health, metrics, features) are baked in by
               # modules/images.nix; keep them in sync with the env below.
@@ -100,11 +106,6 @@ in {
         };
       };
       resources = {
-        # Restore point before the 26.8 schema migration (one-way). Taken once on merge; delete after the upgrade is verified.
-        backups.keycloak-pre-26-8.spec = {
-          cluster.name = "keycloak";
-          method = "barmanObjectStore";
-        };
         # Keycloak needs to pass a valid FQDN to Stalwart for email sending
         # app-template doesn't support setting these variables though
         deployments.keycloak.spec.template.spec = {
