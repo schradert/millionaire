@@ -112,13 +112,13 @@ load without error, and yield at least as many tables as the previous run (kept 
 Job (`KubeJobFailed`), POSTs to ntfy, and alerts `DumpRestoreVerificationFailed` / `DumpRestoreVerificationStale` (10 days). To cover
 another database without barman, add an entry `namespace/cluster|repository|path regex` to `dumpSources`.
 
-## Backup coverage gaps seen on 2026-10-10
+## Backup coverage gaps
 
-- ReplicationSources with no sync ever: forgejo (data-forgejo-0), baikal, ha-config, syncthing, zwave-js-ui, audiobookshelf, prosody.
-- Stale: actual (last sync 2026-03-17), jitsi jibri (2026-10-07), media-dvd (2026-10-09).
+- ReplicationSources never synced as of 2026-10-15 (`kubectl get replicationsource -A`): tdarr-server only.
 - CNPG ScheduledBackups with no recent backup: windmill and chirpstack (93d), immich (107d), hydra/keto/kratos (205d, clusters no longer exist).
-- No VolSync source for any PVC in `ai`, for `frigate-media`, or for the CephFS media libraries except `media-dvd`
-  (`media-movies` 500Gi, `media-tv`, `media-music`, ...).
+- No VolSync source, by decision: `frigate-media` (1Ti of rolling camera recordings: churn makes restic expensive and the clips have no value
+  after their retention), `media-downloads` (transient), `media-sports` (re-acquirable), `dvd-rip-work` (rip scratch), and the model caches
+  in `ai` (`ollama`, `vllm`, `heretic-*`).
 
 ## Monthly automated verification
 
