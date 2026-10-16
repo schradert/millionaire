@@ -86,7 +86,7 @@
     alerts = [{type = "ntfy";}];
   };
 in {
-  imports = [./vps.nix ./headscale-backup.nix];
+  imports = [./vps.nix ./headscale-backup.nix ./ntfy.nix];
 
   # Hyena is a root-only bootstrap server; opting out of home-manager keeps
   # ungated home modules (helix + tree-sitter parsers, etc.) out of its closure.
@@ -216,7 +216,8 @@ in {
   # cluster nodes, falcon), `tristan` and tag:cluster keep that full reach,
   # plus tag/route automation for the cloud-burst tailnet (static/tailnet.nix).
   # `family` phones (options/android.nix) get only what their apps need:
-  # AdGuard DNS + ntfy on hyena, and the internal-gateway relays that
+  # AdGuard DNS + ntfy on hyena (443 also serves the status page; ntfy answers
+  # them only as its read-only `family` user, static/ntfy.nix), and the internal-gateway relays that
   # *.trdos.me resolves to (nixidy/system/network/gateway.nix). ACLs are
   # stateful, so nothing has to allow the replies. Until pulumi creates the
   # `family` user, headscale skips its rules (unresolved users only log).
@@ -406,8 +407,8 @@ in {
   };
 
   # Thin out-of-cluster alerting, independent of the cluster it watches.
-  # ntfy takes pushes (tailnet-only, so no auth); Gatus probes the cluster over
-  # the tailnet and alerts through ntfy. The cluster's Alertmanager posts real
+  # ntfy takes pushes (tailnet-only; access control is static/ntfy.nix); Gatus
+  # probes the cluster over the tailnet and alerts through ntfy. The cluster's Alertmanager posts real
   # alerts to ntfy and its always-firing Watchdog to Gatus as a dead-man's
   # switch (nixidy/system/observability/alertmanager.nix).
   services.ntfy-sh = {

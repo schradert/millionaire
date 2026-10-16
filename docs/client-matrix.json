@@ -3156,7 +3156,7 @@
     "ntfy.trdos.me"
    ],
    "exposure": "tailnet",
-   "auth": "none (tailnet-only nginx vhost bound to 100.64.0.1; family ACL allows it)",
+   "auth": "ntfy users and tokens (static/ntfy.nix), deny-all by default; tailnet-only nginx vhost bound to 100.64.0.1; family ACL allows it",
    "clients": {
     "browser": [
      "https://ntfy.trdos.me"
@@ -3169,7 +3169,7 @@
        "linux"
       ],
       "provisioned": "yes",
-      "where": "modules/ntfy.nix:36",
+      "where": "modules/ntfy.nix:71",
       "note": ""
      }
     ],
@@ -3203,7 +3203,7 @@
        "linux"
       ],
       "provisioned": "yes",
-      "where": "modules/ntfy.nix:36",
+      "where": "modules/ntfy.nix:71",
       "note": ""
      }
     ],
@@ -3211,7 +3211,7 @@
     "mcp": [],
     "extensions": []
    },
-   "notes": "static/hyena.nix:135 (vhost), :98 base-url. topic alerts fed by Alertmanager + Gatus."
+   "notes": "static/hyena.nix:135 (vhost), :98 base-url, static/ntfy.nix (users, tokens, access). topic alerts fed by Alertmanager + Gatus; devices read as `reader` (token for the Macs, password in the phone app), family phones as `family`."
   },
   {
    "app": "alertmanager",

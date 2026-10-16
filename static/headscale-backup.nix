@@ -94,14 +94,13 @@ in {
       };
     };
 
-    # hyena's own ntfy (tailnet-only, no auth), the topic Gatus alerts to.
+    # hyena's own ntfy, the topic Gatus alerts to.
     systemd.services.headscale-backup-failed = {
       description = "Alert that the headscale backup failed";
       serviceConfig.Type = "oneshot";
-      path = [pkgs.curl];
       script = ''
-        curl -fsS -H "Title: headscale backup failed" -H "Priority: 4" -H "Tags: warning" \
-          -d "headscale-backup.service failed on hyena: journalctl -u headscale-backup" http://127.0.0.1:2586/alerts
+        ${lib.getExe config.services.ntfy-sh.publish} alerts -H "Title: headscale backup failed" -H "Priority: 4" -H "Tags: warning" \
+          -d "headscale-backup.service failed on hyena: journalctl -u headscale-backup"
       '';
     };
   };

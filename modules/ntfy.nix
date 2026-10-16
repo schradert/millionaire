@@ -1,12 +1,40 @@
 # Desktop notifications from hyena's ntfy topic `alerts` (Alertmanager and
-# Gatus, static/hyena.nix). ntfy is tailnet-only without auth, so the
-# subscriber runs only on personal hosts (on headscale); the CLI everywhere.
-{config, ...}: let
+# Gatus, static/hyena.nix). ntfy is tailnet-only and read access needs the
+# `reader` token (pulumi, static/ntfy.nix), decrypted from personal.yaml like
+# modules/api-keys.nix, so the subscriber runs only on personal hosts (on
+# headscale); the CLI everywhere.
+{
+  config,
+  lib,
+  ...
+}: let
   inherit (config.canivete.meta) domain;
+  inherit (config.canivete.meta.people) me;
+  # Key names in a sops file are cleartext; off until pulumi has written the token and the file is committed.
+  written = lib.hasInfix "\nntfy:\n    " (builtins.readFile ../secrets/sops/personal.yaml);
 in {
+  system = {
+    config,
+    lib,
+    ...
+  }: {
+    config = lib.mkIf (config.apiKeys.enable && written) {
+      sops.secrets.ntfy-reader-token = {
+        key = "ntfy/reader/token";
+        sopsFile = builtins.path {
+          path = ../secrets/sops/personal.yaml;
+          name = "sops-personal.yaml";
+        };
+        owner = me;
+        mode = "0400";
+      };
+    };
+  };
+
   home = {
     config,
     lib,
+    osConfig ? null,
     pkgs,
     ...
   }: let
@@ -30,7 +58,12 @@ in {
         }
       ];
     };
-    args = [ntfy "subscribe" "--config" "${clientConfig}" "--from-config"];
+    secrets = lib.optionalAttrs (osConfig != null) osConfig.sops.secrets;
+    subscribe = pkgs.writeShellScript "ntfy-alerts" ''
+      ${lib.optionalString (secrets ? ntfy-reader-token) "NTFY_TOKEN=$(< ${secrets.ntfy-reader-token.path}); export NTFY_TOKEN"}
+      exec ${ntfy} subscribe --config ${clientConfig} --from-config
+    '';
+    args = [(toString subscribe)];
   in {
     config = lib.mkIf config.profiles.workstation.enable (lib.mkMerge [
       {home.packages = [package];}
