@@ -12,6 +12,14 @@ Maintainerr (`maintainerr.<domain>`, admins only) applies rules to the Jellyfin 
 | Notification `ntfy media` | `https://ntfy.<domain>/media?priority=2`: media added to or removed from a collection, about to be handled (3 days ahead), handled, rule or collection handling failed, update available | one low-priority `media` topic. Maintainerr's ntfy agent sets no priority header, so the priority rides in the topic's query string. Subscribe to `media` in the ntfy app |
 | Telemetry | off (`TELEMETRY=off`) | the default sends an anonymous weekly report |
 
+## Jellyfin key (generation 2): verified 2026-10-16
+
+The key is not in a Secret: `jellyfin-bootstrap` makes it in Jellyfin (`Maintainerr (gen N)`, `maintainerrKeyGeneration` in `nixidy/apps/media/jellyfin.nix`), writes it into Maintainerr's settings and deletes the older ones. Checked on 2026-10-16:
+
+- Maintainerr's stored `jellyfin_api_key` (read from a copy of its SQLite file, never printed) is accepted by Jellyfin (`/System/Info`, `/Users`, `/Library/VirtualFolders` return 200; a bogus key and no key return 401), and it equals the access token of the one `Maintainerr (gen 2)` key in Jellyfin's `/Auth/Keys`. The legacy `Maintainerr` key is gone.
+- `media-e2e run --flow movie-chain,maintainerr` passes: an inactive rule group is evaluated by Maintainerr against the Jellyfin test movie (rule `Jellyfin - Times viewed`, result true) and removed again.
+- Since Maintainerr's last start (02:26 PDT) its log has no Jellyfin warning or error; every start logs `Jellyfin connection established`. The only Jellyfin failures of the last day (`Failed to fetch active Jellyfin sessions` 00:00 and `Failed to get Jellyfin libraries` 01:05 PDT) fall between the rotation (`Settings updated` 23:59:45) and that restart, so a running Maintainerr appears to keep the old, now deleted key until it restarts: after bumping the generation, restart Maintainerr (`kubectl -n media rollout restart deploy/maintainerr`). That is inferred from the log timing, not tested. Jellyfin's own log shows `Invalid token` only for the e2e sessions' logouts and for the control requests of this check.
+
 ## Per rule group: what happens to media
 
 These are options of each rule group (the example groups below set them), not global settings:
