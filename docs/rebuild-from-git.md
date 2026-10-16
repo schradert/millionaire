@@ -9,6 +9,7 @@ Notes assembled from the repo on 2026-10-10. The sequence has never been run end
 | --- | --- | --- |
 | sops age identity that decrypts `secrets/sops/default.yaml` (recipients are in the file's `sops:` block) | operator machine / node SSH host keys | everything under `secrets/sops/` is unreadable: k8s token, Bitwarden machine token, B2 admin key, tailnet/attic/AdGuard/Cloudflare node secrets |
 | Bitwarden Secrets Manager project (all app secrets, `backblaze/bucket/*`, `volsync/restic/password`) | Bitwarden | no app credentials; the restic password loss makes every VolSync backup unreadable |
+| Backup of the Bitwarden project: the newest of 12 weekly objects `bws-backup/<time>.json.age` in the B2 bucket (CronJob `bws-backup` in `security`), age-encrypted | decrypts with `age.bws-backup` in `secrets/sops/personal.yaml` (the Macs' age identity); the cluster holds only the public key | no way back from a lost Bitwarden project: recreate every secret by hand, and with the restic password lost every VolSync repository stays unreadable. Restore: see the last section |
 | GitHub repo `schradert/millionaire` | GitHub | the whole plan; ArgoCD pulls `nixidy/generated/prod` from it |
 | Pulumi state | Pulumi backend (assumed Pulumi Cloud; `ref+pulumistateapi://` refs in generated manifests) | pulumi would try to recreate Hetzner, Cloudflare, B2 resources and Bitwarden secrets, including re-rolled passwords |
 | RKE2 token | `passwords.k8s-token` in sops | needed to restore etcd snapshots (bootstrap data is encrypted with it) |
@@ -58,11 +59,26 @@ Notes assembled from the repo on 2026-10-10. The sequence has never been run end
 - PVCs whose ReplicationSource is failing or stale: as of 2026-10-15 only `tdarr-server` (never synced), see `docs/pvc-and-postgres-restore.md`.
 - CNPG clusters without a recent base backup: windmill, chirpstack, immich.
 - Anything written since the last 04:00 (VolSync, daily) or CNPG scheduled backup (hourly on the clusters inspected), or since the last 6h etcd snapshot.
-- The sops age identity, Bitwarden contents and the restic password if they are not backed up elsewhere. Nothing in this repo
-  backs up Bitwarden itself.
+- The sops age identity, and Bitwarden contents written since the last weekly `bws-backup` object (the restic password is in every object).
+  The backup is useless without its private key, which is in sops `personal.yaml`, so it follows the sops age identity.
 - Hyena state: headscale's database and its noise/DERP keys are backed up nightly (`static/headscale-backup.nix`: age-encrypted, VolSync
   bucket `headscale-backup/`, newest 30; restore with the devshell script `headscale-backup-restore-test`, which has not been run against a
   real object yet, `docs/manual-steps.md` §8). AdGuard settings are not backed up, and nodes registered since the last backup would need
   re-registering with new pre-auth keys.
 - Pulumi state, if the backend is lost.
 - Etcd snapshots are unencrypted and contain all Secrets; they are as sensitive as Bitwarden itself.
+
+## Restoring Bitwarden Secrets Manager
+
+The CronJob `bws-backup` (`security`, Sundays 05:30 UTC, alerts `BwsBackupFailed`/`BwsBackupStale`) uploads `bws secret list -o json`
+(keys and values of every secret the machine account sees), encrypted to the age public key in `nixidy/system/security/bws-backup.nix`.
+Only the public key is in the cluster.
+
+- Test (any time, needs the Mac's sops identity and `BWS_ACCESS_TOKEN`): `bws-backup-restore-test` in the devshell. It downloads the newest
+  object, decrypts it with `age.bws-backup`, and checks it parses and holds the restic password and the B2 keys. It prints counts, never values.
+- Restore by hand when Bitwarden is gone: `rclone copyto ":s3:trdos-me--volsync/bws-backup/<newest>" backup.age` with the B2 key (the
+  same one as `backup-verify`; if even that is lost, `b2` with the admin key from `default.yaml`), then
+  `sops decrypt --extract '["age"]["bws-backup"]' secrets/sops/personal.yaml > key; age -d -i key backup.age > backup.json`.
+  Recreate the secrets in a new Secrets Manager project (`bws secret create`, key and value from the JSON), point the machine account's
+  token at it in `default.yaml` (`bitwarden`) and the `organizationID`/`projectID` in `nixidy/system/security/external-secrets/bitwarden.nix`.
+  Delete `key` and `backup.json` afterwards.

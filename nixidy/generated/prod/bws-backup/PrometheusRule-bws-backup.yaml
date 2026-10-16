@@ -1,0 +1,35 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    release: prometheus
+  name: bws-backup
+  namespace: security
+spec:
+  groups:
+    - name: bws-backup
+      rules:
+        - alert: BwsBackupFailed
+          annotations:
+            description: 'Logs: kubectl -n security logs job/<newest bws-backup-* job>. Bitwarden is the only copy of the restic password, so fix this before the next run (docs/rebuild-from-git.md).'
+            summary: The weekly Bitwarden Secrets Manager backup failed
+          expr: |
+            (
+              kube_cronjob_status_last_schedule_time{namespace="security",cronjob="bws-backup"} > on (namespace, cronjob) kube_cronjob_status_last_successful_time{namespace="security",cronjob="bws-backup"}
+              or
+              kube_cronjob_status_last_schedule_time{namespace="security",cronjob="bws-backup"} unless on (namespace, cronjob) kube_cronjob_status_last_successful_time{namespace="security",cronjob="bws-backup"}
+            ) unless on (namespace, cronjob) (kube_cronjob_status_active{namespace="security",cronjob="bws-backup"} > 0)
+          for: 5m
+          labels:
+            severity: warning
+        - alert: BwsBackupStale
+          annotations:
+            description: 'The bws-backup CronJob runs weekly. It either failed every time, did not run (suspended, image missing, scheduling), or never succeeded. Check: kubectl -n security get cronjob,job,pod.'
+            summary: No successful Bitwarden Secrets Manager backup in 10 days
+          expr: |
+            (time() - kube_cronjob_status_last_successful_time{namespace="security",cronjob="bws-backup"} > 864000)
+            or
+            ((time() - kube_cronjob_created{namespace="security",cronjob="bws-backup"} > 864000) unless on (namespace, cronjob) kube_cronjob_status_last_successful_time{namespace="security",cronjob="bws-backup"})
+          for: 10m
+          labels:
+            severity: critical

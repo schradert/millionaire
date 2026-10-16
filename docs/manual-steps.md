@@ -168,6 +168,8 @@ Unblocks: Documents, sensitive documents, notes and game saves on every host, an
 
 The Macs are the root of trust: they decrypt `secrets/sops/*.yaml` with tristan's age key, so it cannot come from sops. Put it at `~/Library/Application Support/sops/age/keys.txt` (copy from an existing Mac, or `sops decrypt --extract '["age"]["tristan"]' secrets/sops/personal.yaml` on any workstation) and `~/.ssh/personal` from `ssh/personal` the same way. NixOS workstations get both from `modules/workstation-keys.nix`.
 
+The Bitwarden Secrets Manager backup (`bws-backup`, docs/rebuild-from-git.md) is encrypted to a key that lives only in `personal.yaml` (`age.bws-backup`): run `bws-backup-restore-test` in the devshell after any change to the backup (it passed on the first object, 2026-10-16).
+
 ## 8. Later
 
 - Rotate secrets (README todo 17).

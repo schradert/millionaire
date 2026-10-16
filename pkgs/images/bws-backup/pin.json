@@ -1,0 +1,9 @@
+{
+  "version": "0.1.0",
+  "digest": "sha256:2228b0f2ed1aafdc6252abed518036a651fffd6756edb4a3266b5c57c2e94c53",
+  "source": {
+    "type": "oci-tag",
+    "repository": "harbor.trdos.me/library/bws-backup",
+    "tagPattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
+  }
+}
