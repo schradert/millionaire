@@ -321,7 +321,8 @@ in {
       # nodes by LAN IP, authenticated with falcon's ssh host key (authorized on
       # the nodes by static/builder.nix), host keys pinned inline. Env:
       # BUILD_ALL_REMOTE (falcon), BUILD_ALL_JOBS (8; falcon's own slots),
-      # BUILD_ALL_CORES (4).
+      # BUILD_ALL_CORES (4). `--systems` is explicit: nix-fast-build silently drops drvs
+      # not of the builder's native system (aarch64-linux on falcon) and reports them cached.
       scripts.build-all.exec = ''
         set -uo pipefail
         jq=${lib.getExe pkgs.jq}
@@ -343,7 +344,7 @@ in {
             --option accept-flake-config true --option builders "$pool" --option builders-use-substitutes true
             -j "''${BUILD_ALL_JOBS:-8}" --option cores "''${BUILD_ALL_CORES:-4}")
           ${lib.getExe pkgs.nix-fast-build} --flake ".#legacyPackages.$sys.build-all" --impure --no-nom --skip-cached \
-            --eval-workers 4 "''${remote[@]}" --result-format json --result-file "$out/$sys.json" >&2
+            --systems "$sys" --eval-workers 4 "''${remote[@]}" --result-format json --result-file "$out/$sys.json" >&2
           [ -s "$out/$sys.json" ] || echo '{"results":[{"attr":"<flake>","type":"EVAL","success":false}]}' > "$out/$sys.json"
           [ "$sys" = aarch64-darwin ] || continue
           for dir in . embedded org-bridge apps/sveltekit-demo; do
