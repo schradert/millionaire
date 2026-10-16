@@ -9,7 +9,13 @@
 //!    log in (userCreationMode=manual), so this is what makes Keycloak `tristan` the admin. Without
 //!    it the first OpenID login would need the server password typed into the login page.
 //!    (`POST /admin/users` inserts a role-less user, so it is followed by a `PATCH` setting ADMIN.)
-//! 4. If OpenID is not among the available login methods, `POST /openid/enable`. The password method
+//! 4. If SIMPLEFIN_TOKEN(_FILE) is set and the server has no SimpleFIN token yet, store it as the global
+//!    secret `simplefin_token` (`POST /secret`). Actual claims it on first use (the first account list in
+//!    the UI) and keeps the access key itself, so the setup token is spent exactly once. SimpleFIN
+//!    secrets are global in Actual (per-budget-file secrets exist server side since 26.8 but only the
+//!    Pluggy.ai provider uses them), i.e. every Actual user could use these banks. A new token does not
+//!    replace a configured one: reset it in Settings > Bank Sync.
+//! 5. If OpenID is not among the available login methods, `POST /openid/enable`. The password method
 //!    stays available as break-glass. Enabling clears all sessions, so it only happens once; a
 //!    changed client secret or issuer is NOT re-applied by a rerun (do it in Settings > Authentication).
 
@@ -44,6 +50,32 @@ fn has_openid(status: &Value) -> bool {
 
 fn token_of(body: &Value) -> Result<String> {
     body["data"]["token"].as_str().map(String::from).ok_or_else(|| "response has no token".into())
+}
+
+/// Stores the owner's SimpleFIN setup token as the global `simplefin_token` secret, once.
+async fn simplefin(http: &Client, base: &str, token: &str) -> Result<()> {
+    if std::env::var("SIMPLEFIN_TOKEN").is_err() && std::env::var("SIMPLEFIN_TOKEN_FILE").is_err() {
+        return Ok(());
+    }
+    let setup = secret("SIMPLEFIN_TOKEN")?;
+    let setup = setup.trim();
+    if setup.is_empty() {
+        return Ok(());
+    }
+    let r = http.post(format!("{base}/simplefin/status")).header("x-actual-token", token).json(&json!({})).send_t().await?;
+    let status: Value = ok(r, "POST /simplefin/status").await?.json().await?;
+    if simplefin_configured(&status) {
+        println!("simplefin already configured, leaving it");
+        return Ok(());
+    }
+    let r = http.post(format!("{base}/secret")).header("x-actual-token", token).json(&json!({ "name": "simplefin_token", "value": setup })).send_t().await?;
+    ok(r, "POST /secret simplefin_token").await?;
+    println!("stored the simplefin setup token (global; Actual claims it on first use)");
+    Ok(())
+}
+
+fn simplefin_configured(status: &Value) -> bool {
+    status["data"]["configured"] == json!(true)
 }
 
 pub async fn run() -> Result<()> {
@@ -118,6 +150,8 @@ pub async fn run() -> Result<()> {
         }
     }
 
+    simplefin(&http, base, &token).await?;
+
     if has_openid(&status) {
         println!("openid already enabled");
         return Ok(());
@@ -153,6 +187,12 @@ mod tests {
         assert_eq!(user_step(&users, "tristan"), UserStep::Fix("b".into()));
         let done = json!([{ "id": "b", "userName": "tristan", "role": "ADMIN", "enabled": true }]);
         assert_eq!(user_step(&done, "tristan"), UserStep::Done);
+    }
+
+    #[test]
+    fn detects_simplefin() {
+        assert!(simplefin_configured(&json!({ "status": "ok", "data": { "configured": true } })));
+        assert!(!simplefin_configured(&json!({ "status": "ok", "data": { "configured": false } })));
     }
 
     #[test]

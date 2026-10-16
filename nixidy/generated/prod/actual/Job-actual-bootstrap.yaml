@@ -36,7 +36,9 @@ spec:
               value: "1000"
             - name: PYROSCOPE_SERVER_ADDRESS
               value: http://pyroscope.observability.svc.cluster.local:4040
-          image: harbor.trdos.me/library/app-bootstrap:0.22.1@sha256:efcaab3b2ee14c6d12e21e323ee0c59948842dd9bf75a6f2de5f07ec590cde6f
+            - name: SIMPLEFIN_TOKEN_FILE
+              value: /secrets/simplefin/token
+          image: harbor.trdos.me/library/app-bootstrap:0.44.0@sha256:8708bc93848b5c1bb91c8767a3afb4e2526647dffc7dcd124286ee5d627c3ebf
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
@@ -52,6 +54,9 @@ spec:
               readOnly: true
             - mountPath: /secrets/oidc
               name: oidc
+              readOnly: true
+            - mountPath: /secrets/simplefin
+              name: simplefin
               readOnly: true
       restartPolicy: OnFailure
       securityContext:
@@ -69,3 +74,6 @@ spec:
         - name: oidc
           secret:
             secretName: actual-oidc
+        - name: simplefin
+          secret:
+            secretName: actual-simplefin

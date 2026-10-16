@@ -9,6 +9,10 @@ in {
   }: let
     inherit (config.canivete.meta) domain;
     hostname = "sure.${domain}";
+    # false: no ExternalSecret and no token passed to the bootstrap. true once Bitwarden holds
+    # `sure/simplefin/token` (docs/manual-steps.md, "Bank sync (SimpleFIN)"): the bootstrap then
+    # claims it once into a SimplefinItem for tristan's family.
+    simplefin = true;
     probe = lib.recursiveUpdate {
       enabled = true;
       custom = true;
@@ -80,6 +84,29 @@ in {
             issuer: ENV.fetch("OIDC_ISSUER"), info: { email: email }
           )
           puts "sure-bootstrap: linked oidc identity"
+        end
+      end
+
+      # Owner's SimpleFIN (flag `simplefin`): Family#create_simplefin_item! is what the Settings UI
+      # calls; it claims the setup token (single use) and queues Sure's own sync. Runs only if the
+      # family has no SimpleFIN item at all, so it claims once. The item name carries a hash prefix
+      # of the token. A new token in Bitwarden does not replace an existing item: use the item's
+      # Edit in the UI. Account setup (types) is a UI step. Failures are logged, never fail the Job.
+      if ENV["SIMPLEFIN_SETUP_TOKEN"].to_s.strip != ""
+        begin
+          token = ENV.fetch("SIMPLEFIN_SETUP_TOKEN").strip
+          name = "SimpleFIN (Bitwarden #{Digest::SHA256.hexdigest(token)[0, 8]})"
+          family = User.find_by!(email: email).family
+          if family.simplefin_items.exists?(name: name)
+            puts "sure-simplefin: this token was already claimed"
+          elsif family.simplefin_items.exists?
+            puts "sure-simplefin: family already has a SimpleFIN item, not claiming (replace it with Edit in the UI)"
+          else
+            family.create_simplefin_item!(setup_token: token, item_name: name)
+            puts "sure-simplefin: claimed the setup token, created #{name}, sync queued"
+          end
+        rescue StandardError => e
+          warn "sure-simplefin: #{e.class} (see docs/manual-steps.md, Bank sync)"
         end
       end
     '';
@@ -235,42 +262,50 @@ in {
               image = with pinned.images.sure; "${repository}:${tag}@${digest}";
               args = ["./bin/rails" "runner" bootstrapScript];
               inherit envFrom;
-              env = [
-                {
-                  name = "ADMIN_EMAIL";
-                  value = people.my.profiles.personal.email;
-                }
-                {
-                  name = "ADMIN_NAME";
-                  value = people.my.name;
-                }
-                {
-                  name = "KEYCLOAK_URL";
-                  value = "http://keycloak.identity.svc.cluster.local:8080";
-                }
-                {
-                  name = "KEYCLOAK_USER";
-                  value = "admin";
-                }
-                {
-                  name = "KEYCLOAK_PASSWORD";
+              env =
+                lib.optional simplefin {
+                  name = "SIMPLEFIN_SETUP_TOKEN";
                   valueFrom.secretKeyRef = {
-                    name = "sure-keycloak-admin";
-                    key = "password";
+                    name = "sure-simplefin";
+                    key = "token";
                   };
                 }
-                {
-                  name = "OIDC_USERNAME";
-                  value = people.me;
-                }
-                {
-                  name = "ADMIN_PASSWORD";
-                  valueFrom.secretKeyRef = {
-                    name = "sure-admin";
-                    key = "password";
-                  };
-                }
-              ];
+                ++ [
+                  {
+                    name = "ADMIN_EMAIL";
+                    value = people.my.profiles.personal.email;
+                  }
+                  {
+                    name = "ADMIN_NAME";
+                    value = people.my.name;
+                  }
+                  {
+                    name = "KEYCLOAK_URL";
+                    value = "http://keycloak.identity.svc.cluster.local:8080";
+                  }
+                  {
+                    name = "KEYCLOAK_USER";
+                    value = "admin";
+                  }
+                  {
+                    name = "KEYCLOAK_PASSWORD";
+                    valueFrom.secretKeyRef = {
+                      name = "sure-keycloak-admin";
+                      key = "password";
+                    };
+                  }
+                  {
+                    name = "OIDC_USERNAME";
+                    value = people.me;
+                  }
+                  {
+                    name = "ADMIN_PASSWORD";
+                    valueFrom.secretKeyRef = {
+                      name = "sure-admin";
+                      key = "password";
+                    };
+                  }
+                ];
               securityContext = {
                 allowPrivilegeEscalation = false;
                 capabilities.drop = ["ALL"];
@@ -295,6 +330,15 @@ in {
         remoteRef.key = "keycloak/admin/password";
         sourceRef.storeRef.name = "bitwarden";
         sourceRef.storeRef.kind = "ClusterSecretStore";
+      };
+
+      resources.externalSecrets.sure-simplefin = lib.mkIf simplefin {
+        spec.data = lib.toList {
+          secretKey = "token";
+          remoteRef.key = "sure/simplefin/token";
+          sourceRef.storeRef.name = "bitwarden";
+          sourceRef.storeRef.kind = "ClusterSecretStore";
+        };
       };
 
       resources.externalSecrets.sure.spec.data = [
