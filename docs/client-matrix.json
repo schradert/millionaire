@@ -1954,7 +1954,7 @@
        "macos"
       ],
       "provisioned": "yes",
-      "where": "modules/media-clients.nix:2",
+      "where": "modules/media-clients.nix:15",
       "note": ""
      },
      {
