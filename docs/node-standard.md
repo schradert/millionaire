@@ -40,7 +40,7 @@ Outside the layers, on purpose:
   `nix build --system aarch64-linux --no-link nixpkgs#hello -L` (the log shows `building ... on 'ssh-ng://builder@192.168.50.249:31022'`;
   `nix store ping --store ssh-ng://builder@192.168.50.249:31022 --option ssh-key /etc/ssh/ssh_host_ed25519_key` as root answers),
   or `build-all --system aarch64-linux`. The post-build hook that pushes to attic does not cover these builds (they run in the VM's
-  daemon, which has no hook): pushing aarch64 results waits for attic's move (README 33).
+  daemon, which has no hook): pushing aarch64 results to attic (now on chinchilla) is a manual step.
 
 ## Secrets
 
@@ -116,12 +116,54 @@ After:
 - `kubectl get node falcon` (NotReady until Cilium schedules on it), `systemctl --failed`, `tailscale status` (now as a cluster node).
 - falcon only: `nvidia.com/gpu` appears on the node once the gpu-operator pods run (README todo 27).
 
+## Rolling the fleet to a new nixpkgs
+
+Done 2026-10-16 (00:30 to 03:00 PDT): chinchilla, bonobo, dingo and octopus moved to nixos 26.11.20261008.e7439b6 with rke2 v1.34.11.
+sirver stays on 26.05 / rke2 1.34.7 until its root disk is replaced (README 24, 33). No node was rebooted, so kernel 7.2.9 loads at each
+node's next boot (the OSD hosts need a forced reboot).
+
+Order: agents first, then servers (chinchilla, bonobo, dingo, octopus), one node at a time. Per node:
+
+1. On falcon build the toplevel `T` (`nix build .#nixosConfigurations.<n>.config.system.build.toplevel`).
+2. Check the cluster: etcd 3/3, all nodes Ready, ceph state. Point your kubeconfig at a server that is NOT the one being switched.
+3. For a server, move the etcd leader off it first (`etcdctl --endpoints https://<leader>:2379 move-leader <id>` from the etcd-dingo
+   pod); the member rejoins within seconds after the switch.
+4. Containerd dataset (agents and dingo; see the next section): `seed` with rke2 running, then `cutover`.
+5. As root on falcon: `nix copy --no-check-sigs --to 'ssh-ng://nix-remote-builder@<lan ip>?ssh-key=/etc/ssh/ssh_host_ed25519_key' T`.
+   Do this right before step 6 (gotcha 1).
+6. On the node: `nix store diff-closures` and `T/bin/switch-to-configuration dry-activate`, then `nix-env -p /nix/var/nix/profiles/system --set T`
+   and `systemd-run --unit=nixos-switch --collect T/bin/switch-to-configuration switch`. Detached, because sshd restarts mid-switch.
+7. Verify: `systemctl --failed`, node Ready, etcd 3/3 (`etcdctl endpoint status --cluster` in the `etcd-NODE` pod), pods back.
+   Then `containerd-zfs-migrate.sh cleanup`.
+
+Gotchas:
+
+1. The node's `nix-collect-garbage` deletes a pre-copied toplevel that is not in a profile. Copy right before `nix-env --set`: it
+   bit bonobo (cutover done, rke2 stopped, then the path was gone).
+2. `seed` refuses when the pool has less than 120% of the containerd dir free (`du` counts `copies=2` double). `crictl rmi --prune` and a
+   nix GC on the node made room on bonobo and dingo.
+3. After the restart the pods on the node take 5 to 15 minutes to come back: cilium-agent rate-limits endpoint creation
+   (`putEndpointIdTooManyRequests`, 429) and the kubelet backs off exponentially. The node is Ready long before its pods are.
+4. octopus is an OSD host: its 7 OSDs were down for about 90 s, Ceph showed 50% degraded then recovered without backfill, well inside
+   `mon_osd_down_out_interval`.
+5. octopus's containerd migration was deferred: an HDD rsync of an unmeasured directory while it hosts etcd is the known flap trigger.
+   Do it with the leader moved off it and `ionice -c3`, measured first (README 55).
+6. `home-manager-tristan.service` failed on dingo after the switch: `~/.config/Kvantum/Base16Kvantum` exists as a directory from an
+   older generation, so `ln` fails. Cosmetic.
+7. `users.users.<person>.shell = pkgs.zsh` (with `programs.zsh.enable`, `modules/users.nix`) matches the zsh that home-manager configures.
+   It was added after the roll, so it takes effect at each node's next deploy.
+8. attic moved to chinchilla (#978) with the original cache keypair: the sirver storage copy stalled on the failing disk, so only
+   `server.db` was taken, its nar/chunk/object index tables emptied (`DELETE FROM chunkref, nar, object, chunk; VACUUM`) and the file
+   installed under `/var/lib/private/atticd` (owner 65534:65534, the DynamicUser). The cache starts empty but `trusted-public-keys`
+   stays valid (`nix store verify --trusted-public-keys` on bonobo). The Macs and nodes still pointing at `sirver:8199` switch over
+   with their next deploy or darwin-rebuild.
+
 ## Migrating a live node to the containerd dataset
 
 `root/local/containerd` (`sync=disabled`, `copies=1`, legacy mount at `/var/lib/rancher/rke2/agent/containerd`) is declared in
 `static/k8s-node.nix`, so reinstalls get it from disko. disko does not run on live nodes, and the switch that adds the fileSystems
 entry is `nofail` (an unmigrated node keeps running on the old directory, silently), so run `static/containerd-zfs-migrate.sh` as root
-on each node BEFORE its switch. One node at a time, never while another server is down (sirver stays out until its disk is replaced):
+on each node BEFORE its switch. One node at a time, never while another server is down (sirver stays out until its disk is replaced). Migrated 2026-10-16: chinchilla, bonobo, dingo. Pending: octopus (README 55) and sirver (at its reinstall):
 
 1. etcd 3/3, all nodes Ready, ceph known state. `seed` (rke2 running; copies the layers into the new dataset, about the size of
    `du -sh /var/lib/rancher/rke2/agent/containerd`, 50-80 GB; the script refuses if the pool lacks 120% of that).
