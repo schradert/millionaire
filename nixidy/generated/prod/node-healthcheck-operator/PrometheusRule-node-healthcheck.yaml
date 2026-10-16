@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    release: prometheus
+  name: node-healthcheck
+  namespace: medik8s
+spec:
+  groups:
+    - name: node-healthcheck
+      rules:
+        - alert: NodeRemediationInProgress
+          annotations:
+            description: A node stayed NotReady past the NodeHealthCheck threshold and is being rebooted. kubectl get nodehealthcheck,selfnoderemediation -A
+            summary: Node remediation {{ $labels.name }} ({{ $labels.remediation }}) is in progress
+          expr: nodehealthcheck_ongoing_remediation == 1
+          for: 1m
+          labels:
+            severity: warning
+        - alert: NodeRemediationStuck
+          annotations:
+            description: The remediation CR is not being picked up or finished. kubectl -n medik8s get selfnoderemediation; pause with spec.pauseRequests.
+            summary: A remediation of NodeHealthCheck {{ $labels.name }} has been pending for a long time
+          expr: increase(nodehealthcheck_old_remediation_cr[1h]) > 0
+          labels:
+            severity: warning

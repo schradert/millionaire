@@ -119,6 +119,45 @@ on each node BEFORE its switch. One node at a time, never while another server i
 4. Verify: `findmnt /var/lib/rancher/rke2/agent/containerd`, `zfs get sync,copies root/local/containerd`, node Ready, pods Running.
 5. `cleanup` once satisfied (deletes `containerd.premigration`, freeing its `copies=2` space). `rollback` undoes step 2 before it.
 
+## Node remediation
+
+`nixidy/system/cluster/medik8s.nix` runs medik8s Node Health Check (NHC) and Self Node Remediation (SNR) in the `medik8s` namespace
+(apps `node-healthcheck-operator`, `self-node-remediation`, CRDs in `medik8s-crds`). When a selected node's `Ready` condition stays
+`False` or `Unknown` for 15 minutes, NHC creates a `SelfNodeRemediation` from the `out-of-service` template: the node's SNR agent
+reboots it through the hardware watchdog, and the operator then sets the `node.kubernetes.io/out-of-service` taint so its pods are
+force-deleted and their RBD volumes detach and move.
+
+- **Selected**: the agents only (bonobo, chinchilla): no `node-role.kubernetes.io/control-plane` label and `node.trdos.me/class` not
+  `desktop`. The SNR agent DaemonSet has the same selector, so no agent runs elsewhere.
+- **Never touched**: sirver, octopus, dingo (a reboot there is an etcd and OSD event to plan: sirver's disk is failing, octopus hangs on
+  a graceful reboot) and the desktops falcon and axolotl (they sleep and reboot at will, which would read as unhealthy).
+- **One at a time**: `minHealthy: 1` of the two selected nodes; with one already remediating, the other is never started.
+- **15 minutes**: well above the 4-minute `Unknown` that octopus' etcd flaps caused on 2026-10-11.
+- **Signals**: Alertmanager `NodeRemediationInProgress` (warning, via ntfy) and `NodeRemediationStuck`; `kubectl get nodehealthcheck,selfnoderemediation -A`.
+- **Pause** (running remediations continue): add an entry to `spec.pauseRequests` of NodeHealthCheck `agents` in `medik8s.nix` and merge. The
+  apps self-heal, so a `kubectl edit` of the CR is reverted.
+- **Remove**: delete the app files; ArgoCD prunes the three apps. The webhooks fail open, so a CR delete never waits on them.
+
+### Staged: NHC is paused, SNR cannot reboot yet
+
+The NodeHealthCheck ships with a `pauseRequests` entry, so nothing is remediated. SNR's agent cannot reboot these NixOS nodes yet:
+
+- **Watchdog**: `/dev/watchdog` (watchdog0, `intel_oc_wdt`) is held open by systemd (`RuntimeWatchdogSec=15s`), so the agent's open fails
+  with EBUSY. `/dev/watchdog1` (`iTCO_wdt`, 30 s, initialized without a "reboot disabled by BIOS" message, inactive) is free on bonobo and
+  chinchilla, but the numbering follows module load order.
+- **Software fallback**: the agent runs `nsenter -m/proc/1/ns/mnt /bin/bash -c 'echo b > /proc/sysrq-trigger'`; NixOS has only `/bin/sh`,
+  so it fails. `softdog` loading goes through `modprobe` on the host PATH and fails the same way.
+
+Both are node config (`static/k8s-node.nix`), not done here. To enable, in this order:
+
+1. Node config: a stable watchdog for the agent (pin systemd's `RuntimeWatchdogDevice` and give SNR the other one, or use `softdog`)
+   and a `/bin/bash` on the host; roll it per node as in the runbook.
+2. Set `watchdogFilePath` on the `self-node-remediation-config` and the agents re-open it (an armed watchdog resets a node whose agent
+   stalls for 30 s: that is the design).
+3. Drill, one node, with etcd 3/3 and Ceph healthy: unpause, `systemctl stop rke2-agent` plus a network cut on bonobo (or chinchilla)
+   for over 15 minutes, expect `NodeRemediationInProgress`, a reboot, the out-of-service taint, pods rescheduled, taint removed on Ready.
+4. Remove the `pauseRequests` entry.
+
 ## Not verified
 
 - No node has been installed through this path; the pulumi step was only rendered and syntax-checked, never run.

@@ -23,6 +23,7 @@
     ./cicd/reloader.nix
     ./cluster/generic-device-plugin.nix
     ./cluster/k8tz.nix
+    ./cluster/medik8s.nix
     ./mail/bulwark.nix
     ./mail/stalwart.nix
     ./network/cilium.nix
