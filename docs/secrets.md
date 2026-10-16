@@ -19,7 +19,7 @@ Hosts fetch their own secrets at boot and on every switch. This page is the desi
 
 ## Model
 
-```
+```text
 pulumi / `bws` (write)  ->  BWS projects  <-(read-only machine token, one per host or tier)-  host: bws-secrets -> /run/secrets/<name>
                                                                                                    |  age-encrypted cache (host ssh key)
 ```
@@ -49,6 +49,7 @@ The token cannot be derived from the ssh host key (Bitwarden issues it) and cann
 `bws` has only `config`, `project`, `secret`, `run`, and Bitwarden's quick start documents only the web app (creation checked 2026-10-16). So creating machine accounts and tokens is a manual step (docs/manual-steps.md), once per host class.
 
 Delivery, all to `/var/lib/bws/token` (root, 0400; `bwsSecrets.tokenFile`):
+
 - new install: nixos-anywhere `--extra-files` in `pulumi/millionaire/nixos.py`, replacing the current `passwords.age` extraction (the token comes from the admin's environment, not the repo);
 - running host, no reinstall: `static/host-token.sh <host> <user@addr>` (the successor of `static/host-key.sh`, token on stdin);
 - Hetzner golden image and cloud-burst workers: unchanged, cloud-init already delivers their three files (no sops key needed);
@@ -63,6 +64,7 @@ Hardening not needed for stage 1: seal the token with `systemd-creds` (TPM2 wher
 An assertion fails the build if a name is in both `sops.secrets` and `bwsSecrets.secrets`. Not mirrored from sops-nix: `sopsFile`, `format`, `restartUnits`, `neededForUsers`, templates (below).
 
 `lib/bws-secrets.sh` (wrapped by `pkgs.writeShellApplication`, so shellcheck runs at build) has two modes:
+
 - `restore`, run by an activation script (early boot and every switch, no network): decrypts `<cacheDir>/<name>.age` with the host ssh key and installs it. Never fails.
 - `sync`, run by `bws-secrets.service` (after `network-online.target`, 30 s bound on the fetch, retried every 5 min on failure): one `bws secret list`, picks each secret by `key` (and `project` when set; a name that matches in two readable projects is an error),
   re-encrypts the cache to `<hostKey>.pub` (age reads ssh ed25519 keys directly), installs atomically (temp file in the target directory, chown, chmod, rename).
