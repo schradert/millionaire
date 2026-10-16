@@ -60,11 +60,35 @@ pub struct AgentArgs {
     /// duplicates. Once ripped for real the disc is an ordinary duplicate again. Comma separated.
     #[arg(long, env = "DVDRIP_RERIP", value_delimiter = ',')]
     pub rerip: Vec<String>,
+    /// The bash pipeline's rips (`<LABEL>/.discid`, `raw.iso`, `raw.map`): a rescue image it left
+    /// for a disc seeds that disc's staging, so the reinsert continues it instead of reading the
+    /// disc from the start.
+    #[arg(long, env = "DVDRIP_SEED_DIR")]
+    pub seed_dir: Option<PathBuf>,
     /// JSON object, fingerprint -> `{"name": "The Illusionist (2006)", "disc": 2}`: the library
     /// name and disc number a new Disc starts with (instead of the label in title case, disc 1),
     /// for discs known before they are inserted (a bonus disc, a disc with a cryptic label).
     #[arg(long, env = "DVDRIP_PRESETS", default_value = "{}")]
     pub presets: String,
+}
+
+/// Copy a rescue image the bash pipeline left for `fp` (`<seed>/<LABEL>/{.discid,raw.iso,raw.map}`)
+/// into `dst`. False when there is none. The map goes last: no map, no partial image.
+pub fn seed_from(seed: &Path, fp: &str, dst: &Path) -> Result<bool> {
+    for e in std::fs::read_dir(seed)?.filter_map(Result::ok) {
+        let dir = e.path();
+        if std::fs::read_to_string(dir.join(".discid")).map(|s| s.trim() == fp).unwrap_or(false)
+            && dir.join("raw.iso").is_file()
+            && dir.join("raw.map").is_file()
+        {
+            std::fs::create_dir_all(dst)?;
+            for f in ["raw.iso", "raw.map"] {
+                std::fs::copy(dir.join(f), dst.join(f)).with_context(|| format!("copying {f} from {}", dir.display()))?;
+            }
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// What a new Disc's spec starts with, when its fingerprint has a preset.
@@ -353,6 +377,28 @@ impl DriveTask {
         Ok(())
     }
 
+    /// Is there a partial image (raw.iso and raw.map) in staging, from a failed attempt or, for a
+    /// disc the bash pipeline had started rescuing, copied from its rips dir? Continue it.
+    async fn partial_image(&self, fp: &str) -> bool {
+        let dir = self.a.staging.join(fp);
+        let have = |d: &Path| d.join("raw.iso").is_file() && d.join("raw.map").is_file();
+        if !have(&dir) {
+            if let Some(seed) = self.a.seed_dir.clone() {
+                let (fp, to) = (fp.to_string(), dir.clone());
+                match tokio::task::spawn_blocking(move || seed_from(&seed, &fp, &to)).await {
+                    Ok(Ok(true)) => info!("seeded staging with the bash pipeline's rescue image"),
+                    Ok(Ok(false)) => {}
+                    Ok(Err(e)) => {
+                        warn!(error = %format!("{e:#}"), "couldn't copy the bash pipeline's rescue image");
+                        tokio::fs::remove_file(dir.join("raw.map")).await.ok();
+                    }
+                    Err(e) => warn!(error = %e, "seeding failed"),
+                }
+            }
+        }
+        have(&dir)
+    }
+
     async fn existing(&self, fp: &str) -> Result<Option<Disc>> {
         Ok(self.discs.list(&ListParams::default().labels(&format!("{FINGERPRINT_LABEL}={fp}"))).await?.items.into_iter().next())
     }
@@ -387,10 +433,9 @@ impl DriveTask {
                     }
                     // A failed attempt (time limit, dirty disc) left its image and map in staging:
                     // continue it, don't read the whole disc again.
-                    let st_dir = self.a.staging.join(fp);
-                    let partial = st_dir.join("raw.iso").is_file() && st_dir.join("raw.map").is_file();
+                    let partial = self.partial_image(fp).await;
                     if partial {
-                        info!(disc = name, "an earlier attempt's partial image is in staging: continuing it");
+                        info!(disc = name, "a partial image is in staging: continuing it");
                     }
                     (name, partial)
                 }
@@ -422,7 +467,9 @@ impl DriveTask {
                 info!(disc = name, "new disc");
                 self.metrics.event("new");
                 crate::notify::send(&format!("{label}: new disc, backing up on {}", self.name), "new").await;
-                (name, false)
+                // The bash pipeline may have left a partial rescue of it.
+                let partial = self.partial_image(fp).await;
+                (name, partial)
             }
         };
         let prev = self.discs.get_status(&name).await?.status.unwrap_or_default();
@@ -614,6 +661,7 @@ mod tests {
             rescue_minutes: 180,
             trim_minutes: 30,
             rerip: rerip.iter().map(|s| s.to_string()).collect(),
+            seed_dir: None,
             presets: r#"{"1e81002f26cd": {"name": "The Illusionist (2006)", "disc": 2}, "f0c1551c027f": {"name": "Hitch (2005)"}}"#.into(),
         }
     }
@@ -646,6 +694,31 @@ mod tests {
     fn rescue_limits_come_from_the_args() {
         let l = args(&[]).limits();
         assert_eq!((l.rescue.as_secs(), l.trim.as_secs()), (180 * 60, 30 * 60));
+    }
+
+    #[test]
+    fn seeds_from_a_bash_rescue_image() {
+        let base = std::env::temp_dir().join(format!("dvdrip-seed-{}", std::process::id()));
+        std::fs::remove_dir_all(&base).ok();
+        let (seed, dst) = (base.join("rips"), base.join("staging/c950f29a8fd5"));
+        let night = seed.join("NIGHTMARE");
+        std::fs::create_dir_all(&night).unwrap();
+        std::fs::write(night.join(".discid"), "c950f29a8fd5\n").unwrap();
+        std::fs::write(night.join("raw.iso"), b"image").unwrap();
+        // A rip with a master but no rescue, and a rescue of another disc.
+        std::fs::create_dir_all(seed.join("ELF")).unwrap();
+        std::fs::write(seed.join("ELF/.discid"), "111111111111\n").unwrap();
+        std::fs::write(seed.join("ELF/raw.iso"), b"other").unwrap();
+        std::fs::write(seed.join("ELF/raw.map"), b"map").unwrap();
+        // No map yet: not a partial image.
+        assert!(!seed_from(&seed, "c950f29a8fd5", &dst).unwrap());
+        std::fs::write(night.join("raw.map"), b"map").unwrap();
+        assert!(seed_from(&seed, "c950f29a8fd5", &dst).unwrap());
+        assert_eq!(std::fs::read(dst.join("raw.iso")).unwrap(), b"image");
+        assert_eq!(std::fs::read(dst.join("raw.map")).unwrap(), b"map");
+        assert!(!seed_from(&seed, "ffffffffffff", &base.join("none")).unwrap());
+        assert!(!base.join("none").exists());
+        std::fs::remove_dir_all(&base).ok();
     }
 
     #[test]
