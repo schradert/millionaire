@@ -431,7 +431,7 @@ Nothing to reinstall (no games). Android emulator apps come from `android.sets.h
 
 ## 10. Gaps
 
-1. **`/installers` is empty on `games.trdos.me`** (checked 2026-10-15; `/roms` and `/bios` are populated and verified): `pkgs/game-installers` and `pkgs/cemu-keys` pins (`InstallWizard101.exe`, `InstallPirate101.exe`, `Battle.net-Setup.exe`, `cemu-keys.txt`) point at URLs that do not serve yet, so those shortcuts and the Cemu keys fail to build. The files were never uploaded (not on falcon, `docs/games.md` step 3 never ran), see `docs/manual-steps.md` section 10.
+1. **`/installers` was empty on `games.trdos.me`** (checked 2026-10-15) and is now populated (the three installers and `cemu-keys.txt`, uploaded 2026-10-16), see `docs/manual-steps.md` section 10.
 2. **ROM/BIOS sources**: closed 2026-10-15. All 53 titles and `PS1/ps-41a` in the PVC match their pins (`docs/games.md`); the Deck nix store and the SN-D `roms` snapshot remain as backup copies.
 3. `PS2/Ookami (USA)` is wanted but has no file anywhere (no pin hash, not on the Deck, not in the PVC); its declaration is removed from `static/systeamadeck.nix` (it failed evaluation with `library = true`). Re-add `"Ookami (USA)"` to `PS2.titles` and a pin once a copy is uploaded.
 4. Deck shortcut titled `Persona 5` actually launches `PS1/Persona (USA).cue` in DuckStation; the real `PS3/Persona 5 (USA).iso` (21.3 GiB) has no shortcut (RPCS3 and xemu shortcuts exist but both data dirs are absent, so neither was ever run [inferred]).
