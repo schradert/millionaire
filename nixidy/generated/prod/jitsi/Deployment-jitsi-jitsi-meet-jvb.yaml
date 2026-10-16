@@ -45,9 +45,12 @@ spec:
           image: jitsi/jvb:jvb-2.3-280-g159a678e5-1@sha256:27d74c778b7215c51267bc140006fc4fe19d06275c00dc87783eb0cbb888884f
           imagePullPolicy: IfNotPresent
           livenessProbe:
+            failureThreshold: 6
             httpGet:
               path: /about/health
               port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 5
           name: jitsi-meet
           ports:
             - containerPort: 10000
@@ -57,14 +60,24 @@ spec:
               name: colibri-ws-tcp
               protocol: TCP
           readinessProbe:
+            failureThreshold: 6
             httpGet:
               path: /about/health
               port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 5
           resources:
             requests:
               cpu: 25m
               memory: 336Mi
           securityContext: {}
+          startupProbe:
+            failureThreshold: 60
+            httpGet:
+              path: /about/health
+              port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 5
         - command:
             - /prometheus-jitsi-meet-exporter
             - -videobridge-url
