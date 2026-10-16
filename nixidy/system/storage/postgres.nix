@@ -43,6 +43,7 @@ in {
         options.postgres = {
           enable = can.enable "CNPG PostgreSQL cluster" {};
           instances = can.int "Number of instances (primary + standbys)" {default = 1;};
+          avoidNodes = can.list.str "Hostnames CNPG pods should prefer not to run on (e.g. a node with a failing disk)" {default = [];};
           storageSize = can.str "PVC size per instance" {default = "5Gi";};
           storageClass = can.str "Storage class name" {default = "ceph-block";};
           version = can.str "PostgreSQL major version" {default = "17";};
@@ -104,6 +105,28 @@ in {
                   then db.gid
                   else null;
                 serviceAccountTemplate.metadata.name = "${name}-pg";
+                # Replicated clusters: never co-locate instances on one node, and steer off avoidNodes.
+                affinity = lib.mkIf (db.instances > 1 || db.avoidNodes != []) (lib.mkMerge [
+                  (lib.mkIf (db.instances > 1) {
+                    enablePodAntiAffinity = true;
+                    podAntiAffinityType = "required";
+                    topologyKey = "kubernetes.io/hostname";
+                  })
+                  (lib.mkIf (db.avoidNodes != []) {
+                    nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution = [
+                      {
+                        weight = 100;
+                        preference.matchExpressions = [
+                          {
+                            key = "kubernetes.io/hostname";
+                            operator = "NotIn";
+                            values = db.avoidNodes;
+                          }
+                        ];
+                      }
+                    ];
+                  })
+                ]);
                 storage = {
                   inherit (db) storageClass;
                   size = db.storageSize;

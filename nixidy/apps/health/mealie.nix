@@ -73,6 +73,9 @@ in {
         secrets.admin = "mealie-admin";
       };
       postgres.enable = true;
+      # sirver (failing root disk) hosts the lone instance today; keep a standby elsewhere.
+      postgres.instances = 2;
+      postgres.avoidNodes = ["sirver"];
       helm.releases.mealie = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
