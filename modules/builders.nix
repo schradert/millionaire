@@ -11,6 +11,11 @@
 # falcon is also the dev host's login and `build-all --remote` box, so it is
 # used as tristan.
 #
+# Node names: nix-darwin has no `networking.hosts` at the locked rev, so an
+# activation script keeps a marked block in /etc/hosts. Bare names are LAN addresses
+# (the attic substituter is http://sirver:8199), `<name>.tailnet` the tailnet ones, as on
+# the nodes themselves (static/builder.nix). falcon's tailnet IP changes, so it is LAN only.
+#
 # The caps that keep builds from starving etcd live on the nodes themselves
 # (static/builder.nix); maxJobs here is only this client's share.
 {
@@ -18,6 +23,7 @@
     config,
     flake,
     lib,
+    pkgs,
     ...
   }: let
     pool = import ../static/builders.nix;
@@ -26,6 +32,9 @@
     jump = "${me}@192.184.168.248";
     hosts = pool.nodes // {inherit (pool) falcon;};
     builders = pool.builders // {inherit (pool) falcon;};
+    nodeHosts = pkgs.writeText "node-hosts" (lib.concatLines (lib.flatten (lib.mapAttrsToList (n: p:
+      ["${p.lan} ${n}"] ++ lib.optional (p ? tailnet && n != "falcon") "${p.tailnet} ${n}.tailnet")
+    (hosts // {inherit (pool) axolotl;}))));
 
     machine = name: p: {
       hostName = name;
@@ -46,6 +55,13 @@
       nix.buildMachines =
         lib.mapAttrsToList machine builders
         ++ [emulated];
+
+      system.activationScripts.extraActivation.text = ''
+        echo "updating node names in /etc/hosts..." >&2
+        { /usr/bin/awk '/^# BEGIN nix-darwin node hosts$/ {skip = 1} !skip {print} /^# END nix-darwin node hosts$/ {skip = 0}' /etc/hosts
+          echo "# BEGIN nix-darwin node hosts"; cat ${nodeHosts}; echo "# END nix-darwin node hosts"; } > /etc/hosts.nix-darwin
+        cat /etc/hosts.nix-darwin > /etc/hosts && rm /etc/hosts.nix-darwin
+      '';
 
       programs.ssh.extraConfig =
         lib.concatStrings (lib.mapAttrsToList (name: p: ''

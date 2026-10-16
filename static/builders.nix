@@ -21,8 +21,9 @@
 # falcon (`falcon` below) is an RKE2 agent too (a GPU desktop, static/desktop-node.nix)
 # but sits outside this cap table: the biggest builder, uncapped, with idle
 # CPU/IO scheduling so its desktop stays responsive (static/builder.nix).
-# Hosts in neither table (axolotl) are not in the pool at all. `nodes` is every cluster host
-# (addresses, caps); `builders` is the subset that takes remote builds.
+# `nodes` is every cluster host (addresses, caps); `builders` is the subset that takes remote builds.
+# Hosts in neither table are not in the pool at all; axolotl (an RKE2 agent) only has
+# its LAN address, at the end, so the Macs can resolve its name (modules/builders.nix).
 #
 # lan/tailnet are the box's addresses; hostKey pins its ssh host key (also its
 # build-client identity towards peers, see static/builder.nix).
@@ -139,4 +140,6 @@ in rec {
       speedFactor = 2;
     };
   };
+
+  axolotl.lan = "192.168.50.250";
 }
