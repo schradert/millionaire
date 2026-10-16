@@ -38,8 +38,18 @@ pub async fn status_logged(program: &str, args: &[&str], log: &Path, timeout: Op
         Some(t) => match tokio::time::timeout(t, child.wait()).await {
             Ok(status) => Ok(status?),
             Err(_) => {
-                child.kill().await.ok();
-                Ok(child.wait().await?)
+                // Out of time: ask it to stop (ddrescue writes its map on SIGINT), then insist.
+                if let Some(pid) = child.id() {
+                    // SAFETY: plain signal to our own child.
+                    unsafe { libc::kill(pid as libc::pid_t, libc::SIGINT) };
+                }
+                match tokio::time::timeout(Duration::from_secs(20), child.wait()).await {
+                    Ok(status) => Ok(status?),
+                    Err(_) => {
+                        child.kill().await.ok();
+                        Ok(child.wait().await?)
+                    }
+                }
             }
         },
     }
@@ -102,4 +112,19 @@ pub async fn duration(file: &Path) -> f64 {
         .ok()
         .and_then(|o| String::from_utf8_lossy(&o).trim().parse().ok())
         .unwrap_or(0.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn a_tool_out_of_time_is_interrupted() {
+        let log = std::env::temp_dir().join(format!("dvdrip-tool-{}.log", std::process::id()));
+        let start = std::time::Instant::now();
+        let status = status_logged("sleep", &["60"], &log, Some(Duration::from_millis(200))).await.unwrap();
+        assert!(!status.success());
+        assert!(start.elapsed() < Duration::from_secs(10), "interrupted, not waited out");
+        std::fs::remove_file(log).ok();
+    }
 }
