@@ -79,6 +79,7 @@ data:
     ensure_scopes ggrequestz default openid profile email groups
     ensure_scopes grafana default openid profile email groups
     ensure_scopes harbor default openid profile email groups
+    ensure_scopes headscale default openid profile email groups
     ensure_scopes homarr default openid profile email groups
     ensure_scopes home-assistant default openid profile email groups
     ensure_scopes homepage default openid profile email

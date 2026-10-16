@@ -1,0 +1,30 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: headscale
+  namespace: identity
+spec:
+  clientSecretRef:
+    create: false
+    name: headscale-oidc
+  definition:
+    attributes:
+      pkce.code.challenge.method: S256
+    clientId: headscale
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+      - groups
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: Headscale
+    protocol: openid-connect
+    publicClient: false
+    redirectUris:
+      - https://headscale.trdos.me/oidc/callback
+    standardFlowEnabled: true
+    webOrigins:
+      - https://headscale.trdos.me
+  realmRef:
+    name: default
