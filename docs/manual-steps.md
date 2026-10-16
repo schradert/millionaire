@@ -218,3 +218,20 @@ Bookshelf (ebooks and audiobooks), Kapowarr (comics) and Suwayomi (manga) are de
    2. In <https://suwayomi.trdos.me>, install the source extensions you want, add series to the library, and turn on auto-download.
    3. Chapters land as CBZ in `media-manga`, which Komga and Kavita serve as "Manga".
 3. **Indexers for books.** Prowlarr syncs to both Bookshelf instances, but book indexers (MyAnonamouse and others) need your accounts. Add them in Prowlarr, as in step 2. Bookshelf's metadata comes from the hosted rreading-glasses (`api.bookinfo.pro`), so it needs no key. Self-hosting rreading-glasses would need a Hardcover API token and is not set up.
+
+## 15. Bank sync (SimpleFIN)
+
+SimpleFIN Bridge (<https://beta-bridge.simplefin.org>, US, about $15/year, up to 25 institutions and 25 apps) feeds all three finance apps. Each app claims its own one-use setup token, so every app has its own access URL and its own quota.
+
+**The data is daily, not realtime.** The Bridge expects at most 24 requests per day per token and disables a token that goes well beyond that. Each app syncs once a day on its own; do not press "sync now" repeatedly. The Bridge returns at most 90 days of transactions per request.
+
+1. Create the Bridge account and connect the institutions (USAA, Chase, Citi, Discover, Fidelity, Empower, Guideline). Check that every account shows up in the Bridge before you create tokens.
+2. **Sure** (<https://sure.trdos.me>): create a setup token in the Bridge (its app-connection page; I could not check the exact menu name), then Settings > Providers > SimpleFIN, paste it, Save. Then open Accounts, and in the SimpleFIN setup choose, per account, "create new" or link it to an existing account (set the type: checking, credit card, investment, ...). Sure then syncs daily at 02:22 UTC (Settings > Self-Hosting > automatic sync) through its worker; nothing else needs enabling.
+3. **Actual** (<https://actual.trdos.me>): create another setup token. In a budget, Accounts > Add account > Link bank account > SimpleFIN, paste the token, then pick which Bridge accounts become which budget accounts. Actual syncs only from the open app (on load and the "Sync" / account-menu "Bank Sync" action), so a bank sync happens when you open it; there is no server-side schedule. A scheduled job was left out: it would need your login and, with end-to-end encryption on, the budget key.
+4. **Firefly III**: create a third setup token. Add the Bitwarden Secrets Manager secret `firefly/simplefin/token` and paste the setup token as its value (the setup token itself; the job claims it once and keeps the access URL in the cluster Secret `firefly-simplefin-access`; pasting an access URL instead also works). Then set `simplefin = true` in `nixidy/apps/finance/firefly.nix`, render, commit and sync. The CronJob `firefly-simplefin` runs daily at 09:41 UTC and imports the last 60 days.
+   - Accounts: every Bridge account becomes a Firefly asset account named `<institution> - <account>`, created with an opening balance that makes the Firefly balance match the bank's. An existing Firefly account with exactly that name is used instead, so to map an account to your own, rename it to that name. Credit cards and loans are created as asset accounts; change their type in Firefly if you want liabilities.
+   - A rotated token (new value in Bitwarden) is claimed again automatically. A token that is already spent (HTTP 403 in the job log) needs a new setup token.
+   - More than 20 Bridge accounts makes the job refuse to run (it would exceed 24 requests/day).
+5. Verify: Sure, Accounts shows the SimpleFIN accounts with balances; Actual, the linked accounts show a last-sync time; Firefly, `kubectl -n finance create job --from=cronjob/firefly-simplefin firefly-simplefin-test`, read its logs (no access URL is printed), delete the job, then check Accounts > Asset accounts.
+
+Not covered by the Bridge: Carta (add it as a manual asset in Sure), Venmo and PayPal (CSV export, then Sure's or Firefly's CSV import).

@@ -9,6 +9,9 @@
   }: let
     inherit (config.canivete.meta) domain;
     hostname = "firefly.${domain}";
+    # false: no ExternalSecret, RBAC or CronJob. true once Bitwarden holds `firefly/simplefin/token`
+    # (docs/manual-steps.md, "Bank sync (SimpleFIN)"): imports the Bridge's accounts into Firefly daily.
+    simplefin = false;
     probe = lib.recursiveUpdate {
       enabled = true;
       custom = true;
@@ -300,6 +303,126 @@
                 secret.secretName = "firefly";
               }
             ];
+          };
+        };
+      };
+      # Daily SimpleFIN import (firefly-simplefin.php): claims the setup token once, keeps the access
+      # URL in Secret firefly-simplefin-access, maps/creates one Firefly asset account per Bridge
+      # account and runs the data importer's auto-import. The Bridge allows ~24 requests/day per token
+      # (more disables it) and one run uses accounts + 3: once a day, at an odd minute, never retried.
+      resources.configMaps.firefly-simplefin = lib.mkIf simplefin {
+        data."import.php" = builtins.readFile ./firefly-simplefin.php;
+      };
+      resources.externalSecrets.firefly-simplefin = lib.mkIf simplefin {
+        spec.data = lib.toList {
+          secretKey = "token";
+          remoteRef.key = "firefly/simplefin/token";
+          sourceRef.storeRef.name = "bitwarden";
+          sourceRef.storeRef.kind = "ClusterSecretStore";
+        };
+      };
+      resources.serviceAccounts.firefly-simplefin = lib.mkIf simplefin {};
+      resources.roles.firefly-simplefin = lib.mkIf simplefin {
+        rules = [
+          {
+            apiGroups = [""];
+            resources = ["secrets"];
+            verbs = ["create"];
+          }
+          {
+            apiGroups = [""];
+            resources = ["secrets"];
+            resourceNames = ["firefly-simplefin-access"];
+            verbs = ["get" "patch"];
+          }
+        ];
+      };
+      resources.roleBindings.firefly-simplefin = lib.mkIf simplefin {
+        roleRef = {
+          apiGroup = "rbac.authorization.k8s.io";
+          kind = "Role";
+          name = "firefly-simplefin";
+        };
+        subjects = lib.toList {
+          kind = "ServiceAccount";
+          name = "firefly-simplefin";
+          namespace = "finance";
+        };
+      };
+      resources.cronJobs.firefly-simplefin = lib.mkIf simplefin {
+        spec = {
+          schedule = "41 9 * * *";
+          concurrencyPolicy = "Forbid";
+          successfulJobsHistoryLimit = 1;
+          failedJobsHistoryLimit = 3;
+          jobTemplate.spec = {
+            backoffLimit = 0;
+            activeDeadlineSeconds = 1800;
+            ttlSecondsAfterFinished = 172800;
+            template = {
+              metadata.labels."app.kubernetes.io/name" = "firefly-simplefin";
+              spec = {
+                restartPolicy = "Never";
+                serviceAccountName = "firefly-simplefin";
+                securityContext = {
+                  runAsNonRoot = true;
+                  runAsUser = 33;
+                  runAsGroup = 33;
+                  seccompProfile.type = "RuntimeDefault";
+                };
+                containers = lib.toList {
+                  name = "firefly-simplefin";
+                  image = with pinned.images.firefly-data-importer; "${repository}:${tag}@${digest}";
+                  # The image's entrypoint is bypassed; config:clear drops the config cache baked into the image.
+                  command = ["sh" "-c" "cd /var/www/html && php artisan config:clear >/dev/null && php /simplefin/import.php"];
+                  env =
+                    lib.mapAttrsToList (name: value: {inherit name value;}) {
+                      FIREFLY_III_URL = "http://firefly.finance.svc.cluster.local:8080";
+                      VANITY_URL = "https://${hostname}";
+                      IMPORT_DIR_ALLOWLIST = "/tmp/simplefin";
+                      IGNORE_DUPLICATE_ERRORS = "true";
+                      # info, not debug: debug logs print the access URL (its credentials)
+                      LOG_CHANNEL = "stderr";
+                      LOG_LEVEL = "info";
+                      # one try per request: retries count against the Bridge's daily limit
+                      SIMPLEFIN_RETRY_ATTEMPTS = "1";
+                    }
+                    ++ lib.toList {
+                      name = "FIREFLY_III_ACCESS_TOKEN";
+                      valueFrom.secretKeyRef = {
+                        name = "firefly-passport";
+                        key = "FIREFLY_III_ACCESS_TOKEN";
+                      };
+                    };
+                  volumeMounts = [
+                    {
+                      name = "script";
+                      mountPath = "/simplefin";
+                      readOnly = true;
+                    }
+                    {
+                      name = "token";
+                      mountPath = "/secrets/simplefin";
+                      readOnly = true;
+                    }
+                  ];
+                  securityContext = {
+                    allowPrivilegeEscalation = false;
+                    capabilities.drop = ["ALL"];
+                  };
+                };
+                volumes = [
+                  {
+                    name = "script";
+                    configMap.name = "firefly-simplefin";
+                  }
+                  {
+                    name = "token";
+                    secret.secretName = "firefly-simplefin";
+                  }
+                ];
+              };
+            };
           };
         };
       };
