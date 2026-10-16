@@ -25,6 +25,10 @@ spec:
                   value: t0rdos@pm.me
                 - name: AUTOBRR_USER
                   value: tristan
+                - name: BAZARR_LANGUAGES
+                  value: en,pt,pb,es,fr,de
+                - name: BAZARR_PROFILE
+                  value: Language practice
                 - name: DOMAIN
                   value: trdos.me
                 - name: DVDRIP_IMAGE
@@ -43,7 +47,7 @@ spec:
                   value: http://pyroscope.observability.svc.cluster.local:4040
                 - name: SCROBBLE_E2E_USER
                   value: e2e
-              image: harbor.trdos.me/library/e2e:0.16.2@sha256:d2ddd78b1252f8a641f747de11c499b486fd937cc40346788b4751b5c2b1dfce
+              image: harbor.trdos.me/library/e2e:0.16.4@sha256:3dda5656d2e6cfc0cb46e3aed033525c888a14ecc4f64664105468fb2d6c0028
               name: media-e2e
               resources:
                 limits:

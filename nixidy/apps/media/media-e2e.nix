@@ -5,13 +5,16 @@
 # Test data lives only under `.e2e-<run>` folders and objects named `e2e-<run>`, and is removed
 # (and checked gone) at the end of every run. See docs/manual-steps.md.
 {config, ...}: {
-  nixidy = {
+  nixidy = args @ {
     lib,
     pinned,
     scrobble,
     ...
   }: let
     inherit (config.canivete.meta) domain people;
+    # The profile and languages the bazarr bootstrap is given: the integrations-bazarr flow checks
+    # exactly these, so they are never written down twice.
+    bazarrEnv = (args.config.applications.bazarr.bootstrap or {env = {};}).env or {};
     name = "media-e2e";
     image = pinned.images.e2e or (pinned.images.media-e2e or null);
     libs = ["movies" "tv" "music" "books" "audiobooks" "comics" "dvd" "downloads" "podcasts" "games"];
@@ -139,6 +142,8 @@
                     E2E_REPORT_CONFIGMAP = "media/${name}-last-report";
                     DOMAIN = domain;
                     AUTOBRR_USER = people.me;
+                    BAZARR_PROFILE = bazarrEnv.BAZARR_PROFILE or "";
+                    BAZARR_LANGUAGES = bazarrEnv.BAZARR_LANGUAGES or "";
                     # The music flow scrobbles as the fixture user into its own Maloja (scrobbling.nix).
                     SCROBBLE_E2E_USER = "e2e";
                     MALOJA_E2E_URL = scrobble.url "e2e";

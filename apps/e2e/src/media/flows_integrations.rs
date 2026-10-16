@@ -117,7 +117,20 @@ pub async fn bazarr(ctx: &Ctx, f: &mut Flow) -> R<()> {
         }
     }
     let profiles = json(get("/api/system/languages/profiles"), "bazarr", "language profiles").await?;
-    require("bazarr", "language profiles", &names(&profiles, "name"), &["English"])?;
+    // The profile and its languages are the ones the cluster declares for Bazarr's bootstrap
+    // (nixidy/apps/media/media-e2e.nix passes BAZARR_PROFILE and BAZARR_LANGUAGES from it).
+    let want_profile = var("BAZARR_PROFILE", "");
+    let want_langs: Vec<String> = var("BAZARR_LANGUAGES", "").split(',').map(str::trim).filter(|l| !l.is_empty()).map(String::from).collect();
+    if want_profile.is_empty() {
+        return Err(Fail::new("bazarr", "language profiles", "BAZARR_PROFILE is not set (the media runner passes it from the bazarr bootstrap config)"));
+    }
+    require("bazarr", "language profiles", &names(&profiles, "name"), &[want_profile.as_str()])?;
+    let profile = profiles.as_array().into_iter().flatten().find(|p| p["name"] == json!(want_profile)).at("bazarr", "language profile")?;
+    let have_langs: Vec<String> = profile["items"].as_array().into_iter().flatten().filter_map(|i| i["language"].as_str().map(String::from)).collect();
+    let missing: Vec<&String> = want_langs.iter().filter(|l| !have_langs.contains(l)).collect();
+    if !missing.is_empty() {
+        return Err(Fail::new("bazarr", "profile languages", format!("{want_profile} lacks {missing:?} (have {have_langs:?})")));
+    }
     let settings = json(get("/api/system/settings"), "bazarr", "settings").await?;
     let g = &settings["general"];
     if g["serie_default_enabled"] != json!(true) || g["movie_default_enabled"] != json!(true) {
@@ -132,7 +145,11 @@ pub async fn bazarr(ctx: &Ctx, f: &mut Flow) -> R<()> {
     if !issues.is_empty() {
         return Err(Fail::new("bazarr", "health", issues.join("; ")));
     }
-    f.ok("bazarr", "integrations", format!("Sonarr and Radarr connected, English default profile, {providers} provider(s), health clean"));
+    f.ok(
+        "bazarr",
+        "integrations",
+        format!("Sonarr and Radarr connected, {want_profile} default profile ({}), {providers} provider(s), health clean", want_langs.join(",")),
+    );
     Ok(())
 }
 
