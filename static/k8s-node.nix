@@ -10,6 +10,7 @@
   ...
 }: let
   containerdDir = "/var/lib/rancher/rke2/agent/containerd";
+  isServer = config.services.rke2.role == "server";
 in {
   imports = [./builder.nix ./tailnet.nix ./rke2-fips-overlay.nix ./etcd-watchdog.nix ./etcd-snapshot.nix] ++ (with flake.inputs.srvos.nixosModules; [roles-nix-remote-builder]);
   canivete.kubernetes.enable = true;
@@ -35,6 +36,17 @@ in {
     # Serving cert from a kubernetes.io/kubelet-serving CSR (approved by
     # kubelet-csr-approver) instead of the static one RKE2 writes at start.
     "rotate-server-certificates=true"
+  ];
+  # Servers' kubelets talk to their local apiserver, so an etcd stall (octopus's ZFS/HDD etcd
+  # during a rollout burst, 2026-10-11) makes lease renewals fail and evicted 116 pods. The
+  # grace period must be N x kubelet node-status-update-frequency (10s): 2m = 12 retries
+  # (default 40s). Pods tolerate not-ready/unreachable for 10m (default 5m) before eviction.
+  # Cost: a truly dead node takes ~12m instead of ~6m to fail over (medik8s, todo 7, is the
+  # proper answer).
+  canivete.kubernetes.yaml.kube-controller-manager-arg = lib.mkIf isServer ["node-monitor-grace-period=2m"];
+  canivete.kubernetes.yaml.kube-apiserver-arg = lib.mkIf isServer [
+    "default-not-ready-toleration-seconds=600"
+    "default-unreachable-toleration-seconds=600"
   ];
   # Nodes don't use tailnet DNS (accept-dns=false), so internal-only names
   # containerd pulls from must resolve locally: the internal gateway fronts Harbor.
