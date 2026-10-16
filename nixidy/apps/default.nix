@@ -282,7 +282,8 @@
     extraIngress = [
       # Keycloak's HTTP port for the callers that use its Service instead of the public host: app-bootstrap's
       # default KEYCLOAK_URL (user and group lookups of the ryot, ombi and miniflux bootstraps and the ombi-sync
-      # CronJob), sure-bootstrap and Stalwart's OIDC directory. Everything else signs in through the Gateway.
+      # CronJob), sure-bootstrap (PostSync Job and daily CronJob, matched by pod label as the Job names differ)
+      # and Stalwart's OIDC directory. Everything else signs in through the Gateway.
       {
         fromEndpoints = [
           {
@@ -294,7 +295,7 @@
           {
             matchLabels = {
               "k8s:io.kubernetes.pod.namespace" = "finance";
-              "batch.kubernetes.io/job-name" = "sure-bootstrap";
+              "app.kubernetes.io/name" = "sure-bootstrap";
             };
           }
           {
