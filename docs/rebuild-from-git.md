@@ -1,7 +1,7 @@
 # Rebuilding the cluster from Git
 
 Notes assembled from the repo on 2026-10-10. The sequence has never been run end to end; treat the order as a plan to rehearse
-(for example on cloud-burst VMs), not a tested script. Prefer an etcd restore (`docs/etcd-restore.md`) whenever a snapshot exists.
+(for example on cloud-burst VMs), not a tested script. Prefer an etcd restore (`docs/etcd-restore.md`, whose first half is rehearsed by `etcd-restore-test`) whenever a snapshot exists.
 
 ## Inputs you must still have outside the cluster
 
@@ -12,7 +12,7 @@ Notes assembled from the repo on 2026-10-10. The sequence has never been run end
 | Backup of the Bitwarden project: the newest of 12 weekly objects `bws-backup/<time>.json.age` in the B2 bucket (CronJob `bws-backup` in `security`), age-encrypted | decrypts with `age.bws-backup` in `secrets/sops/personal.yaml` (the Macs' age identity); the cluster holds only the public key | no way back from a lost Bitwarden project: recreate every secret by hand, and with the restic password lost every VolSync repository stays unreadable. Restore: see the last section |
 | GitHub repo `schradert/millionaire` | GitHub | the whole plan; ArgoCD pulls `nixidy/generated/prod` from it |
 | Pulumi state | Pulumi backend (assumed Pulumi Cloud; `ref+pulumistateapi://` refs in generated manifests) | pulumi would try to recreate Hetzner, Cloudflare, B2 resources and Bitwarden secrets, including re-rolled passwords |
-| RKE2 token | `passwords.k8s-token` in sops | needed to restore etcd snapshots (bootstrap data is encrypted with it) |
+| RKE2 token | `passwords.k8s-token` in sops | needed to restore etcd snapshots (the CAs and the Secrets AES key in `/bootstrap` are encrypted with it) |
 | B2 bucket `trdos-me--volsync` with `etcd/`, `cnpg/`, `volsync--*/` | Backblaze | no off-site backups |
 
 ## Sequence
@@ -62,11 +62,11 @@ Notes assembled from the repo on 2026-10-10. The sequence has never been run end
 - The sops age identity, and Bitwarden contents written since the last weekly `bws-backup` object (the restic password is in every object).
   The backup is useless without its private key, which is in sops `personal.yaml`, so it follows the sops age identity.
 - Hyena state: headscale's database and its noise/DERP keys are backed up nightly (`static/headscale-backup.nix`: age-encrypted, VolSync
-  bucket `headscale-backup/`, newest 30; restore with the devshell script `headscale-backup-restore-test`, which has not been run against a
-  real object yet, `docs/manual-steps.md` §8). AdGuard settings are not backed up, and nodes registered since the last backup would need
+  bucket `headscale-backup/`, newest 30; restore with the devshell script `headscale-backup-restore-test`, which has not been run: the bucket held no
+  `headscale-backup/` object on 2026-10-16, `docs/manual-steps.md` §8). AdGuard settings are not backed up, and nodes registered since the last backup would need
   re-registering with new pre-auth keys.
 - Pulumi state, if the backend is lost.
-- Etcd snapshots are unencrypted and contain all Secrets; they are as sensitive as Bitwarden itself.
+- Etcd snapshots hold every Secret AES-CBC encrypted, and the key sits in the snapshot's `/bootstrap` entry encrypted with the cluster token (verified 2026-10-16, `etcd-restore-test`): snapshot plus token decrypts everything, so they are as sensitive as Bitwarden itself. Other objects (ConfigMaps, node objects) are plaintext.
 
 ## Restoring Bitwarden Secrets Manager
 

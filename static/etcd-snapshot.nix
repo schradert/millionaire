@@ -9,6 +9,7 @@
 # (rke2 secrets-encryption, on by default); everything else in etcd (ConfigMaps,
 # node objects, ...) is plaintext, so the bucket must stay private.
 # TODO once rke2 is restarted anyway: etcd-s3 + etcd-s3-config-secret, drop this.
+# Staleness is alerted from the cluster: EtcdOffsiteSnapshotStale (observability/kube-state-metrics.nix).
 {
   flake,
   config,
@@ -32,11 +33,15 @@
       AWS_SECRET_ACCESS_KEY=$(field AWS_SECRET_ACCESS_KEY)
       export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
       # Per-node name: S3 retention prunes per name prefix, so servers don't evict each other.
-      exec /run/current-system/sw/bin/rke2 etcd-snapshot save \
+      /run/current-system/sw/bin/rke2 etcd-snapshot save \
         --name "offsite-${config.networking.hostName}" \
-        --snapshot-retention 3 \
         --s3 --s3-endpoint s3.${region}.backblazeb2.com --s3-region ${region} \
         --s3-bucket ${bucket} --s3-folder etcd --s3-retention 28 --s3-timeout 20m
+      # `save --snapshot-retention` does not prune the local copy (25 offsite-* files, 3 GB per
+      # node after a week, 2026-10-16), so prune it explicitly. Local only: without --s3 this
+      # never touches the bucket.
+      /run/current-system/sw/bin/rke2 etcd-snapshot prune \
+        --name "offsite-${config.networking.hostName}" --snapshot-retention 3
     '';
   };
 in {
@@ -44,10 +49,19 @@ in {
   # kubectl falls back to localhost:8080 and the unit fails every run.
   systemd = lib.mkIf (config.services.rke2.role == "server") {
     services.etcd-snapshot-offsite = {
+      unitConfig = {
+        StartLimitIntervalSec = "2h";
+        StartLimitBurst = 3;
+      };
       serviceConfig = {
         Type = "oneshot";
         ExecStart = "${snapshot}/bin/etcd-snapshot-offsite";
         TimeoutStartSec = "30min";
+        # A run fails when the apiserver is too slow to answer ("failed to set S3 snapshot cluster
+        # ID": octopus, 2026-10-16 06:48), and a Persistent timer would wait the full 6h for the
+        # next one. Retry twice, 15 min apart.
+        Restart = "on-failure";
+        RestartSec = "15min";
         Nice = 10;
         IOSchedulingClass = "idle";
       };

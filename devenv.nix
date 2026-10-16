@@ -569,6 +569,13 @@ in {
         echo "keys added since the backup: $(jq -n --slurpfile b "$dir/backup.json" --argjson l "$secrets" '[$l[].key] - [$b[0][].key] | length')"
       '';
 
+      # Restore rehearsal for the off-site etcd snapshots (static/etcd-snapshot.nix): restores the newest
+      # `etcd/offsite-*` object from the VolSync B2 bucket into a throwaway etcd + kube-apiserver on falcon
+      # and lists its namespaces. Never touches the live cluster; docs/etcd-restore.md.
+      scripts.etcd-restore-test.exec = ''
+        exec "${config.devenv.root}/tools/etcd-restore-test" "$@"
+      '';
+
       # Restore test for the nightly headscale backup (static/headscale-backup.nix): fetches the newest object
       # from the VolSync B2 bucket, decrypts it with the same offline key as the Bitwarden backup
       # (`age.bws-backup` in secrets/sops/personal.yaml), checks the database and lists the registered nodes.

@@ -1,0 +1,30 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    release: prometheus
+  name: etcd-snapshot
+  namespace: observability
+spec:
+  groups:
+    - name: etcd-snapshot
+      rules:
+        - alert: EtcdOffsiteSnapshotStale
+          annotations:
+            description: |
+              Check: ssh {{ $labels.node }} journalctl -u etcd-snapshot-offsite and systemctl list-timers etcd-snapshot-offsite.
+              The other servers' snapshots still cover a restore, but each missed run widens the loss window (docs/etcd-restore.md).
+              A server retired from the etcd role keeps old records and fires this until its etcd/offsite-<node>-* objects are deleted from the bucket and its etcdsnapshotfile records are removed.
+            summary: No off-site etcd snapshot from {{ $labels.node }} in over 13h
+          expr: time() - max by (node) (etcd_snapshot_file_creation_timestamp_seconds{name=~"s3-offsite-.*"}) > 13 * 3600
+          for: 15m
+          labels:
+            severity: warning
+        - alert: EtcdOffsiteSnapshotMissing
+          annotations:
+            description: 'Either no snapshot was ever uploaded or kube-state-metrics cannot read etcdsnapshotfiles (customResourceState in observability/kube-state-metrics.nix). Check the bucket: docs/etcd-restore.md.'
+            summary: No off-site etcd snapshot records at all
+          expr: absent(etcd_snapshot_file_creation_timestamp_seconds{name=~"s3-offsite-.*"})
+          for: 1h
+          labels:
+            severity: critical
