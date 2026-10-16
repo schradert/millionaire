@@ -1,9 +1,6 @@
 # Emulated consoles: ROMs/BIOS by title from the game library
 # (pinned.{roms,bios}, docs/games.md), RetroArch cores or standalone
 # emulators per console, and SRM parsers for each.
-# Partial: the library on games.trdos.me is not populated yet; the old
-# myrient hash table (incl. the unhashed wishlist) stays in
-# old/old/apps/gaming/games/roms.nix until docs/games.md is done.
 {
   canivete.pkgs.allowUnfree = ["rpcs3"];
   home = {

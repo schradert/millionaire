@@ -37,99 +37,45 @@ extra file left in a title's directory changes its hash.
 `update check` ignores `url-set` pins (nothing upstream to move); a drifted or
 missing title surfaces as a failed build of that title, see the check below.
 
-## One-time upload (from the Steam Deck)
+## Verifying the library
 
-myrient.erista.me is gone; the library is on the Deck. Every step below runs
-on the Deck, which reaches the cluster over the tailnet/LAN. The WebDAV is
-read-only, so the files go into the PVC through a throwaway pod.
+ROMs and BIOS were uploaded once from the Deck through the `games` rsync module
+(`docs/manual-steps.md` section 10). To check every pin against what
+games.trdos.me serves (in a checkout of this repo, on a host that resolves
+games.trdos.me, e.g. falcon):
 
-1. Tools and cluster access:
+```sh
+sys=$(nix eval --impure --raw --expr builtins.currentSystem)
+for set in roms bios; do
+  jq -r '.hashes | keys[]' pkgs/$set/pin.json | while read -r k; do
+    nix build --no-link --no-pure-eval ".#legacyPackages.$sys.pinned.$set.\"$k\"" 2>&1 \
+      | grep -E 'got:|error' | sed "s|^|$set/$k: |"
+  done
+done
+```
 
-   ```sh
-   nix shell nixpkgs#kubectl nixpkgs#rsync nixpkgs#jq
-   export KUBECONFIG=$(mktemp)
-   ssh -i ~/.ssh/personal sirver sudo cat /etc/rancher/rke2/rke2.yaml \
-     | sed 's/127\.0\.0\.1/sirver/' > "$KUBECONFIG"
-   ```
+A hash mismatch prints the `got:` hash; a title missing from the library
+prints `empty or missing directory`.
 
-   (From off-LAN: `ssh -J tristan@192.184.168.248 ...`.)
+## Installers (not uploaded yet)
 
-2. Build the tree, one directory per title. The old config linked
-   `~/Games/ROMs/<console>/` and `~/Games/BIOS/<console>/` through
-   `buildEnv`, so each entry is a symlink into the title's
-   `/nix/store/*-<title>` directory; copy that directory's contents:
+`installers/` does not exist in the PVC, so `pkgs/game-installers` and
+`pkgs/cemu-keys` (Wizard101, Pirate101, Battle.net, `cemu-keys.txt`) cannot
+build and their shortcuts and the Cemu keys fail on the Deck. Upload them from
+a LAN host through the `games` rsync module (`docs/manual-steps.md` section
+10), then check the hashes (Battle.net's installer changes upstream, so expect
+a mismatch there; fix the pin with the `got:` hash):
 
-   ```sh
-   out=~/games-upload
-   for kind in ROMs:roms BIOS:bios; do
-     src=~/Games/${kind%%:*}; dst=$out/${kind##*:}
-     for dir in "$src"/*/; do
-       console=$(basename "$dir"); mkdir -p "$dst/$console"
-       for f in "$dir"*; do
-         store=$(readlink -f "$f" | cut -d/ -f1-4)   # /nix/store/<hash>-<title>
-         [ -d "$store" ] || continue
-         title=$(basename "$store" | cut -d- -f2-)
-         [ -e "$dst/$console/$title" ] || { mkdir -p "$dst/$console/$title"; cp -rL --no-preserve=mode "$store"/. "$dst/$console/$title"; }
-       done
-     done
-   done
-   ```
-
-   Each directory must be named after its pin key: `jq -r '.hashes | keys[]'
-   pkgs/roms/pin.json` lists `<console>/<title>`, e.g.
-   `NES/Legend of Zelda, The (USA)`; rename any that differ. If the Deck's
-   `~/Games/ROMs/<console>/` holds plain files instead of store links, put
-   each title's files (`<title>.<ext>` plus `.cue`/`.bin` siblings) in a
-   directory of that name.
-
-3. Installers (installers/):
-
-   ```sh
-   mkdir -p $out/installers && cd $out/installers
-   curl -L -o InstallWizard101.exe 'https://drive.google.com/uc?id=1iVWSiEcGjwk_LKcp1937y4q3N3rt_JmQ'
-   curl -L -o InstallPirate101.exe 'https://drive.google.com/uc?id=1Nk_WThZYfW5xJII7G-JiL2rATpU3mA3k'
-   curl -L -o cemu-keys.txt 'https://drive.google.com/uc?id=1869wHy8omyBJVX7bnfLQ-nwsnW3d95V4'
-   curl -L -o Battle.net-Setup.exe 'https://downloader.battle.net/download/getInstaller?os=win&installer=Battle.net-Setup.exe'
-   chmod +x *.exe
-   ```
-
-4. Copy into the PVC:
-
-   ```sh
-   kubectl -n media run games-upload --image=alpine:3.22 --restart=Never \
-     --overrides='{"spec":{"containers":[{"name":"games-upload","image":"alpine:3.22",
-       "command":["sh","-c","apk add -q rsync && sleep infinity"],
-       "volumeMounts":[{"name":"d","mountPath":"/data"}]}],
-       "volumes":[{"name":"d","persistentVolumeClaim":{"claimName":"media-games"}}]}}'
-   kubectl -n media wait --for=condition=Ready pod/games-upload
-   printf '#!/bin/sh\npod=$1; shift\nexec kubectl -n media exec -i "$pod" -- "$@"\n' > /tmp/krsync
-   chmod +x /tmp/krsync
-   rsync -av --progress --blocking-io --rsh=/tmp/krsync ~/games-upload/ games-upload:/data/
-   kubectl -n media delete pod games-upload
-   ```
-
-5. Check every pin against what games.trdos.me now serves (in a checkout of
-   this repo, on a host that resolves games.trdos.me):
-
-   ```sh
-   sys=$(nix eval --impure --raw --expr builtins.currentSystem)
-   for set in roms bios; do
-     jq -r '.hashes | keys[]' pkgs/$set/pin.json | while read -r k; do
-       nix build --no-link --no-pure-eval ".#legacyPackages.$sys.pinned.$set.\"$k\"" 2>&1 \
-         | grep -E 'got:|error' | sed "s|^|$set/$k: |"
-     done
-   done
-   ```
-
-   A hash mismatch prints the `got:` hash; a title missing from the library
-   prints `empty or missing directory`. (Installers: `nix store prefetch-file
-   --executable`, cemu-keys.txt without it: `pkgs/cemu-keys/pin.json`.) Fix
-   mismatches in the pins (Battle.net's installer changes upstream, so expect
-   one there).
-
-6. Set `programs.steam.external.library = true` in static/systeamadeck.nix:
-   until then the Deck's titles, BIOS and installer shortcuts are left out so
-   it builds. Then delete `old/old/apps/gaming/games/roms.nix`.
+```sh
+mkdir -p ~/games-upload/installers && cd ~/games-upload/installers
+curl -L -o InstallWizard101.exe 'https://drive.google.com/uc?id=1iVWSiEcGjwk_LKcp1937y4q3N3rt_JmQ'
+curl -L -o InstallPirate101.exe 'https://drive.google.com/uc?id=1Nk_WThZYfW5xJII7G-JiL2rATpU3mA3k'
+curl -L -o cemu-keys.txt 'https://drive.google.com/uc?id=1869wHy8omyBJVX7bnfLQ-nwsnW3d95V4'
+curl -L -o Battle.net-Setup.exe 'https://downloader.battle.net/download/getInstaller?os=win&installer=Battle.net-Setup.exe'
+chmod +x *.exe
+nix store prefetch-file --executable file://$PWD/InstallWizard101.exe   # likewise Pirate101, Battle.net
+nix store prefetch-file file://$PWD/cemu-keys.txt                        # no --executable
+```
 
 ## Adding a title
 
