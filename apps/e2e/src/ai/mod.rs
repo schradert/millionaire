@@ -1,6 +1,6 @@
 //! AI gateways: Bifrost (a chat completion through a run-tagged provider that points at a mock
 //! the Job serves) and ContextForge (a tagged tool on a virtual server, listed and called over
-//! MCP). Each flow creates tagged data through the real API, deletes it and verifies it is gone.
+//! MCP; Keycloak SSO and a Keycloak bearer on the MCP endpoint). Each flow creates tagged data through the real API, deletes it and verifies it is gone.
 
 mod bifrost;
 mod contextforge;
@@ -18,7 +18,7 @@ pub fn family() -> Family {
     Family {
         name: NAME,
         runner: "cluster",
-        about: "Bifrost tagged provider and chat completion against a mock; ContextForge tagged tool and virtual server over MCP",
+        about: "Bifrost tagged provider and chat completion against a mock; ContextForge tagged tool and virtual server over MCP, Keycloak SSO and bearer on the MCP endpoint",
         flows,
         cleanup: Some(sweep!(cleanup)),
         residue: Some(sweep!(residue)),
@@ -44,11 +44,23 @@ fn flows() -> Vec<FlowDef> {
             step!(contextforge::tool),
         )
         .cleanup(step!(contextforge::cleanup)),
+        FlowDef::new(
+            NAME,
+            "contextforge-mcp",
+            Tier::Offline,
+            "UI SSO lists keycloak; the test admin's Keycloak bearer on mcp.<domain> finds the homelab server, initializes and lists tools over /mcp; anonymous is 401",
+            step!(contextforge::mcp),
+        )
+        .cleanup(step!(contextforge::cleanup)),
     ]
 }
 
 async fn passes(ctx: &Ctx, scope: &Scope, delete: bool) -> Vec<(&'static str, svc::Found)> {
-    vec![("bifrost", bifrost::sweep(ctx, scope, delete).await), ("contextforge", contextforge::sweep(ctx, scope, delete).await)]
+    vec![
+        ("bifrost", bifrost::sweep(ctx, scope, delete).await),
+        ("contextforge", contextforge::sweep(ctx, scope, delete).await),
+        ("keycloak", svc::kc_users(ctx, scope, delete).await),
+    ]
 }
 
 async fn cleanup(ctx: &Ctx, scope: &Scope, dry: bool) -> Flow {
