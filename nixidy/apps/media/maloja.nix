@@ -81,7 +81,7 @@
                 "-c"
                 ''
                   import os
-                  for d, keys in [${lib.concatMapStringsSep ", " (u: ''(${builtins.toJSON (scrobble.dataDir u)}, {"scrobbler": "${keyVar u}"}})'') scrobble.users}]:
+                  for d, keys in [${lib.concatMapStringsSep ", " (u: ''(${builtins.toJSON (scrobble.dataDir u)}, {"scrobbler": "${keyVar u}"})'') scrobble.users}]:
                       os.makedirs(d, exist_ok=True)
                       f = d + "/apikeys.yml"
                       try:

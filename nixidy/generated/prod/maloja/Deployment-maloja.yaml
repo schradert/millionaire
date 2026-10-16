@@ -105,7 +105,7 @@ spec:
             - -c
             - |
               import os
-              for d, keys in [("/mljdata", {"scrobbler": "KEY_0"}}), ("/mljdata/users/e2e", {"scrobbler": "KEY_1"}})]:
+              for d, keys in [("/mljdata", {"scrobbler": "KEY_0"}), ("/mljdata/users/e2e", {"scrobbler": "KEY_1"})]:
                   os.makedirs(d, exist_ok=True)
                   f = d + "/apikeys.yml"
                   try:
