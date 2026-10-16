@@ -1,0 +1,20 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: volsync--media-storage--media-tv-src
+  namespace: media
+spec:
+  restic:
+    cacheAccessModes:
+      - ReadWriteOnce
+    copyMethod: Direct
+    pruneIntervalDays: 8
+    repository: volsync--media-storage--media-tv
+    retain:
+      daily: 1
+      monthly: 1
+      weekly: 1
+      yearly: 1
+  sourcePVC: media-tv
+  trigger:
+    schedule: 0 4 * * *
