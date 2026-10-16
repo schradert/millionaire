@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
-  image: harbor.trdos.me/library/app-bootstrap:0.40.0@sha256:26a99488f08c681d8f34ce5ebfd1c5ae4d2ab75661b16ae595070bab62c3607d
-  spec: abf2872f2475c9811a1c39f24d8c8b6f4e9e755f571344b4872e47173ef57366
+  image: harbor.trdos.me/library/app-bootstrap:0.41.0@sha256:764f6f876fdb5594eb04ca955f0d4cc1d7212b0da10de329f17bc0d9c60e47fa
+  spec: dc2d5efc1fa8951886ef9845fb7d4118c941d62bf958f602b16a3d8e6d1736d0
 kind: ConfigMap
 metadata:
   name: bazarr-bootstrap
