@@ -278,7 +278,7 @@ What the roll found:
 
 1. **A cold boot does not keep the DHCP address.** chinchilla came back as 192.168.50.161 instead of .85. Observed: a plain discover got .161 whether the client id was the
    DUID or the MAC, one asking for .85 (`RequestAddress`) got it; why the router lost the binding is not known. Everything keyed to `lan` in `static/builders.nix` (peer
-   names in `/etc/hosts`, rke2 join, attic, etcd peer URLs) pointed at nothing, and Ceph mon-c could not rejoin: Rook failed it over (mon-e now runs on falcon, `mon: a,d,e`).
+   names in `/etc/hosts`, rke2 join, attic, etcd peer URLs) pointed at nothing, and Ceph mon-c could not rejoin: Rook failed it over onto falcon (`mon: a,d,e`). #1074 keeps mon, mgr, mds and rgw off nodes with a `node.trdos.me/class` label (`placement` in `rook-ceph.nix`); the operator left mon-e Pending, waited its 10 min failover timeout twice (the second because the pod was unscheduled), then created mon-f on sirver (`mon: a,d,f`, HEALTH_OK). Nothing needed doing by hand.
    Fixed in #1063: `RequestAddress=<lan>` on `40-eno1` (chinchilla, bonobo, dingo, octopus; sirver has a bridge). bonobo rebooted with it and kept .142; `networkctl reconfigure eno1`
    on chinchilla (a fresh discover) re-acquired .85 from the declared config. dingo and octopus carry it but were not rebooted. A server reboot without it would move an etcd peer URL.
 2. **After an address change restart rke2 and the cilium pods.** rke2's node address and the `CiliumNode` keep the old one: pods started on chinchilla had no DNS or apiserver
@@ -293,7 +293,7 @@ What the roll found:
    post-build hook's 120 s timeout (the cache is not reachable at `sirver:8199`).
 8. axolotl: its toplevel needs the DisplayLink zip in falcon's store: `ssh axolotl nix-store --export <zip> | ssh falcon sudo nix-store --import`. Its closure was copied
    as `tristan` (`nix copy --to ssh-ng://tristan@192.168.50.250`; the builder user has no key on it).
-9. falcon's `substituters` still lists `http://sirver:8199/main`, which refuses connections: every nix command there warns and retries. Nothing here changed that.
+9. Substituters, checked on every node 2026-10-16 (`nix config show`): all list `http://chinchilla:8199/main` except sirver, which still runs its pre-roll generation and lists `sirver:8199` (refuses connections; its next deploy fixes it). falcon already lists chinchilla in `/etc/nix/nix.conf` and its daemon (started after the 10:49 switch); no user or root override exists. Macs and the Deck take only cache.nixos.org by design (`flake.nix`); the devshell adds the attic URL through `NIX_CONFIG`.
 
 Everything below was written for this roll and still describes how to do a node.
 
