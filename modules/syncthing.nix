@@ -236,7 +236,7 @@ in {
       syncthingIdentity.secrets = lib.optionalAttrs (mine != null && mine.id != null && builtins.pathExists file) (lib.listToAttrs (map (part:
         lib.nameValuePair "syncthing-${part}" {
           key = part;
-          # by contents, not via the flake source (see modules/sops.nix)
+          # by contents, not via the flake source
           sopsFile = builtins.path {
             path = file;
             name = "sops-syncthing-${host}.yaml";
