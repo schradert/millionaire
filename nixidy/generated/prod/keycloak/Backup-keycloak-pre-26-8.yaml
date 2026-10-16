@@ -1,0 +1,9 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: keycloak-pre-26-8
+  namespace: identity
+spec:
+  cluster:
+    name: keycloak
+  method: barmanObjectStore

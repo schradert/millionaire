@@ -1,6 +1,6 @@
 {
-  "version": "26.2.5",
-  "hash": "sha256-6Z5fh4PqjxzAQUC3Az6nKR/5iYoIjzc5m4hlHYEjj4g=",
+  "version": "26.8.1",
+  "hash": "sha256-TidAsYH6oupiOhwuzwCFWTUxHlRgRuL4V2FaR+0ky+g=",
   "source": {
     "type": "url-template",
     "url": "https://github.com/keycloak/keycloak/releases/download/{version}/keycloak-{version}.tar.gz",
