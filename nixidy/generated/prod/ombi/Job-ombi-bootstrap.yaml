@@ -36,6 +36,8 @@ spec:
               value: /secrets/lidarr/apikey
             - name: NTFY_PRIORITY
               value: "2"
+            - name: NTFY_TOKEN_FILE
+              value: /secrets/ntfy/token
             - name: NTFY_TOPIC
               value: media
             - name: NTFY_URL
@@ -86,6 +88,9 @@ spec:
             - mountPath: /secrets/lidarr
               name: lidarr
               readOnly: true
+            - mountPath: /secrets/ntfy
+              name: ntfy
+              readOnly: true
             - mountPath: /secrets/radarr
               name: radarr
               readOnly: true
@@ -117,6 +122,9 @@ spec:
         - name: lidarr
           secret:
             secretName: lidarr-apikey
+        - name: ntfy
+          secret:
+            secretName: ombi-ntfy
         - name: radarr
           secret:
             secretName: radarr-apikey

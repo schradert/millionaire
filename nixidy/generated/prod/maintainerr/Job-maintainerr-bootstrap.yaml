@@ -24,6 +24,8 @@ spec:
               value: admin
             - name: NTFY_PRIORITY
               value: "2"
+            - name: NTFY_TOKEN_FILE
+              value: /secrets/ntfy/token
             - name: NTFY_TOPIC
               value: media
             - name: NTFY_URL
@@ -64,6 +66,9 @@ spec:
             - mountPath: /secrets/jellyfin
               name: jellyfin
               readOnly: true
+            - mountPath: /secrets/ntfy
+              name: ntfy
+              readOnly: true
             - mountPath: /secrets/ombi
               name: ombi
               readOnly: true
@@ -95,6 +100,9 @@ spec:
         - name: jellyfin
           secret:
             secretName: jellyfin-admin
+        - name: ntfy
+          secret:
+            secretName: maintainerr-ntfy
         - name: ombi
           secret:
             secretName: ombi-apikey

@@ -25,6 +25,11 @@ spec:
               value: https://ntfy.trdos.me/dvd
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: http://alloy.observability.svc.cluster.local:4318
+            - name: NTFY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: token
+                  name: dvdrip-ntfy
             - name: DVDRIP_IMAGE
               value: harbor.trdos.me/library/dvdrip:0.1.7@sha256:b484ca616b5b1f879eefbe89d13b6e8c2786a5637ba562bd644004ef1154e095
             - name: DVDRIP_JELLYFIN_URL

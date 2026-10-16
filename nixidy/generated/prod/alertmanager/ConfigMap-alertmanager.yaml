@@ -33,15 +33,24 @@ data:
     - name: "null"
     - name: e2e-ntfy
       webhook_configs:
-      - send_resolved: true
+      - http_config:
+          authorization:
+            credentials_file: /etc/ntfy/token
+        send_resolved: true
         url: https://ntfy.trdos.me/e2e-alerts?template=alertmanager
     - name: e2e-jobs-ntfy
       webhook_configs:
-      - send_resolved: true
+      - http_config:
+          authorization:
+            credentials_file: /etc/ntfy/token
+        send_resolved: true
         url: https://ntfy.trdos.me/e2e?template=alertmanager&priority=2
     - name: dvd-ntfy
       webhook_configs:
-      - send_resolved: true
+      - http_config:
+          authorization:
+            credentials_file: /etc/ntfy/token
+        send_resolved: true
         url: https://ntfy.trdos.me/dvd?template=alertmanager&priority=2
     - name: gatus-heartbeat
       webhook_configs:
@@ -52,7 +61,10 @@ data:
         url: https://status.trdos.me/api/v1/endpoints/cluster_watchdog/external?success=true
     - name: default
       webhook_configs:
-      - send_resolved: true
+      - http_config:
+          authorization:
+            credentials_file: /etc/ntfy/token
+        send_resolved: true
         url: https://ntfy.trdos.me/alerts?template=alertmanager
     route:
       group_by:

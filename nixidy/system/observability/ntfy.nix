@@ -1,8 +1,8 @@
 # Token for the in-cluster publishers to hyena's ntfy, which denies anonymous access once its users exist
-# (static/ntfy.nix). Off until the pulumi step and the hyena deploy of docs/manual-steps.md 18 are done: ntfy
-# answers 401 to a token it does not know even on an open topic, so nothing may send one earlier, and the
-# publishers' images must carry the token support (app-bootstrap >= 0.49.0, e2e >= 0.17.3, dvdrip >= 0.1.6,
-# backup-verify >= 0.2.1) before the flip. An Application that sets `ntfySecret` (the ntfy user) gets the ExternalSecret
+# (static/ntfy.nix). On: the pulumi step and the hyena deploy of docs/manual-steps.md 18 are done. ntfy answers 401
+# to a token it does not know even on an open topic, so nothing may send one before the hyena deploy, and the
+# publishers' images must carry the token support (the per-app bootstrap images app-bootstrap-arr, -ombi,
+# -maintainerr and -cleanuparr >= 0.49.0, e2e >= 0.17.3, dvdrip >= 0.1.6, backup-verify >= 0.2.1). An Application that sets `ntfySecret` (the ntfy user) gets the ExternalSecret
 # `<app>-ntfy` (key `token`, Bitwarden `ntfy/<user>/token`); `ntfyToken.env "<app>"` is its `NTFY_TOKEN` env.
 {...}: {
   nixidy = {
@@ -13,7 +13,7 @@
   }: let
     cfg = config.ntfy;
   in {
-    options.ntfy.auth = can.bool "Publishers send their ntfy token" {default = false;};
+    options.ntfy.auth = can.bool "Publishers send their ntfy token" {default = true;};
     config = {
       _module.args.ntfyToken = {
         enable = cfg.auth;
