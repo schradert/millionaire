@@ -75,6 +75,11 @@
             extraArgs = {
               "log.level" = "info";
               "config.expand-env" = "true";
+              # The WAL under ./data-metastore/raft (raft.dir/wal) holds a duplicated tail entry from an unclean stop
+              # ("non-monotonic log entries") that keeps the single node from ever winning a commit. A fresh WAL
+              # directory restores the metastore from the latest snapshot in ./data-metastore/raft/snapshots (the
+              # snapshots dir keeps its old path); only the entries after that snapshot are lost.
+              "metastore.raft.dir" = "./data-metastore/raft-wal";
             };
             extraEnvFrom = [{secretRef.name = "pyroscope";}];
             # The bucket's credentials arrive as environment variables from the OBC Secret.

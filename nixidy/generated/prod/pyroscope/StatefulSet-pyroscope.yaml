@@ -46,10 +46,10 @@ spec:
             - -runtime-config.file=/etc/pyroscope/overrides/overrides.yaml
             - -config.expand-env=true
             - -log.level=info
+            - -metastore.raft.dir=./data-metastore/raft-wal
             - -query-backend.address=dns:///_grpc._tcp.pyroscope-headless.$(NAMESPACE_FQDN):9095
             - -metastore.address=kubernetes:///pyroscope-headless.$(NAMESPACE_FQDN):9095
             - -metastore.data-dir=./data-metastore/data
-            - -metastore.raft.dir=./data-metastore/raft
             - -metastore.raft.snapshots-dir=./data-metastore/raft
             - -metastore.raft.bind-address=:9099
             - -metastore.raft.server-id=$(POD_NAME).$(PYROSCOPE_METASTORE_SERVICE)
