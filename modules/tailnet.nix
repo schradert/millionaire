@@ -63,6 +63,8 @@
     trdosCheck = pkgs.writeShellApplication {
       name = "trdos-check";
       runtimeInputs = with pkgs; [curl jq];
+      # check() calls the functions below through "$@"
+      excludeShellChecks = ["SC2329"];
       text = ''
         ts() { ${lib.getExe package} --socket=${socket} "$@"; }
         host=git.${domain}
