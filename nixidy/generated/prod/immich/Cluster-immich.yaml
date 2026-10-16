@@ -4,6 +4,19 @@ metadata:
   name: immich
   namespace: media
 spec:
+  affinity:
+    enablePodAntiAffinity: true
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - preference:
+            matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                  - sirver
+          weight: 100
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
   bootstrap:
     initdb:
       database: immich
@@ -15,7 +28,7 @@ spec:
         - CREATE EXTENSION IF NOT EXISTS cube;
         - CREATE EXTENSION IF NOT EXISTS earthdistance;
   imageName: ghcr.io/immich-app/postgres:17-vectorchord0.4.3-pgvectors0.3.0@sha256:6b725ce331a1db016c75ca13e4cfc35435718f3fe975ff75a9c11debebbe21d7
-  instances: 1
+  instances: 2
   monitoring:
     enablePodMonitor: true
   postgresGID: 999

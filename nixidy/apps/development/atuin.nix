@@ -29,6 +29,8 @@ in {
     applications.atuin = {
       namespace = "development";
       postgres.enable = true;
+      postgres.instances = 2;
+      postgres.avoidNodes = ["sirver"];
       generatedSecrets = lib.mapAttrs' (user: _: lib.nameValuePair "atuin-${user}" {key = "password";}) users;
       helm.releases.atuin = {
         chart = charts.bjw-s-labs.app-template-patched;
