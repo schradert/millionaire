@@ -130,7 +130,11 @@ pub async fn rip(ctx: &Ctx, f: &mut Flow) -> R<()> {
     // emptied folder as still there). Give the old folders time to disappear before calling them left behind.
     let old_dvd = Path::new(&media_root()).join("dvd").join(&library);
     poll("fs", "old folders removed", Duration::from_secs(90), Duration::from_secs(3), || async {
-        let left: Vec<String> = [&movie, &old_dvd].into_iter().filter(|p| p.exists()).map(|p| format!("{} {:?}", p.display(), std::fs::read_dir(p).map(|rd| rd.flatten().map(|e| e.file_name()).collect::<Vec<_>>()))).collect();
+        let left: Vec<String> = [&movie, &old_dvd]
+            .into_iter()
+            .filter(|p| p.exists())
+            .map(|p| format!("{} {:?}", p.display(), std::fs::read_dir(p).map(|rd| rd.flatten().map(|e| e.file_name()).collect::<Vec<_>>())))
+            .collect();
         if left.is_empty() {
             Ok(Some(()))
         } else {
