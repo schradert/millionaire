@@ -25,7 +25,7 @@
       sops.secrets = lib.listToAttrs (map (name:
         lib.nameValuePair "api-${name}" {
           key = "api/${name}";
-          # by contents, not via the flake source (see modules/sops.nix)
+          # by contents, not via the flake source
           sopsFile = builtins.path {
             path = ../secrets/sops/personal.yaml;
             name = "sops-personal.yaml";
