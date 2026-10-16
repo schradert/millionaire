@@ -283,6 +283,8 @@
             # Host-level TCP relay fronting the internal Cilium gateway on bonobo's
             # tailnet IP (external-dns-internal points *.trdos.me here). See tailnet.nix.
             tailnet.gatewayRelay = "100.64.0.4";
+            # Own containerd unit, so rke2 restarts keep pods running (docs/node-standard.md, "Next node roll").
+            externalContainerd.enable = true;
             # The adb key `android <device>` connects with (pulumi android_adb_key, docs/android-fleet.md)
             sops.secrets = lib.mkIf adbKeyWritten {
               android-adb-key = {
@@ -310,6 +312,7 @@
             # Second gateway relay (round-robin with bonobo) on chinchilla's
             # tailnet IP; external-dns-internal lists both A records. See tailnet.nix.
             tailnet.gatewayRelay = "100.64.0.5";
+            externalContainerd.enable = true;
           };
         };
 
