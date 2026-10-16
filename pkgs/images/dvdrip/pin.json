@@ -1,6 +1,6 @@
 {
-  "version": "0.1.6",
-  "digest": "sha256:383209bd18afffcbe77823a423c04486191813a7abe0db5c46e997f01be39415",
+  "version": "0.1.7",
+  "digest": "sha256:b484ca616b5b1f879eefbe89d13b6e8c2786a5637ba562bd644004ef1154e095",
   "source": {
     "type": "oci-tag",
     "repository": "harbor.trdos.me/library/dvdrip",
