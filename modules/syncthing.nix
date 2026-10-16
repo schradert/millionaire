@@ -55,9 +55,11 @@ in {
       id = "H7OCLG5-D3EMV3Z-PMVEMKT-VLL5YGJ-EPDO6HL-HK27L3L-QVBPY63-VST4UAN";
       profiles = ["gaming"];
     };
-    # The phone's Syncthing-Fork carries only the notes. Its identity is made by the app: record
-    # it from Syncthing-Fork -> menu -> Show device ID (docs/manual-steps.md).
+    # The phone's Syncthing-Fork carries only the notes. Its identity is declared like the hosts' (`syncthing-identity
+    # pixel`), but has no sops on the phone: `android pixel productivity` (docs/android-fleet.md) decrypts it here and
+    # builds the archive that Syncthing-Fork imports, so the phone runs as this ID.
     pixel = {
+      id = "TSKMPZF-QQHEP2E-O2ZTUSD-QDMFFOI-Y4EAUF2-JTVIO4D-OQWHRVL-ZAPRLQ6";
       os = "android";
       folders = ["org"];
     };

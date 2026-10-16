@@ -58,3 +58,8 @@ creation_rules:
       - age:
           - *tristan
           - *systeamadeck
+  # The Pixel's Syncthing-Fork has no sops: `android pixel productivity` decrypts this on the Mac and imports it
+  - path_regex: secrets/sops/syncthing-pixel\.yaml
+    key_groups:
+      - age:
+          - *tristan
