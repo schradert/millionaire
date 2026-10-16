@@ -53,6 +53,7 @@ let
   };
 in {
   nodes = {
+    # TODO: remove sirver from the build pool until its failing root disk is replaced; see docs/backlog.md
     sirver = node {
       cores = 64;
       lan = "192.168.50.204";
