@@ -92,6 +92,7 @@ in {
               restoreInto = can.str "Existing PVC the restore writes into: the live one, or a same-sized scratch PVC" {default = config.title;};
               cacheAccessModes = can.list.str "Mover cache access modes (RWX sources need ReadWriteOnce on ceph-block)" {default = [];};
               schedule = can.str "Cron schedule of the backup" {default = "0 4 * * *";};
+              repositorySuffix = can.str "Appended to the B2 repository path (not to object names): a fresh restic repository, leaving the old path as it was" {default = "";};
               retain = lib.mkOption {
                 description = "Snapshots kept per period; pruned every 8 days";
                 default = {};
@@ -104,7 +105,7 @@ in {
         };
         config = lib.mkIf config.volsync.enable {
           resources = lib.mkMerge (lib.flip lib.mapAttrsToList config.volsync.pvcs (pvcName: pvc: let
-            inherit (pvc) title inject path cacheAccessModes restore restoreInto schedule retain;
+            inherit (pvc) title inject path cacheAccessModes restore restoreInto schedule retain repositorySuffix;
             cache = lib.optionalAttrs (cacheAccessModes != []) {inherit cacheAccessModes;};
             region = "us-west-004";
             repository = "volsync--${name}--${pvcName}";
@@ -138,7 +139,7 @@ in {
                     }
                   ];
                   target.template.data = {
-                    RESTIC_REPOSITORY = "s3:https://s3.${region}.backblazeb2.com/${bucketName}/${repository}";
+                    RESTIC_REPOSITORY = "s3:https://s3.${region}.backblazeb2.com/${bucketName}/${repository}${repositorySuffix}";
                     RESTIC_PASSWORD = "{{ .restic }}";
                     AWS_ACCESS_KEY_ID = "{{ .id }}";
                     AWS_SECRET_ACCESS_KEY = "{{ .password }}";
