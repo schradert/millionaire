@@ -146,6 +146,32 @@ class Millionaire:
             },
         )
 
+        # B2 key for hyena's nightly headscale backup (static/headscale-backup.nix):
+        # the VolSync bucket key from BWS (the S3 API rejects the master key in
+        # sops b2.*), in SOPS before hyena deploys.
+        backblaze_key_id = bw.get_secret_output(
+            key="backblaze/bucket/application_key_id",
+            organization_id=BW_ORGANIZATION_ID,
+        )
+        backblaze_key = bw.get_secret_output(
+            key="backblaze/bucket/application_key",
+            organization_id=BW_ORGANIZATION_ID,
+        )
+        headscale_backup_b2_sops_write = command.local.Command(
+            "headscale_backup_b2_sops_write",
+            create=(
+                f'cd "{millionaire.Nix.root}" && '
+                "printf '%s' \"$B2_KEY_ID\" | jq -Rs . | "
+                'sops set secrets/sops/default.yaml \'["backblaze"]["bucket"]["application_key_id"]\' --value-stdin && '
+                "printf '%s' \"$B2_KEY\" | jq -Rs . | "
+                'sops set secrets/sops/default.yaml \'["backblaze"]["bucket"]["application_key"]\' --value-stdin'
+            ),
+            environment={
+                "B2_KEY_ID": pulumi.Output.secret(backblaze_key_id.value),
+                "B2_KEY": pulumi.Output.secret(backblaze_key.value),
+            },
+        )
+
         hyena = millionaire.NixOS(
             "hyena",
             hyena_server.ipv4_address.apply(lambda ip: f"root@{ip}"),
@@ -154,6 +180,7 @@ class Millionaire:
                 hyena_server,
                 adguard_password_hash_sops_write,
                 cloudflare_token_sops_write,
+                headscale_backup_b2_sops_write,
             ],
         )
 
