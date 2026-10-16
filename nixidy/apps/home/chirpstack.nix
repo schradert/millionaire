@@ -93,6 +93,10 @@ in {
             annotations."reloader.stakater.com/auto" = "true";
             containers.chirpstack = {
               image = pinned.images.chirpstack;
+              resources.requests = {
+                cpu = "25m";
+                memory = "32Mi";
+              };
               # -c takes the config directory; chirpstack.toml is mounted into it below.
               args = ["-c" "/etc/chirpstack"];
               envFrom = [{secretRef.name = "chirpstack";}];
@@ -212,6 +216,7 @@ in {
       resources.dragonflies.chirpstack-dragonfly.spec = {
         replicas = 1;
         args = ["--proactor_threads" "1"];
+        resources.requests.cpu = "25m";
         resources.requests.memory = "256Mi";
         resources.limits.memory = "512Mi";
       };

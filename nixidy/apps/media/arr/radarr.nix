@@ -56,6 +56,10 @@
             };
             containers.radarr = {
               image = pinned.images.radarr;
+              resources.requests = {
+                cpu = "100m";
+                memory = "240Mi";
+              };
               envFrom = [{secretRef.name = "radarr";} {configMapRef.name = "radarr";}];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;

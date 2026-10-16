@@ -302,6 +302,10 @@ in {
             annotations."reloader.stakater.com/auto" = "true";
             containers.homepage = {
               image = pinned.images.homepage;
+              resources.requests = {
+                cpu = "35m";
+                memory = "160Mi";
+              };
               env = {
                 HOMEPAGE_ALLOWED_HOSTS = hostname;
                 HOMEPAGE_EXTERNAL_URL = "https://${hostname}";

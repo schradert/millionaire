@@ -59,6 +59,10 @@ spec:
             tcpSocket:
               port: 6806
             timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
           startupProbe:
             failureThreshold: 120
             initialDelaySeconds: 0

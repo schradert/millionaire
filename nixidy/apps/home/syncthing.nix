@@ -191,6 +191,10 @@ in {
             };
             containers.syncthing = {
               image = pinned.images.syncthing;
+              resources.requests = {
+                cpu = "25m";
+                memory = "48Mi";
+              };
               env = {
                 STGUIADDRESS = "0.0.0.0:8384";
                 STNODEFAULTFOLDER = "true";

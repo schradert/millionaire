@@ -56,6 +56,10 @@
             };
             containers.sonarr = {
               image = pinned.images.sonarr;
+              resources.requests = {
+                cpu = "55m";
+                memory = "224Mi";
+              };
               envFrom = [{secretRef.name = "sonarr";} {configMapRef.name = "sonarr";}];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;

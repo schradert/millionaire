@@ -83,6 +83,10 @@
             };
             containers.jellyfin = {
               image = pinned.images.jellyfin;
+              resources.requests = {
+                cpu = "285m";
+                memory = "560Mi";
+              };
               env = {
                 NVIDIA_VISIBLE_DEVICES = "all";
                 NVIDIA_DRIVER_CAPABILITIES = "compute,video,utility";

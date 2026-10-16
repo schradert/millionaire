@@ -114,6 +114,10 @@ in {
             annotations."reloader.stakater.com/auto" = "true";
             containers.dashy = {
               image = pinned.images.dashy;
+              resources.requests = {
+                cpu = "25m";
+                memory = "64Mi";
+              };
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
               probes.startup.enabled = true;

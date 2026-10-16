@@ -114,12 +114,20 @@
           controllers.seerr.annotations."reloader.stakater.com/auto" = "true";
           controllers.seerr.containers.seerr = {
             image = pinned.images.seerr;
+            resources.requests = {
+              cpu = "50m";
+              memory = "224Mi";
+            };
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
             probes.startup.enabled = true;
           };
           controllers.seerr.containers.sso = {
             image = pinned.images.seerr-sso;
+            resources.requests = {
+              cpu = "25m";
+              memory = "48Mi";
+            };
             env = {
               UPSTREAM = "http://127.0.0.1:5055";
               AUTH_URL = "http://oauth2-proxy.identity.svc.cluster.local:4180/oauth2/auth";

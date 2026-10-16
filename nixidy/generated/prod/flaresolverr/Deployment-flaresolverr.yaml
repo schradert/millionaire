@@ -48,6 +48,10 @@ spec:
             tcpSocket:
               port: 8191
             timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 25m
+              memory: 192Mi
           startupProbe:
             failureThreshold: 30
             initialDelaySeconds: 0

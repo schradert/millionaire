@@ -104,6 +104,10 @@ in {
             annotations."reloader.stakater.com/auto" = "true";
             containers.navidrome = {
               image = pinned.images.navidrome;
+              resources.requests = {
+                cpu = "25m";
+                memory = "48Mi";
+              };
               envFrom = [{configMapRef.name = "navidrome";}];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;

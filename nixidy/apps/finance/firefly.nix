@@ -43,6 +43,10 @@
             pod.securityContext.fsGroup = 33;
             containers.firefly = {
               image = pinned.images.firefly-core;
+              resources.requests = {
+                cpu = "80m";
+                memory = "128Mi";
+              };
               ports = lib.toList {
                 name = "http";
                 containerPort = 8080;
@@ -113,6 +117,10 @@
             annotations."reloader.stakater.com/auto" = "true";
             containers.firefly-importer = {
               image = pinned.images.firefly-data-importer;
+              resources.requests = {
+                cpu = "50m";
+                memory = "80Mi";
+              };
               # Personal access token minted by the firefly-bootstrap job.
               env.FIREFLY_III_ACCESS_TOKEN_FILE = "/secrets/app_token.txt";
               probes.liveness.enabled = true;
@@ -417,6 +425,10 @@
                 containers = lib.toList {
                   name = "firefly-simplefin";
                   image = with pinned.images.firefly-data-importer; "${repository}:${tag}@${digest}";
+                  resources.requests = {
+                    cpu = "25m";
+                    memory = "80Mi";
+                  };
                   # The image's entrypoint is bypassed; config:clear drops the config cache baked into the image.
                   command = ["sh" "-c" "cd /var/www/html && php artisan config:clear >/dev/null && php /simplefin/import.php"];
                   env =

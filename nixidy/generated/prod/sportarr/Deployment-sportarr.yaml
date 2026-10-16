@@ -46,6 +46,10 @@ spec:
             httpGet:
               path: /ping
               port: 1867
+          resources:
+            requests:
+              cpu: 85m
+              memory: 752Mi
           startupProbe:
             failureThreshold: 60
             httpGet:

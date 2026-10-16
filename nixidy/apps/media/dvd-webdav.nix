@@ -38,6 +38,10 @@
             annotations."reloader.stakater.com/auto" = "true";
             containers.dvd-webdav = {
               image = pinned.images.webdav;
+              resources.requests = {
+                cpu = "25m";
+                memory = "32Mi";
+              };
               args = ["--config" "/config/webdav.yml"];
               env.DVD_PASSWORD.valueFrom.secretKeyRef = {
                 name = "dvd-webdav";

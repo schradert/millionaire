@@ -45,6 +45,10 @@ spec:
             tcpSocket:
               port: 5055
             timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 224Mi
           startupProbe:
             failureThreshold: 30
             initialDelaySeconds: 0
@@ -79,6 +83,10 @@ spec:
           readinessProbe:
             tcpSocket:
               port: 5056
+          resources:
+            requests:
+              cpu: 25m
+              memory: 48Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

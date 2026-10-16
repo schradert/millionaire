@@ -79,6 +79,9 @@ spec:
           resources:
             limits:
               devic.es/tun: 1
+            requests:
+              cpu: 25m
+              memory: 80Mi
           securityContext:
             capabilities:
               add:
@@ -104,6 +107,10 @@ spec:
             tcpSocket:
               port: 8080
             timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 45m
+              memory: 32Mi
           securityContext:
             runAsGroup: 65534
             runAsUser: 65534

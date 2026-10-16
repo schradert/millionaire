@@ -50,6 +50,9 @@ spec:
           resources:
             limits:
               devic.es/zwave: 1
+            requests:
+              cpu: 25m
+              memory: 112Mi
           startupProbe:
             failureThreshold: 30
             initialDelaySeconds: 0

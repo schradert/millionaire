@@ -91,6 +91,10 @@ in {
         values = {
           controllers.audiobookshelf.containers.audiobookshelf = {
             image = pinned.images.audiobookshelf;
+            resources.requests = {
+              cpu = "25m";
+              memory = "80Mi";
+            };
             # The image listens on :80 unless told otherwise.
             env.PORT = "13378";
             probes.liveness.enabled = true;

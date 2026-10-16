@@ -129,6 +129,10 @@
             };
             containers.sportarr = {
               image = pinned.images.sportarr;
+              resources.requests = {
+                cpu = "85m";
+                memory = "752Mi";
+              };
               envFrom = [{secretRef.name = "sportarr";} {configMapRef.name = "sportarr";}];
               probes = let
                 ping = {

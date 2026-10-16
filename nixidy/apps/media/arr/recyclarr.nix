@@ -89,6 +89,10 @@
             };
             containers.recyclarr = {
               image = pinned.images.recyclarr;
+              resources.requests = {
+                cpu = "25m";
+                memory = "32Mi";
+              };
               args = ["sync"];
               envFrom = [{secretRef.name = "recyclarr";}];
             };

@@ -50,6 +50,10 @@ spec:
             tcpSocket:
               port: 8080
             timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
           startupProbe:
             failureThreshold: 30
             initialDelaySeconds: 0

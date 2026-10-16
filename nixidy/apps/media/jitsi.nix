@@ -116,6 +116,30 @@
             inherit repository;
             tag = "${tag}@${digest}";
           };
+          jibri.resources.requests = {
+            cpu = "65m";
+            memory = "1072Mi";
+          };
+          jicofo.resources.requests = {
+            cpu = "25m";
+            memory = "1072Mi";
+          };
+          jigasi.resources.requests = {
+            cpu = "90m";
+            memory = "240Mi";
+          };
+          jvb.resources.requests = {
+            cpu = "25m";
+            memory = "336Mi";
+          };
+          web.resources.requests = {
+            cpu = "25m";
+            memory = "32Mi";
+          };
+          prosody.resources.requests = {
+            cpu = "25m";
+            memory = "48Mi";
+          };
         };
       };
       resources = {

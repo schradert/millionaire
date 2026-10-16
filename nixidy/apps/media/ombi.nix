@@ -138,6 +138,10 @@
             pod.hostAliases = hostAliases;
             containers.ombi = {
               image = pinned.images.ombi;
+              resources.requests = {
+                cpu = "25m";
+                memory = "256Mi";
+              };
               env = {
                 PUID = "1000";
                 PGID = "1000";
@@ -218,6 +222,10 @@
                 containers = lib.toList {
                   name = "sync";
                   inherit image;
+                  resources.requests = {
+                    cpu = "25m";
+                    memory = "32Mi";
+                  };
                   args = ["ombi"];
                   env = lib.mapAttrsToList (name: value: {inherit name value;}) (env // {OMBI_MODE = "users";});
                   volumeMounts =

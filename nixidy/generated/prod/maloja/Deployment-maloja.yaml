@@ -52,6 +52,10 @@ spec:
             tcpSocket:
               port: 42011
             timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 25m
+              memory: 80Mi
           startupProbe:
             failureThreshold: 30
             initialDelaySeconds: 0
@@ -85,6 +89,10 @@ spec:
           readinessProbe:
             tcpSocket:
               port: 42011
+          resources:
+            requests:
+              cpu: 25m
+              memory: 80Mi
           startupProbe:
             tcpSocket:
               port: 42011

@@ -57,6 +57,10 @@ spec:
                 - sh
                 - -c
                 - test -f /var/lib/org-bridge/state.db
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
           startupProbe:
             exec:
               command:

@@ -37,7 +37,10 @@ spec:
               path: /ready
               port: http
               scheme: HTTPS
-          resources: {}
+          resources:
+            requests:
+              cpu: 45m
+              memory: 656Mi
           securityContext: {}
           volumeMounts:
             - mountPath: /certs

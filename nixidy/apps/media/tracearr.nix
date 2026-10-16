@@ -138,6 +138,7 @@ in {
       resources.dragonflies.tracearr-dragonfly.spec = {
         replicas = 1;
         args = ["--proactor_threads" "1" "--default_lua_flags=allow-undeclared-keys"];
+        resources.requests.cpu = "25m";
         resources.requests.memory = "256Mi";
         resources.limits.memory = "768Mi";
       };
@@ -161,6 +162,10 @@ in {
             };
             containers.tracearr = {
               image = pinned.images.tracearr;
+              resources.requests = {
+                cpu = "145m";
+                memory = "400Mi";
+              };
               envFrom = [{secretRef.name = "tracearr";} {configMapRef.name = "tracearr";}];
               probes = {
                 liveness = appProbe;

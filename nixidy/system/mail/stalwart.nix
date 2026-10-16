@@ -20,6 +20,10 @@ in {
             annotations."reloader.stakater.com/auto" = "true";
             containers.stalwart = {
               image = pinned.images.stalwart;
+              resources.requests = {
+                cpu = "25m";
+                memory = "160Mi";
+              };
               envFrom = [{secretRef.name = "stalwart";}];
               ports = [
                 {

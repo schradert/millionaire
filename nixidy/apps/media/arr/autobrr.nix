@@ -123,6 +123,10 @@ in {
             };
             containers.autobrr = {
               image = pinned.images.autobrr;
+              resources.requests = {
+                cpu = "25m";
+                memory = "112Mi";
+              };
               envFrom = [{configMapRef.name = "autobrr";}];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;

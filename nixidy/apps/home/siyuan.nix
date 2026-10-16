@@ -24,6 +24,10 @@
             annotations."reloader.stakater.com/auto" = "true";
             containers.siyuan = {
               image = pinned.images.siyuan;
+              resources.requests = {
+                cpu = "25m";
+                memory = "64Mi";
+              };
               # Skip the image entrypoint: it chown -Rs /opt/siyuan (the image
               # layer) even when ownership is already right, and every file's
               # overlayfs copy-up waits for a ZFS txg sync on the nodes (hours

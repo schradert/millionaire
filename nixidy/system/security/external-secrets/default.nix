@@ -27,6 +27,22 @@
           certController.image.tag = with pinned.images.external-secrets; "${tag}@${digest}";
           bitwarden-sdk-server.image.tag = with pinned.images.bitwarden-sdk-server; "${tag}@${digest}";
           installCRDs = false;
+          resources.requests = {
+            cpu = "25m";
+            memory = "96Mi";
+          };
+          webhook.resources.requests = {
+            cpu = "25m";
+            memory = "64Mi";
+          };
+          certController.resources.requests = {
+            cpu = "25m";
+            memory = "160Mi";
+          };
+          bitwarden-sdk-server.resources.requests = {
+            cpu = "45m";
+            memory = "656Mi";
+          };
           serviceMonitor.enabled = true;
         };
       };

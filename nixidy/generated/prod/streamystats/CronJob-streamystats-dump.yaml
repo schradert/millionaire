@@ -36,6 +36,10 @@ spec:
                       name: streamystats-app
               image: ghcr.io/immich-app/postgres:17-vectorchord0.4.3-pgvectors0.3.0@sha256:6b725ce331a1db016c75ca13e4cfc35435718f3fe975ff75a9c11debebbe21d7
               name: dump
+              resources:
+                requests:
+                  cpu: 25m
+                  memory: 32Mi
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities:

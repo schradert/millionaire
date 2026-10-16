@@ -51,6 +51,10 @@ spec:
               port: http
             initialDelaySeconds: 15
             timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: 25m
+              memory: 352Mi
           startupProbe:
             failureThreshold: 30
             httpGet:

@@ -102,6 +102,10 @@ in {
             hostnames = ["ntfy.${domain}"];
           };
           controllers.maintainerr.containers.maintainerr = {
+            resources.requests = {
+              cpu = "40m";
+              memory = "256Mi";
+            };
             # 3.x added Jellyfin/Emby support (2.x is Plex-only). Not backward
             # compatible: its DB migration is one-way.
             image = pinned.images.maintainerr;

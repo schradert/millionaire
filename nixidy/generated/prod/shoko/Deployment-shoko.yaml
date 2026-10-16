@@ -43,6 +43,10 @@ spec:
             tcpSocket:
               port: 8111
             timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 40m
+              memory: 368Mi
           startupProbe:
             failureThreshold: 120
             initialDelaySeconds: 0

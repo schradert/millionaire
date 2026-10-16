@@ -46,6 +46,10 @@ spec:
             httpGet:
               path: /health
               port: 3000
+          resources:
+            requests:
+              cpu: 145m
+              memory: 400Mi
           startupProbe:
             failureThreshold: 60
             httpGet:

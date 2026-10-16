@@ -81,6 +81,10 @@ in {
             annotations."reloader.stakater.com/auto" = "true";
             containers.miniflux = {
               image = pinned.images.miniflux;
+              resources.requests = {
+                cpu = "25m";
+                memory = "48Mi";
+              };
               envFrom = [{configMapRef.name = "miniflux";}];
               ports = lib.toList {
                 name = "http";

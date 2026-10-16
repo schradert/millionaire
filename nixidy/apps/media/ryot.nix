@@ -63,6 +63,10 @@ in {
             annotations."reloader.stakater.com/auto" = "true";
             containers.ryot = {
               image = pinned.images.ryot;
+              resources.requests = {
+                cpu = "25m";
+                memory = "336Mi";
+              };
               envFrom = [{configMapRef.name = "ryot";} {secretRef.name = "ryot";}];
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;

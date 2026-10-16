@@ -46,6 +46,10 @@
             };
             containers.music-assistant = {
               image = pinned.images.music-assistant;
+              resources.requests = {
+                cpu = "95m";
+                memory = "144Mi";
+              };
               # MA needs CAP_NET_ADMIN / NET_RAW for the macvlan interface and for
               # mDNS multicast send. Privileged is the simplest knob; could be tightened
               # to capabilities once the deploy is shaken out.

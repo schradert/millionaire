@@ -25,6 +25,10 @@
             annotations."reloader.stakater.com/auto" = "true";
             containers.logseq = {
               image = pinned.images.logseq-webapp;
+              resources.requests = {
+                cpu = "25m";
+                memory = "48Mi";
+              };
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
               probes.startup.enabled = true;

@@ -38,6 +38,10 @@
         values = {
           controllers.shoko.containers.shoko = {
             image = pinned.images.shoko;
+            resources.requests = {
+              cpu = "40m";
+              memory = "368Mi";
+            };
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
             probes.startup = {

@@ -18,6 +18,10 @@
         values = {
           controllers.flaresolverr.containers.flaresolverr = {
             image = pinned.images.flaresolverr;
+            resources.requests = {
+              cpu = "25m";
+              memory = "192Mi";
+            };
             env = {
               PROMETHEUS_ENABLED = "true";
               PROMETHEUS_PORT = "8192";

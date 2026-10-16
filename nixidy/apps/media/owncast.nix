@@ -23,6 +23,10 @@
             annotations."reloader.stakater.com/auto" = "true";
             containers.owncast = {
               image = pinned.images.owncast;
+              resources.requests = {
+                cpu = "35m";
+                memory = "160Mi";
+              };
               # Owncast reads no OWNCAST_* env vars, only flags. Kubernetes expands
               # $(VAR) in args from the container env, and the flags are applied on
               # every start: -adminpassword rotates the stored admin password (the

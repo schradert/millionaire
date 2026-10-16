@@ -25,6 +25,18 @@ in {
           acmesolver.image = {inherit (pinned.images.cert-manager-acmesolver) tag digest;};
           startupapicheck.image = {inherit (pinned.images.cert-manager-startupapicheck) tag digest;};
           crds.enabled = false;
+          resources.requests = {
+            cpu = "25m";
+            memory = "64Mi";
+          };
+          webhook.resources.requests = {
+            cpu = "25m";
+            memory = "48Mi";
+          };
+          cainjector.resources.requests = {
+            cpu = "25m";
+            memory = "128Mi";
+          };
           dns01RecursiveNameservers = builtins.concatStringsSep "," [
             "https://1.1.1.1:443/dns-query"
             "https://1.0.0.1:443/dns-query"

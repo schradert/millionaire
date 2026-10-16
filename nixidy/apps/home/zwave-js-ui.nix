@@ -28,6 +28,10 @@
             annotations."reloader.stakater.com/auto" = "true";
             containers.zwave-js-ui = {
               image = pinned.images.zwave-js-ui;
+              resources.requests = {
+                cpu = "25m";
+                memory = "112Mi";
+              };
               # The stick via generic-device-plugin; schedules onto whichever node has it.
               resources.limits."devic.es/zwave" = 1;
               probes.liveness.enabled = true;

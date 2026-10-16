@@ -56,6 +56,10 @@ in {
             annotations."reloader.stakater.com/auto" = "true";
             containers.bulwark = {
               image = pinned.images.bulwark;
+              resources.requests = {
+                cpu = "25m";
+                memory = "2576Mi";
+              };
               env = {
                 JMAP_SERVER_URL = stalwartUrl;
                 APP_NAME = "Homelab Mail";

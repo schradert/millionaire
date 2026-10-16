@@ -83,6 +83,10 @@ in {
         values = {
           controllers.komga.containers.komga = {
             image = pinned.images.komga;
+            resources.requests = {
+              cpu = "365m";
+              memory = "896Mi";
+            };
             env = {
               KOMGA_OAUTH2_ACCOUNT_CREATION = "true";
               "${registration}_CLIENT_NAME" = "Keycloak";

@@ -59,7 +59,10 @@ spec:
             failureThreshold: 3
             initialDelaySeconds: 5
             periodSeconds: 5
-          resources: {}
+          resources:
+            requests:
+              cpu: 65m
+              memory: 1072Mi
           securityContext:
             capabilities:
               add:

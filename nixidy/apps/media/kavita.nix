@@ -52,6 +52,10 @@ in {
         values = {
           controllers.kavita.containers.kavita = {
             image = pinned.images.kavita;
+            resources.requests = {
+              cpu = "40m";
+              memory = "464Mi";
+            };
             probes.liveness.enabled = true;
             probes.readiness.enabled = true;
             # First start after a schema bump runs migrations; the default 30s

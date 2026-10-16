@@ -50,7 +50,10 @@ spec:
                   value: application/json
               path: /about/health
               port: 8788
-          resources: {}
+          resources:
+            requests:
+              cpu: 90m
+              memory: 240Mi
           securityContext: {}
       securityContext: {}
       serviceAccountName: jitsi-jitsi-meet
