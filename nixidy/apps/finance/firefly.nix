@@ -169,6 +169,45 @@
           };
         };
       };
+      # Waterfly III sends a personal access token (Bearer), which oauth2-proxy cannot verify, so
+      # the API skips it. remote_user_guard trusts the identity headers, so every one a client could
+      # forge is stripped here, underscore forms included (PHP maps both to HTTP_X_AUTH_REQUEST_*).
+      resources.httpRoutes.firefly-api.spec = {
+        hostnames = [hostname];
+        parentRefs = lib.toList {
+          name = "internal";
+          namespace = "kube-system";
+          sectionName = "https";
+        };
+        rules = lib.toList {
+          matches = lib.toList {
+            path = {
+              type = "PathPrefix";
+              value = "/api/v1";
+            };
+          };
+          filters = lib.toList {
+            type = "RequestHeaderModifier";
+            requestHeaderModifier.remove = let
+              identityHeaders = [
+                "X-Auth-Request-Preferred-Username"
+                "X-Auth-Request-Email"
+                "X-Auth-Request-User"
+                "X-Auth-Request-Groups"
+                "X-Forwarded-Preferred-Username"
+                "X-Forwarded-User"
+                "X-Forwarded-Email"
+                "Remote-User"
+              ];
+            in
+              identityHeaders ++ map (lib.replaceStrings ["-"] ["_"]) identityHeaders;
+          };
+          backendRefs = lib.toList {
+            name = "firefly";
+            port = 8080;
+          };
+        };
+      };
       resources.httpRoutes.firefly-importer.spec = {
         hostnames = ["firefly-importer-${config.canivete.meta.people.me}.${domain}"];
         parentRefs = lib.toList {
