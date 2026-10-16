@@ -119,5 +119,29 @@ mounted read-only at `/romm/library/roms` (the pin names stay as they are; `bios
   has. Search needs IGDB keys (`igdb = true` in `ggrequestz.nix`, same Bitwarden keys as
   RomM); without them the app runs but cannot search. The `ggrequestz-bootstrap` Job
   adds tristan's admin row, so the first login is not whoever arrives first.
+- **Acquisition.** ROMarr (`romarr.trdos.me`, `nixidy/apps/media/romarr.nix`, admin group only) is the
+  *arr for games: GG Requestz sends an approved request to its webhook, ROMarr searches
+  Prowlarr's indexers, hands the release to qBittorrent (category `romarr`, finished
+  downloads under `/media/downloads`), checks the import against No-Intro and Redump
+  DATs (libretro's mirror, fetched when the pod starts; "verified", "bad dump" or
+  "unknown"), files it into the library and asks RomM to rescan.
+  - **Folders.** ROMarr files into `/roms/<its platform name>/` (`snes`, `psx`, `nds`).
+    Each of those is the library's console folder (`SNES`, `PS1`, `DS`) mounted under
+    ROMarr's name (the `consoles` map in `romarr.nix`), so nothing is renamed and RomM
+    sees one platform. A console that is not in that map lands in a throwaway directory
+    and is lost with the pod: add it to the map (and to `romm.nix`'s bindings if RomM
+    needs one).
+  - **Settings are seeded once.** Prowlarr, qBittorrent and RomM addresses come from the
+    environment on the first start only; afterwards Settings in ROMarr is the authority
+    (a changed value in `romarr.nix` does nothing). The password, API key, OIDC and
+    `DAT_PATH` are read on every start. RomM's rescan runs as tristan with the RomM admin
+    password; a platform ROMarr names differently from RomM's folder (`psx` vs `PS1`) is
+    not rescanned until RomM's 03:00 scan.
+  - **Pinning a new title.** ROMarr files a single-file ROM directly in the console
+    folder; the pins want `roms/<console>/<title>/<files>`. To pin one for a host, put
+    it in a directory of that name (from a throwaway pod on the PVC, as in "One-time
+    upload"), take `nix hash path` of the directory, and add the key and hash to
+    `pkgs/roms/pin.json` as in "Adding a title". Titles that are only for RomM need
+    none of this.
 - **PC saves** are not RomM's: ludusavi backs them up per host
   (`modules/syncthing.nix`, `services.ludusavi`, into the synced `ludusavi` folder).

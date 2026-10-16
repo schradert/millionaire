@@ -1,0 +1,28 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: romarr
+  namespace: identity
+spec:
+  clientSecretRef:
+    create: true
+    name: romarr
+  definition:
+    clientId: romarr
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+      - groups
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: ROMarr
+    protocol: openid-connect
+    publicClient: false
+    redirectUris:
+      - https://romarr.trdos.me/oidc/callback
+    standardFlowEnabled: true
+    webOrigins:
+      - https://romarr.trdos.me
+  realmRef:
+    name: default

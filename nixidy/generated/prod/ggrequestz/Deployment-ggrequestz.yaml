@@ -38,6 +38,8 @@ spec:
                 name: ggrequestz
             - secretRef:
                 name: ggrequestz-session
+            - secretRef:
+                name: ggrequestz-romarr
           image: ghcr.io/xtreemmak/ggrequestz:1.5.0@sha256:32a55965b4d76bbe3dc8d0552afd882f74d6ed8c494ee6a4355ba7573f038466
           livenessProbe:
             httpGet:

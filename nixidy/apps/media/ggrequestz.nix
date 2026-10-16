@@ -73,6 +73,7 @@ in {
                 {configMapRef.name = "ggrequestz";}
                 {secretRef.name = "ggrequestz";}
                 {secretRef.name = "ggrequestz-session";}
+                {secretRef.name = "ggrequestz-romarr";}
               ];
               probes.liveness = probe {};
               probes.readiness = probe {};
@@ -168,6 +169,18 @@ in {
           IGDB_CLIENT_ID = "romm/igdb/client-id";
           IGDB_CLIENT_SECRET = "romm/igdb/client-secret";
         });
+
+      # An approved request goes to ROMarr, which searches, grabs and files it (the API key is a credential
+      # in the URL, as GG Requestz cannot send a header; in-cluster only).
+      resources.externalSecrets.ggrequestz-romarr.spec = {
+        data = lib.toList ({
+            secretKey = "key";
+            remoteRef.key = "romarr-api";
+            remoteRef.property = "ROMARR_API_KEY";
+          }
+          // store "kubernetes-media");
+        target.template.data.REQUEST_WEBHOOK_URL = "http://romarr.media.svc.cluster.local:6868/api/v1/webhook/ggrequestz?apikey={{ .key }}";
+      };
 
       # Idempotent post-sync bootstrap (apps/app-bootstrap ggrequestz, >= 0.48.0): tristan's admin row,
       # so the first OIDC login is not whoever arrives first.

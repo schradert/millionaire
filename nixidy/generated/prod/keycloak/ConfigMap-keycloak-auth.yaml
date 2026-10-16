@@ -92,6 +92,7 @@ data:
     ensure_scopes miniflux default openid profile email
     ensure_scopes oauth2-proxy default openid profile email groups
     ensure_scopes promptfoo default openid profile email
+    ensure_scopes romarr default openid profile email groups
     ensure_scopes romm default openid profile email groups
     ensure_scopes ryot default openid profile email groups
     ensure_scopes sure default openid profile email groups
