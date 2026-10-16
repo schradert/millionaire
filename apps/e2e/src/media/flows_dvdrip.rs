@@ -1,7 +1,7 @@
 //! DVD ripping (apps/dvdrip, docs/dvd-rip.md) without a disc: a synthetic DVD is written as a
 //! backed-up master and registered as a Disc (`dvdrip synth`, in a Pod running the dvdrip image),
 //! then the real controller encodes and publishes it. The Disc is named after the run marker and
-//! its library name is the hidden `.<marker>`, so Jellyfin never sees it; the media sweep removes
+//! its library name is the hidden `.<marker>-rip`, so Jellyfin never sees it; the media sweep removes
 //! the published folders and deleting the Disc removes its work dir (the controller's finalizer).
 
 use std::{path::Path, time::Duration};
@@ -57,7 +57,9 @@ pub async fn rip(ctx: &Ctx, f: &mut Flow) -> R<()> {
         return Err(Fail::skip(APP, "image", "DVDRIP_IMAGE is not set"));
     }
     let name = ctx.marker.clone();
-    let library = format!(".{}", ctx.marker);
+    // Not `.<marker>`: the kodi flow keeps its test ISO in that folder until the final cleanup, which would stop the controller
+    // from removing the (then not empty) old folder after the rename.
+    let library = format!(".{}-rip", ctx.marker);
     let [main, extra, short] = titles(&ctx.marker);
     let pod = format!("{}-synth", ctx.marker);
     let manifest = json!({
@@ -125,23 +127,15 @@ pub async fn rip(ctx: &Ctx, f: &mut Flow) -> R<()> {
     if trailers.len() != 1 {
         return Err(Fail::new("fs", "rename", format!("expected only Title 2 in trailers/, found {trailers:?}")));
     }
-    // The controller removes the old folders in its publish Job, but this Pod reads the same CephFS volumes through its own
-    // client, whose cached directory entries can lag a few seconds (a rename finishing within ~15s was seen reporting the
-    // emptied folder as still there). Give the old folders time to disappear before calling them left behind.
     let old_dvd = Path::new(&media_root()).join("dvd").join(&library);
-    poll("fs", "old folders removed", Duration::from_secs(90), Duration::from_secs(3), || async {
-        let left: Vec<String> = [&movie, &old_dvd]
-            .into_iter()
-            .filter(|p| p.exists())
-            .map(|p| format!("{} {:?}", p.display(), std::fs::read_dir(p).map(|rd| rd.flatten().map(|e| e.file_name()).collect::<Vec<_>>())))
-            .collect();
-        if left.is_empty() {
-            Ok(Some(()))
-        } else {
-            Err(Fail::new("fs", "rename", format!("old folders left: {left:?}")))
-        }
-    })
-    .await?;
+    let left: Vec<String> = [&movie, &old_dvd]
+        .into_iter()
+        .filter(|p| p.exists())
+        .map(|p| format!("{} {:?}", p.display(), std::fs::read_dir(p).map(|rd| rd.flatten().map(|e| e.file_name()).collect::<Vec<_>>())))
+        .collect();
+    if !left.is_empty() {
+        return Err(Fail::new("fs", "rename", format!("old folders left: {left:?}")));
+    }
     f.ok("fs", "renamed and sorted", format!("{renamed}, trailers {trailers:?}"));
     Ok(())
 }
