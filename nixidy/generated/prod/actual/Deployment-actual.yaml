@@ -27,7 +27,7 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - image: actualbudget/actual-server:latest-alpine@sha256:f6614336ab80cb143e817f90409013332493207a0cdd5a78b22ab361bea60bd5
+        - image: actualbudget/actual-server:26.10.0-alpine@sha256:67b1b5e9584e3e143b4f5c41e52b4506ed9cdd1072392d5ab5369f2d4fd0bffd
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0
