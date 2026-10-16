@@ -43,20 +43,20 @@ spec:
                 name: bookshelf-audio
           image: ghcr.io/pennydreadful/bookshelf:hardcover-v0.4.21.182@sha256:67498dd5ece516867d72ee642abd6c1a66b36a135c8f7da0127109564372beb1
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 80
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           name: app
           readinessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 80
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           resources:
             limits:
               memory: 1Gi
@@ -64,12 +64,12 @@ spec:
               cpu: 20m
               memory: 192Mi
           startupProbe:
-            failureThreshold: 3
+            failureThreshold: 30
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 80
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /config
               name: config

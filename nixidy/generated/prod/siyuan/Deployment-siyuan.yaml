@@ -45,27 +45,27 @@ spec:
               value: America/Los_Angeles
           image: b3log/siyuan:v3.8.6@sha256:b528a08f75936f19ee647c46c55c4d6924bdd93e30941128e468187bcfbc772d
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 6806
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           name: siyuan
           readinessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 6806
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           startupProbe:
             failureThreshold: 120
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 6806
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /siyuan/workspace
               name: workspace

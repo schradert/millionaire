@@ -29,27 +29,27 @@ spec:
       containers:
         - image: ghcr.io/home-operations/bazarr:1.6.2@sha256:17dc1cff22e99694ffbfb06555526cb47a66b362b4d6c982f06b557f7caae2bb
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 6767
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           name: bazarr
           readinessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 6767
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           startupProbe:
             failureThreshold: 60
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 6767
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /config
               name: config

@@ -46,20 +46,20 @@ spec:
               value: "8265"
           image: ghcr.io/haveagitgat/tdarr:3.01.00@sha256:5b3b8d4e54f41738d12ff71705cf8eb8e90fcbcc05209c331853aef119879992
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8265
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           name: tdarr
           readinessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8265
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           resources:
             limits:
               memory: 2Gi
@@ -72,7 +72,7 @@ spec:
             periodSeconds: 10
             tcpSocket:
               port: 8265
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /app/configs
               name: configs

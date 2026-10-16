@@ -37,27 +37,27 @@ spec:
             - --cache-dir=/cache
           image: rclone/rclone:1.75.2@sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 5572
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           name: rclone
           readinessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 5572
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           startupProbe:
-            failureThreshold: 3
+            failureThreshold: 30
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 5572
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /cache
               name: cache

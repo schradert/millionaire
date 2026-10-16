@@ -74,12 +74,12 @@ spec:
               path: /api/healthcheck
               port: http
           startupProbe:
-            failureThreshold: 3
+            failureThreshold: 30
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 3000
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /app/config
               name: config

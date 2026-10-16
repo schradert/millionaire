@@ -90,30 +90,30 @@ spec:
               name: tmp
         - image: ghcr.io/home-operations/qbittorrent:5.2.4@sha256:9307627e03981d5473aa31175ea76ed56ea3752333ca49d601b6af45e281e7ba
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8080
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           name: qbittorrent
           readinessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8080
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           securityContext:
             runAsGroup: 65534
             runAsUser: 65534
           startupProbe:
-            failureThreshold: 3
+            failureThreshold: 30
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8080
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /config
               name: config

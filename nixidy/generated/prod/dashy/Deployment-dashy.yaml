@@ -31,27 +31,27 @@ spec:
       containers:
         - image: lissy93/dashy:4.8.1@sha256:8c00203a5ed0ceeeaf773d38ddd656d7ba7151029fac1e75a2ae4245694b8619
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8080
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           name: dashy
           readinessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8080
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           startupProbe:
-            failureThreshold: 3
+            failureThreshold: 30
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8080
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /app/user-data
               name: user-data

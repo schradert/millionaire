@@ -13,11 +13,16 @@ in {
     ...
   }: {
     # TODO figure out a better way to patch in HTTPRoutev1
+    # Probe defaults for every app-template workload: the chart hardcodes timeout 1s and failureThreshold 3, which kills
+    # healthy apps on a node under IO/CPU pressure. Per-app `probes.<type>.spec` values still win.
     nixidy.charts.bjw-s-labs.app-template-patched = pkgs.runCommand "app-template-patched" {} ''
       cp -r ${pinned.charts.app-template} $out
       chmod -R u+w $out
       sed -i 's|gateway.networking.k8s.io/v1alpha2|gateway.networking.k8s.io/v1|g' \
         $out/charts/common/templates/classes/_route.tpl
+      substituteInPlace $out/charts/common/templates/lib/container/fields/_probes.tpl \
+        --replace-fail '"value" $probeSpec.failureThreshold "default" 3)' '"value" $probeSpec.failureThreshold "default" (ternary 30 6 (eq $probeName "startup")))' \
+        --replace-fail '"value" $probeSpec.timeoutSeconds "default" 1)' '"value" $probeSpec.timeoutSeconds "default" 5)'
     '';
     applications.gateway-crds.namespace = "kube-system";
     canivete.crds.gateway = {

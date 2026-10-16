@@ -96,7 +96,7 @@ spec:
             periodSeconds: 10
             tcpSocket:
               port: 3080
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /app/librechat.yaml
               name: config

@@ -34,27 +34,27 @@ spec:
               value: "8192"
           image: ghcr.io/flaresolverr/flaresolverr:v3.4.6@sha256:7962759d99d7e125e108e0f5e7f3cdbcd36161776d058d1d9b7153b92ef1af9e
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8191
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           name: flaresolverr
           readinessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8191
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           startupProbe:
-            failureThreshold: 3
+            failureThreshold: 30
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8191
-            timeoutSeconds: 1
+            timeoutSeconds: 5
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
       hostIPC: false

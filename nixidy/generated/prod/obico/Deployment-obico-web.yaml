@@ -55,27 +55,27 @@ spec:
                 name: obico-ml-api-token
           image: thespaghettidetective/web:latest@sha256:a0463b85904d239f9de9c66f1b5583674d24440c6df5778f897b4a952589fed7
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 3334
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           name: web
           readinessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 3334
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           startupProbe:
-            failureThreshold: 3
+            failureThreshold: 30
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 3334
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /app/static_build/media
               name: media

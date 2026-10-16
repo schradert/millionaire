@@ -33,30 +33,30 @@ spec:
       containers:
         - image: zwavejs/zwave-js-ui:11.24.3@sha256:3fef66d575ea0ea9d50aad3e05c36619228557cfa888557eac2035215a29a321
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8091
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           name: zwave-js-ui
           readinessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8091
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           resources:
             limits:
               devic.es/zwave: 1
           startupProbe:
-            failureThreshold: 3
+            failureThreshold: 30
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8091
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /usr/src/app/store/settings.json
               name: settings
