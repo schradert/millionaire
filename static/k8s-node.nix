@@ -19,6 +19,9 @@ in {
   # no accept-routes — see tailnet.nix for the routing rationale).
   tailnet.enable = true;
   tailnet.podSupernetRoute = true;
+  # Nothing consumes pod routes over the tailnet (docs/tailscale-integration.md, "Pod routes"): withdraw them
+  # at each node's deploy. cloud-worker.nix imports tailnet.nix, not this file, so burst workers keep theirs.
+  tailnet.podRoutes = lib.mkDefault false;
   # TODO how should I handle the scheduler from scratch?
   canivete.kubernetes.yaml.disable-scheduler = lib.mkForce false;
   environment.systemPackages = [pkgs.kubectl];
