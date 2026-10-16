@@ -101,7 +101,6 @@
           # Work dirs: masters until published, encodes, logs, review sheets. Re-creatable from
           # the ISOs in media-dvd, so not backed up.
           persistentVolumeClaims.dvd-rip-work = {
-            metadata.annotations."argocd.argoproj.io/sync-options" = "Prune=false,Delete=false";
             spec = {
               accessModes = ["ReadWriteMany"];
               storageClassName = "ceph-filesystem";

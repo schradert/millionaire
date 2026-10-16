@@ -58,6 +58,7 @@
     ./storage/clickhouse.nix
     ./storage/dragonflydb.nix
     ./storage/postgres.nix
+    ./storage/retain.nix
     ./storage/rook-ceph.nix
     ./storage/volsync.nix
   ];

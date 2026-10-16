@@ -180,6 +180,7 @@
     # language pair) download on first start into the volume.
     applications.libretranslate = {
       namespace = "media";
+      deletable = ["libretranslate"];
       helm.releases.libretranslate = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {

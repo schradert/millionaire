@@ -63,7 +63,6 @@ in {
           cacheAccessModes = ["ReadWriteOnce"];
         };
         resources.persistentVolumeClaims.${name} = {
-          metadata.annotations."argocd.argoproj.io/sync-options" = "Prune=false,Delete=false";
           spec = {
             accessModes = ["ReadWriteOnce"];
             storageClassName = "ceph-block";
