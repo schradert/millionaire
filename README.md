@@ -7,7 +7,7 @@
    - rke2 `container-runtime-endpoint` pointed at it; kubelet and static pods then run under a containerd that outlives rke2 restarts
    - containerd version moves from rke2 releases to nixpkgs; keep its CRI API in step with the kubelet on every rke2 bump
    - per-node migration: drain, switch, reboot, re-pull images (or reuse `/var/lib/rancher/rke2/agent/containerd` as the root); agents first, then one server at a time with etcd 3/3 between
-7. TODO enable node remediation: medik8s NHC + SNR are deployed with NHC paused (`nixidy/system/cluster/medik8s.nix`, docs/node-standard.md "Node remediation"). Needs node config for a usable watchdog and `/bin/bash` (the agent cannot reboot NixOS nodes yet), the reboot drill, then removing `pauseRequests`
+7. TODO node-level remediation: medik8s NHC + SNR landed in #958 and was reverted (#962) because the SNR agent DaemonSet runs on every node (the `remediation.medik8s.io/exclude-from-remediation` label and a free watchdog are node config): re-land it with the node roll (todo 24) after `static/k8s-node.nix` labels sirver/octopus/dingo/falcon/axolotl excluded, frees a watchdog (`intel_oc_wdt` is held by systemd; use `iTCO_wdt`/softdog) and provides host `/bin/bash` for SNR's software reboot; then the drill in docs/node-standard.md and unpause
 8. TODO cluster-level recovery: off-site etcd snapshots, a rehearsed restore, and a path to rebuild the cluster from Git
 9. TODO move pod/service CIDR routing off the node tailscaled (no `--advertise-routes` on hosts) to Tailscale operator Connector replicas, then drop the tailscale hold in `pkgs/tailscale/pin.json`
 10. TODO Jellyfin availability and throughput for remote users (Japan): offline sync, bitrate caps, or a regional replica
