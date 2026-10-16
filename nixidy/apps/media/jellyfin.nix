@@ -10,6 +10,20 @@
     # Jellyfin Trakt plugin (scrobbles plays to trakt.tv). Linking a Jellyfin user to Trakt is a
     # device-code login in the plugin's page (docs/manual-steps.md "Ryot: Trakt and Letterboxd").
     traktPlugin = false;
+    # Server settings applied by the bootstrap (jellyfin-bootstrap >= 0.7.0), drift-checked on every sync.
+    # Every request arrives through the gateway, so Jellyfin sees pod addresses, never the client's: with
+    # a cap set, every client that is not on a subnet below (i.e. every one) counts as remote.
+    # Cap for remote clients, Mbps (0 = none).
+    remoteBitrateMbps = 8;
+    # Networks Jellyfin treats as local; everything else (the tailnet 100.64.0.0/10 included) is remote.
+    localNetworkSubnets = ["192.168.50.0/24"];
+    # Codecs falcon's NVDEC decodes (the A2000 encodes h264 and hevc, not av1).
+    hardwareDecodingCodecs = ["h264" "hevc" "vp9" "av1"];
+    # Per-user policy: lets Jellyfin and Findroid apps download media for offline use.
+    enableContentDownloading = true;
+    # Bump to rotate Maintainerr's Jellyfin API key: the bootstrap makes `Maintainerr (gen N)`, points
+    # Maintainerr at it, then deletes the older ones.
+    maintainerrKeyGeneration = 2;
   in {
     gatus.endpoints.jellyfin = {
       url = "https://${hostname}";
@@ -266,9 +280,9 @@
         sourceRef.storeRef.kind = "ClusterSecretStore";
       };
       # Idempotent post-sync bootstrap: runs the startup wizard if needed, creates
-      # the admin user, any missing libraries, Maintainerr's Jellyfin connection and
-      # the Keycloak SSO plugin + provider + login button (apps/jellyfin-bootstrap). Reruns
-      # after every sync, so it must stay a no-op once everything exists.
+      # the admin user, any missing libraries, Maintainerr's Jellyfin connection (and its key rotation),
+      # the Keycloak SSO plugin + provider + login button and the server settings above
+      # (apps/jellyfin-bootstrap). Reruns after every sync, so it must stay a no-op once everything exists.
       # Image: `image publish jellyfin-bootstrap` (modules/images.nix) -> Harbor. The `bootstrap`
       # option (nixidy/system/cicd/bootstrap.nix) hashes the spec into a tracked ConfigMap, so a new
       # pin or env reruns it.
@@ -280,6 +294,13 @@
           ADMIN_PASSWORD_FILE = "/secrets/admin/password";
           SSO_ISSUER = "https://keycloak.${domain}/realms/default";
           SSO_SECRET_FILE = "/secrets/oidc/client_secret";
+          MAINTAINERR_KEY_GENERATION = toString maintainerrKeyGeneration;
+          ENCODING_HW_ACCEL = "nvenc";
+          ENCODING_DECODING_CODECS = lib.concatStringsSep "," hardwareDecodingCodecs;
+          ENCODING_TONEMAPPING = "true";
+          REMOTE_BITRATE_LIMIT = toString (remoteBitrateMbps * 1000000);
+          LOCAL_NETWORK_SUBNETS = lib.concatStringsSep "," localNetworkSubnets;
+          ENABLE_CONTENT_DOWNLOADING = lib.boolToString enableContentDownloading;
           # Stable-repository plugins (name|guid|version, jellyfin-bootstrap >= 0.4.0). TMDb Box Sets
           # groups movies into their franchise collections (the Jellyfin-native stand-in for Kometa,
           # which only drives Plex); Webhook carries plays to Ryot (its destination is written by

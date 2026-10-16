@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
-  image: harbor.trdos.me/library/jellyfin-bootstrap:0.6.0@sha256:99c4f0555292fdf1466c646ab2c2b8fa5104e351d05113dae6080a61076eb9b7
-  spec: 6ed8e4ff2c54aa70853658c4e186eed90dc616ecfb43db45b20ce2287bdc8818
+  image: harbor.trdos.me/library/jellyfin-bootstrap:0.7.0@sha256:0b3466ac137cd52e1a9bcc6e6f0012cd6ff3e89d5ae0c8894794ea991a93bec4
+  spec: ab062f4b95337abe1f6e09cddc270d98d04905005d08262a57412271bcb94eba
 kind: ConfigMap
 metadata:
   name: jellyfin-bootstrap
