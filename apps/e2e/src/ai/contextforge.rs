@@ -6,10 +6,11 @@
 //! takes the `Authorization` header ContextForge needs for its own login.
 //!
 //! The second flow is a client's view: the test admin's Keycloak access token on the public
-//! route (`mcp.<domain>`, through oauth2-proxy) lists the `keycloak` SSO provider, finds the
-//! `homelab` virtual server and lists its tools over MCP; an anonymous call is refused. The
-//! first API call provisions the test user in ContextForge (an OAuth virtual server only serves
-//! users already in its database), so the sweep deletes users carrying a run marker too.
+//! route (`mcp.<domain>`, through oauth2-proxy) lists the `keycloak` SSO provider and starts the
+//! login; the platform admin finds the `homelab` virtual server and registers the test user
+//! (an OAuth virtual server only serves users already in its database); the Keycloak bearer then
+//! initializes and lists the tools over MCP, and an anonymous call is refused. The sweep deletes
+//! users carrying a run marker too.
 
 use crate::trace::SendTraced as _;
 use reqwest::Method;
@@ -135,8 +136,8 @@ pub async fn tool(ctx: &Ctx, f: &mut Flow) -> R<()> {
     Ok(())
 }
 
-/// A client's view of the MCP gateway: Keycloak SSO for the UI, then the test admin's access token on the
-/// public route (oauth2-proxy accepts it, ContextForge trusts the `keycloak` provider for API tokens).
+/// A client's view of the MCP gateway: Keycloak SSO for the UI, then the test admin's Keycloak access token on
+/// the public MCP endpoint (oauth2-proxy accepts it, the OAuth virtual server verifies it against the realm).
 pub async fn mcp(ctx: &Ctx, f: &mut Flow) -> R<()> {
     let cf = Cf { base: url("CONTEXTFORGE_PUBLIC_URL", "mcp"), token: admin_bearer(ctx).await? };
     f.ok("keycloak", "test admin's access token", "password grant");
@@ -157,13 +158,23 @@ pub async fn mcp(ctx: &Ctx, f: &mut Flow) -> R<()> {
     }
     f.ok(APP, "UI SSO lists keycloak and sends the login to the realm", "client contextforge");
 
-    let servers = match cf.list(ctx, "servers").await {
-        Ok(s) => s,
-        Err(e) => return Err(Fail::new(&e.app, &e.step, format!("{}; {}", e.msg, diagnose(ctx, &cf).await))),
-    };
-    let server = servers.into_iter().find(|s| s["name"] == "homelab").at(APP, "virtual server homelab (bearer lists /servers)")?;
+    // The REST API takes only ContextForge's own tokens; the platform admin finds the server and registers the
+    // user, as app-bootstrap does for tristan (an OAuth virtual server only serves users already in the database).
+    let admin = Cf::login(ctx).await?;
+    f.ok(APP, "platform admin signs in", "access token");
+    let server = admin.list(ctx, "servers").await?.into_iter().find(|s| s["name"] == "homelab").at(APP, "virtual server homelab")?;
     let sid = server["id"].as_str().at(APP, "server id")?.to_string();
-    f.ok(APP, "the Keycloak bearer lists the homelab virtual server", sid.clone());
+    let email = crate::web::jwt_claims(&cf.token)?["email"].as_str().at(APP, "email claim of the token")?.to_string();
+    tagged(APP, &email)?;
+    send(
+        admin.req(ctx, Method::POST, "/auth/email/admin/users").json(&json!({
+            "email": email, "password": format!("Aa1-{}", crate::ctx::random_hex()?), "full_name": "E2E", "is_admin": false, "password_change_required": false,
+        })),
+        APP,
+        "register user",
+    )
+    .await?;
+    f.ok(APP, "homelab found and the test user registered", format!("{sid}, {email}"));
 
     let init = cf
         .mcp(
@@ -200,28 +211,6 @@ pub async fn mcp(ctx: &Ctx, f: &mut Flow) -> R<()> {
     sign_in_redirect(&ctx.noredir, &format!("{}/servers/{sid}/mcp", cf.base), &issuer()).await?;
     f.ok(APP, "an anonymous call is 401 at ContextForge and sent to Keycloak at oauth2-proxy", "");
     Ok(())
-}
-
-/// Why ContextForge may refuse the Keycloak bearer: the token's claims, the answer when the same token
-/// skips oauth2-proxy, and the `keycloak` provider row as the platform admin sees it.
-async fn diagnose(ctx: &Ctx, cf: &Cf) -> String {
-    let claims = crate::web::jwt_claims(&cf.token)
-        .ok()
-        .map(|c| ["iss", "aud", "azp", "email", "email_verified"].map(|k| format!("{k}={}", c[k])).join(" "))
-        .unwrap_or_else(|| "token is not a JWT".into());
-    let direct = crate::ctx::var("CONTEXTFORGE_URL", "http://contextforge.ai.svc.cluster.local:8080");
-    let skip = match ctx.http.get(format!("{}/servers?limit=0", direct.trim_end_matches('/'))).bearer_auth(&cf.token).send_t().await {
-        Ok(r) => format!("HTTP {} without oauth2-proxy", r.status()),
-        Err(e) => chain(&e),
-    };
-    let provider = match Cf::login(ctx).await {
-        Ok(admin) => match get_json(admin.req(ctx, Method::GET, "/auth/sso/admin/providers/keycloak"), APP, "provider").await {
-            Ok(p) => ["is_enabled", "trusted_for_api_auth", "api_audience", "issuer"].map(|k| format!("{k}={}", p[k])).join(" "),
-            Err(e) => e.msg,
-        },
-        Err(e) => e.msg,
-    };
-    format!("token {claims}; {skip}; provider {provider}")
 }
 
 pub async fn cleanup(ctx: &Ctx, f: &mut Flow) -> R<()> {
