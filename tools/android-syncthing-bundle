@@ -1,0 +1,187 @@
+#!/usr/bin/env python3
+"""android-syncthing-bundle: build the configuration archive Syncthing-Fork imports (Settings, Import and
+export, Import configuration), from a device's declared identity and the table in modules/syncthing.nix.
+
+  android-syncthing-bundle bundle SPEC.json CERT KEY OUT.zip    write the archive (reads $SYNCTHING, default `syncthing`)
+  android-syncthing-bundle apikey KEY                           print the GUI API key derived from the device key
+
+SPEC.json is `android.devices.<name>.productivity.syncthing` from `legacyPackages.<system>.android.devices`:
+{deviceName, hub: {id, addresses}, folder: {id, label, type, path}}. The archive holds what the app's
+SyncthingService.importConfig() requires (config.xml, cert.pem, key.pem, https-cert.pem, https-key.pem and the
+serialised preferences, sharedpreferences.dat); no index database, so the first start rescans. Stdlib only.
+
+The GUI API key is derived from the device key (HMAC-SHA256), so the audit can reach the phone's REST API
+(`adb forward`) without the key ever being stored. Nothing here is printed except the API key on request.
+"""
+
+import copy
+import hashlib
+import hmac
+import json
+import os
+import shutil
+import struct
+import subprocess
+import sys
+import tempfile
+import xml.etree.ElementTree as ET
+import zipfile
+
+
+def need(parent: ET.Element, path: str) -> ET.Element:
+    found = parent.find(path)
+    assert found is not None, path
+    return found
+
+
+def api_key(key_pem: bytes) -> str:
+    return hmac.new(
+        key_pem, b"android-syncthing-gui-apikey", hashlib.sha256
+    ).hexdigest()[:32]
+
+
+def _utf(s: str) -> bytes:
+    b = s.encode("utf-8")
+    assert len(b) < 0x10000
+    return struct.pack(">H", len(b)) + b
+
+
+def java_hashmap(items: dict) -> bytes:
+    """java.io serialisation of a java.util.HashMap<String, Boolean|String>: what SharedPreferences.getAll() returns."""
+    out = bytearray(b"\xac\xed\x00\x05")
+    out += (
+        b"\x73\x72" + _utf("java.util.HashMap") + struct.pack(">q", 362498820763181265)
+    )
+    out += b"\x03" + struct.pack(
+        ">H", 2
+    )  # SC_WRITE_METHOD | SC_SERIALIZABLE, two fields
+    out += b"F" + _utf("loadFactor") + b"I" + _utf("threshold")
+    out += b"\x78\x70"  # end of class annotation, no superclass
+    out += struct.pack(">fi", 0.75, 12)
+    out += b"\x77\x08" + struct.pack(">ii", 16, len(items))  # block data: buckets, size
+    for k, v in items.items():
+        out += b"\x74" + _utf(k)
+        if isinstance(v, bool):
+            # a full class descriptor each time is legal; it avoids counting stream handles
+            out += (
+                b"\x73\x72"
+                + _utf("java.lang.Boolean")
+                + struct.pack(">q", -3665804199014368530)
+            )
+            out += (
+                b"\x02"
+                + struct.pack(">H", 1)
+                + b"Z"
+                + _utf("value")
+                + b"\x78\x70"
+                + (b"\x01" if v else b"\x00")
+            )
+        else:
+            out += b"\x74" + _utf(str(v))
+    out += b"\x78"
+    return bytes(out)
+
+
+def bundle(spec: dict, cert: bytes, key: bytes, out: str) -> None:
+    st = os.environ.get("SYNCTHING", "syncthing")
+    apikey = api_key(key)
+    tmp = tempfile.mkdtemp(prefix="android-syncthing-")
+    try:
+        os.chmod(tmp, 0o700)
+        with open(os.path.join(tmp, "cert.pem"), "wb") as f:
+            f.write(cert)
+        fd = os.open(os.path.join(tmp, "key.pem"), os.O_WRONLY | os.O_CREAT, 0o600)
+        with os.fdopen(fd, "wb") as f:
+            f.write(key)
+        # the stock config for this identity; the password (stdin, not argv) is the API key, as the app sets it
+        subprocess.run(
+            [st, "generate", "--home", tmp, "--gui-user=syncthing", "--gui-password=-"],
+            input=apikey.encode(),
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        tree = ET.parse(os.path.join(tmp, "config.xml"))
+        root = tree.getroot()
+        me = root.find("device")
+        defaults = root.find("defaults")
+        assert me is not None and defaults is not None
+        dev_tpl, folder_tpl = defaults.find("device"), defaults.find("folder")
+        assert dev_tpl is not None and folder_tpl is not None
+        me.set("name", spec["deviceName"])
+        need(root, "gui/apikey").text = apikey
+
+        hub = copy.deepcopy(dev_tpl)
+        hub.set("id", spec["hub"]["id"])
+        hub.set("name", "hub")
+        for a in hub.findall("address"):
+            hub.remove(a)
+        for i, addr in enumerate(spec["hub"]["addresses"]):
+            e = ET.Element("address")
+            e.text = addr
+            hub.insert(i, e)
+        root.insert(list(root).index(me) + 1, hub)
+
+        fcfg = spec["folder"]
+        folder = copy.deepcopy(folder_tpl)
+        folder.set("id", fcfg["id"])
+        folder.set("label", fcfg["label"])
+        folder.set("path", fcfg["path"])
+        folder.set("type", fcfg["type"])
+        folder.set("ignorePerms", "true")  # the app forces it on every folder at start
+        for d in folder.findall("device"):
+            folder.remove(d)
+        for i, did in enumerate((me.get("id", ""), spec["hub"]["id"])):
+            d = ET.Element("device", {"id": did, "introducedBy": ""})
+            ET.SubElement(d, "encryptionPassword")
+            folder.insert(i, d)
+        root.insert(list(root).index(hub) + 1, folder)
+
+        opts = root.find("options")
+        assert opts is not None
+        for name, value in {
+            "urAccepted": "-1",
+            "startBrowser": "false",
+            "crashReportingEnabled": "false",
+        }.items():
+            need(opts, name).text = value
+
+        tree.write(
+            os.path.join(tmp, "config.xml"), encoding="utf-8", xml_declaration=False
+        )
+        prefs = java_hashmap(
+            {"always_run_in_background": True, "webui_password": apikey}
+        )
+        old = os.umask(0o077)
+        try:
+            with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+                z.write(os.path.join(tmp, "config.xml"), "config.xml")
+                z.writestr("cert.pem", cert)
+                z.writestr("key.pem", key)
+                # the GUI's HTTPS pair: the app requires the files; loopback only, so the device pair serves
+                z.writestr("https-cert.pem", cert)
+                z.writestr("https-key.pem", key)
+                z.writestr("sharedpreferences.dat", prefs)
+        finally:
+            os.umask(old)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def main(argv: list) -> int:
+    if len(argv) == 3 and argv[1] == "apikey":
+        with open(argv[2], "rb") as f:
+            print(api_key(f.read()))
+        return 0
+    if len(argv) == 6 and argv[1] == "bundle":
+        with open(argv[2]) as f:
+            spec = json.load(f)
+        with open(argv[3], "rb") as c, open(argv[4], "rb") as k:
+            bundle(spec, c.read(), k.read(), argv[5])
+        return 0
+    print(__doc__, file=sys.stderr)
+    return 64
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
