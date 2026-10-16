@@ -41,6 +41,8 @@ in {
     applications.contextforge = {
       namespace = "ai";
       postgres.enable = true;
+      postgres.instances = 2;
+      postgres.avoidNodes = ["sirver"];
       # The gateway rejects placeholder secrets at startup.
       generatedSecrets = {
         contextforge-jwt = {
