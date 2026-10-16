@@ -59,7 +59,9 @@ Notes assembled from the repo on 2026-10-10. The sequence has never been run end
 - Anything written since the last 04:00 (VolSync, daily) or CNPG scheduled backup (hourly on the clusters inspected), or since the last 6h etcd snapshot.
 - The sops age identity, Bitwarden contents and the restic password if they are not backed up elsewhere. Nothing in this repo
   backs up Bitwarden itself.
-- Hyena state (headscale database: node registrations, AdGuard settings): backup not verified (assumed absent; not checked); nodes would need
+- Hyena state: headscale's database and its noise/DERP keys are backed up nightly (`static/headscale-backup.nix`: age-encrypted, VolSync
+  bucket `headscale-backup/`, newest 30; restore with the devshell script `headscale-backup-restore-test`, which has not been run against a
+  real object yet, `docs/manual-steps.md` §8). AdGuard settings are not backed up, and nodes registered since the last backup would need
   re-registering with new pre-auth keys.
 - Pulumi state, if the backend is lost.
 - Etcd snapshots are unencrypted and contain all Secrets; they are as sensitive as Bitwarden itself.

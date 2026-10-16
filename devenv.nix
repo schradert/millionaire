@@ -572,6 +572,35 @@ in {
         echo "keys added since the backup: $(jq -n --slurpfile b "$dir/backup.json" --argjson l "$secrets" '[$l[].key] - [$b[0][].key] | length')"
       '';
 
+      # Restore test for the nightly headscale backup (static/headscale-backup.nix): fetches the newest object
+      # from the VolSync B2 bucket, decrypts it with the same offline key as the Bitwarden backup
+      # (`age.bws-backup` in secrets/sops/personal.yaml), checks the database and lists the registered nodes.
+      # Prints names and counts only, never key material.
+      scripts.headscale-backup-restore-test.exec = ''
+        set -euo pipefail
+        dir=$(mktemp -d); trap 'rm -rf "$dir"' EXIT
+        secrets=$(bws secret list -o json)
+        field() { jq -r --arg k "$1" '.[] | select(.key == $k) | .value' <<<"$secrets"; }
+        export RCLONE_S3_PROVIDER=Other RCLONE_S3_ENDPOINT=https://s3.us-west-004.backblazeb2.com RCLONE_S3_NO_CHECK_BUCKET=true
+        RCLONE_S3_ACCESS_KEY_ID=$(field backblaze/bucket/application_key_id); export RCLONE_S3_ACCESS_KEY_ID
+        RCLONE_S3_SECRET_ACCESS_KEY=$(field backblaze/bucket/application_key); export RCLONE_S3_SECRET_ACCESS_KEY
+        src=":s3:${builtins.replaceStrings ["."] ["-"] domain}--volsync/headscale-backup"
+        newest=$(rclone lsf --files-only "$src" | sort | tail -n 1)
+        [ -n "$newest" ] || { echo "no object under $src" >&2; exit 1; }
+        echo "newest: $newest ($(rclone lsf --files-only --format sp "$src" | grep -F "$newest" | cut -d';' -f1) bytes)"
+        rclone copyto "$src/$newest" "$dir/backup.age"
+        umask 077
+        sops decrypt --extract '["age"]["bws-backup"]' "${config.devenv.root}/secrets/sops/personal.yaml" > "$dir/key"
+        mkdir "$dir/state"
+        age -d -i "$dir/key" "$dir/backup.age" | tar -xz -C "$dir/state"
+        for f in db.sqlite noise_private.key derp_server_private.key; do
+          [ -s "$dir/state/$f" ] || { echo "missing or empty: $f" >&2; exit 1; }
+        done
+        [ "$(sqlite3 "$dir/state/db.sqlite" "PRAGMA integrity_check")" = ok ] || { echo "integrity_check failed" >&2; exit 1; }
+        echo "OK: integrity ok, $(sqlite3 "$dir/state/db.sqlite" "SELECT count(*) FROM nodes WHERE deleted_at IS NULL") nodes, $(sqlite3 "$dir/state/db.sqlite" "SELECT count(*) FROM users") users"
+        sqlite3 -separator ' ' "$dir/state/db.sqlite" "SELECT hostname, ipv4 FROM nodes WHERE deleted_at IS NULL ORDER BY ipv4"
+      '';
+
       # `android <device> [apply]`: compares a phone with android.devices.<device> over adb on the
       # tailnet (docs/android-fleet.md). adb runs on bonobo, which holds the paired key; apply opens
       # Obtainium's import of the missing apps on the phone. It never uninstalls or changes settings.
@@ -721,6 +750,7 @@ in {
         syncthing # `syncthing-identity` generates device certificates
         age # age-keygen; `bws-backup-restore-test` decrypts the Bitwarden backup
         rclone # `bws-backup-restore-test` downloads it
+        sqlite # `headscale-backup-restore-test` checks the headscale database
       ];
 
       images.ha = "Home Assistant with custom components";
