@@ -71,6 +71,11 @@ pub fn backup_failed(log: &str) -> bool {
     log.contains("\"Backup failed")
 }
 
+/// MakeMKV's "Backup done" message (MSG:5081): the copy completed, whatever lsdvd makes of it.
+pub fn backup_done(log: &str) -> bool {
+    log.lines().any(|l| l.starts_with("MSG:5081,") && l.contains("\"Backup done"))
+}
+
 pub fn medium_error(log: &str) -> bool {
     log.contains("MEDIUM ERROR")
 }
@@ -120,6 +125,13 @@ MSG:2004,0,3,"READ OF SCRAMBLED SECTOR WITHOUT AUTHENTICATION at offset 1048576"
         assert_eq!(t[0], MkvTitle { id: 0, seconds: 5516.0, file: "Beetlejuice_t00.mkv".into() });
         assert_eq!(closest(&t, 185.4).map(|t| t.id), Some(1));
         assert_eq!(closest(&t, 300.0), None);
+    }
+
+    #[test]
+    fn backup_done_only_on_the_success_message() {
+        assert!(backup_done("PRGT:5047,0,\"Copying all files\"\nMSG:5081,260,0,\"Backup done.\",\"Backup done.\"\n"));
+        assert!(!backup_done("MSG:5069,128,0,\"Backup failed\",\"Backup failed\"\nMSG:5080,516,0,\"Backup failed.\",\"Backup failed.\"\n"));
+        assert!(!backup_done(INFO));
     }
 
     #[test]
