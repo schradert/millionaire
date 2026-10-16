@@ -182,8 +182,10 @@ in {
             };
           };
           # Native gRPC API clients (API keys) skip oauth2-proxy; the UI's
-          # grpc-web (application/grpc-web) stays behind it.
+          # grpc-web (application/grpc-web) stays behind it. A GRPCRoute makes
+          # Cilium pin the upstream hop to HTTP/2 whatever the downstream is.
           route.chirpstack-grpc = {
+            kind = "GRPCRoute";
             hostnames = [hostname];
             parentRefs = lib.toList {
               name = "internal";
