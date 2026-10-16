@@ -9,7 +9,7 @@ data:
     //      a setup token is used as is). Setup tokens are single use, so never claim twice.
     //   2. Lists the Bridge accounts and the Firefly asset accounts, and writes an importer config that maps
     //      every Bridge account to the Firefly account of the same name, or creates it (id 0 + new_accounts).
-    //   3. Runs `importer:auto-import` on that config.
+    //   3. Runs `importer:auto-import` on that config (exit 73, nothing new imported, counts as success).
     // Request budget (Bridge: <= 24/day per token, more can disable it): 1 + 1 (only when creating accounts)
     // + 1 (importer, account list) + 1 per account (importer, transactions). Aborts above MAX_ACCOUNTS.
     // Nothing here prints the access URL.
@@ -188,7 +188,8 @@ data:
     // --- 3. import ---
     chdir('/var/www/html');
     passthru('php artisan importer:auto-import ' . escapeshellarg($dir), $code);
-    exit($code);
+    // 73 = NOTHING_WAS_IMPORTED: every transaction was a duplicate, which is the normal outcome of a quiet day.
+    exit(73 === $code ? 0 : $code);
 kind: ConfigMap
 metadata:
   name: firefly-simplefin
