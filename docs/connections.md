@@ -13,7 +13,7 @@ Credentials: Keycloak SSO where the client speaks OIDC; CLIs and API clients pre
 | morgenmuffel | macOS | personal, workstation | done: `modules/tailnet.nix` (host lands with the hosts workstream) |
 | falcon, axolotl | NixOS | client, workstation | done: `static/tailnet-personal.nix` |
 | systeamadeck | NixOS (Jovian) | client, gaming | done: `static/tailnet-personal.nix` (a `personal.yaml` recipient; joins once the host is switched to this config) |
-| echidna | NixOS-WSL | pending (hosts workstream) | n/a until the host exists |
+| echidna | NixOS-WSL | pending (hosts workstream) | key pre-provisioned (`static/host-key.sh`, docs/node-standard.md); joins once the host exists |
 | Android | `modules/android.nix` | `base` / `homelab` / `family` sets | done: Tailscale app (docs/android.md) |
 
 Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profiles.client.enable` (Linux desktop apps) plus the OS, so a new host picks them up from its profiles alone.

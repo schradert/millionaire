@@ -58,6 +58,27 @@ spec:
       hostIPC: false
       hostNetwork: false
       hostPID: false
+      initContainers:
+        - command:
+            - node
+            - -e
+            - |
+              const fs = require("fs"), db = "/data/server-files/account.sqlite";
+              if (!fs.existsSync(db)) process.exit(0);
+              const d = new (require("better-sqlite3"))(db);
+              const has = d.prepare("SELECT count(*) n FROM sqlite_master WHERE name = 'users'").get().n;
+              if (!has || d.prepare("SELECT count(*) n FROM users WHERE user_name <> '' AND owner = 1").get().n) process.exit(0);
+              const r = d.prepare("UPDATE users SET owner = 1 WHERE user_name = ?").run(process.env.OWNER);
+              console.log("owner set:", r.changes);
+          env:
+            - name: OWNER
+              value: tristan
+          image: actualbudget/actual-server:26.10.0-alpine@sha256:67b1b5e9584e3e143b4f5c41e52b4506ed9cdd1072392d5ab5369f2d4fd0bffd
+          name: owner
+          volumeMounts:
+            - mountPath: /data
+              name: data
+          workingDir: /app
       serviceAccountName: actual
       volumes:
         - name: data

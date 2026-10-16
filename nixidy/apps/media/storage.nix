@@ -64,7 +64,7 @@
           };
         };
       in {
-        media-movies = cephfsPVC "600Gi";
+        media-movies = cephfsPVC "2Ti";
         media-tv = cephfsPVC "100Gi";
         media-music = cephfsPVC "50Gi";
         media-books = cephfsPVC "20Gi";
