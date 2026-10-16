@@ -23,6 +23,7 @@
 in {
   nixidy = {
     lib,
+    ntfyToken,
     pinned,
     ...
   }: let
@@ -57,6 +58,7 @@ in {
     lib.mkIf active {
       applications.${name} = {
         namespace = "media";
+        ntfySecret = "publisher";
         # The cursor and the "confirm clicked, outcome unknown" marker live here: losing them re-imports history.
         volsync.pvcs.${name} = {
           title = name;
@@ -118,7 +120,7 @@ in {
                 containers = lib.toList {
                   inherit name;
                   image = with pinned.images.letterboxd-sync; "${repository}:${tag}@${digest}";
-                  env = lib.mapAttrsToList (name: value: {inherit name value;}) env;
+                  env = lib.mapAttrsToList (name: value: {inherit name value;}) env ++ ntfyToken.env name;
                   resources = {
                     requests = {
                       cpu = "100m";

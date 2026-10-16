@@ -76,7 +76,9 @@ report() {
   echo "=== backup verification $RUN ==="
   printf '%s\n' "${SUMMARY[@]}"
   if [ "${#FAILED[@]}" -gt 0 ] && [ -n "${NTFY_URL:-}" ]; then
-    printf '%s\n' "${FAILED[@]}" | curl -sS -m 30 -H "Title: backup verification FAILED" -H "Priority: high" -H "Tags: rotating_light" \
+    local auth=()
+    [ -z "${NTFY_TOKEN:-}" ] || auth=(-H "Authorization: Bearer $NTFY_TOKEN")
+    printf '%s\n' "${FAILED[@]}" | curl -sS -m 30 "${auth[@]}" -H "Title: backup verification FAILED" -H "Priority: high" -H "Tags: rotating_light" \
       --data-binary @- "$NTFY_URL" >/dev/null || log "could not POST to ntfy"
   fi
 }

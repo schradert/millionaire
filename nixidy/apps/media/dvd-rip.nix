@@ -5,6 +5,7 @@
 {config, ...}: {
   nixidy = {
     lib,
+    ntfyToken,
     pinned,
     ...
   }: let
@@ -22,16 +23,18 @@
       ip = "100.64.0.1";
       hostnames = ["ntfy.${domain}"];
     };
-    common = [
-      {
-        name = "NTFY_URL";
-        value = "https://ntfy.${domain}/dvd";
-      }
-      {
-        name = "OTEL_EXPORTER_OTLP_ENDPOINT";
-        value = "http://alloy.observability.svc.cluster.local:4318";
-      }
-    ];
+    common =
+      [
+        {
+          name = "NTFY_URL";
+          value = "https://ntfy.${domain}/dvd";
+        }
+        {
+          name = "OTEL_EXPORTER_OTLP_ENDPOINT";
+          value = "http://alloy.observability.svc.cluster.local:4318";
+        }
+      ]
+      ++ ntfyToken.env "dvdrip";
     tmp = {
       volume = {
         name = "tmp";
@@ -96,6 +99,7 @@
 
     applications.dvdrip = {
       namespace = ns;
+      ntfySecret = "publisher";
       resources = lib.mkMerge [
         {
           # Work dirs: masters until published, encodes, logs, review sheets. Re-creatable from

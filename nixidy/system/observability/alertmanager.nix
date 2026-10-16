@@ -1,6 +1,7 @@
 {config, ...}: {
   nixidy = {
     lib,
+    ntfyToken,
     pinned,
     ...
   }: let
@@ -11,6 +12,8 @@
     # so hostAliases pins them to hyena's tailnet IP.
     ntfy = "https://ntfy.${domain}/alerts?template=alertmanager";
     heartbeat = "https://status.${domain}/api/v1/endpoints/cluster_watchdog/external?success=true";
+    # The publisher token (nixidy/system/observability/ntfy.nix), mounted from the ExternalSecret `alertmanager-ntfy`.
+    ntfyAuth = lib.optionalAttrs ntfyToken.enable {http_config.authorization.credentials_file = "/etc/ntfy/token";};
   in {
     portal.apps.alertmanager = {
       title = "Alertmanager";
@@ -28,6 +31,7 @@
     };
     applications.alertmanager = {
       namespace = "observability";
+      ntfySecret = "publisher";
       resources.podMonitors.alertmanager.spec = {
         selector.matchLabels."app.kubernetes.io/name" = "alertmanager";
         podMetricsEndpoints = lib.toList {
@@ -40,6 +44,12 @@
         values = {
           image.tag = with pinned.images.alertmanager; "${tag}@${digest}";
           baseURL = "https://${hostname}";
+          extraSecretMounts = lib.optional ntfyToken.enable {
+            name = "ntfy";
+            mountPath = "/etc/ntfy";
+            secretName = "alertmanager-ntfy";
+            readOnly = true;
+          };
           hostAliases = lib.toList {
             ip = "100.64.0.1";
             hostnames = ["ntfy.${domain}" "status.${domain}"];
@@ -133,28 +143,31 @@
               {
                 name = "e2e-ntfy";
                 webhook_configs = [
-                  {
-                    url = "https://ntfy.${domain}/e2e-alerts?template=alertmanager";
-                    send_resolved = true;
-                  }
+                  ({
+                      url = "https://ntfy.${domain}/e2e-alerts?template=alertmanager";
+                      send_resolved = true;
+                    }
+                    // ntfyAuth)
                 ];
               }
               {
                 name = "e2e-jobs-ntfy";
                 webhook_configs = [
-                  {
-                    url = "https://ntfy.${domain}/e2e?template=alertmanager&priority=2";
-                    send_resolved = true;
-                  }
+                  ({
+                      url = "https://ntfy.${domain}/e2e?template=alertmanager&priority=2";
+                      send_resolved = true;
+                    }
+                    // ntfyAuth)
                 ];
               }
               {
                 name = "dvd-ntfy";
                 webhook_configs = [
-                  {
-                    url = "https://ntfy.${domain}/dvd?template=alertmanager&priority=2";
-                    send_resolved = true;
-                  }
+                  ({
+                      url = "https://ntfy.${domain}/dvd?template=alertmanager&priority=2";
+                      send_resolved = true;
+                    }
+                    // ntfyAuth)
                 ];
               }
               {
@@ -173,10 +186,11 @@
                 name = "default";
                 # ntfy's alertmanager template titles firing vs resolved.
                 webhook_configs = [
-                  {
-                    url = ntfy;
-                    send_resolved = true;
-                  }
+                  ({
+                      url = ntfy;
+                      send_resolved = true;
+                    }
+                    // ntfyAuth)
                 ];
               }
             ];
