@@ -1,0 +1,18 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: volsync--romm--romm-resources-src
+  namespace: media
+spec:
+  restic:
+    copyMethod: Direct
+    pruneIntervalDays: 8
+    repository: volsync--romm--romm-resources
+    retain:
+      daily: 1
+      monthly: 1
+      weekly: 1
+      yearly: 1
+  sourcePVC: romm-resources
+  trigger:
+    schedule: 0 4 * * *

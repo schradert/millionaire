@@ -1,0 +1,7 @@
+apiVersion: v1
+data:
+  config.yml: '{"system":{"platforms":{"ds":"nds","ps1":"psx","xb":"xbox"}}}'
+kind: ConfigMap
+metadata:
+  name: romm-config
+  namespace: media

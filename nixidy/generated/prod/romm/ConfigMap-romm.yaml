@@ -1,0 +1,30 @@
+apiVersion: v1
+data:
+  DB_HOST: romm-rw
+  DB_NAME: romm
+  DB_PORT: "5432"
+  DB_USER: romm
+  ENABLE_SCHEDULED_RESCAN: "true"
+  HASHEOUS_API_ENABLED: "true"
+  OIDC_CLAIM_ROLES: groups
+  OIDC_CLIENT_ID: romm
+  OIDC_ENABLED: "true"
+  OIDC_PROVIDER: keycloak
+  OIDC_REDIRECT_URI: https://romm.trdos.me/api/oauth/openid
+  OIDC_ROLE_ADMIN: admin
+  OIDC_ROLE_VIEWER: '*'
+  OIDC_SERVER_APPLICATION_URL: https://keycloak.trdos.me/realms/default
+  REDIS_HOST: romm-dragonfly
+  ROMM_BASE_URL: https://romm.trdos.me
+  ROMM_DB_DRIVER: postgresql
+  ROMM_SESSION_SECURE_COOKIE: "true"
+  SCHEDULED_RESCAN_CRON: 0 3 * * *
+  WEB_SERVER_CONCURRENCY: "2"
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: romm
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: romm
+  name: romm
+  namespace: media

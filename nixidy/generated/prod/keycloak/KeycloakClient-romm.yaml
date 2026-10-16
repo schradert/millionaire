@@ -1,0 +1,28 @@
+apiVersion: keycloak.hostzero.com/v1beta1
+kind: KeycloakClient
+metadata:
+  name: romm
+  namespace: identity
+spec:
+  clientSecretRef:
+    create: true
+    name: romm
+  definition:
+    clientId: romm
+    defaultClientScopes:
+      - openid
+      - profile
+      - email
+      - groups
+    directAccessGrantsEnabled: false
+    enabled: true
+    name: RomM
+    protocol: openid-connect
+    publicClient: false
+    redirectUris:
+      - https://romm.trdos.me/api/oauth/openid
+    standardFlowEnabled: true
+    webOrigins:
+      - https://romm.trdos.me
+  realmRef:
+    name: default

@@ -84,3 +84,33 @@ to `pkgs/roms/pin.json` (hash: `nix hash path` of the local directory, or
 `sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=` and copy the `got:` hash
 from the build above), and list the title in the host's `programs.steam.external.consoles.<console>.titles`
 (`.biosNames` for BIOS).
+
+## RomM (`romm.trdos.me`)
+
+RomM is the browsable view of the same library: the `media-games` PVC's `roms/` tree
+mounted read-only at `/romm/library/roms` (the pin names stay as they are; `bios/` and
+`installers/` are not mounted). `nixidy/apps/media/romm.nix` holds the app, Postgres
+(CNPG `romm`), Dragonfly as its Valkey, and the OIDC client.
+
+- **Folders to platforms.** RomM maps a folder name to a platform by its own aliases
+  (`NES`, `SNES`, `N64`, `GBA`, `GC`, `PS2`, `PSP`, `3DS`, `Wii`, `WiiU`, ... all
+  resolve). Three names it does not know are bound in a read-only `config.yml`
+  (`resources.configMaps.romm-config`): `DS` to `nds`, `PS1` to `psx`, `XB` to `xbox`.
+  A new console folder that is not an alias needs an entry there.
+- **A title is a folder.** Each `roms/<console>/<title>/` holds one multi-file game
+  (`.bin` + `.cue`), which is how RomM treats a directory.
+- **Scans.** The `romm-bootstrap` Job queues the first scan; a scheduled rescan runs
+  at 03:00 for titles that land later (inotify does not see another pod's writes on
+  CephFS). Rescan now: Library > Scan in the UI.
+- **Metadata.** Without keys RomM matches by file name and hash (Hasheous) and takes
+  covers from Libretro. IGDB, ScreenScraper, SteamGridDB and RetroAchievements add
+  descriptions and artwork: docs/manual-steps.md, "Game metadata keys".
+- **Sign-in.** Keycloak (group `admin` is a RomM admin, everyone else a user); the
+  bootstrap admin `tristan` carries the profile email, so the SSO login lands on it.
+  Break-glass: Bitwarden `romm/admin-password`.
+- **Clients.** Saves and states live in RomM (`romm-assets`, VolSync). Clients that
+  cannot do OIDC (Tender, Argosy, Grout) use a client token: the bootstrap mints one
+  for tristan into Bitwarden `romm/tristan/client-token`. Others make theirs under
+  Profile > Client API Tokens.
+- **PC saves** are not RomM's: ludusavi backs them up per host
+  (`modules/syncthing.nix`, `services.ludusavi`, into the synced `ludusavi` folder).

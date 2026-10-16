@@ -267,3 +267,15 @@ Not covered by the Bridge: Carta (add it as a manual asset in Sure), Venmo and P
 3. With wireless debugging on at the phone, run `android pixel`. The phone asks to trust the new computer: accept it once and choose always allow. Then remove the old key's trust if you want (`docs/android-fleet.md`, "On the phone").
 
 The headscale ACL needs no change: only `default@` (cluster nodes), `tag:cluster` and `tristan@` can reach the phones' ports, and `family@` cannot (`docs/android-fleet.md`, (d)).
+
+## 17. Game metadata keys (RomM)
+
+RomM works without any key: it matches titles by file name and hash through Hasheous and takes covers from Libretro. Descriptions, ratings, screenshots and better artwork come from providers that want your own account. Each is independent; add the ones you want.
+
+1. Create the account or key and store it in Bitwarden Secrets Manager:
+   - **IGDB** (best general coverage): a Twitch developer application (<https://dev.twitch.tv/console>, client type Confidential, OAuth redirect `http://localhost`). Store `romm/igdb/client-id` and `romm/igdb/client-secret`.
+   - **ScreenScraper** (retro artwork and per-ROM hash matching): a free account at <https://screenscraper.fr>. Store `romm/screenscraper/user` and `romm/screenscraper/password`.
+   - **SteamGridDB** (covers): API key from your profile preferences at <https://www.steamgriddb.com>. Store `romm/steamgriddb/api-key`.
+   - **RetroAchievements** (achievements): Web API key from <https://retroachievements.org/settings>. Store `romm/retroachievements/api-key`.
+2. In `nixidy/apps/media/romm.nix` list the providers in `providers` (for example `["igdb" "steamgriddb"]`), render, commit, merge. RomM restarts with the keys.
+3. In RomM, Library > Scan > Complete (or Unmatched) rescans with the new sources.

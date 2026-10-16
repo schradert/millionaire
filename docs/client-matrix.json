@@ -1862,6 +1862,48 @@
    "notes": ""
   },
   {
+   "app": "romm (game library)",
+   "category": "media",
+   "hostnames": [
+    "romm.trdos.me"
+   ],
+   "exposure": "tailnet",
+   "auth": "native OIDC (groups claim: admin); API with client tokens (rmm_...)",
+   "clients": {
+    "browser": [
+     "https://romm.trdos.me"
+    ],
+    "desktop": [
+     {
+      "name": "Tender (Decky plugin) + RetroDECK",
+      "platforms": [
+       "linux"
+      ],
+      "provisioned": "no",
+      "where": null,
+      "note": "Steam Deck; RomM into Steam"
+     }
+    ],
+    "android": [
+     {
+      "name": "Argosy Launcher",
+      "platforms": [
+       "android"
+      ],
+      "provisioned": "no",
+      "where": null,
+      "note": "GitHub release APK; pairs with a RomM client token"
+     }
+    ],
+    "ios": [],
+    "cli": [],
+    "tui": [],
+    "mcp": [],
+    "extensions": []
+   },
+   "notes": "Saves sync through RomM; PC saves go through ludusavi (docs/games.md)."
+  },
+  {
    "app": "immich",
    "category": "media",
    "hostnames": [

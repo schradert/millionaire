@@ -1,0 +1,8 @@
+{
+  "version": "5.4.0",
+  "digest": "sha256:03295f95a6290e752641f9553ac4198b0e5b71b879d57f7b2371b98f608feb54",
+  "source": {
+    "type": "oci-tag",
+    "repository": "rommapp/romm"
+  }
+}

@@ -1,0 +1,10 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: romm
+  namespace: media
+spec:
+  backupOwnerReference: self
+  cluster:
+    name: romm
+  schedule: 0 0 * * *

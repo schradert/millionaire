@@ -429,6 +429,12 @@ data:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
+      name: romm
+      url: https://romm.trdos.me/api/heartbeat
+    - conditions:
+      - '[STATUS] == 200'
+      group: internal
+      interval: 1m
       name: rook-ceph
       url: https://rook.trdos.me
     - conditions:
