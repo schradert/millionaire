@@ -659,7 +659,7 @@
        "linux"
       ],
       "provisioned": "yes",
-      "where": "modules/syncthing.nix:289",
+      "where": "modules/syncthing.nix:293",
       "note": ""
      }
     ],
@@ -690,7 +690,7 @@
     "mcp": [],
     "extensions": []
    },
-   "notes": "GUI via oauth2-proxy; sync protocol via global discovery/relays."
+   "notes": "GUI via oauth2-proxy; sync protocol direct on the LAN at 192.168.50.242:22000 (TCP and QUIC, LoadBalancer syncthing-lan, hub.lan in modules/syncthing.nix) for provisioned desktops, global discovery/relays elsewhere (Syncthing-Fork has no fixed address declared)."
   },
   {
    "app": "webdav (dav)",

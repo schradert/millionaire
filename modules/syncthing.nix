@@ -31,6 +31,10 @@ in {
     # The hub's pinned identity (nixidy/apps/home/syncthing.nix). Redo only if its Secret is lost:
     #   kubectl -n home exec deploy/syncthing -c syncthing -- syncthing --device-id --home /var/syncthing/config
     hub.id = "WHD56GJ-S5XJMEV-PJNFHRL-7XZKKIE-IONK2R2-ZIQEN3P-JSQKR77-GLFEDQE";
+    # The hub's LoadBalancer on port 22000 (the `syncthing-lan` Service, nixidy/apps/home/syncthing.nix). Free
+    # in the Cilium pool when chosen: no ping or ARP answer, none of the Services (.240/.241 gateways, .251
+    # forgejo, .252 owncast), .253 archive-ingest or .254 jitsi.
+    hub.lan = "192.168.50.242";
     # Each client's identity is declared: `syncthing-identity <host>` (devshell) generates the key
     # pair once, sops-encrypts it to secrets/sops/syncthing-<host>.yaml and prints the ID, which
     # is public and recorded here. The `system` module below installs the pair for the host's Syncthing.
@@ -297,6 +301,7 @@ in {
             devices.hub = {
               id = hub.id;
               name = "hub";
+              addresses = sync.addresses hub;
             };
             folders = lib.mapAttrs' (id: f:
               lib.nameValuePair (pathOf f) {

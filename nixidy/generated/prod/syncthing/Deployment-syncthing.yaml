@@ -49,6 +49,9 @@ spec:
             - containerPort: 22000
               name: sync
               protocol: TCP
+            - containerPort: 22000
+              name: quic
+              protocol: UDP
           readinessProbe:
             httpGet:
               path: /rest/noauth/health

@@ -1,6 +1,13 @@
 # Which folders of `syncthing.folders` (options/syncthing.nix) a device carries; shared by the hub
 # (nixidy/apps/home/syncthing.nix) and the clients (modules/syncthing.nix) so both sides agree.
 {lib}: rec {
+  port = 22000;
+
+  # What a client dials for a device: its fixed LAN address over TCP and QUIC (the hub's LoadBalancer
+  # exposes both), then discovery and relays.
+  addresses = device:
+    lib.optionals (device.lan != null) ["tcp://${device.lan}:${toString port}" "quic://${device.lan}:${toString port}"] ++ ["dynamic"];
+
   # `device`: {name, os, profiles}. A folder applies when its path exists on that OS, it is limited
   # to no hosts or to this one, and the device has one of its profiles.
   applies = device: folder:
