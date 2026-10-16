@@ -1,0 +1,9 @@
+{
+  "version": "ec6d05f098e32daf478ef698717183e7a125ae16",
+  "hash": "sha256-mI8GtAgy1E3NZabtMVwegIZtqjavcSk4rezi5emiZoI=",
+  "source": {
+    "type": "url-template",
+    "url": "https://gitlab.com/2009Scape/Saradomin-Launcher/-/archive/{version}/Saradomin-Launcher-{version}.tar.gz"
+  },
+  "hold": "GitLab has no update source; Glitonea in default.nix is the submodule at the commit this one names"
+}

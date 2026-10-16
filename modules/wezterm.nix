@@ -1,4 +1,3 @@
-# Unported from old/old/dev/shells/wezterm.nix: darwin launchd autostart agent.
 {
   home = {
     config,

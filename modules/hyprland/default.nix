@@ -1,7 +1,7 @@
 # Hyprland as an alternate SDDM session beside Plasma (still the default
 # session). Hyprland-only user services bind to hyprland-session.target so a
 # Plasma login never starts them. Colors come from stylix.
-# Dropped from old/: hyprexpo + hyprwinwrap (not in nixpkgs for Hyprland 0.55),
+# Dropped: hyprexpo + hyprwinwrap (not in nixpkgs for Hyprland 0.55),
 # kitty, xwaylandvideobridge, the wpgtk border template, the extra square
 # wallpaper widget on the lock screen (stylix.image is its background).
 {

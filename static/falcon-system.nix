@@ -2,7 +2,6 @@
 # the NVIDIA GPU serves the cluster's gpu-operator workloads), MCU flash host
 # (./falcon.nix profiles) and the fleet's biggest builder (static/builders.nix).
 # Standard layout: docs/node-standard.md.
-# Unported: vscode + Continue extension (old/infra/nodes/nixos/default.nix).
 {
   config,
   flake,

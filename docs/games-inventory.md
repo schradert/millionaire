@@ -94,7 +94,7 @@ Owned in Heroic but not installed (from `store_cache/*_library.json`, Deck copy 
 | RuneLite | 276 MB | `~/.runelite`; shortcut `RuneLite` | `modules/gaming/runescape.nix`: `pkgs.runelite` (nixpkgs, 2.7.2 on the old system) | `~/.runelite/profiles2` + `jagex_cl_oldschool_LIVE.dat` [observed]; account server-side | yes | no (design: archive-cold copy) |
 | HDOS | 326 MB + 154 MB | `~/hdos`, `~/jagexcache`, `~/jagex_*.dat` | `runescape.nix`: `pkgs/hdos` pin 20241106, `https://cdn.hdos.dev/launcher/latest/hdos-launcher.jar` | `~/hdos/profiles2`, `profiles2-backups` | yes | no |
 | RSC+ (RotorScape / OpenRSC client) | ~store symlink | `~/.config/RSCPlus/rscplus` (HM store symlink); shortcut `RotorScape` | `runescape.nix`: `pkgs/rscplus` git commit 8880399c8fc9... (github RSCPlus/rscplus) | `~/.config/RSCPlus/rscplus` (data next to exe) [assumed] | n/a (symlink) | no |
-| Saradomin (2009scape launcher) | store only | nix store `saradomin-ec6d05f`; shortcut `Saradomin` | **not in repo modules**: `old/old/apps/gaming/games/runescape/{runescape.nix,saradomin.json,saradomin.patch}` (NuGet build fails, `runescape.nix` header) | server-side | n/a | no |
+| Saradomin (2009scape launcher) | store only | nix store `saradomin-ec6d05f`; shortcut `Saradomin` | `modules/gaming/runescape.nix`: `pkgs/saradomin` (GitLab 2009Scape/Saradomin-Launcher commit ec6d05f098e3, Glitonea submodule fetched in its `default.nix`); enabled on the Deck | server-side | n/a | no |
 | RuneScape (Steam appid 1343400) | 4.0 GiB | see 2.1 | Steam | server-side | n/a | n/a |
 | chiaki-ng (PS5 Remote Play) | small | `~/.config/Chiaki/Chiaki.conf`, `~/.local/share/Chiaki`; shortcut `chiaki-ng (Program)` | `modules/gaming/chiaki.nix`: `pkgs.chiaki-ng` + wake/stream launcher; registration with PS5 `PS5-874` (host `trdos.me`) is not declarative (needs PS5 PIN re-pair) | `Chiaki.conf` holds `rp_key`, `rp_regist_key` (secret) | yes (`.config/Chiaki`, `.local/share/Chiaki`) | no |
 | Kodi 21.1 | 8.7 MB `~/.kodi` | shortcut `Kodi (Program)` | **not declared in repo** (nixpkgs `kodi`) | `~/.kodi` | not in SN-D list | no |
@@ -203,7 +203,7 @@ No game titles are tagged in the catalog. `odin` (handheld set): chiaki (`com.me
 
 ## 7. ROM tables (Deck, `~/Games/ROMs/<system>/<file>`)
 
-Columns: **pin** = key in `pkgs/roms/pin.json` (new, hashes carried over); **old** = hashed entry in the retired myrient table (`old/old/apps/gaming/games/roms.nix`, in git history before the `old/` removal); **decl** = listed in `static/systeamadeck.nix` `consoles.<sys>.titles`. All 53 on-disk titles are in all three. **Source: needs a new source** (myrient.erista.me is dead); the library now lives in the on-cluster `media-games` PVC served at `games.trdos.me` (all 53 titles and the PS1 BIOS verified against the pins on 2026-10-15), with the Deck nix store and the SN-D `roms` snapshot as the other copies.
+Columns: **pin** = key in `pkgs/roms/pin.json` (new, hashes carried over); **old** = hashed entry in the retired myrient table (`old/old/apps/gaming/games/roms.nix`, in git history only); **decl** = listed in `static/systeamadeck.nix` `consoles.<sys>.titles`. All 53 on-disk titles are in all three. **Source: needs a new source** (myrient.erista.me is dead); the library now lives in the on-cluster `media-games` PVC served at `games.trdos.me` (all 53 titles and the PS1 BIOS verified against the pins on 2026-10-15), with the Deck nix store and the SN-D `roms` snapshot as the other copies.
 
 ### 7.1 Nintendo NES (NES): 2 file(s), 0.4 MiB; emulator: RetroArch fceumm
 

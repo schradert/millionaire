@@ -25,7 +25,7 @@
         "raycast"
         "siyuan"
         "spotify"
-        # linux: not in nixpkgs (old/ used the zen-browser flake input)
+        # linux: not in nixpkgs
         "zen"
       ];
     };

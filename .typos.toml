@@ -8,7 +8,6 @@
 # nixidy/system/observability/dashboards/*.json are upstream Grafana dashboards kept verbatim.
 extend-exclude = [
   "static/facter/",
-  "old/",
   "docs/games-inventory.md",
   "nixidy/system/observability/dashboards/",
 ]

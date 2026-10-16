@@ -1,7 +1,6 @@
 # RuneScape clients as Steam shortcuts: RSC+ (Classic), RuneLite and HDOS
-# (Old School). The official runescape-launcher is gone from the internet.
-# Unported: the 2009scape Saradomin launcher (its NuGet build fails; kept in
-# old/old/apps/gaming/games/runescape/).
+# (Old School), Saradomin (2009scape). The official runescape-launcher is gone
+# from the internet.
 {
   home = {
     can,
@@ -20,6 +19,8 @@
       rscplus.package = can.package "rscplus" {default = pinned.rscplus;};
       runelite.enable = can.enable "RuneLite (Old School client)" {};
       runelite.package = can.package "runelite" {default = pkgs.runelite;};
+      saradomin.enable = can.enable "Saradomin (2009scape launcher)" {};
+      saradomin.package = can.package "saradomin" {default = pinned.saradomin;};
       hdos.enable = can.enable "HDOS (high-definition Old School client)" {};
       hdos.package = can.package "hdos" {default = pinned.hdos;};
     };
@@ -30,6 +31,7 @@
       })
       # TODO RuneLite does not exit cleanly from Steam
       (lib.mkIf cfg.runelite.enable {programs.steam.external.manual.RuneLite.shortcut.exe = lib.getExe cfg.runelite.package;})
+      (lib.mkIf cfg.saradomin.enable {programs.steam.external.manual.Saradomin.shortcut.exe = lib.getExe cfg.saradomin.package;})
       (lib.mkIf cfg.hdos.enable {programs.steam.external.manual.HDOS.shortcut.exe = lib.getExe cfg.hdos.package;})
     ];
   };
