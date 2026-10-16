@@ -23,6 +23,8 @@ spec:
                   values:
                     - bonobo
                     - chinchilla
+                - key: node.trdos.me/class
+                  operator: DoesNotExist
     port: 80
     priorityClassName: system-cluster-critical
     resources:

@@ -18,6 +18,12 @@ spec:
     activeCount: 1
     activeStandby: true
     placement:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: node.trdos.me/class
+                  operator: DoesNotExist
       podAntiAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
           - labelSelector:
