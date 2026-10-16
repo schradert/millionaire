@@ -605,37 +605,65 @@ in {
         sqlite3 -separator ' ' "$dir/state/db.sqlite" "SELECT hostname, ipv4 FROM nodes WHERE deleted_at IS NULL ORDER BY ipv4"
       '';
 
-      # `android <device> [apply]`: compares a phone with android.devices.<device> over adb on the
-      # tailnet (docs/android-fleet.md). adb runs on bonobo, which holds the paired key; apply opens
-      # Obtainium's import of the missing apps on the phone. It never uninstalls or changes settings.
+      # `android <device> [apply | productivity [app...] [--dry-run]]`: compares a phone with
+      # android.devices.<device> over adb on the tailnet (docs/android-fleet.md). adb runs on bonobo, which
+      # holds the paired key. The audit also checks the notes and calendar stack (Syncthing-Fork, Orgzly
+      # Revived, DAVx5, Fossify Calendar) when the device declares `productivity`. `apply` opens Obtainium's
+      # import of the missing apps. `productivity` configures those four apps as far as Android allows
+      # (tools/android-productivity, static/android-adb.sh) and says exactly what to tap; `--dry-run` runs
+      # the same script against a stand-in phone and prints what it would do. Nothing is ever uninstalled.
       scripts.android.exec = let
         inherit ((import ./static/builders.nix).nodes) bonobo;
       in ''
         set -euo pipefail
-        dev=''${1:?Usage: android <device> [apply]}
+        dev=''${1:?Usage: android <device> [apply | productivity [syncthing orgzly davx5 fossify] [--dry-run]]}
         mode=''${2:-status}
+        shift; [ $# -eq 0 ] || shift
+        extra=("$@")
         root="${config.devenv.root}"
         want=$(nix eval --no-pure-eval --json "$root#legacyPackages.${system}.android.devices.$dev")
         rev=$(jq -r .nodes.nixpkgs.locked.rev "$root/flake.lock")
+        host=$(jq -r .hostname <<<"$want")
         key=(); [ -r "$HOME/.ssh/personal" ] && key=(-o IdentitiesOnly=yes -i "$HOME/.ssh/personal")
+        # variables the remote script reads (productivity spec, secrets): through ssh's stdin, never an argument
+        hdr=""
+        dry=""
+        for x in ''${extra[@]+"''${extra[@]}"}; do [ "$x" != --dry-run ] || dry=1; done
+        script() { cat "$root/static/android-adb.sh"; }
+        if [ "$mode" = productivity ]; then
+          hdr=$("$root/tools/android-productivity" apply "$dev" ''${extra[@]+"''${extra[@]}"} <<<"$want")
+        elif [ "$(jq '.productivity != null' <<<"$want")" = true ]; then
+          hdr=$("$root/tools/android-productivity" audit "$dev" <<<"$want") \
+            || hdr=$(printf 'spec=%q\n' "$(jq -c .productivity <<<"$want")")
+        fi
+        if [ -n "$dry" ]; then
+          { printf '%s\n' "$hdr"; echo 'dry=1'; script; } | bash -s -- "$host"
+          exit
+        fi
         # LAN first, else the edge box (sirver) as a jump to bonobo's tailnet IP
         via=(''${ANDROID_ADB_VIA:-tristan@${bonobo.lan}})
         ssh "''${key[@]}" -o ConnectTimeout=5 "''${via[@]}" true 2>/dev/null \
           || via=(-J tristan@192.184.168.248 tristan@${bonobo.tailnet})
         remote() {
-          { [ -z "''${1:-}" ] || printf 'link=%q\n' "$1"; cat "$root/static/android-adb.sh"; } \
+          { printf '%s\n' "$hdr"; [ -z "''${1:-}" ] || printf 'link=%q\n' "$1"; script; } \
             | ssh "''${key[@]}" "''${via[@]}" \
-              nix shell "github:NixOS/nixpkgs/$rev#android-tools" "github:NixOS/nixpkgs/$rev#nmap" \
-              -c bash -s -- "$(jq -r .hostname <<<"$want")"
+              nix shell "github:NixOS/nixpkgs/$rev#android-tools" "github:NixOS/nixpkgs/$rev#nmap" "github:NixOS/nixpkgs/$rev#curl" "github:NixOS/nixpkgs/$rev#jq" \
+              -c bash -s -- "$host"
         }
+        if [ "$mode" = productivity ]; then
+          remote
+          exit
+        fi
         have=$(remote)
         report=$(jq -n --argjson want "$want" --arg have "$have" '
           ($have | split("\n") | map(select(. != "") | capture("^(?<k>[a-z_]+) (?<v>.*)$"))) as $l
-          | ($l | map(select(.k != "pkg") | {key: .k, value: .v}) | from_entries) as $s
+          | ($l | map(select(.k != "pkg" and .k != "prod") | {key: .k, value: .v}) | from_entries) as $s
           | ($l | map(select(.k == "pkg") | .v | split(" ")) | map({key: .[0], value: .[1]}) | from_entries) as $pkgs
           | ($want.apps | map(.id)) as $ids
+          | ($l | map(select(.k == "prod") | .v)) as $prod
           | {
-              device: $s, vpn: $want.vpn,
+              device: $s, vpn: $want.vpn, prod: $prod,
+              prodDrift: ($prod | map(select(startswith("DRIFT"))) | length),
               vpnDrift: (($s.vpn_app == "com.tailscale.ipn") != $want.vpn.alwaysOn
                 or ($want.vpn.alwaysOn and (($s.vpn_lockdown == "1") != $want.vpn.lockdown))),
               missing: [$want.apps[] | select($pkgs[.id] == null)],
@@ -647,12 +675,13 @@ in {
           "vpn: always-on=\(.device.vpn_app) lockdown=\(.device.vpn_lockdown) (want alwaysOn=\(.vpn.alwaysOn) lockdown=\(.vpn.lockdown))\(if .vpnDrift then "  DRIFT: Settings > Network > VPN > Tailscale" else "" end)",
           "missing (\(.missing | length)): \(.missing | map(.name) | join(", "))",
           "installed outside Obtainium (\(.foreign | length)): \(.foreign | join(", "))",
-          "Obtainium installs not declared (\(.extra | length)): \(.extra | join(", "))"' <<<"$report"
+          "Obtainium installs not declared (\(.extra | length)): \(.extra | join(", "))",
+          (if (.prod | length) > 0 then "notes and calendar (\(.prodDrift) drifted):", (.prod[] | "  \(.)") else empty end)' <<<"$report"
         if [ "$mode" = apply ] && [ "$(jq '.missing | length' <<<"$report")" -gt 0 ]; then
           remote "obtainium://apps/$(jq -r '.missing | tojson | @uri' <<<"$report")" | grep -x 'opened import'
           echo "confirm the import in Obtainium on the phone"
         fi
-        jq -e '.vpnDrift or (.missing | length) > 0' <<<"$report" >/dev/null && exit 2 || exit 0
+        jq -e '.vpnDrift or (.missing | length) > 0 or .prodDrift > 0' <<<"$report" >/dev/null && exit 2 || exit 0
       '';
 
       # Pulumi / Python

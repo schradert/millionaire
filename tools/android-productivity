@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# android-productivity <audit|apply> <device> [stage...] [--dry-run] < device.json
+#
+# Prints the shell variables `android <device> [productivity]` prepends to static/android-adb.sh (printf %q):
+# the productivity spec, the Syncthing GUI API key derived from the device's declared identity and, for
+# `apply`, the Syncthing import archive and the Baikal password. stdin is `android.devices.<device>` from
+# `legacyPackages.<system>.android.devices`. Secrets go to stdout only (the caller keeps it in a variable and
+# feeds ssh's stdin), never to a file outside a private temp directory and never to an argument list.
+#
+# Run from the devshell (syncthing, python3, jq, sops, bws). With --dry-run nothing is fetched from
+# Bitwarden, and a missing identity is replaced by a throwaway one so the archive can still be built.
+set -euo pipefail
+
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+mode=${1:?Usage: android-productivity <audit|apply> <device> [stage...] [--dry-run]}
+dev=${2:?device}
+shift 2
+dry="" stages=()
+for arg in "$@"; do
+  case $arg in
+    --dry-run) dry=1 ;;
+    syncthing | orgzly | davx5 | fossify) stages+=("$arg") ;;
+    *) echo "unknown stage or flag: $arg (stages: syncthing orgzly davx5 fossify, flag: --dry-run)" >&2; exit 64 ;;
+  esac
+done
+
+want=$(cat)
+spec=$(jq -c .productivity <<<"$want")
+[ "$spec" != null ] || { echo "android.devices.$dev has no productivity (modules/android.nix)" >&2; exit 1; }
+name=$(jq -r .syncthing.device <<<"$spec")
+id=$(jq -r .syncthing.id <<<"$spec")
+
+umask 077
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+file=$root/secrets/sops/syncthing-$name.yaml
+have_identity=""
+if [ -e "$file" ]; then
+  sops decrypt --extract '["cert"]' "$file" >"$tmp/cert.pem"
+  sops decrypt --extract '["key"]' "$file" >"$tmp/key.pem"
+  have_identity=1
+  actual=$(syncthing device-id --home "$tmp" 2>/dev/null || syncthing --device-id --home "$tmp")
+  if [ "$id" != null ] && [ "$actual" != "$id" ]; then
+    echo "secrets/sops/syncthing-$name.yaml is device $actual, but modules/syncthing.nix records $id" >&2
+    exit 1
+  fi
+elif [ -n "$dry" ]; then
+  echo "note: no secrets/sops/syncthing-$name.yaml; the dry run uses a throwaway identity" >&2
+  syncthing generate --home "$tmp" >/dev/null 2>&1
+  have_identity=1
+elif [ "$mode" = apply ]; then
+  echo "no Syncthing identity for $name: run \`syncthing-identity $name\`, record the ID in syncthing.devices.$name.id (modules/syncthing.nix) and merge it so the hub accepts it (docs/manual-steps.md step 11)" >&2
+  exit 1
+fi
+
+emit() { printf '%s=%q\n' "$1" "$2"; }
+emit spec "$spec"
+if [ -n "$have_identity" ]; then
+  emit st_key "$("$root/tools/android-syncthing-bundle" apikey "$tmp/key.pem")"
+fi
+[ "$mode" = apply ] || exit 0
+
+emit act productivity
+emit stages "${stages[*]:-}"
+[ -z "$dry" ] || emit dry 1
+if [ "$id" = null ] && [ -z "$dry" ]; then
+  echo "syncthing.devices.$name.id is not recorded (modules/syncthing.nix)" >&2
+  exit 1
+fi
+
+if [ -z "${stages[*]:-}" ] || [[ " ${stages[*]} " == *" syncthing "* ]]; then
+  jq -c .syncthing <<<"$spec" >"$tmp/spec.json"
+  "$root/tools/android-syncthing-bundle" bundle "$tmp/spec.json" "$tmp/cert.pem" "$tmp/key.pem" "$tmp/config.zip"
+  emit zip_b64 "$(base64 <"$tmp/config.zip" | tr -d '\n')"
+fi
+if [ -z "${stages[*]:-}" ] || [[ " ${stages[*]} " == *" davx5 "* ]]; then
+  if [ -n "$dry" ]; then
+    emit dav_pass DRY-RUN-PASSWORD
+  else
+    secret=$(jq -r .caldav.secret <<<"$spec")
+    pw=$(bws secret list -o json | jq -r --arg k "$secret" '.[] | select(.key == $k) | .value')
+    [ -n "$pw" ] || { echo "no $secret in Bitwarden" >&2; exit 1; }
+    emit dav_pass "$pw"
+  fi
+fi

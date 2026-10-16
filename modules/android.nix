@@ -480,6 +480,7 @@ in {
       owner = "tristan";
       hostname = "fallicle";
       sets = ["base" "homelab" "pixel"];
+      productivity = {};
     };
     s21 = {
       owner = "tristan";
