@@ -42,7 +42,7 @@ spec:
               value: "true"
             - name: SONARR_API_KEY_FILE
               value: /secrets/sonarr/apikey
-          image: harbor.trdos.me/library/app-bootstrap:0.43.0@sha256:11657a7debdb9f1405c40d05314d2a7cc5ff2735d1466e1e9958bef080731fb7
+          image: harbor.trdos.me/library/app-bootstrap:0.49.0@sha256:9fe2fbd2af21012ffb6ebab087e97f9adc88a06c3dd192e14e8e199496f56f56
           name: bootstrap
           securityContext:
             allowPrivilegeEscalation: false
