@@ -1,0 +1,62 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: romm-bootstrap
+  namespace: media
+spec:
+  activeDeadlineSeconds: 1200
+  backoffLimit: 6
+  template:
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - args:
+            - romm
+          env:
+            - name: ADMIN_EMAIL
+              value: t0rdos@pm.me
+            - name: ADMIN_PASSWORD_FILE
+              value: /secrets/admin/password
+            - name: ADMIN_USER
+              value: tristan
+            - name: CLIENT_TOKEN_SECRET
+              value: romm-tristan-client-token
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://alloy.observability.svc.cluster.local:4318
+            - name: PYROSCOPE_SAMPLE_RATE
+              value: "1000"
+            - name: PYROSCOPE_SERVER_ADDRESS
+              value: http://pyroscope.observability.svc.cluster.local:4040
+            - name: ROMM_URL
+              value: http://romm.media.svc.cluster.local:8080
+          image: harbor.trdos.me/library/app-bootstrap:0.45.0@sha256:b6214321e58ca52642376292fa6104add8a73b9b8d8a8248be0467866152dcb0
+          name: bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /secrets/admin
+              name: admin
+              readOnly: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: romm-bootstrap
+      volumes:
+        - emptyDir: {}
+          name: tmp
+        - name: admin
+          secret:
+            secretName: romm-admin

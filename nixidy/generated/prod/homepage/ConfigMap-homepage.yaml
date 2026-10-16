@@ -344,6 +344,10 @@ data:
           href: https://webmail.trdos.me
           icon: bulwark
     - Media:
+      - RomM:
+          description: Game library
+          href: https://romm.trdos.me
+          icon: romm
       - audiobookshelf:
           description: ''
           href: https://audiobookshelf.trdos.me

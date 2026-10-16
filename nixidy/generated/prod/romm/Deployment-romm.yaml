@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    app.kubernetes.io/controller: romm
+    app.kubernetes.io/instance: romm
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: romm
+  name: romm
+  namespace: media
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: romm
+      app.kubernetes.io/instance: romm
+      app.kubernetes.io/name: romm
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: c2e3e8b01a4c7643373eb5dadeedc70b608b441424f1b7338400702c558abea2
+      labels:
+        app.kubernetes.io/controller: romm
+        app.kubernetes.io/instance: romm
+        app.kubernetes.io/name: romm
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - envFrom:
+            - configMapRef:
+                name: romm
+            - secretRef:
+                name: romm
+            - secretRef:
+                name: romm-auth
+          image: rommapp/romm:5.4.0@sha256:03295f95a6290e752641f9553ac4198b0e5b71b879d57f7b2371b98f608feb54
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 1
+          name: romm
+          readinessProbe:
+            httpGet:
+              path: /api/heartbeat
+              port: 8080
+          resources:
+            limits:
+              memory: 3Gi
+            requests:
+              cpu: 100m
+              memory: 512Mi
+          startupProbe:
+            failureThreshold: 60
+            httpGet:
+              path: /api/heartbeat
+              port: 8080
+            periodSeconds: 10
+          volumeMounts:
+            - mountPath: /romm/assets
+              name: assets
+            - mountPath: /romm/config/config.yml
+              name: config
+              readOnly: true
+              subPath: config.yml
+            - mountPath: /romm/library/roms
+              name: library
+              readOnly: true
+              subPath: roms
+            - mountPath: /romm/resources
+              name: resources
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 1000
+        runAsUser: 1000
+      serviceAccountName: romm
+      volumes:
+        - name: assets
+          persistentVolumeClaim:
+            claimName: romm-assets
+        - configMap:
+            name: romm-config
+          name: config
+        - name: library
+          persistentVolumeClaim:
+            claimName: media-games
+        - name: resources
+          persistentVolumeClaim:
+            claimName: romm-resources

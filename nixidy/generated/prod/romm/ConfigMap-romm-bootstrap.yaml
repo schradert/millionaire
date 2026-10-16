@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  image: harbor.trdos.me/library/app-bootstrap:0.45.0@sha256:b6214321e58ca52642376292fa6104add8a73b9b8d8a8248be0467866152dcb0
+  spec: a5d74e39221fbb98ab87e655dfcaa166daef4d9177a008a84d2d1f47eecd4c56
+kind: ConfigMap
+metadata:
+  name: romm-bootstrap
+  namespace: media
