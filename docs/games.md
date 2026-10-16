@@ -64,9 +64,12 @@ prints `empty or missing directory`.
 vendors' public installers (`pkgs/game-installers`). The vendors replace them
 in place, so their hashes drift: re-download, re-prefetch and update the pin
 (`got:` hash from a failed build also works). `cemu-keys.txt`
-(`pkgs/cemu-keys`) is user-supplied and **not uploaded yet**: put your own
-`keys.txt` into `installers/` through the `games` rsync module
-(`docs/manual-steps.md` section 10); until then the Cemu keys do not build.
+(`pkgs/cemu-keys`) is the user's own Cemu `keys.txt` (the file at
+`~/dotfiles/Newestkeys/keys.txt` on the Deck, sha256 `1d0a6a92...c8f3be`, the
+pinned `sha256-HQpqkrmgy/2o1zKcTb6UU37/Vro8BuvsB9bu8lLI874=`), uploaded
+2026-10-16 through the `games` rsync module like the installers
+(`docs/manual-steps.md` section 10). A replacement keys file needs the same
+upload plus a new pin hash.
 
 ```sh
 mkdir -p ~/games-upload/installers && cd ~/games-upload/installers
