@@ -301,7 +301,7 @@ hyena's ntfy denies everything unless a user's token or password grants it (`sta
 5. On each phone, in the ntfy app (Settings, Manage users): `https://ntfy.trdos.me` with user `reader` (`tristan` devices) or `family` (`family` devices) and the password from Bitwarden `ntfy/<user>/password`. A phone that is not logged in sees "not authorized" on its `android-<device>` topic.
 6. After the first `android_notify_*` pulumi run following the hyena deploy, the nudge posts as `publisher` through `ntfy-publish` on hyena.
 
-## 18. ROMarr: indexers and sources
+## 20. ROMarr: indexers and sources
 
 ROMarr is wired to Prowlarr, qBittorrent, RomM and GG Requestz. What it finds depends on what you add.
 
