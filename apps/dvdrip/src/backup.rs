@@ -97,6 +97,21 @@ async fn lsdvd_ok(iso: &Path) -> bool {
     tool::stdout("lsdvd", &[Staging::s(iso)], None, false).await.is_ok()
 }
 
+/// lsdvd segfaults on structure-protected discs with malformed tables, so a good backup can fail
+/// it: accept an image MakeMKV reports as done (in `makemkv_log`) that holds a VIDEO_TS.
+async fn readable(iso: &Path, makemkv_log: &Path) -> bool {
+    if lsdvd_ok(iso).await {
+        return true;
+    }
+    let done = makemkv::backup_done(&std::fs::read_to_string(makemkv_log).unwrap_or_default());
+    let tree = tool::stdout("isoinfo", &["-l", "-i", Staging::s(iso)], None, true).await.unwrap_or_default();
+    let ok = done && String::from_utf8_lossy(&tree).contains("VIDEO_TS");
+    if ok {
+        warn!("lsdvd can't parse {} (malformed tables); MakeMKV backup completed, accepting it", iso.display());
+    }
+    ok
+}
+
 /// Back up the disc in `st.device` to `st.master()`. `progress` gets 0..=1 during the MakeMKV copy.
 pub async fn backup(st: &Staging, limits: &Limits, progress: impl Fn(f64)) -> Result<Outcome> {
     tokio::fs::create_dir_all(st.dir.join("logs")).await?;
@@ -137,7 +152,7 @@ pub async fn backup(st: &Staging, limits: &Limits, progress: impl Fn(f64)) -> Re
     } else {
         Outcome { method: "makemkv", read_errors, damage: None }
     };
-    if !lsdvd_ok(&iso).await {
+    if !readable(&iso, &log_path).await {
         bail!("the backup is not a readable DVD image (see logs/backup.log)");
     }
     if outcome.read_errors > 0 {
@@ -183,7 +198,7 @@ async fn decrypt_raw(st: &Staging) -> Result<()> {
         tool::status_logged("makemkvcon", &["-r", "--noscan", "backup", "--decrypt", &format!("iso:{}", Staging::s(&st.raw())), Staging::s(&iso)], &log, None)
             .await?;
     let text = std::fs::read_to_string(&log).unwrap_or_default();
-    if !makemkv::backup_failed(&text) && lsdvd_ok(&iso).await {
+    if !makemkv::backup_failed(&text) && readable(&iso, &log).await {
         return Ok(());
     }
     warn!("MakeMKV couldn't decrypt the image; trying dvdbackup");
@@ -316,7 +331,7 @@ async fn raw_image(st: &Staging, limits: &Limits) -> Result<Outcome> {
             tokio::fs::copy(st.raw(), st.master()).await?;
         }
     }
-    if !lsdvd_ok(&st.master()).await {
+    if !readable(&st.master(), &st.log("decrypt.log")).await {
         bail!("raw image isn't a readable DVD (lsdvd failed)");
     }
     Ok(Outcome { method: "raw", read_errors: 0, damage: record_rescue(st).await? })
