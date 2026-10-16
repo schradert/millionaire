@@ -36,27 +36,27 @@ spec:
               value: all
           image: ghcr.io/jellyfin/jellyfin:10.11.11@sha256:45f648c382a0c8b552582fcea40e95cb17c5d475473a891cba0eb7523fb92112
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8096
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           name: jellyfin
           readinessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8096
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           startupProbe:
             failureThreshold: 60
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8096
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /config/metadata
               name: cache

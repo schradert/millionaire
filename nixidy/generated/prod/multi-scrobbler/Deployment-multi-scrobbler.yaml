@@ -44,7 +44,7 @@ spec:
             timeoutSeconds: 5
           name: multi-scrobbler
           readinessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:

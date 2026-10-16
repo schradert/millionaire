@@ -38,27 +38,27 @@ spec:
                 name: ryot
           image: ignisda/ryot:v10.5.3@sha256:6a475fb30ac3715444e79ff7721ddb24f16cb31314a91c4b0e3b47d7f053b60b
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8000
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           name: ryot
           readinessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8000
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           startupProbe:
-            failureThreshold: 3
+            failureThreshold: 30
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 8000
-            timeoutSeconds: 1
+            timeoutSeconds: 5
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
       hostIPC: false

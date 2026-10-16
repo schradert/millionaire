@@ -29,27 +29,27 @@ spec:
       containers:
         - image: excalidraw/excalidraw:latest@sha256:f7ee194addd607bf831d2af0f0a34463dd4225e426cf35199ef0b12a803398e9
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 80
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           name: excalidraw
           readinessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 80
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           startupProbe:
-            failureThreshold: 3
+            failureThreshold: 30
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 80
-            timeoutSeconds: 1
+            timeoutSeconds: 5
       dnsPolicy: ClusterFirst
       enableServiceLinks: false
       hostIPC: false

@@ -34,20 +34,20 @@ spec:
             - -c
           image: mrcas/kapowarr:v1.3.2@sha256:cd3f004caff59636dde73b06df5b2f8068b485b47ff5fe82f6129562c0f2ac3b
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 5656
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           name: kapowarr
           readinessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 5656
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           resources:
             limits:
               memory: 512Mi

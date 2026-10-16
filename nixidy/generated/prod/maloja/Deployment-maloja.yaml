@@ -38,27 +38,27 @@ spec:
                 name: maloja
           image: krateng/maloja:3.2.7@sha256:8864145b0107f9edfdd6672b366deb84378f4b20ea48730206bc5a56e3f82460
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 42011
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           name: maloja
           readinessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 42011
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           startupProbe:
-            failureThreshold: 3
+            failureThreshold: 30
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 42011
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /mljdata
               name: data

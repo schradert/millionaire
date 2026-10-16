@@ -50,20 +50,20 @@ spec:
               value: "true"
           image: ghcr.io/suwayomi/suwayomi-server:v2.4.2366@sha256:1fac27c387dc2ea9949e1a01ad7f6d6de9d72d3988338a95476748e5c45c4582
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 4567
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           name: suwayomi
           readinessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 4567
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           resources:
             limits:
               memory: 1536Mi
@@ -76,7 +76,7 @@ spec:
             periodSeconds: 10
             tcpSocket:
               port: 4567
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /home/suwayomi/.local/share/Tachidesk
               name: data

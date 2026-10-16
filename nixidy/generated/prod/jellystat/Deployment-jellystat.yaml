@@ -37,20 +37,20 @@ spec:
                 name: jellystat
           image: cyfershepard/jellystat:1.1.12@sha256:e61c759ec706da378bc8374e797da1dfd298ab30f804cefd82d192c301a888c7
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 3000
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           name: jellystat
           readinessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 3000
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           resources:
             limits:
               memory: 768Mi
@@ -63,7 +63,7 @@ spec:
             periodSeconds: 10
             tcpSocket:
               port: 3000
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /app/backend/backup-data
               name: backup-data

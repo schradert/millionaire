@@ -39,30 +39,30 @@ spec:
                 name: baikal
           image: ckulka/baikal:0.10.1-nginx@sha256:434bdd162247cc6aa6f878c9b4dce6216e39e79526b980453b13812d5f8ebf4b
           livenessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 80
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           name: baikal
           ports:
             - containerPort: 80
               name: http
           readinessProbe:
-            failureThreshold: 3
+            failureThreshold: 6
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 80
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           startupProbe:
             failureThreshold: 30
             initialDelaySeconds: 0
             periodSeconds: 10
             tcpSocket:
               port: 80
-            timeoutSeconds: 1
+            timeoutSeconds: 5
           volumeMounts:
             - mountPath: /var/www/baikal/Specific
               name: data
