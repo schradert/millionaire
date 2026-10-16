@@ -59,6 +59,7 @@ in {
       namespace = "home";
       postgres = {
         enable = true;
+        avoidNodes = ["sirver"];
         # The initial migration indexes with gin_trgm_ops but leaves creating the
         # extension to the DBA; without it every migration silently rolls back.
         extensions = ["pg_trgm"];

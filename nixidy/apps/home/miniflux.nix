@@ -48,6 +48,7 @@ in {
     applications.miniflux = {
       namespace = "home";
       postgres.enable = true;
+      postgres.avoidNodes = ["sirver"];
       # Break-glass admin, created by miniflux itself (CREATE_ADMIN).
       generatedSecrets.miniflux-admin = {
         key = "password";
