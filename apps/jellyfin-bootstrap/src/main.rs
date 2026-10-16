@@ -4,8 +4,10 @@
 //! 2. If the startup wizard is incomplete, run it (config, admin user, complete).
 //! 3. Authenticate as the admin user.
 //! 4. Create whichever libraries are missing; never touch existing ones.
-//! 5. Reuse (or create) a "Maintainerr" API key and point Maintainerr at Jellyfin,
-//!    PATCHing its settings only when they differ.
+//! 5. Reuse (or create) the Maintainerr API key of the configured generation (`Maintainerr (gen N)`,
+//!    MAINTAINERR_KEY_GENERATION, default 1; the pre-generation key named `Maintainerr` counts as 1)
+//!    and point Maintainerr at Jellyfin, PATCHing its settings only when they differ. Keys of an older
+//!    generation are deleted once Maintainerr holds the new one, which is how a key is rotated.
 //! 6. If SSO_ISSUER is set: register the 9p4/jellyfin-plugin-sso repository, install the
 //!    plugin (restarting Jellyfin once when newly installed), write the OIDC provider
 //!    config only when it differs, and add the login-page button via the branding
@@ -13,6 +15,11 @@
 //! 7. Install the plugins named in PLUGINS (`name|guid|version`, comma-separated, from the stable
 //!    repository) that are missing, restarting Jellyfin once. Their settings are left to whoever
 //!    needs them (Ryot's bootstrap writes the Webhook destination).
+//! 8. Server settings, each applied only when its variable is set and only when it differs from what
+//!    Jellyfin reports (GET, compare, POST the merged object): hardware transcoding (ENCODING_HW_ACCEL,
+//!    ENCODING_DECODING_CODECS, ENCODING_TONEMAPPING), the bitrate cap for remote clients
+//!    (REMOTE_BITRATE_LIMIT, bits/s), which networks count as local (LOCAL_NETWORK_SUBNETS) and
+//!    whether users may download media for offline use (ENABLE_CONTENT_DOWNLOADING, a per-user policy).
 
 use std::{env, fs, process::ExitCode, time::Duration};
 
@@ -26,6 +33,8 @@ const DEVICE: &str = "bootstrap-job";
 const DEVICE_ID: &str = "jellyfin-bootstrap-job";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const MAINTAINERR_KEY_NAME: &str = "Maintainerr";
+/// Jellyfin lists API keys by app name; this is how a key's generation is stored.
+const MAINTAINERR_KEY_GEN_PREFIX: &str = "Maintainerr (gen ";
 const MAINTAINERR_ATTEMPTS: u32 = 60;
 
 const SSO_PLUGIN_NAME: &str = "SSO Authentication";
@@ -228,26 +237,58 @@ async fn ensure_libraries(http: &Client, base: &str, token: &str) -> Result<()> 
     Ok(())
 }
 
-async fn find_key(http: &Client, base: &str, token: &str) -> Result<Option<String>> {
-    let keys = ok(http.get(format!("{base}/Auth/Keys")).header("X-Emby-Authorization", auth_header(Some(token))).send().await?, "GET /Auth/Keys")
-        .await?
-        .json::<ApiKeys>()
-        .await?;
-    Ok(keys.items.into_iter().find(|k| k.app_name == MAINTAINERR_KEY_NAME).map(|k| k.access_token))
+/// Generation of a Maintainerr key by its app name; the key made before generations existed counts as 1.
+fn key_generation(app_name: &str) -> Option<u32> {
+    if app_name == MAINTAINERR_KEY_NAME {
+        return Some(1);
+    }
+    app_name.strip_prefix(MAINTAINERR_KEY_GEN_PREFIX)?.strip_suffix(')')?.parse().ok()
 }
 
-async fn ensure_api_key(http: &Client, base: &str, token: &str) -> Result<String> {
-    if let Some(key) = find_key(http, base, token).await? {
-        println!("reusing existing {MAINTAINERR_KEY_NAME} API key");
-        return Ok(key);
+fn key_name(generation: u32) -> String {
+    format!("{MAINTAINERR_KEY_GEN_PREFIX}{generation})")
+}
+
+/// The access token of the key of generation `generation` and the tokens of every older one.
+fn split_keys(keys: &[ApiKey], generation: u32) -> (Option<String>, Vec<String>) {
+    let current = keys.iter().find(|k| key_generation(&k.app_name) == Some(generation)).map(|k| k.access_token.clone());
+    let stale = keys.iter().filter(|k| key_generation(&k.app_name).is_some_and(|g| g < generation)).map(|k| k.access_token.clone()).collect();
+    (current, stale)
+}
+
+async fn list_keys(http: &Client, base: &str, token: &str) -> Result<Vec<ApiKey>> {
+    Ok(ok(http.get(format!("{base}/Auth/Keys")).header("X-Emby-Authorization", auth_header(Some(token))).send().await?, "GET /Auth/Keys")
+        .await?
+        .json::<ApiKeys>()
+        .await?
+        .items)
+}
+
+/// The key of this generation (created when missing) and the tokens of the older keys to delete after Maintainerr switched over.
+async fn ensure_api_key(http: &Client, base: &str, token: &str, generation: u32) -> Result<(String, Vec<String>)> {
+    let (current, stale) = split_keys(&list_keys(http, base, token).await?, generation);
+    if let Some(key) = current {
+        println!("reusing the {} API key", key_name(generation));
+        return Ok((key, stale));
     }
-    println!("creating {MAINTAINERR_KEY_NAME} API key");
+    println!("creating the {} API key", key_name(generation));
     ok(
-        http.post(format!("{base}/Auth/Keys")).header("X-Emby-Authorization", auth_header(Some(token))).query(&[("app", MAINTAINERR_KEY_NAME)]).send().await?,
+        http.post(format!("{base}/Auth/Keys")).header("X-Emby-Authorization", auth_header(Some(token))).query(&[("app", key_name(generation))]).send().await?,
         "POST /Auth/Keys",
     )
     .await?;
-    find_key(http, base, token).await?.ok_or_else(|| "API key not listed after creation".into())
+    let (current, _) = split_keys(&list_keys(http, base, token).await?, generation);
+    Ok((current.ok_or("API key not listed after creation")?, stale))
+}
+
+async fn delete_keys(http: &Client, base: &str, token: &str, stale: &[String]) -> Result<()> {
+    for key in stale {
+        ok(http.delete(format!("{base}/Auth/Keys/{key}")).header("X-Emby-Authorization", auth_header(Some(token))).send().await?, "DELETE /Auth/Keys").await?;
+    }
+    if !stale.is_empty() {
+        println!("deleted {} older Maintainerr API key(s)", stale.len());
+    }
+    Ok(())
 }
 
 /// Maintainerr returns the key masked (`abc...xyz`), so match the mask as well as the full value.
@@ -615,6 +656,100 @@ async fn ensure_login_button(http: &Client, base: &str, token: &str, provider: &
     Ok(())
 }
 
+// ---------------------------------------------------------------------------
+// Server settings
+// ---------------------------------------------------------------------------
+
+/// `desired` laid over `current` (Jellyfin wants the whole object back), matching keys case-insensitively.
+fn merged(current: &Value, desired: &Value) -> Value {
+    let mut out = current.as_object().cloned().unwrap_or_default();
+    for (k, v) in desired.as_object().into_iter().flatten() {
+        out.retain(|ck, _| !ck.eq_ignore_ascii_case(k));
+        out.insert(k.clone(), v.clone());
+    }
+    Value::Object(out)
+}
+
+/// GET `path`, and POST it back with `desired` laid over it unless it already matches.
+async fn ensure_config(http: &Client, base: &str, token: &str, path: &str, desired: &Value) -> Result<()> {
+    let current = get_json(http, base, token, path).await?;
+    if config_in_sync(&current, desired) {
+        println!("{path} already configured");
+        return Ok(());
+    }
+    println!("configuring {path}: {desired}");
+    ok(http.post(format!("{base}{path}")).header("X-Emby-Authorization", auth_header(Some(token))).json(&merged(&current, desired)).send().await?, path)
+        .await?;
+    Ok(())
+}
+
+fn env_flag(name: &str) -> Option<bool> {
+    env::var(name).ok().map(|v| v.eq_ignore_ascii_case("true"))
+}
+
+/// The EncodingOptions we manage: hardware acceleration, its decoder list and tone mapping.
+fn desired_encoding(accel: &str, decoding_codecs: &[String], tonemapping: bool) -> Value {
+    json!({
+        "HardwareAccelerationType": accel,
+        "EnableHardwareEncoding": accel != "none",
+        "AllowHevcEncoding": accel != "none",
+        "HardwareDecodingCodecs": decoding_codecs,
+        "EnableTonemapping": tonemapping,
+    })
+}
+
+/// `policy` with EnableContentDownloading set to `want`, or None when it already is.
+fn policy_with_downloading(policy: &Value, want: bool) -> Option<Value> {
+    if get_ci(policy, "EnableContentDownloading").and_then(Value::as_bool) == Some(want) {
+        return None;
+    }
+    Some(merged(policy, &json!({ "EnableContentDownloading": want })))
+}
+
+/// Downloading for offline use is a per-user policy, so every existing user is brought in line.
+async fn ensure_content_downloading(http: &Client, base: &str, token: &str, want: bool) -> Result<()> {
+    let users = get_json(http, base, token, "/Users").await?;
+    let mut changed = 0;
+    for user in users.as_array().into_iter().flatten() {
+        let (Some(id), Some(policy)) = (get_ci(user, "Id").and_then(Value::as_str), get_ci(user, "Policy")) else {
+            continue;
+        };
+        let Some(new_policy) = policy_with_downloading(policy, want) else {
+            continue;
+        };
+        println!("setting EnableContentDownloading={want} for user {}", get_ci(user, "Name").and_then(Value::as_str).unwrap_or(id));
+        ok(
+            http.post(format!("{base}/Users/{id}/Policy")).header("X-Emby-Authorization", auth_header(Some(token))).json(&new_policy).send().await?,
+            "POST /Users/{id}/Policy",
+        )
+        .await?;
+        changed += 1;
+    }
+    if changed == 0 {
+        println!("EnableContentDownloading already {want} for every user");
+    }
+    Ok(())
+}
+
+async fn ensure_server_settings(http: &Client, base: &str, token: &str) -> Result<()> {
+    if let Ok(accel) = env::var("ENCODING_HW_ACCEL") {
+        let codecs = csv("ENCODING_DECODING_CODECS", "h264,hevc,vp9,av1");
+        let desired = desired_encoding(&accel, &codecs, env_flag("ENCODING_TONEMAPPING").unwrap_or(true));
+        ensure_config(http, base, token, "/System/Configuration/encoding", &desired).await?;
+    }
+    if let Ok(limit) = env::var("REMOTE_BITRATE_LIMIT") {
+        let desired = json!({ "RemoteClientBitrateLimit": limit.parse::<u64>().map_err(|e| format!("REMOTE_BITRATE_LIMIT {limit:?}: {e}"))? });
+        ensure_config(http, base, token, "/System/Configuration", &desired).await?;
+    }
+    if env::var("LOCAL_NETWORK_SUBNETS").is_ok() {
+        ensure_config(http, base, token, "/System/Configuration/network", &json!({ "LocalNetworkSubnets": csv("LOCAL_NETWORK_SUBNETS", "") })).await?;
+    }
+    if let Some(want) = env_flag("ENABLE_CONTENT_DOWNLOADING") {
+        ensure_content_downloading(http, base, token, want).await?;
+    }
+    Ok(())
+}
+
 async fn run() -> Result<()> {
     let base = env::var("JELLYFIN_URL").unwrap_or_else(|_| "http://jellyfin.media.svc.cluster.local:8096".into());
     let base = base.trim_end_matches('/');
@@ -630,8 +765,10 @@ async fn run() -> Result<()> {
     ensure_libraries(&http, base, &token).await?;
     if let Ok(maintainerr) = env::var("MAINTAINERR_URL") {
         let jellyfin_url = env::var("MAINTAINERR_JELLYFIN_URL").unwrap_or_else(|_| base.into());
-        let key = ensure_api_key(&http, base, &token).await?;
+        let generation = env::var("MAINTAINERR_KEY_GENERATION").ok().map(|g| g.parse()).transpose()?.unwrap_or(1);
+        let (key, stale) = ensure_api_key(&http, base, &token, generation).await?;
         ensure_maintainerr(&http, maintainerr.trim_end_matches('/'), &jellyfin_url, &key).await?;
+        delete_keys(&http, base, &token, &stale).await?;
     }
     let plugins = parse_plugins(&env::var("PLUGINS").unwrap_or_default())?;
     if !plugins.is_empty() {
@@ -642,6 +779,7 @@ async fn run() -> Result<()> {
         ensure_sso_provider(&http, base, &token, &sso).await?;
         ensure_login_button(&http, base, &token, &sso.provider).await?;
     }
+    ensure_server_settings(&http, base, &token).await?;
     println!("bootstrap done");
     Ok(())
 }
@@ -770,6 +908,65 @@ mod tests {
     #[test]
     fn disclaimer_links_to_provider() {
         assert!(login_disclaimer("keycloak").contains("/sso/OID/start/keycloak"));
+    }
+
+    #[test]
+    fn key_generations() {
+        assert_eq!(key_generation("Maintainerr"), Some(1));
+        assert_eq!(key_generation("Maintainerr (gen 2)"), Some(2));
+        assert_eq!(key_generation("Maintainerr (gen x)"), None);
+        assert_eq!(key_generation("Tracearr"), None);
+        assert_eq!(key_name(3), "Maintainerr (gen 3)");
+    }
+
+    fn key(name: &str, token: &str) -> ApiKey {
+        ApiKey { access_token: token.into(), app_name: name.into() }
+    }
+
+    #[test]
+    fn rotation_keeps_current_and_retires_older() {
+        let keys = vec![key("Maintainerr", "old"), key("Tracearr", "t"), key("Maintainerr (gen 2)", "new")];
+        // Generation 1 is the legacy key: reused, nothing retired.
+        assert_eq!(split_keys(&keys, 1), (Some("old".into()), vec![]));
+        // Generation 2 reuses the new key and retires the legacy one, never another app's.
+        assert_eq!(split_keys(&keys, 2), (Some("new".into()), vec!["old".into()]));
+        // Generation 3 has no key yet: the caller creates it, then retires both.
+        assert_eq!(split_keys(&keys, 3), (None, vec!["old".into(), "new".into()]));
+        // A lowered generation retires nothing.
+        assert_eq!(split_keys(&[key("Maintainerr (gen 2)", "new")], 1), (None, vec![]));
+    }
+
+    #[test]
+    fn encoding_drift_and_merge() {
+        let codecs = vec!["h264".to_string(), "hevc".to_string()];
+        let desired = desired_encoding("nvenc", &codecs, true);
+        let current = json!({"HardwareAccelerationType": "none", "EnableHardwareEncoding": true, "AllowHevcEncoding": false, "HardwareDecodingCodecs": ["h264", "vc1"],
+            "EnableTonemapping": false, "H264Crf": 23});
+        assert!(!config_in_sync(&current, &desired));
+        let new = merged(&current, &desired);
+        assert!(config_in_sync(&new, &desired));
+        // Unmanaged fields survive the round trip.
+        assert_eq!(new["H264Crf"], json!(23));
+        assert_eq!(new["HardwareAccelerationType"], json!("nvenc"));
+        assert_eq!(new["HardwareDecodingCodecs"], json!(["h264", "hevc"]));
+        assert_eq!(desired_encoding("none", &codecs, true)["EnableHardwareEncoding"], json!(false));
+    }
+
+    #[test]
+    fn merge_replaces_keys_case_insensitively() {
+        let new = merged(&json!({"remoteClientBitrateLimit": 0, "Other": 1}), &json!({"RemoteClientBitrateLimit": 8000000}));
+        assert_eq!(new.as_object().unwrap().len(), 2);
+        assert_eq!(new["RemoteClientBitrateLimit"], json!(8000000));
+        assert!(config_in_sync(&new, &json!({"RemoteClientBitrateLimit": 8000000})));
+    }
+
+    #[test]
+    fn download_policy_changes_only_when_different() {
+        let policy = json!({"EnableContentDownloading": false, "IsAdministrator": true});
+        let new = policy_with_downloading(&policy, true).unwrap();
+        assert_eq!(new, json!({"EnableContentDownloading": true, "IsAdministrator": true}));
+        assert!(policy_with_downloading(&new, true).is_none());
+        assert!(policy_with_downloading(&json!({}), true).is_some());
     }
 
     #[test]
