@@ -47,7 +47,7 @@ spec:
                   value: http://pyroscope.observability.svc.cluster.local:4040
                 - name: SCROBBLE_E2E_USER
                   value: e2e
-              image: harbor.trdos.me/library/e2e:0.17.4@sha256:eeb619f61c2ff239dc3c77cbeb32540f7c221c9cabf5ae441e0a9650d04a8266
+              image: harbor.trdos.me/library/e2e:0.17.5@sha256:785c9dae3921c20a130313b5c28d74b6b999ba7a3aaa17909b6c19aa13dc8c02
               name: media-e2e
               resources:
                 limits:
