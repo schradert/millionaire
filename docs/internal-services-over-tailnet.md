@@ -92,12 +92,13 @@ into pods.
   `cilium.nix`), a `/24` per node. The k8s `Node.podCIDR` (`10.42.0.0/16`) is
   **vestigial** — Cilium ignores it. So the headscale **autoApprover** keys on
   `10.0.0.0/8`, and the cluster nodes register as user **`default` (untagged)**, so
-  the approver covers `default@` (plus `tag:cluster` for future cloud workers):
+  the approver covers `default@` (plus `tag:cluster` for future cloud workers). It
+  only exists while `tailnet.podRoutes` is true (see
+  [`tailscale-integration.md`](tailscale-integration.md#pod-routes-tailnetpodroutes)):
 
   ```nix
   autoApprovers.routes = {
-    "10.0.0.0/8"        = ["tag:cluster" "default@"];   # Cilium pod /24s
-    "192.168.50.241/32" = ["tag:cluster" "default@"];   # internal gateway VIP
+    "10.0.0.0/8" = ["tag:cluster" "default@"];   # Cilium pod /24s
   };
   ```
 

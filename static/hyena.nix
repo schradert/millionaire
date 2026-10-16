@@ -86,7 +86,7 @@
     alerts = [{type = "ntfy";}];
   };
 in {
-  imports = [./vps.nix ./headscale-backup.nix ./ntfy.nix];
+  imports = [./vps.nix ./headscale-backup.nix ./ntfy.nix ./tailnet.nix];
 
   # Hyena is a root-only bootstrap server; opting out of home-manager keeps
   # ungated home modules (helix + tree-sitter parsers, etc.) out of its closure.
@@ -268,16 +268,14 @@ in {
         }
       ];
       tagOwners."tag:cluster" = ["default@"];
-      # Auto-approve advertised subnet routes so cross-site routing never waits on
-      # a human. Cluster nodes register under user `default` (untagged); future
-      # CAPI workers register tagged `tag:cluster` — cover both. Pods come from
-      # Cilium's pool (ipv4NativeRoutingCIDR 10.0.0.0/8), NOT the vestigial RKE2
-      # Node.podCIDR (10.42/16); that mismatch left the advertised /24s unapproved.
-      autoApprovers.routes = {
-        "10.0.0.0/8" = ["tag:cluster" "default@"]; # Cilium pod /24s
-        # The internal-gateway VIP is no longer reached via a /32 subnet route —
-        # off-LAN clients hit the gateway relays' native tailnet IPs (bonobo/
-        # chinchilla, static/tailnet.nix gatewayRelay), so no autoApprover needed.
+      # Auto-approve the pod /24s the cluster nodes advertise (tailnet.podRoutes,
+      # declared by the tailnet.nix import): cluster nodes register under user
+      # `default` (untagged), future CAPI workers tagged `tag:cluster`, so cover
+      # both. Pods come from Cilium's pool (ipv4NativeRoutingCIDR 10.0.0.0/8),
+      # NOT the vestigial RKE2 Node.podCIDR (10.42/16). The internal-gateway VIP
+      # needs no approver: clients reach it via the gateway relays' tailnet IPs.
+      autoApprovers.routes = lib.optionalAttrs config.tailnet.podRoutes {
+        "10.0.0.0/8" = ["tag:cluster" "default@"];
       };
     });
   };
