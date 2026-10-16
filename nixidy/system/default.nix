@@ -29,6 +29,7 @@
     ./network/coredns.nix
     ./network/external-dns.nix
     ./network/external-dns-internal.nix
+    ./network/lan-dns.nix
     ./network/cloudflared.nix
     ./network/multus.nix
     ./network/netpol.nix

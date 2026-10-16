@@ -278,6 +278,16 @@ data:
       name: kosync
       url: https://kosync.trdos.me/healthcheck
     - conditions:
+      - '[DNS_RCODE] == NOERROR'
+      - '[BODY] == 192.168.50.241'
+      dns:
+        query-name: gatus.trdos.me
+        query-type: A
+      group: internal
+      interval: 1m
+      name: lan-dns
+      url: 192.168.50.243
+    - conditions:
       - '[STATUS] == 200'
       group: internal
       interval: 1m
