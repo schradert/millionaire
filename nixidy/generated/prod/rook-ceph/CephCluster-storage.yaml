@@ -88,6 +88,21 @@ spec:
         enabled: false
       requireMsgr2: true
     provider: host
+  placement:
+    mgr:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: node.trdos.me/class
+                  operator: DoesNotExist
+    mon:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: node.trdos.me/class
+                  operator: DoesNotExist
   priorityClassNames:
     mgr: system-cluster-critical
     mon: system-node-critical

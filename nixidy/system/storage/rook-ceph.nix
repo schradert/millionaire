@@ -37,6 +37,15 @@ in {
       memory = "512Mi";
       limit = "1Gi";
     };
+    # Ceph daemons that hold quorum or serve clients run on the always-on nodes only. Desktops (class=desktop)
+    # and burst VMs (class=vm) carry the class label and can be off; the cluster nodes carry none.
+    # Rook put mon-e on falcon after chinchilla's mon failed over (2026-10-16).
+    alwaysOn.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms = lib.toList {
+      matchExpressions = lib.toList {
+        key = "node.trdos.me/class";
+        operator = "DoesNotExist";
+      };
+    };
   in {
     # radosgw: S3 API (signed requests, no UI), so no tile and no oauth2-proxy.
     portal.apps.rados.enable = false;
@@ -175,6 +184,7 @@ in {
                     # CPU request at 2x the 7d p95 (~0.085 cores at worst); the chart's 4Gi memory request sizes the MDS cache.
                     metadataServer = lib.recursiveUpdate resource.spec.metadataServer {
                       resources.requests.cpu = "200m";
+                      placement.nodeAffinity = alwaysOn;
                       placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution = lib.toList {
                         labelSelector.matchLabels = {
                           app = "rook-ceph-mds";
@@ -224,6 +234,8 @@ in {
               logcollector = "20m";
               crashcollector = "20m";
             };
+            placement.mon.nodeAffinity = alwaysOn;
+            placement.mgr.nodeAffinity = alwaysOn;
             cleanupPolicy.wipeDevicesFromOtherClusters = true;
             csi.readAffinity.enabled = true;
             # Prometheus only selects monitors and rules labelled release=prometheus;
@@ -307,11 +319,17 @@ in {
                 # collides with the internal-gateway relays (100.64.0.4:80/443 on bonobo,
                 # 100.64.0.5:80 on chinchilla).
                 placement.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms = lib.toList {
-                  matchExpressions = lib.toList {
-                    key = "kubernetes.io/hostname";
-                    operator = "NotIn";
-                    values = ["bonobo" "chinchilla"];
-                  };
+                  matchExpressions = [
+                    {
+                      key = "kubernetes.io/hostname";
+                      operator = "NotIn";
+                      values = ["bonobo" "chinchilla"];
+                    }
+                    {
+                      key = "node.trdos.me/class";
+                      operator = "DoesNotExist";
+                    }
+                  ];
                 };
               };
             };
