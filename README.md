@@ -1,7 +1,10 @@
 # Systems
 
 1. FIXME deploy-rs without `--skip-checks`
+2. FIXME remote builds
 3. FIXME home-manager shell on sirver
+4. TODO run `nixidy bootstrap .#prod` to deploy the app-of-apps (`apps`) Application — currently missing from the cluster, so new ArgoCD applications must be manually `kubectl apply`'d
+5. TODO investigate why pod IPs are on `10.0.0.0/8` instead of the configured pod CIDR `10.42.0.0/16` — HA trusted_proxies is currently using `10.0.0.0/8` as a workaround
 6. TODO run containerd as its own systemd unit instead of an rke2-server child, so an rke2 crash no longer orphans static pods with nobody draining their stdout/stderr pipes (`static/etcd-watchdog.nix` papers over this for etcd only). Changes involved:
    - NixOS `virtualisation.containerd` with rke2's expectations ported: runc + systemd cgroups, overlayfs snapshotter, rke2's pause image, CNI dirs `/opt/cni/bin` + `/etc/cni/net.d`, registry mirrors, the nvidia runtime class (GPU operator)
    - rke2 `container-runtime-endpoint` pointed at it; kubelet and static pods then run under a containerd that outlives rke2 restarts
@@ -20,7 +23,9 @@
 20. TODO enroll Keycloak strong auth: log in at <https://keycloak.trdos.me/realms/default/account> as `tristan` with Bitwarden `keycloak/tristan/initial-password`, set a new password, register a passkey (phone/laptop/YubiKey with a FIDO2 PIN), set up TOTP, optionally add a backup YubiKey
 21. TODO the one-time manual steps (credentials, enrollment, hardware, browser checks) in order: [docs/manual-steps.md](docs/manual-steps.md)
 22. TODO network policies for the critical namespaces (identity, security, observability, cicd, storage, kube-system) plus an egress design; ingress default-deny is already enforced in 9 app namespaces
+23. TODO fix the Gatus checks failing before the network-policy rollout: games-webdav and windmill
 24. TODO rolling node upgrade to nixpkgs 26.11 after the bump (one node at a time, rke2 restarts likely). dingo's capped nix-daemon can't build its own system, so build on sirver and copy
+25. TODO octopus etcd: move leadership off octopus as an interim fix, and alert on commit latency until an SSD for etcd is installed
 26. TODO outside-in Gatus probes on hyena for every app login page, not just the gateway and apiservers
 27. TODO Jellyfin hardware transcoding via falcon's NVIDIA GPU once falcon joins the cluster
 28. TODO `build-all` never builds aarch64: pass nix-fast-build `--systems` for non-native systems (found during the 26.11 bump)
@@ -39,8 +44,8 @@
 41. TODO verify the work Mac's userspace tailscaled (headscale via `trdos <cmd>`) end to end
 42. TODO verify chirpstack gRPC through the internal gateway
 43. TODO pulumi state is April-era for the nodes; it clears after a per-node deploy
-44. TODO gargoyle: reflash (its tailnet host key is pre-provisioned); aarch64-linux builds are native only from morgenmuffel (`nix.linux-builder`): the fleet (falcon) still emulates. For fleet use either expose the builder VM to the LAN (ssh on morgenmuffel forwarding to the VM's :31022, a `builders.nix` entry) or cross-compile gargoyle from x86_64 (`nixpkgs.buildPlatform`)
-45. TODO echidna: install NixOS-WSL on the Windows box, `static/host-key.sh ssh echidna <user@address>`, deploy; its tailnet key is pre-provisioned
+44. TODO gargoyle: reflash, then record its tailnet host key; aarch64-linux builds are native only from morgenmuffel (`nix.linux-builder`): the fleet (falcon) still emulates. For fleet use either expose the builder VM to the LAN (ssh on morgenmuffel forwarding to the VM's :31022, a `builders.nix` entry) or cross-compile gargoyle from x86_64 (`nixpkgs.buildPlatform`)
+45. TODO echidna: record its tailnet host key once the host exists
 46. TODO `old/` leftovers: `old/old/apps/gaming/games/roms.nix` hash table (until docs/games.md is done), Saradomin, gauntlet, platform.nix tofu branches, and the partial ports named at the top of each module
 
 47. TODO octopus's etcd is too slow for rollout bursts (ZFS root on PERC H710P spinning disks, fsync ~23 ms vs 2 ms on dingo's SSD): a chart bump restarting many apps made its kubelet miss lease renewals and evicted 116 pods. Make falcon (NVMe) the third etcd server and demote octopus to an agent when falcon joins; meanwhile consider `node-monitor-grace-period` on the controller manager

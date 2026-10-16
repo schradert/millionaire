@@ -4,19 +4,6 @@ metadata:
   name: forgejo
   namespace: development
 spec:
-  affinity:
-    enablePodAntiAffinity: true
-    nodeAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-        - preference:
-            matchExpressions:
-              - key: kubernetes.io/hostname
-                operator: NotIn
-                values:
-                  - sirver
-          weight: 100
-    podAntiAffinityType: required
-    topologyKey: kubernetes.io/hostname
   backup:
     barmanObjectStore:
       destinationPath: s3://trdos-me--volsync/cnpg/forgejo/
@@ -36,7 +23,7 @@ spec:
       postInitApplicationSQL: []
       postInitSQL: []
   imageName: ghcr.io/cloudnative-pg/postgresql:17@sha256:148c715c10007a5c0c31f7fdb54bc9991ffbb73c74efa2b35d1fedd3f8103251
-  instances: 2
+  instances: 1
   monitoring:
     enablePodMonitor: true
   postgresql:

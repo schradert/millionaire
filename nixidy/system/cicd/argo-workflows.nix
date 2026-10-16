@@ -50,8 +50,6 @@ in {
     applications.argo-workflows = {
       namespace = "cicd";
       postgres.enable = true;
-      postgres.instances = 2;
-      postgres.avoidNodes = ["sirver"];
       # S3 artifact bucket on Ceph RGW. Rook creates the Secret and ConfigMap
       # "argo-workflows-bucket" (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY),
       # exactly what artifactRepository.s3 reads below.

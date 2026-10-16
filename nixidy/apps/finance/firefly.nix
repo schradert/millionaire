@@ -58,6 +58,11 @@
                 };
               };
               env = {
+                # Behind the gateway TLS terminates upstream: without these Firefly sees http, its
+                # <base href> is http:// (blocked as mixed content), and v1 pages load assets relative
+                # to the page path (/accounts/v1/css/...) -> 404, unstyled pages.
+                APP_URL = "https://${hostname}";
+                TRUSTED_PROXIES = "**";
                 AUTHENTICATION_GUARD = "remote_user_guard";
                 AUTHENTICATION_GUARD_HEADER = "HTTP_X_AUTH_REQUEST_PREFERRED_USERNAME";
                 AUTHENTICATION_GUARD_EMAIL = "HTTP_X_AUTH_REQUEST_EMAIL";
