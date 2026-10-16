@@ -19,7 +19,6 @@
       namespace = "media";
       postgres = {
         enable = true;
-        avoidNodes = ["sirver"];
         extraDatabases = ["radarr-log"];
       };
       volsync.pvcs.radarr.title = "radarr";

@@ -19,7 +19,6 @@
       namespace = "media";
       postgres = {
         enable = true;
-        avoidNodes = ["sirver"];
         extraDatabases = ["sonarr-log"];
       };
       volsync.pvcs.sonarr.title = "sonarr";

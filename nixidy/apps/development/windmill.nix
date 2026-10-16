@@ -39,7 +39,6 @@
       inherit namespace;
       postgres.enable = true;
       postgres.instances = 2;
-      postgres.avoidNodes = ["sirver"];
       # Break-glass admin (admin@windmill.dev) for the bootstrap job
       generatedSecrets.windmill-admin = {
         key = "password";

@@ -46,7 +46,6 @@ in {
     applications.homarr = {
       namespace = "home";
       postgres.enable = true;
-      postgres.avoidNodes = ["sirver"];
       generatedSecrets = {
         # SECRET_ENCRYPTION_KEY: 64 hex chars (digits only are valid hex).
         homarr-db-encryption = {

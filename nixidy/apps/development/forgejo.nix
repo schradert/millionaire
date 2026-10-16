@@ -72,7 +72,6 @@ in {
       };
       postgres.enable = true;
       postgres.instances = 2;
-      postgres.avoidNodes = ["sirver"];
       bootstrap = lib.mkIf bootstrapped {
         image = with pinned.images.app-bootstrap-forgejo; "${repository}:${tag}@${digest}";
         args = ["forgejo"];

@@ -56,7 +56,6 @@ in {
       namespace = "media";
       postgres.enable = true;
       postgres.instances = 2;
-      postgres.avoidNodes = ["sirver"];
       helm.releases.ryot = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {

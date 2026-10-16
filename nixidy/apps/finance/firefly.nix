@@ -34,7 +34,6 @@
       postgres.enable = true;
       # sirver (failing root disk) hosts the lone instance today; keep a standby elsewhere.
       postgres.instances = 2;
-      postgres.avoidNodes = ["sirver"];
       helm.releases.firefly = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
