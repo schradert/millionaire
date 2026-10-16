@@ -42,9 +42,9 @@ Ryot has a music type, but no integration reads Navidrome, Maloja or ListenBrain
 | Audiobookshelf | OIDC | yes (auto-register, roles from `abs_groups`) | yes | config + metadata PVC, VolSync | audiobooks, podcasts | **Bookshelf Audio (new)**; ABS's own podcast feeds | none | → Ryot (yank + one-time import, new) | none upstream | audiobookshelf |
 | Kavita | OIDC | yes (`provisionAccounts`) | yes | SQLite PVC + VolSync | books, comics, **manga (new)** | **Bookshelf (new)**, Kapowarr, Suwayomi | none | none (Ryot has no Kavita integration) | none upstream | books-kavita |
 | Komga | OIDC | yes (account on first login, default non-admin roles; was link-only until #875) | yes | PVC + VolSync | comics, **manga (new)** | Kapowarr, Suwayomi | none | → Ryot (yank, new) | none (actuator needs creds) | books-komga |
-| **Bookshelf / Bookshelf Audio (new)** | Gate | no (admin tool) | `app-bootstrap arr` | SQLite PVC + VolSync | books / audiobooks + downloads | Prowlarr (Readarr sync), qBittorrent | none | n/a | exportarr ServiceMonitor; ntfy `media` | none yet |
-| **Kapowarr (new)** | Gate | no | `app-bootstrap kapowarr` | PVC + VolSync | comics + downloads | GetComics DDL, qBittorrent | none | n/a | none | none yet |
-| **Suwayomi (new)** | Gate (`AUTH_MODE=none`) | no | env only | PVC + VolSync | manga (`media-manga`, new) | extension stores (none configured) | none | via Komga → Ryot | none | none yet |
+| **Bookshelf / Bookshelf Audio (new)** | Gate | no (admin tool) | `app-bootstrap arr` | SQLite PVC + VolSync | books / audiobooks + downloads | Prowlarr (Readarr sync), qBittorrent | none | n/a | exportarr ServiceMonitor; ntfy `media` | integrations-bookshelf, books-bookshelf |
+| **Kapowarr (new)** | Gate | no | `app-bootstrap kapowarr` | PVC + VolSync | comics + downloads | GetComics DDL, qBittorrent | none | n/a | none | integrations-kapowarr |
+| **Suwayomi (new)** | Gate (`AUTH_MODE=none`) | no | env only | PVC + VolSync | manga (`media-manga`, new) | extension stores (none configured) | none | via Komga → Ryot | none | integrations-suwayomi |
 | kosync (home) | own accounts | per-account | none | PVC + VolSync | n/a | n/a | n/a | KOReader progress | none | blocked (no account deletion) |
 
 ### Photos and live
@@ -77,7 +77,10 @@ How the bootstrap acts as tristan: impersonation links are a Ryot Pro feature, a
    - Komga creates per-user accounts on first login (#875). The roles are KomgaUser's defaults, FILE_DOWNLOAD and PAGE_STREAMING.
    - e2e no longer counts an arr `UpdateCheck` notice as a failure (#859, e2e 0.12.1 and later).
 3. **Plays into Ryot not exercised end to end.** The Jellyfin → Ryot sink and webhook are configured and idempotent, but no real play has gone through yet. Check Ryot's Jellyfin integration `triggerResult` after the first play.
-4. **e2e coverage for the new acquirers.** Add flows for Bookshelf (root folder and Prowlarr app present), Kapowarr (API key and root folder) and Suwayomi (GraphQL `aboutServer`), on the media runner.
+4. **e2e coverage for the new acquirers: done (e2e 0.15.0).**
+   - `integrations-bookshelf`, `integrations-kapowarr`, `integrations-suwayomi` check the wiring; `books-bookshelf` adds a public-domain author (Dostoevsky, by metadata id) to both Bookshelf instances and lists his works.
+   - Kapowarr and Suwayomi have no content flow: Kapowarr needs a ComicVine key to add any volume, and Suwayomi has only the Local source until an extension store is configured.
+   - Bookshelf's name search is not used: `hardcover.bookinfo.pro/search` (third party) timed out on 2026-10-15 while its id endpoints answered.
 5. **Immich database backups. Done 2026-10-15.** CNPG barman stays off (the operand image lacks barman-cloud and the Barman Cloud plugin is not installed), so the backup is Immich's daily in-app dump on the VolSync-backed PVC (RPO ~1 day, no PITR). The restore is now verified: the newest dump was restored from B2 into a scratch cluster (72 tables, 233165 rows, identical to live) and `backup-verify-dump` repeats it weekly, with alerts. Procedure: `docs/pvc-and-postgres-restore.md`. Open: a barman-capable image or the plugin would give PITR.
 6. **Music tracking per user. Done 2026-10-15** (see "Music scrobbling per user" below). Each declared family or admin user has their own Maloja, multi-scrobbler routes and Navidrome link. Open:
    - The ListenBrainz forward (listenbrainz.org) is still a TODO and needs each person's own token, which only they can supply.
