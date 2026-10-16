@@ -45,6 +45,10 @@
           {
             SONARR_API_KEY_FILE = "/secrets/sonarr/apikey";
             RADARR_API_KEY_FILE = "/secrets/radarr/apikey";
+            # The DVD rips in /media/movies that Radarr does not manage: added as existing movies,
+            # unmonitored, no search, files untouched (app-bootstrap >= 0.43.0). Bazarr and Lingarr only
+            # see what Radarr manages. Folders that do not match one TMDb title and year are only listed.
+            RADARR_IMPORT_EXISTING = "true";
             LIDARR_API_KEY_FILE = "/secrets/lidarr/apikey";
             BOOKSHELF_API_KEY_FILE = "/secrets/bookshelf/apikey";
             BOOKSHELF_AUDIO_API_KEY_FILE = "/secrets/bookshelf-audio/apikey";

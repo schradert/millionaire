@@ -27,6 +27,14 @@
 //!   is updated only where a declared value differs (always, when it has secrets: Prowlarr masks them).
 //!   Indexers added in the UI and indexers dropped from the list are left alone.
 //!
+//! - With `RADARR_IMPORT_EXISTING=true`, the folders under Radarr's root folder it does not manage yet (the DVD rips)
+//!   are added as existing movies: unmonitored, no search, the files stay where they are and are not renamed.
+//!   A folder is matched only when Radarr's own parse of its name gives a title and a year and exactly one
+//!   TMDb lookup result has that year and the same title (or alternate title, ignoring case and
+//!   punctuation); every other folder is listed as unmatched and left alone. Folders starting with `.`
+//!   (the e2e and DVD pipeline's work folders) are skipped. `RADARR_IMPORT_PROFILE` names the quality
+//!   profile (default: the lowest id).
+//!
 //! Port variables are `<APP>_PORT_NUMBER`, never `<APP>_PORT`: Kubernetes injects `<SERVICE>_PORT=tcp://<ip>:<port>`
 //! for every Service in the namespace.
 
@@ -356,6 +364,104 @@ fn ntfy_fields(url: &str) -> Option<impl Fn(&str) -> Option<Value>> {
     })
 }
 
+/// Title with only lowercase letters and digits, so "Monty Pythons" and "Monty Python's" compare equal.
+fn norm(title: &str) -> String {
+    title.chars().filter(|c| c.is_alphanumeric()).flat_map(char::to_lowercase).collect()
+}
+
+/// The lookup result whose year is `year` and whose title or alternate title is `title`; `None` when
+/// there is none or the matches are different movies.
+fn pick_match<'a>(results: &'a Value, title: &str, year: i64) -> Option<&'a Value> {
+    let want = norm(title);
+    let hits: Vec<&Value> = results
+        .as_array()?
+        .iter()
+        .filter(|r| r["year"].as_i64() == Some(year) && r["tmdbId"].as_i64().unwrap_or(0) != 0)
+        .filter(|r| {
+            norm(r["title"].as_str().unwrap_or("")) == want
+                || norm(r["originalTitle"].as_str().unwrap_or("")) == want
+                || r["alternateTitles"].as_array().into_iter().flatten().any(|a| norm(a["title"].as_str().unwrap_or("")) == want)
+        })
+        .collect();
+    let first = hits.first()?;
+    hits.iter().all(|h| h["tmdbId"] == first["tmdbId"]).then_some(*first)
+}
+
+fn query(path: &str, key: &str, value: &str) -> String {
+    let mut u = reqwest::Url::parse("http://x/").expect("static url");
+    u.query_pairs_mut().append_pair(key, value);
+    format!("{path}?{}", u.query().unwrap_or(""))
+}
+
+/// Add the folders of `root` that Radarr does not manage as unmonitored existing movies (see the module docs).
+async fn import_existing_movies(http: &Client, s: &Servarr, root: &str) -> Result<()> {
+    let folders: Vec<String> = s
+        .get(http, "/rootfolder")
+        .await?
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|f| f["path"].as_str().map(|p| p.trim_end_matches('/')) == Some(root.trim_end_matches('/')))
+        .flat_map(|f| f["unmappedFolders"].as_array().into_iter().flatten())
+        .filter_map(|f| f["path"].as_str().map(String::from))
+        .collect();
+    if folders.is_empty() {
+        return Ok(());
+    }
+    let profiles = s.get(http, "/qualityprofile").await?;
+    let wanted = env::var("RADARR_IMPORT_PROFILE").ok();
+    let profile = profiles
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|p| wanted.as_deref().is_none_or(|w| p["name"].as_str() == Some(w)))
+        .filter_map(|p| p["id"].as_i64())
+        .min()
+        .ok_or("no quality profile to import the movies with")?;
+    let mut known: std::collections::HashSet<i64> =
+        s.get(http, "/movie").await?.as_array().into_iter().flatten().filter_map(|m| m["tmdbId"].as_i64()).collect();
+    let (mut added, mut unmatched) = (0, Vec::new());
+    for path in folders {
+        let name = path.rsplit('/').next().unwrap_or(&path).to_string();
+        if name.starts_with('.') {
+            continue;
+        }
+        let parsed = s.get(http, &query("/parse", "title", &name)).await?;
+        let info = &parsed["parsedMovieInfo"];
+        let title = info["movieTitle"].as_str().unwrap_or("");
+        let year = info["year"].as_i64().unwrap_or(0);
+        if title.is_empty() || year == 0 {
+            unmatched.push(format!("{name}: no title and year in the folder name"));
+            continue;
+        }
+        let results = s.get(http, &query("/movie/lookup", "term", &format!("{title} {year}"))).await?;
+        let Some(found) = pick_match(&results, title, year) else {
+            unmatched.push(format!("{name}: no single TMDb result for {title:?} ({year})"));
+            continue;
+        };
+        let tmdb = found["tmdbId"].as_i64().unwrap_or(0);
+        if !known.insert(tmdb) {
+            unmatched.push(format!("{name}: TMDb {tmdb} ({}) is already in Radarr", found["title"].as_str().unwrap_or("?")));
+            continue;
+        }
+        let mut movie = found.clone();
+        movie["path"] = json!(path);
+        movie["rootFolderPath"] = json!(root);
+        movie["qualityProfileId"] = json!(profile);
+        movie["monitored"] = json!(false);
+        movie["tags"] = json!([]);
+        movie["addOptions"] = json!({ "monitor": "none", "searchForMovie": false });
+        s.post(http, "/movie", &movie).await?;
+        added += 1;
+        println!("radarr: imported {name} as {} ({year}), unmonitored", found["title"].as_str().unwrap_or("?"));
+    }
+    println!("radarr: imported {added} existing movie(s), {} folder(s) left unmatched", unmatched.len());
+    for u in unmatched {
+        println!("radarr: unmatched {u}");
+    }
+    Ok(())
+}
+
 pub async fn run() -> Result<()> {
     let http = Client::builder().timeout(Duration::from_secs(60)).build()?;
     let qb_host = var("QBITTORRENT_HOST", "qbittorrent.media.svc.cluster.local");
@@ -402,6 +508,11 @@ pub async fn run() -> Result<()> {
                 Ok(true) => println!("{l}: added the ntfy notification"),
                 Ok(false) => {}
                 Err(e) => eprintln!("{l}: skipping the ntfy notification: {e}"),
+            }
+        }
+        if app.env == "RADARR" && var("RADARR_IMPORT_EXISTING", "false") == "true" {
+            if let Err(e) = import_existing_movies(&http, &s, &root).await {
+                eprintln!("{l}: importing the existing movies failed (the next run retries): {e}");
             }
         }
         present.push((app, base, key));
@@ -507,6 +618,22 @@ mod tests {
         h.append("set-cookie", "QBT_SID_8080=abc; HttpOnly; path=/".parse().unwrap());
         assert_eq!(qbt_cookie(&h).as_deref(), Some("QBT_SID_8080=abc"));
         assert_eq!(qbt_cookie(&reqwest::header::HeaderMap::new()), None);
+    }
+
+    #[test]
+    fn matches_title_and_year_only() {
+        let r = json!([
+            { "title": "Life of Brian", "year": 1979, "tmdbId": 583, "alternateTitles": [{ "title": "Monty Python's Life of Brian" }] },
+            { "title": "Life of Brian", "year": 1980, "tmdbId": 9, "alternateTitles": [] },
+            { "title": "Other", "year": 1979, "tmdbId": 5 }
+        ]);
+        assert_eq!(pick_match(&r, "Monty Pythons Life of Brian", 1979).map(|m| m["tmdbId"].clone()), Some(json!(583)));
+        assert_eq!(pick_match(&r, "Life of Brian", 1979).map(|m| m["tmdbId"].clone()), Some(json!(583)));
+        assert!(pick_match(&r, "Life of Brian", 1990).is_none());
+        assert!(pick_match(&r, "Something Else", 1979).is_none());
+        assert!(pick_match(&json!([]), "x", 1).is_none());
+        assert_eq!(norm("WALL-E"), "walle");
+        assert_eq!(query("/parse", "title", "A (1) [x]"), "/parse?title=A+%281%29+%5Bx%5D");
     }
 
     #[test]
