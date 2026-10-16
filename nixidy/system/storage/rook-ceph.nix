@@ -172,17 +172,17 @@ in {
                     # Rook's default anti-affinity is only a preference, and both daemons landed on octopus; when that
                     # node stalled (2026-10-15) the standby died with the active MDS, the replacement missed the
                     # clients' reconnect window and they were blocklisted. Keep the pair on different hosts.
-                    metadataServer =
-                      resource.spec.metadataServer
-                      // {
-                        placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution = lib.toList {
-                          labelSelector.matchLabels = {
-                            app = "rook-ceph-mds";
-                            rook_file_system = "ceph-filesystem";
-                          };
-                          topologyKey = "kubernetes.io/hostname";
+                    # CPU request at 2x the 7d p95 (~0.085 cores at worst); the chart's 4Gi memory request sizes the MDS cache.
+                    metadataServer = lib.recursiveUpdate resource.spec.metadataServer {
+                      resources.requests.cpu = "200m";
+                      placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution = lib.toList {
+                        labelSelector.matchLabels = {
+                          app = "rook-ceph-mds";
+                          rook_file_system = "ceph-filesystem";
                         };
+                        topologyKey = "kubernetes.io/hostname";
                       };
+                    };
                   };
               }
             else resource;
@@ -295,10 +295,11 @@ in {
                 port = 80;
                 instances = 1;
                 priorityClassName = "system-cluster-critical";
+                # CPU request at 2x the 7d p95 (~0.08 cores); bursts to ~0.36 are absorbed by the unlimited CPU.
                 resources = {
                   limits.memory = "2Gi";
                   requests = {
-                    cpu = "1000m";
+                    cpu = "200m";
                     memory = "1Gi";
                   };
                 };
