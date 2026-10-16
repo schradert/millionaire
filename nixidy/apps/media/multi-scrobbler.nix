@@ -93,9 +93,34 @@
             containers.multi-scrobbler = {
               image = pinned.images.multi-scrobbler;
               envFrom = [{configMapRef.name = "multi-scrobbler";}];
-              probes.liveness.enabled = true;
-              probes.readiness.enabled = true;
-              probes.startup.enabled = true;
+              # The default 1s timeout / 3 x 10s startup budget kills the healthy app (exit 0 on SIGTERM) whenever the node is loaded.
+              probes = {
+                liveness = {
+                  enabled = true;
+                  spec = {
+                    timeoutSeconds = 5;
+                    failureThreshold = 6;
+                  };
+                };
+                readiness = {
+                  enabled = true;
+                  spec.timeoutSeconds = 5;
+                };
+                startup = {
+                  enabled = true;
+                  spec = {
+                    timeoutSeconds = 5;
+                    failureThreshold = 30;
+                  };
+                };
+              };
+              resources = {
+                requests = {
+                  cpu = "100m";
+                  memory = "256Mi";
+                };
+                limits.memory = "768Mi";
+              };
             };
           };
           service.multi-scrobbler.ports.http.port = port;
