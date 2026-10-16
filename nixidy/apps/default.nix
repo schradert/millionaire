@@ -270,6 +270,233 @@
       }
     ];
   };
+  nixidy.netpol.namespaces.identity = {
+    enforce = true;
+    intraNamespace = true;
+    cnpg = true;
+    dragonfly = true;
+    extraIngress = [
+      # Keycloak's HTTP port for the callers that use its Service instead of the public host: app-bootstrap's
+      # default KEYCLOAK_URL (user and group lookups of the ryot, ombi and miniflux bootstraps and the ombi-sync
+      # CronJob), sure-bootstrap and Stalwart's OIDC directory. Everything else signs in through the Gateway.
+      {
+        fromEndpoints = [
+          {
+            matchLabels = {
+              "k8s:io.kubernetes.pod.namespace" = "mail";
+              "app.kubernetes.io/name" = "stalwart";
+            };
+          }
+          {
+            matchLabels = {
+              "k8s:io.kubernetes.pod.namespace" = "finance";
+              "batch.kubernetes.io/job-name" = "sure-bootstrap";
+            };
+          }
+          {
+            matchLabels = {
+              "k8s:io.kubernetes.pod.namespace" = "home";
+              "batch.kubernetes.io/job-name" = "miniflux-bootstrap";
+            };
+          }
+          {
+            matchLabels = {
+              "k8s:io.kubernetes.pod.namespace" = "media";
+              "batch.kubernetes.io/job-name" = "ombi-bootstrap";
+            };
+          }
+          {
+            matchLabels = {
+              "k8s:io.kubernetes.pod.namespace" = "media";
+              "batch.kubernetes.io/job-name" = "ryot-bootstrap";
+            };
+          }
+          {
+            matchLabels = {
+              "k8s:io.kubernetes.pod.namespace" = "media";
+              "app.kubernetes.io/name" = "ombi-sync";
+            };
+          }
+        ];
+        toPorts = [
+          {
+            ports = [
+              {
+                port = "8080";
+                protocol = "TCP";
+              }
+            ];
+          }
+        ];
+      }
+      # seerr's SSO sidecar validates the session at oauth2-proxy (/oauth2/auth)
+      {
+        fromEndpoints = [
+          {
+            matchLabels = {
+              "k8s:io.kubernetes.pod.namespace" = "media";
+              "app.kubernetes.io/name" = "seerr";
+            };
+          }
+        ];
+        toPorts = [
+          {
+            ports = [
+              {
+                port = "4180";
+                protocol = "TCP";
+              }
+            ];
+          }
+        ];
+      }
+    ];
+  };
+  nixidy.netpol.namespaces.security = {
+    enforce = true;
+    intraNamespace = true;
+    # nothing here has a route; only the apiserver (webhooks) and Prometheus call in
+    gateway = false;
+  };
+  nixidy.netpol.namespaces.observability = {
+    enforce = true;
+    intraNamespace = true;
+    cnpg = true;
+    extraIngress = [
+      # Telemetry pushed by any workload (SDKs, bootstrap Jobs, e2e): Alloy's OTLP :4317/:4318 and Pyroscope :4040
+      {
+        fromEndpoints = [
+          {
+            matchExpressions = [
+              {
+                key = "k8s:io.kubernetes.pod.namespace";
+                operator = "Exists";
+              }
+            ];
+          }
+        ];
+        toPorts = [
+          {
+            ports = [
+              {
+                port = "4317";
+                protocol = "TCP";
+              }
+              {
+                port = "4318";
+                protocol = "TCP";
+              }
+              {
+                port = "4040";
+                protocol = "TCP";
+              }
+            ];
+          }
+        ];
+      }
+      # the e2e harness pushes and queries Loki, queries Prometheus and posts to Alertmanager (apps/e2e observability, notify)
+      {
+        fromEndpoints = [
+          {
+            matchLabels = {
+              "k8s:io.kubernetes.pod.namespace" = "e2e";
+              "app.kubernetes.io/name" = "e2e";
+            };
+          }
+        ];
+        toPorts = [
+          {
+            ports = [
+              {
+                port = "3100";
+                protocol = "TCP";
+              }
+              {
+                port = "9090";
+                protocol = "TCP";
+              }
+              {
+                port = "9093";
+                protocol = "TCP";
+              }
+            ];
+          }
+        ];
+      }
+      # the Ceph dashboard queries Prometheus (rook-ceph.nix dashboard.prometheusEndpoint)
+      {
+        fromEndpoints = [
+          {
+            matchLabels = {
+              "k8s:io.kubernetes.pod.namespace" = "storage";
+              app = "rook-ceph-mgr";
+            };
+          }
+        ];
+        toPorts = [
+          {
+            ports = [
+              {
+                port = "9090";
+                protocol = "TCP";
+              }
+            ];
+          }
+        ];
+      }
+      # Grafana behind oauth2-proxy: its Service is :80 but the pod listens on :3000, and the namespace
+      # policy derives the Service port from the upstream URL
+      {
+        fromEndpoints = [
+          {
+            matchLabels = {
+              "k8s:io.kubernetes.pod.namespace" = "identity";
+              "app.kubernetes.io/name" = "oauth2-proxy";
+            };
+          }
+        ];
+        toPorts = [
+          {
+            ports = [
+              {
+                port = "3000";
+                protocol = "TCP";
+              }
+            ];
+          }
+        ];
+      }
+    ];
+  };
+  nixidy.netpol.namespaces.cicd = {
+    enforce = true;
+    intraNamespace = true;
+    cnpg = true;
+    dragonfly = true;
+    # Harbor behind oauth2-proxy: Service :80 is the nginx pod's :8080 (see observability, Grafana)
+    extraIngress = [
+      {
+        fromEndpoints = [
+          {
+            matchLabels = {
+              "k8s:io.kubernetes.pod.namespace" = "identity";
+              "app.kubernetes.io/name" = "oauth2-proxy";
+            };
+          }
+        ];
+        toPorts = [
+          {
+            ports = [
+              {
+                port = "8080";
+                protocol = "TCP";
+              }
+            ];
+          }
+        ];
+      }
+    ];
+  };
   nixidy.applications.namespaces.resources.namespaces = {
     development = {};
     e2e = {};
