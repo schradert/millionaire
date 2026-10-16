@@ -232,6 +232,17 @@ in {
             pass_filenames = false;
             always_run = true;
           };
+        # nixidy/generated must equal what the nix sources render to. Renders happen on falcon
+        # (never here); tools/render-check returns at once when the push touches no render input.
+        # Pre-push only: it needs the network and a few minutes when inputs did change.
+        render-check = {
+          enable = true;
+          name = "render-check";
+          entry = "${lib.getExe pkgs.python3} tools/render-check";
+          language = "system";
+          pass_filenames = false;
+          always_run = true;
+        };
         lychee.toml.accept = [200 403 405 406];
         lychee.toml.exclude = [
           # In-cluster service DNS (lychee normalizes with a trailing slash)

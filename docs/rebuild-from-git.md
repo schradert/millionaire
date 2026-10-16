@@ -31,6 +31,15 @@ Notes assembled from the repo on 2026-10-10. The sequence has never been run end
    (also committed under `nixidy/generated/prod/apps/`). The `apps` Application then creates every child Application from
    `nixidy/generated/prod`. CRD applications (`*-crds`) and Cilium come first. Regenerate with the nixidy switch script if
    `nixidy/generated/` is stale.
+
+   **Generated-tree drift guard.** The committed tree is the `switch` output: `environmentPackage` plus a `vals eval` pass (key
+   order, `0.0` -> `0`, block-scalar blank lines). Never diff the raw `environmentPackage` against it; every app looks
+   drifted. `build.canonicalPackage` (nixidy/default.nix) is that same pass as a pure derivation, and `tools/render-check`
+   builds it on falcon (never on the Mac; HEAD is shipped with `git archive`) and compares. It runs as the pre-push hook
+   `render-check` and returns at once when the push touches no render input (docs, pulumi, secrets, ...). Files with
+   `ref+pulumistateapi://` refs (cloudflared) match with each ref as a wildcard: the committed copy keeps the resolved
+   tunnel ID, since ArgoCD has no vals plugin. On drift run `tools/render-check --fix`, review, commit. `SKIP=render-check`
+   bypasses it; `RENDER_HOST=local` builds on a Linux machine instead of falcon.
 6. **External Secrets then workloads.** Once the Bitwarden ClusterSecretStore is healthy, ExternalSecrets materialise every app secret.
 7. **Ceph.** Rook-Ceph (`storage` namespace) builds a new empty cluster. Only data covered by backups comes back:
    - PVCs with a VolSync ReplicationSource: restore each (see `docs/pvc-and-postgres-restore.md`). The committed `-dst`

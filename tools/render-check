@@ -1,0 +1,202 @@
+#!/usr/bin/env python3
+"""Fail when nixidy/generated/prod is not what the nix sources render to.
+
+The render never runs on this machine: HEAD is shipped with `git archive` to a
+Linux build host (falcon), which builds `build.canonicalPackage` (the raw
+environmentPackage plus the `vals eval` re-serialization the `switch` script
+applies; see nixidy/default.nix) and sends the tree back for comparison with
+the committed one.
+
+Files holding ref+pulumistateapi:// refs cannot resolve without Pulumi
+credentials, so the committed (resolved) file only has to match the fresh one
+with each ref treated as a wildcard.
+
+  tools/render-check          check; exit 1 on drift (pre-push hook entry)
+  tools/render-check --fix    also rewrite the drifted files in the work tree
+  tools/render-check --force  skip the "did this push touch render inputs" test
+
+Env: RENDER_HOST (default tristan@192.168.50.215; `local` builds on this
+machine, Linux only), RENDER_SSH_KEY (default ~/.ssh/personal),
+RENDER_SYSTEM (default x86_64-linux), SKIP=render-check to bypass the hook.
+"""
+
+import argparse
+import io
+import os
+import re
+import shlex
+import subprocess
+import sys
+import tarfile
+import tempfile
+from pathlib import Path
+
+GENERATED = "nixidy/generated/prod"
+# Paths that cannot change a render. Everything else counts as an input.
+NOT_INPUTS = re.compile(
+    r"^(docs/|old/|pulumi/|secrets/|esp32-s3/|org-bridge/|embedded/|\.github/|tools/(?!render-check)|.*\.md$)"
+)
+REF = re.compile(r"ref\+pulumistateapi://\S+?\+")
+
+host = os.environ.get("RENDER_HOST", "tristan@192.168.50.215")
+key = os.environ.get("RENDER_SSH_KEY", str(Path.home() / ".ssh/personal"))
+system = os.environ.get("RENDER_SYSTEM", "x86_64-linux")
+
+
+def sh(cmd, **kw):
+    return subprocess.run(cmd, check=True, **kw)
+
+
+def remote(script, **kw):
+    if host == "local":
+        if sys.platform != "linux":
+            sys.exit(
+                "render-check: refusing to build on this machine; set RENDER_HOST to a Linux builder"
+            )
+        return sh(["bash", "-c", script], **kw)
+    ssh = [
+        "ssh",
+        "-o",
+        "IdentitiesOnly=yes",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ServerAliveInterval=20",
+        "-i",
+        key,
+        host,
+    ]
+    return sh([*ssh, script], **kw)
+
+
+def inputs_changed():
+    base = subprocess.run(
+        ["git", "merge-base", "HEAD", "origin/main"], capture_output=True, text=True
+    ).stdout.strip()
+    if not base:
+        return True
+    changed = sh(
+        ["git", "diff", "--name-only", f"{base}..HEAD"], capture_output=True, text=True
+    ).stdout.split()
+    return any(not NOT_INPUTS.match(p) for p in changed)
+
+
+def ref_regex(fresh):
+    parts = REF.split(fresh)
+    return re.compile(r"[^\s\"']+".join(re.escape(p) for p in parts), re.S)
+
+
+def main():
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument("--fix", action="store_true")
+    ap.add_argument("--force", action="store_true")
+    args = ap.parse_args()
+
+    os.chdir(
+        sh(
+            ["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True
+        ).stdout.strip()
+    )
+    if not args.force and not args.fix and not inputs_changed():
+        return 0
+    if subprocess.run(["git", "diff", "--quiet", "HEAD"]).returncode and not args.fix:
+        print(
+            "render-check: note: uncommitted changes are not rendered (HEAD only)",
+            file=sys.stderr,
+        )
+
+    work = None
+    try:
+        archive = sh(["git", "archive", "HEAD"], capture_output=True).stdout
+        out = (
+            remote(
+                'd=$(mktemp -d "$HOME/work/render-check.XXXXXX" 2>/dev/null || mktemp -d) && tar -x -C "$d" && echo "$d"',
+                input=archive,
+                capture_output=True,
+            )
+            .stdout.decode()
+            .strip()
+            .splitlines()[-1]
+        )
+        work = shlex.quote(out)
+        attr = f".#legacyPackages.{system}.nixidyEnvs.{system}.prod.config.build.canonicalPackage"
+        fresh_tar = remote(
+            f"cd {work} && nix build {shlex.quote(attr)} --no-pure-eval --accept-flake-config -o canonical "
+            f"2>&1 >/dev/null | grep -v -E 'binary cache|sirver:8199|nixfmt|accept-flake-config' >&2; "
+            f"test -d canonical && tar -ch -C canonical .",
+            capture_output=True,
+        ).stdout
+    finally:
+        if work:
+            remote(f"rm -rf {work}")
+
+    fresh = {}
+    with tarfile.open(fileobj=io.BytesIO(fresh_tar)) as tf:
+        for m in tf:
+            if m.isfile():
+                fresh[m.name.removeprefix("./")] = tf.extractfile(m).read().decode()
+
+    committed = {}
+    with tempfile.TemporaryDirectory() as tmp:
+        sh(
+            ["git", "archive", "HEAD", GENERATED],
+            stdout=open(Path(tmp) / "g.tar", "wb"),
+        )
+        with tarfile.open(Path(tmp) / "g.tar") as tf:
+            for m in tf:
+                if m.isfile():
+                    committed[m.name.removeprefix(GENERATED + "/")] = (
+                        tf.extractfile(m).read().decode()
+                    )
+
+    drift = {"stale": [], "missing": [], "extra": [], "unresolvable": []}
+    for name in sorted(fresh.keys() | committed.keys()):
+        f, c = fresh.get(name), committed.get(name)
+        if f is None:
+            drift["extra"].append(name)
+        elif c is None:
+            drift["missing"].append(name)
+        elif f != c:
+            if REF.search(f):
+                if not ref_regex(f).fullmatch(c):
+                    drift["unresolvable"].append(name)
+            else:
+                drift["stale"].append(name)
+
+    if not any(drift.values()):
+        print(f"render-check: {GENERATED} matches the render ({len(fresh)} files)")
+        return 0
+
+    for kind, label in [
+        ("stale", "committed differs from the render"),
+        ("missing", "rendered but not committed"),
+        ("extra", "committed but no longer rendered"),
+        (
+            "unresolvable",
+            "differs beyond its pulumi refs (needs a Pulumi-credentialed `switch` to confirm)",
+        ),
+    ]:
+        for n in drift[kind]:
+            print(f"render-check: {label}: {GENERATED}/{n}")
+
+    if args.fix:
+        root = Path(GENERATED)
+        for n in drift["stale"] + drift["missing"]:
+            (root / n).parent.mkdir(parents=True, exist_ok=True)
+            (root / n).write_text(fresh[n])
+        for n in drift["extra"]:
+            (root / n).unlink()
+        print(
+            "render-check: rewrote the drifted files; review `git diff` and commit them"
+        )
+        return 0
+    print(
+        "render-check: run `tools/render-check --fix`, review, commit (or SKIP=render-check to bypass)"
+    )
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
