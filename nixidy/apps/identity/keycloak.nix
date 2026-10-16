@@ -20,8 +20,6 @@ in {
       namespace = "identity";
       postgres.enable = true;
       postgres.instances = 2;
-      # CNPG's cron has a seconds field first: the default `0 0 * * *` runs every hour.
-      postgres.backup.schedule = "0 0 0 * * *";
       helm.releases.keycloak = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {

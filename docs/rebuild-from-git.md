@@ -58,7 +58,7 @@ Notes assembled from the repo on 2026-10-10. The sequence has never been run end
   `-comics`, `-manga`, `-audiobooks`, `-podcasts`, `-games`) have a VolSync source.
 - PVCs whose ReplicationSource is failing or stale: as of 2026-10-15 only `tdarr-server` (never synced), see `docs/pvc-and-postgres-restore.md`.
 - CNPG clusters without a recent base backup: windmill, chirpstack, immich.
-- Anything written since the last 04:00 (VolSync, daily) or CNPG scheduled backup (hourly on the clusters inspected), or since the last 6h etcd snapshot.
+- Anything written since the last 04:00 (VolSync, daily) or CNPG scheduled base backup (daily at 00:00; WAL is archived continuously), or since the last 6h etcd snapshot.
 - The sops age identity, and Bitwarden contents written since the last weekly `bws-backup` object (the restic password is in every object).
   The backup is useless without its private key, which is in sops `personal.yaml`, so it follows the sops age identity.
 - Hyena state: headscale's database and its noise/DERP keys are backed up nightly (`static/headscale-backup.nix`: age-encrypted, VolSync

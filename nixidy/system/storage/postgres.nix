@@ -66,7 +66,8 @@ in {
           monitoring = can.enable "Prometheus PodMonitor" {default = true;};
           backup = {
             enable = can.enable "barman-cloud WAL archiving and base backups to B2 (needs the barman tools in the operand image)" {default = true;};
-            schedule = can.str "Cron schedule for base backups" {default = "0 0 * * *";};
+            # CNPG cron has a leading seconds field: `0 0 * * *` would run every hour.
+            schedule = can.str "Cron schedule for base backups (seconds first)" {default = "0 0 0 * * *";};
             retentionPolicy = can.str "Backup retention policy" {default = "30d";};
           };
         };
