@@ -14,4 +14,12 @@
       })
       people.users;
   };
+  nixos = {
+    flake,
+    pkgs,
+    ...
+  }: {
+    programs.zsh.enable = true;
+    users.users = builtins.mapAttrs (_: _: {shell = pkgs.zsh;}) flake.config.canivete.meta.people.users;
+  };
 }

@@ -6,21 +6,24 @@ Statuses: `open`, `in progress`, `waiting on you`, `reported`.
 
 ## Hardware
 
-- open: sirver root disk failing (SMART impending failure, zpool DEGRADED, cordoned 2026-10-12): SSD replacement plus a guarded reinstall. README 33.
-- open: sirver is still in the distributed-build pool (`static/builders.nix:56`), so builds get offloaded to the failing disk. Remove it from the pool until the disk is replaced. See that line.
+- open: sirver root disk failing (SMART impending failure, zpool DEGRADED, cordoned 2026-10-12): SSD replacement plus a guarded reinstall. It is still on nixos 26.05 / rke2 1.34.7, outside the build pool (#944) and no longer hosts attic. README 24, 33.
 - open: octopus etcd SSD (`etcdHighCommitDurations`). README 25, 33, 47; `docs/manual-steps.md` section 6.
 - open: osd.7 drive swap. `docs/manual-steps.md` section 5.
 - open: reserve the LoadBalancer pool on the router. `docs/manual-steps.md` section 5b.
 
 ## Platform / GitOps
 
+- done (2026-10-16): node roll to nixos 26.11 / rke2 1.34.11 on chinchilla, bonobo, dingo, octopus, with the containerd dataset on the first three and attic moved to chinchilla (#978). `docs/node-standard.md`.
+- open: octopus containerd dataset (etcd leader moved, `ionice -c3`, measured first) and the kernel 7.2.9 reboots (OSD hosts: forced reboot). README 24, 55.
+- open: home-manager-tristan.service fails on dingo (`~/.config/Kvantum/Base16Kvantum` is a directory from an older generation; cosmetic).
+- open: Macs and nodes still pointing at `sirver:8199` pick up the chinchilla attic at their next deploy or darwin-rebuild.
 - in progress: render drift (another agent is fixing it).
 - done (2026-10-16, PRs #927 #934 #948 #957 #965 #969 #971): no CNPG pod runs on sirver. The module default `postgres.avoidNodes = ["sirver"]` (preferred NotIn, temporary; drop it once the root disk above is replaced) keeps new clusters off it. Replicated (instances=2, required anti-affinity): keycloak, immich, forgejo, harbor, ha, contextforge, argo-workflows, windmill, ryot, atuin, firefly, sure, mealie. Single instance, just moved: chirpstack, homarr, miniflux, autobrr, lidarr, radarr, sonarr, gatus, obico, plus coder, jellystat, prowlarr, streamystats. Immich has no barman backup (in-app dumps only), so its standby is its only DB-level copy; streamystats has no backup either. Ceph had 22 of 26.4 TB free, so the extra replicas (10 x 5Gi x 3) fit easily.
 - open: Immich has daily in-app dumps on VolSync and a weekly restore check; PITR would need a barman-capable image or the Barman Cloud plugin (`nixidy/apps/media/immich.nix:107`, `docs/media-stack.md` gap 5).
 - open: Pulumi state still holds the old Keycloak admin password (`pulumi/__main__.py:734`, rotated after a leak); a refresh or replace would desync it. Reported.
 - open: Streamystats has no per-user sign-in path (it takes a Jellyfin password, SSO users have none), so there is no human route (`nixidy/apps/media/streamystats.nix:25`).
 - open: client matrix lint (`tools/client-matrix-lint`) only checks that cited lines exist, not that they still point at the right content. `docs/client-matrix.json`.
-- open: other platform work: README 1-58 (e.g. 22 network policies, 30-31 backups, 32 VolSync restore default, 55 containerd ZFS).
+- open: other platform work: README 1-58 (e.g. 22 network policies, 30-31 backups, 32 VolSync restore default).
 
 ## Media
 
