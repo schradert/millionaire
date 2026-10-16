@@ -25,13 +25,9 @@ in {
         values = {
           controllers.keycloak = {
             annotations."reloader.stakater.com/auto" = "true";
-            # New pod must be Ready before the old one goes: SSO never drops on a
-            # rollout, and a bad image never takes it down.
-            strategy = "RollingUpdate";
-            rollingUpdate = {
-              surge = 1;
-              unavailable = 0;
-            };
+            # 26.8 migrates the schema and changes the cache protocol: it must not run beside 26.2.
+            # Back to RollingUpdate (surge 1, unavailable 0) once it is live; patch releases roll without downtime.
+            strategy = "Recreate";
             containers.keycloak = {
               # Build options (KC_DB, health, metrics, features) are baked in by
               # modules/images.nix; keep them in sync with the env below.
