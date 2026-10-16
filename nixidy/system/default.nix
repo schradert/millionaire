@@ -32,6 +32,7 @@
     ./network/cloudflared.nix
     ./network/multus.nix
     ./network/netpol.nix
+    ./observability/alert-digest.nix
     ./observability/alertmanager.nix
     ./observability/alloy.nix
     ./observability/dashboards.nix

@@ -1,9 +1,10 @@
 //! Idempotent first-run bootstraps, run as ArgoCD PostSync Jobs.
 //!
-//! `app-bootstrap <app>` where app is `actual`, `arr`, `atuin`, `audiobookshelf`, `autobrr`, `bazarr`, `cleanuparr`, `forgejo`, `homarr`, `immich`, `kapowarr`, `kavita`, `komga`, `lingarr`, `maintainerr`, `mealie`, `miniflux`, `navidrome`, `ombi`, `openviking`, `ryot`, `ryot-trakt` (the recurring Trakt import), `romm`, `seerr`, `shoko`, `sportarr`, `streamystats`, `syncthing`, `tracearr`, `contextforge` or `keycloak-invite` (Keycloak's set-your-password email for newly declared family users). Every step checks
+//! `app-bootstrap <app>` where app is `actual`, `alert-digest` (the daily alert email), `arr`, `atuin`, `audiobookshelf`, `autobrr`, `bazarr`, `cleanuparr`, `forgejo`, `homarr`, `immich`, `kapowarr`, `kavita`, `komga`, `lingarr`, `maintainerr`, `mealie`, `miniflux`, `navidrome`, `ombi`, `openviking`, `ryot`, `ryot-trakt` (the recurring Trakt import), `romm`, `seerr`, `shoko`, `sportarr`, `streamystats`, `syncthing`, `tracearr`, `contextforge` or `keycloak-invite` (Keycloak's set-your-password email for newly declared family users). Every step checks
 //! the current state first, so a rerun against a configured app changes nothing.
 
 mod actual;
+mod alert_digest;
 mod arr;
 mod atuin;
 mod audiobookshelf;
@@ -52,6 +53,7 @@ async fn main() -> ExitCode {
     let mut root = trace::span(format!("app-bootstrap {app}"));
     let res = match app.as_str() {
         "actual" => actual::run().await,
+        "alert-digest" => alert_digest::run().await,
         "arr" => arr::run().await,
         "atuin" => atuin::run().await,
         "audiobookshelf" => audiobookshelf::run().await,
@@ -82,7 +84,7 @@ async fn main() -> ExitCode {
         "contextforge" => contextforge::run().await,
         "homarr" => homarr::run().await,
         "keycloak-invite" => keycloak::invite().await,
-        other => Err(format!("usage: app-bootstrap <actual|arr|atuin|audiobookshelf|autobrr|bazarr|cleanuparr|forgejo|immich|kapowarr|kavita|komga|lingarr|maintainerr|mealie|miniflux|navidrome|ombi|openviking|romm|ryot|seerr|shoko|sportarr|streamystats|syncthing|tracearr|contextforge|homarr|keycloak-invite> (got {other:?})").into()),
+        other => Err(format!("usage: app-bootstrap <actual|alert-digest|arr|atuin|audiobookshelf|autobrr|bazarr|cleanuparr|forgejo|immich|kapowarr|kavita|komga|lingarr|maintainerr|mealie|miniflux|navidrome|ombi|openviking|romm|ryot|seerr|shoko|sportarr|streamystats|syncthing|tracearr|contextforge|homarr|keycloak-invite> (got {other:?})").into()),
     };
     let code = match res {
         Ok(()) => {

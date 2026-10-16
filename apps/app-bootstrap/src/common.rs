@@ -186,7 +186,7 @@ fn unb64(input: &str) -> Result<Vec<u8>> {
     Ok(out)
 }
 
-fn b64(input: &[u8]) -> String {
+pub fn b64(input: &[u8]) -> String {
     let mut out = String::new();
     for c in input.chunks(3) {
         let n = (c[0] as u32) << 16 | (*c.get(1).unwrap_or(&0) as u32) << 8 | *c.get(2).unwrap_or(&0) as u32;
