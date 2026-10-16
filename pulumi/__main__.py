@@ -173,6 +173,66 @@ class Millionaire:
             },
         )
 
+        # ntfy access control (static/ntfy.nix). Every user gets a random password whose bcrypt
+        # hash goes to SOPS; the plaintext goes to BWS only where a person types it (the phone
+        # app). Users whose clients send a token get one: ntfy requires `tk_` plus 29 characters
+        # of [-_A-Za-z0-9]. The reader token also goes to personal.yaml for the workstations'
+        # subscriber (modules/ntfy.nix).
+        ntfy_users = {
+            "publisher": ("token",),
+            "reader": ("password", "token"),
+            "e2e": ("token",),
+            "family": ("password",),
+        }
+        ntfy_env: dict[str, pulumi.Input[str]] = {}
+        ntfy_writes = []
+        for user, kinds in ntfy_users.items():
+            ntfy_password = rand.RandomPassword(
+                f"ntfy_{user}_password", length=24, special=False, opts=PROTECTED
+            )
+            ntfy_env[f"NTFY_{user.upper()}_HASH"] = ntfy_password.bcrypt_hash
+            ntfy_writes.append((user, "password-hash", f"NTFY_{user.upper()}_HASH"))
+            if "password" in kinds:
+                Secret(
+                    f"ntfy/{user}/password",
+                    ntfy_password.result,
+                    f"ntfy user {user}: password for the phone app",
+                )
+            if "token" in kinds:
+                ntfy_token = rand.RandomPassword(
+                    f"ntfy_{user}_token",
+                    length=29,
+                    special=False,
+                    upper=False,
+                    opts=PROTECTED,
+                )
+                ntfy_env[f"NTFY_{user.upper()}_TOKEN"] = ntfy_token.result.apply(
+                    lambda t: f"tk_{t}"
+                )
+                ntfy_writes.append((user, "token", f"NTFY_{user.upper()}_TOKEN"))
+                Secret(
+                    f"ntfy/{user}/token",
+                    ntfy_env[f"NTFY_{user.upper()}_TOKEN"],
+                    f"ntfy user {user}: access token (Authorization: Bearer)",
+                )
+        ntfy_sops_write = command.local.Command(
+            "ntfy_sops_write",
+            create=(
+                f'cd "{millionaire.Nix.root}" && '
+                + " && ".join(
+                    f"printf '%s' \"${var}\" | jq -Rs . | "
+                    f'sops set secrets/sops/{file}.yaml \'["ntfy"]["{user}"]["{key}"]\' --value-stdin'
+                    for user, key, var in ntfy_writes
+                    for file in (
+                        ["default", "personal"]
+                        if (user, key) == ("reader", "token")
+                        else ["default"]
+                    )
+                )
+            ),
+            environment=ntfy_env,
+        )
+
         hyena = millionaire.NixOS(
             "hyena",
             hyena_server.ipv4_address.apply(lambda ip: f"root@{ip}"),
@@ -182,6 +242,7 @@ class Millionaire:
                 adguard_password_hash_sops_write,
                 cloudflare_token_sops_write,
                 headscale_backup_b2_sops_write,
+                ntfy_sops_write,
             ],
         )
 
@@ -345,7 +406,7 @@ class Millionaire:
         # --- Android fleet nudge (options/android.nix, docs/android.md) ---
         # ArgoCD serves android.trdos.me from the nixidy-rendered ConfigMap, so
         # an ArgoCD sync of main is what updates the page. This only pings each
-        # phone's ntfy topic (hyena's local ntfy) when its catalog hash changes;
+        # phone's ntfy topic (hyena's local ntfy, as its publisher user) when its catalog hash changes;
         # the notification opens the page. Never touches phones or nodes, and an
         # unreachable ntfy does not fail the stack.
         android = json.loads(
@@ -360,9 +421,9 @@ class Millionaire:
                 f"android_notify_{device}",
                 create=ssh_to_hyena.apply(
                     lambda s, d=device, n=n: (
-                        f"{s} \"curl -fsS -H 'Title: {d}: app list changed'"
-                        f" -H 'Click: {n['url']}' -d 'Tap, then Import app list'"
-                        f' http://127.0.0.1:2586/{n["topic"]}" || echo ntfy-unreachable'
+                        f"{s} \"ntfy-publish {n['topic']} -H 'Title: {d}: app list changed'"
+                        f" -H 'Click: {n['url']}' -d 'Tap, then Import app list'\""
+                        " || echo ntfy-unreachable"
                     )
                 ),
                 triggers=[n["hash"]],

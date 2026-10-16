@@ -17,7 +17,7 @@ Devices: pixel (base + homelab + the `pixel` set of apps already on it), s21 (ba
 
 All six run Android 12+, so Obtainium silently updates every app it installed itself on every device. Only s21 is a device owner (`deviceOwner = true`, factory reset + Dhizuku), which adds silent first installs and Obtainium self-updates; the others tap to install new apps.
 
-The headscale ACL (`static/hyena.nix`) limits `family` devices to AdGuard DNS and ntfy on hyena (100.64.0.1: 53, 443) and the internal-gateway relays that `*.trdos.me` resolves to (100.64.0.4/.5: 80, 443). They cannot reach nodes, ssh, or other devices. `tristan` and `default` keep full reach.
+The headscale ACL (`static/hyena.nix`) limits `family` devices to AdGuard DNS and ntfy on hyena (100.64.0.1: 53, 443; 443 also serves the status page, and ntfy answers them only as its read-only `family` user) and the internal-gateway relays that `*.trdos.me` resolves to (100.64.0.4/.5: 80, 443). They cannot reach nodes, ssh, or other devices. `tristan` and `default` keep full reach.
 
 ## Changing the catalog
 
@@ -41,7 +41,7 @@ The headscale ACL (`static/hyena.nix`) limits `family` devices to AdGuard DNS an
 6. Go to Settings, then Network, then VPN, then Tailscale. Set **Always-on VPN** and **Block connections without VPN** to match `android.devices.<name>.vpn` (both on for `tristan` devices; lockdown off for `family`). With lockdown on, a captive portal needs lockdown switched off until you have logged in. `android <device>` reports drift.
 7. Exempt Tailscale, ntfy, and Obtainium from battery optimisation. Samsung and vivo devices also need them added to "never sleeping apps".
 8. Open `https://android.trdos.me/<device>.html` on the device:
-   1. Tap **Subscribe ntfy**, or in ntfy add server `https://ntfy.trdos.me` with topic `android-<device>`.
+   1. In ntfy, Settings, Manage users, add `https://ntfy.trdos.me` with user `reader` (`tristan` devices) or `family` (`family` devices) and the password from Bitwarden `ntfy/<user>/password`. Then tap **Subscribe ntfy**, or add topic `android-<device>` on that server.
    2. Download `<device>-bootstrap.json`, then in Obtainium go to Settings, then Import/export, then Import. This sets the install method (`shizuku` when the device is a device owner, otherwise `system`), the update interval, and the app list. Grant the Dhizuku request if one appears.
    3. Tap **Install/Update all** once.
 9. Verify: reboot, run `obtainium://refresh` (or wait 6h), and check Obtainium's log for an install.
@@ -54,5 +54,5 @@ Fallback when device owner is impossible: on Android 13+, Shizuku 13.6+ can star
 - chiaki-ng publishes no Android APK, so the catalog tracks the original Chiaki from F-Droid.
 - Kavita has no native client. Use Mihon with the Kavita extension. Komga uses Komelia.
 - Actual, Frigate, and Mealie are web apps (Mealient is archived). The page links them so you can use "Add to Home screen".
-- ntfy topics are unauthenticated (README todo 16); `family` devices can read and post any topic on hyena's ntfy.
+- ntfy denies everything by default (`static/ntfy.nix`): `family` devices can only read the topics of the family devices. They share one password, so they can read each other's nudges.
 - The catalog's Obtainium JSON was written from Obtainium's source (`lib/models/app.dart`). Compare it with an export from the first device and fix any key that does not match.

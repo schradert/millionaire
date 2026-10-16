@@ -173,7 +173,7 @@ The Bitwarden Secrets Manager backup (`bws-backup`, docs/rebuild-from-git.md) is
 ## 8. Later
 
 - Rotate secrets (README todo 17).
-- Lock down ntfy on hyena (README todo 16).
+- Headscale OIDC and the rest of README todo 16: the ntfy lockdown is section 18.
 - Headscale backup: first `pulumi up --target 'urn:pulumi:prod::millionaire::command:local:Command::headscale_backup_b2_sops_write'` and commit `secrets/sops/default.yaml` (`static/headscale-backup.nix` stays off until those keys are in the file), then deploy hyena, run `systemctl start headscale-backup` there once (or wait for 02:30), then `headscale-backup-restore-test` in the devshell. It must print `OK` with the node count; the first real run also settles that the B2 key and the offline age key work. Repeat it after changing the backup.
 - ContextForge: check whether its native OIDC is active behind oauth2-proxy (a double login prompt means it is).
 - Stalwart admin UI: it has no route yet, so use `kubectl -n mail port-forward svc/stalwart 8080` with Bitwarden `stalwart/admin/password`.
@@ -279,3 +279,24 @@ RomM works without any key: it matches titles by file name and hash through Hash
    - **RetroAchievements** (achievements): Web API key from <https://retroachievements.org/settings>. Store `romm/retroachievements/api-key`.
 2. In `nixidy/apps/media/romm.nix` list the providers in `providers` (for example `["igdb" "steamgriddb"]`), render, commit, merge. RomM restarts with the keys. For IGDB also set `igdb = true` in `nixidy/apps/media/ggrequestz.nix`: GG Requestz searches games through the same Twitch application and cannot search without it.
 3. In RomM, Library > Scan > Complete (or Unmatched) rescans with the new sources.
+
+## 18. ntfy access control (README todo 16)
+
+hyena's ntfy denies everything unless a user's token or password grants it (`static/ntfy.nix`: `publisher` write-only, `reader` read-only, `e2e` on `e2e*`, `family` read-only on the family phones' topics). It stays open until pulumi has written `ntfy.*` into `secrets/sops/default.yaml`, so merging the config earlier is safe. Order matters: hyena must know the tokens before the cluster sends them (ntfy answers 401 to a token it does not know, even for an open topic), and the cluster must send them before hyena refuses anonymous posts. Between the hyena deploy and the flag flip in step 4, Alertmanager and the cluster's jobs get 403: Alertmanager retries, the jobs' notifications are dropped.
+
+1. Generate the users, tokens and hashes. `pulumi preview` first should show 7 RandomPassword creates, 5 Secret creates and the `ntfy_sops_write` Command:
+
+   ```sh
+   cd pulumi
+   pulumi up \
+     --target 'urn:pulumi:prod::millionaire::random:index/randomPassword:RandomPassword::ntfy_*' \
+     --target 'urn:pulumi:prod::millionaire::bitwarden:index/secret:Secret::ntfy/**' \
+     --target 'urn:pulumi:prod::millionaire::command:local:Command::ntfy_sops_write'
+   ```
+
+   Commit the changed `secrets/sops/default.yaml` and `secrets/sops/personal.yaml` (the `reader` token for the Macs' subscriber, `modules/ntfy.nix`).
+2. Wait until the images with token support are pinned (`app-bootstrap`, `e2e`, `dvdrip`, `letterboxd-sync`: the image-publish workflow runs after the cluster PRs merge; `nixidy/system/observability/ntfy.nix` and `docs/observability.md` say which versions).
+3. Deploy hyena only, with the usual hyena deploy. Check from a device on another tailnet user (not tristan) that anonymous access is refused: `curl -s -o /dev/null -w '%{http_code}\n' -d x https://ntfy.trdos.me/alerts` prints 403, and `curl -s -o /dev/null -w '%{http_code}\n' https://ntfy.trdos.me/alerts/json?poll=1` prints 403. From falcon with the reader token (Bitwarden `ntfy/reader/token`): `curl -H "Authorization: Bearer $T" 'https://ntfy.trdos.me/alerts/json?poll=1'` returns 200, and the same token cannot post (403). The publisher token posts (200) but cannot read (403).
+4. Flip `default` to `true` for `ntfy.auth` in `nixidy/system/observability/ntfy.nix`, render, commit with the touched `nixidy/generated/prod/*` and let ArgoCD sync. Alertmanager, the jobs and the bootstrap Jobs then send the publisher token. Run `e2e` (`notify` family) and check ntfy `alerts` on a phone.
+5. On each phone, in the ntfy app (Settings, Manage users): `https://ntfy.trdos.me` with user `reader` (`tristan` devices) or `family` (`family` devices) and the password from Bitwarden `ntfy/<user>/password`. A phone that is not logged in sees "not authorized" on its `android-<device>` topic.
+6. After the first `android_notify_*` pulumi run following the hyena deploy, the nudge posts as `publisher` through `ntfy-publish` on hyena.

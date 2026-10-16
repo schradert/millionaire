@@ -67,7 +67,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | prometheus | oauth2-proxy | done: promtool (offline checks; queries via `kubectl port-forward`), `modules/kubernetes.nix` | done: same | n-a | n-a | — |
 | alertmanager | oauth2-proxy | web (amtool skipped: API behind oauth2-proxy) | web | n-a | n-a | — |
 | grafana, gatus, status (hyena) | oauth2-proxy + OIDC / none | web | web | n-a | web | — |
-| ntfy (hyena) | none (tailnet) | done: ntfy CLI; `alerts` subscriber on personal Macs, `modules/ntfy.nix` | done: CLI + `alerts` subscriber (user service) | n-a | done: ntfy | — |
+| ntfy (hyena) | users and tokens, deny-all (`static/ntfy.nix`) | done: ntfy CLI; `alerts` subscriber on personal Macs, `modules/ntfy.nix` (the `reader` token from `personal.yaml`) | done: CLI + `alerts` subscriber (user service) | n-a | done: ntfy; log in as `reader` (or `family` on family phones) | bws `ntfy/reader/password`, `ntfy/family/password`, `ntfy/{publisher,reader,e2e}/token` |
 | mainsail, obico, spoolman | oauth2-proxy | web; todo: orca-slicer (commented cask in `modules/default.nix`) | web | n-a | done: Mobileraker | — |
 | rook-ceph, rados | own | web | web | n-a | n-a | — |
 | Bitwarden (hosted, not in the cluster) | account | done: cask (`modules/desktop-clients.nix`) + Brave extension (`modules/browser.nix`) | done: bitwarden-desktop + Brave extension | done: bitwarden-desktop | done: Bitwarden | account login |
