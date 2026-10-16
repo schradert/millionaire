@@ -16,6 +16,8 @@ export RCLONE_S3_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" RCLONE_S3_SECRET_ACCESS_KEY=
 dest=":s3:$BUCKET/$PREFIX"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
+: > "$work/rclone.conf"
+export RCLONE_CONFIG="$work/rclone.conf"
 name="$(date -u +%Y-%m-%dT%H%M%SZ).json.age"
 
 bws secret list -o json > "$work/secrets.json"
