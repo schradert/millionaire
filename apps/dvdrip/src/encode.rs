@@ -102,14 +102,44 @@ pub async fn encode(work: &Work, titles: &[Title], scan: &Value, protected: bool
         results.push((title, outcome));
     }
     results.sort_by_key(|(t, _)| *t);
+    // MakeMKV skips only identical titles; a main feature or alternate it wrote nothing for
+    // (a damaged disc: "Failed to save title") is lost, not a duplicate.
+    let lost = lost_features(titles, &results);
+    for title in &lost {
+        let why = "MakeMKV wrote no file for it (see logs/remux.log; on a damaged disc this is a title it could not save)".to_string();
+        warn!(title, "{why}");
+        fatal.push(format!("title {title}: {why}"));
+        if let Some((_, o)) = results.iter_mut().find(|(t, _)| t == title) {
+            *o = Outcome::Failed(why);
+        }
+    }
+    let lost_remux = !lost.is_empty();
     sweep(work).await?;
     tokio::fs::remove_dir_all(work.path("repair")).await.ok();
+    if lost_remux {
+        // A retry must remux again, not reuse a remux that lacks the feature.
+        tokio::fs::remove_dir_all(work.path("remux")).await.ok();
+    }
     if fatal.is_empty() {
         tokio::fs::remove_dir_all(work.path("remux")).await.ok();
     } else {
         bail!("{}", fatal.join("; "));
     }
     Ok(results)
+}
+
+/// Main features and alternates whose remux is missing (`Duplicate`) while no encoded title has
+/// their runtime: a real duplicate is carried by another title, a lost one by nothing.
+pub fn lost_features(titles: &[Title], results: &[(u32, Outcome)]) -> Vec<u32> {
+    let encoded: Vec<f64> = results.iter().filter_map(|(_, o)| if let Outcome::Encoded { seconds } = o { Some(*seconds) } else { None }).collect();
+    results
+        .iter()
+        .filter(|(_, o)| *o == Outcome::Duplicate)
+        .filter_map(|(n, _)| titles.iter().find(|t| t.title == *n))
+        .filter(|t| matches!(t.role, Role::Main | Role::Alt))
+        .filter(|t| !encoded.iter().any(|secs| *secs >= t.seconds.floor() * 0.9))
+        .map(|t| t.title)
+        .collect()
 }
 
 async fn one(work: &Work, t: &Title, scan: &Value, protected: bool, s: &Settings, listing: &tokio::sync::OnceCell<Vec<makemkv::MkvTitle>>) -> Outcome {
@@ -302,6 +332,25 @@ mod tests {
         assert_eq!(s.preset(), "slowest");
         s.encoder = "x264".into();
         assert_eq!(s.preset(), "slow");
+    }
+
+    #[test]
+    fn a_missing_main_feature_is_lost_not_a_duplicate() {
+        let t = |title: u32, role: &str, seconds: f64| -> Title {
+            serde_json::from_value(
+                serde_json::json!({"title": title, "seconds": seconds, "aspect": "", "chapters": [], "cells": [], "audio": [], "subs": [], "role": role}),
+            )
+            .unwrap()
+        };
+        let titles = [t(3, "main", 7134.0), t(4, "extra", 33.0), t(5, "alt", 7134.0)];
+        // Pan's Labyrinth: MakeMKV failed to save the feature, only extras came out.
+        let lost = [(3, Outcome::Duplicate), (4, Outcome::Encoded { seconds: 33.0 })];
+        assert_eq!(lost_features(&titles, &lost), [3]);
+        // An alternate identical to the main feature is carried by it: a real duplicate.
+        let dup = [(3, Outcome::Encoded { seconds: 7134.0 }), (5, Outcome::Duplicate)];
+        assert!(lost_features(&titles, &dup).is_empty());
+        // Extras dropped as duplicates are never lost features.
+        assert!(lost_features(&titles, &[(4, Outcome::Duplicate)]).is_empty());
     }
 
     #[test]

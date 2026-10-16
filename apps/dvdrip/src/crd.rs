@@ -209,6 +209,10 @@ pub struct Published {
     /// The Disc generation this was published from.
     #[serde(default)]
     pub generation: i64,
+    /// What the last publish wants a person to know (a file already there that this disc did not
+    /// publish, kept next to the new one); the controller sends them to ntfy.
+    #[serde(default)]
+    pub notes: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize, JsonSchema)]

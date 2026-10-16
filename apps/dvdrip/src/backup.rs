@@ -66,10 +66,20 @@ impl Staging {
     }
 }
 
-/// `ddrescuelog -t` summary: (rescued percent, bytes still missing).
-pub fn rescue_summary(t: &str) -> (Option<f64>, u64) {
+/// `ddrescuelog -t` summary.
+#[derive(Debug, PartialEq)]
+pub struct RescueStats {
+    /// Rescued percent.
+    pub percent: Option<f64>,
+    /// Bytes still missing (never tried, non-trimmed, non-scraped, bad sectors).
+    pub missing: u64,
+    /// Of those, the bytes ddrescue never got to (it ran out of its time budget).
+    pub non_tried: u64,
+}
+
+pub fn rescue_stats(t: &str) -> RescueStats {
     let mut pct = None;
-    let mut missing = 0f64;
+    let (mut missing, mut non_tried) = (0f64, 0f64);
     for l in t.lines() {
         let l = l.trim();
         let Some((key, rest)) = l.split_once(':') else { continue };
@@ -86,11 +96,15 @@ pub fn rescue_summary(t: &str) -> (Option<f64>, u64) {
         };
         match key {
             "rescued" => pct = rest.rsplit_once('(').and_then(|(_, p)| p.trim().trim_end_matches(')').trim_end_matches('%').trim().parse().ok()),
-            "non-tried" | "non-trimmed" | "non-scraped" | "bad-sector" => missing += bytes(),
+            "non-tried" => {
+                non_tried += bytes();
+                missing += bytes();
+            }
+            "non-trimmed" | "non-scraped" | "bad-sector" => missing += bytes(),
             _ => {}
         }
     }
-    (pct, missing.round() as u64)
+    RescueStats { percent: pct, missing: missing.round() as u64, non_tried: non_tried.round() as u64 }
 }
 
 async fn lsdvd_ok(iso: &Path) -> bool {
@@ -98,16 +112,19 @@ async fn lsdvd_ok(iso: &Path) -> bool {
 }
 
 /// lsdvd segfaults on structure-protected discs with malformed tables, so a good backup can fail
-/// it: accept an image MakeMKV reports as done (in `makemkv_log`) that holds a VIDEO_TS.
-async fn readable(iso: &Path, makemkv_log: &Path) -> bool {
+/// it: accept an image MakeMKV reports as done (in `makemkv_log`) that holds a VIDEO_TS. A raw
+/// ddrescue image (`raw`) has no MakeMKV report; there a VIDEO_TS.IFO in the file system is the
+/// check (MakeMKV's title analysis, not lsdvd, reads such discs later).
+async fn readable(iso: &Path, makemkv_log: &Path, raw: bool) -> bool {
     if lsdvd_ok(iso).await {
         return true;
     }
     let done = makemkv::backup_done(&std::fs::read_to_string(makemkv_log).unwrap_or_default());
     let tree = tool::stdout("isoinfo", &["-l", "-i", Staging::s(iso)], None, true).await.unwrap_or_default();
-    let ok = done && String::from_utf8_lossy(&tree).contains("VIDEO_TS");
+    let tree = String::from_utf8_lossy(&tree);
+    let ok = (done && tree.contains("VIDEO_TS")) || (raw && tree.contains("VIDEO_TS.IFO"));
     if ok {
-        warn!("lsdvd can't parse {} (malformed tables); MakeMKV backup completed, accepting it", iso.display());
+        warn!("lsdvd can't parse {} (malformed tables); accepting it", iso.display());
     }
     ok
 }
@@ -152,7 +169,7 @@ pub async fn backup(st: &Staging, limits: &Limits, progress: impl Fn(f64)) -> Re
     } else {
         Outcome { method: "makemkv", read_errors, damage: None }
     };
-    if !readable(&iso, &log_path).await {
+    if !readable(&iso, &log_path, false).await {
         bail!("the backup is not a readable DVD image (see logs/backup.log)");
     }
     if outcome.read_errors > 0 {
@@ -198,7 +215,7 @@ async fn decrypt_raw(st: &Staging) -> Result<()> {
         tool::status_logged("makemkvcon", &["-r", "--noscan", "backup", "--decrypt", &format!("iso:{}", Staging::s(&st.raw())), Staging::s(&iso)], &log, None)
             .await?;
     let text = std::fs::read_to_string(&log).unwrap_or_default();
-    if !makemkv::backup_failed(&text) && readable(&iso, &log).await {
+    if !makemkv::backup_failed(&text) && readable(&iso, &log, false).await {
         return Ok(());
     }
     warn!("MakeMKV couldn't decrypt the image; trying dvdbackup");
@@ -288,40 +305,45 @@ async fn ddrescue(st: &Staging, args: &[&str], budget: Duration) -> Result<()> {
 /// Summarise raw.map: nothing missing drops the raw image; otherwise the disc is damaged and
 /// the image and map are kept for a later resume.
 async fn record_rescue(st: &Staging) -> Result<Option<Damage>> {
-    let t = tool::stdout("ddrescuelog", &["-t", Staging::s(&st.map())], None, true).await?;
-    let (pct, missing) = rescue_summary(&String::from_utf8_lossy(&t));
-    if missing == 0 {
+    let s = rescue_stats(&map_summary(st).await?);
+    if s.missing == 0 {
         info!("rescue complete: every sector recovered");
         tokio::fs::remove_file(st.raw()).await.ok();
         return Ok(None);
     }
-    let d = Damage { recovered_percent: pct.unwrap_or(0.0), missing_bytes: missing, rescue_pending: true };
+    let d = Damage { recovered_percent: s.percent.unwrap_or(0.0), missing_bytes: s.missing, rescue_pending: true };
     warn!(
         recovered = d.recovered_percent,
-        missing_mb = missing / 1_000_000,
+        missing_mb = s.missing / 1_000_000,
         "scratched disc: unreadable areas zero-filled; reinsert it (cleaned, or another copy) to fill the gaps"
     );
     Ok(Some(d))
 }
 
-async fn rescue(st: &Staging, limits: &Limits) -> Result<Outcome> {
-    ddrescue(st, &["-n"], limits.rescue).await?;
-    ddrescue(st, &["-r1"], limits.trim).await?;
-    if !st.raw().metadata().is_ok_and(|m| m.len() > 0) {
-        bail!("ddrescue read nothing");
-    }
-    decrypt_raw(st).await?;
-    Ok(Outcome { method: "rescue", read_errors: 0, damage: record_rescue(st).await? })
+async fn map_summary(st: &Staging) -> Result<String> {
+    let t = tool::stdout("ddrescuelog", &["-t", Staging::s(&st.map())], None, true).await?;
+    Ok(String::from_utf8_lossy(&t).into_owned())
 }
 
-async fn raw_image(st: &Staging, limits: &Limits) -> Result<Outcome> {
-    for p in [st.raw(), st.map(), st.master()] {
-        tokio::fs::remove_file(p).await.ok();
+/// ddrescue stopped on its time budget with areas it never tried: the image is not a disc yet
+/// (decrypting it fails, and a part-zero image would encode to a part-broken film). The image
+/// and map stay in staging; reinserting the disc continues where ddrescue stopped.
+async fn ensure_all_tried(st: &Staging) -> Result<()> {
+    let s = rescue_stats(&map_summary(st).await?);
+    if s.non_tried > 0 {
+        bail!(
+            "rescue stopped at {:.1}% with {} MB never read (time limit, DVDRIP_RESCUE_MINUTES; a dirty disc reads slowly: clean it and reinsert, the read continues where it stopped)",
+            s.percent.unwrap_or(0.0),
+            s.non_tried / 1_000_000
+        );
     }
-    ddrescue(st, &["-n"], limits.rescue).await?;
-    if !st.raw().metadata().is_ok_and(|m| m.len() > 0) {
-        bail!("ddrescue read nothing");
-    }
+    Ok(())
+}
+
+/// A rescued raw image -> master.iso: decrypted when that works, else the raw image itself
+/// (home-burned discs aren't encrypted; for a structure-protected disc MakeMKV reads the
+/// scrambled image directly, which decrypting through dvdbackup + genisoimage can't).
+async fn master_from_raw(st: &Staging) -> Result<()> {
     if decrypt_raw(st).await.is_err() {
         // Decrypting rebuilds an ISO from the disc structure, which is what fails on malformed
         // discs; a non-encrypted (home-burned) disc needs no decrypting.
@@ -331,19 +353,45 @@ async fn raw_image(st: &Staging, limits: &Limits) -> Result<Outcome> {
             tokio::fs::copy(st.raw(), st.master()).await?;
         }
     }
-    if !readable(&st.master(), &st.log("decrypt.log")).await {
-        bail!("raw image isn't a readable DVD (lsdvd failed)");
+    if !readable(&st.master(), &st.log("decrypt.log"), true).await {
+        bail!("raw image isn't a readable DVD (no VIDEO_TS.IFO, or lsdvd failed)");
     }
+    Ok(())
+}
+
+async fn rescue(st: &Staging, limits: &Limits) -> Result<Outcome> {
+    ddrescue(st, &["-n"], limits.rescue).await?;
+    ddrescue(st, &["-r1"], limits.trim).await?;
+    if !st.raw().metadata().is_ok_and(|m| m.len() > 0) {
+        bail!("ddrescue read nothing");
+    }
+    ensure_all_tried(st).await?;
+    master_from_raw(st).await?;
+    Ok(Outcome { method: "rescue", read_errors: 0, damage: record_rescue(st).await? })
+}
+
+/// The last resort: image the raw disc. An image an earlier attempt left in staging (same disc,
+/// same fingerprint) is continued, never started over.
+async fn raw_image(st: &Staging, limits: &Limits) -> Result<Outcome> {
+    tokio::fs::remove_file(st.master()).await.ok();
+    ddrescue(st, &["-n"], limits.rescue).await?;
+    if !st.raw().metadata().is_ok_and(|m| m.len() > 0) {
+        bail!("ddrescue read nothing");
+    }
+    ensure_all_tried(st).await?;
+    master_from_raw(st).await?;
     Ok(Outcome { method: "raw", read_errors: 0, damage: record_rescue(st).await? })
 }
 
-/// A damaged disc is back (cleaned, or another copy): re-read only what raw.map says is missing.
+/// A damaged or interrupted disc is back (cleaned, or another copy): re-read only what raw.map
+/// says is missing.
 pub async fn resume_rescue(st: &Staging, limits: &Limits) -> Result<Outcome> {
     info!("resuming the rescue of a damaged disc (only missing sectors)");
     // Reading CSS sectors raw needs the drive authenticated; libdvdcss does that on open.
     let _ = tool::status_logged("dvdbackup", &["-I", "-i", &st.device], &st.log("ddrescue.log"), Some(Duration::from_secs(120))).await;
     ddrescue(st, &["-r1"], limits.rescue).await?;
-    decrypt_raw(st).await?;
+    ensure_all_tried(st).await?;
+    master_from_raw(st).await?;
     Ok(Outcome { method: "rescue", read_errors: 0, damage: record_rescue(st).await? })
 }
 
@@ -354,9 +402,18 @@ mod tests {
     #[test]
     fn parses_ddrescuelog() {
         let t = "current pos:     4294 MB,  current status: finished\n    domain size:     7411 MB,  in    1 area(s)\n        rescued:     6705 MB,  in   87 area(s)  ( 90.47%)\n      non-tried:         0 B,  in    0 area(s)  (  0%)\n\n  errsize:  705 MB, errors: 86  (  9.52%)\n    non-trimmed:     2048 B,  in    1 area(s)  (  0%)\n    non-scraped:   700 MB,  in   85 area(s)  (  9.45%)\n     bad-sector:    5 kB,  in    2 area(s)  (  0%)\n";
-        let (pct, missing) = rescue_summary(t);
-        assert_eq!(pct, Some(90.47));
-        assert_eq!(missing, 700_000_000 + 5_000 + 2048);
-        assert_eq!(rescue_summary("rescued: 100 MB, in 1 area(s) (100%)\nnon-tried: 0 B, in 0 area(s) (0%)"), (Some(100.0), 0));
+        let s = rescue_stats(t);
+        assert_eq!(s.percent, Some(90.47));
+        assert_eq!(s.missing, 700_000_000 + 5_000 + 2048);
+        assert_eq!(s.non_tried, 0);
+        assert_eq!(
+            rescue_stats("rescued: 100 MB, in 1 area(s) (100%)\nnon-tried: 0 B, in 0 area(s) (0%)"),
+            RescueStats { percent: Some(100.0), missing: 0, non_tried: 0 }
+        );
+        // ddrescue ran out of time with part of the disc never tried (Letters From Iwo Jima).
+        let cut = "rescued:  4364 MB,  in 141 area(s)  ( 62.65%)\n non-tried:  2567 MB,  in 1 area(s)  ( 36.8%)\n non-trimmed: 34209 kB, in 3 area(s) (0.5%)";
+        let s = rescue_stats(cut);
+        assert_eq!((s.percent, s.non_tried), (Some(62.65), 2_567_000_000));
+        assert_eq!(s.missing, 2_567_000_000 + 34_209_000);
     }
 }
