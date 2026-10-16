@@ -51,10 +51,11 @@ Notes assembled from the repo on 2026-10-10. The sequence has never been run end
 
 ## Not recoverable from Git plus backups
 
-- CephFS media libraries (`media-movies`, `-tv`, `-music`, `-books`, `-comics`, `-audiobooks`, `-podcasts`, `-downloads`):
-  no backup (only `media-dvd` has a source). `frigate-media` and every PVC in `ai` likewise.
-- PVCs whose ReplicationSource never synced or is stale (forgejo, baikal, ha-config, syncthing, zwave-js-ui, audiobookshelf,
-  prosody, actual since March): see the gap list in `docs/pvc-and-postgres-restore.md`. Home Assistant config is the worst of these.
+- Deliberately unbacked volumes: `frigate-media` (1Ti of rolling camera recordings: churn makes restic expensive and the clips lose
+  value after their retention), `media-downloads` (transient), `media-sports` (re-acquirable), `dvd-rip-work` (rip scratch) and the
+  model caches in `ai` (`ollama`, `vllm`, `heretic-*`). The other CephFS libraries (`media-dvd`, `-movies`, `-tv`, `-music`, `-books`,
+  `-comics`, `-manga`, `-audiobooks`, `-podcasts`, `-games`) have a VolSync source.
+- PVCs whose ReplicationSource is failing or stale: as of 2026-10-15 only `tdarr-server` (never synced), see `docs/pvc-and-postgres-restore.md`.
 - CNPG clusters without a recent base backup: windmill, chirpstack, immich.
 - Anything written since the last 04:00 (VolSync, daily) or CNPG scheduled backup (hourly on the clusters inspected), or since the last 6h etcd snapshot.
 - The sops age identity, Bitwarden contents and the restic password if they are not backed up elsewhere. Nothing in this repo

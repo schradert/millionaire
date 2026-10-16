@@ -27,6 +27,7 @@
     };
     applications.frigate = {
       namespace = "home";
+      # frigate-media (1Ti of rolling recordings) is deliberately not backed up: churn makes restic expensive and clips lose value after retention.
       volsync.pvcs.frigate-config.title = "frigate-config";
       helm.releases.frigate = {
         chart = charts.bjw-s-labs.app-template-patched;

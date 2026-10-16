@@ -6,8 +6,8 @@
         title = "media-dvd";
         cacheAccessModes = ["ReadWriteOnce"];
       };
-      # Libraries that cannot be re-downloaded from the *arr stack. Deliberately not backed up:
-      # media-downloads (transient), media-tv and media-sports (re-acquirable, large).
+      # Libraries that cannot be re-downloaded from the *arr stack, plus media-tv (100Gi, ~$0.60/mo, cheaper than re-acquiring).
+      # Deliberately not backed up: media-downloads (transient) and media-sports (re-acquirable, large).
       volsync.pvcs.media-music = {
         title = "media-music";
         cacheAccessModes = ["ReadWriteOnce"];
@@ -42,6 +42,10 @@
         cacheAccessModes = ["ReadWriteOnce"];
         # After the 04:00 backups, so the first ~470GB upload does not run beside the other seeds.
         schedule = "0 6 * * *";
+      };
+      volsync.pvcs.media-tv = {
+        title = "media-tv";
+        cacheAccessModes = ["ReadWriteOnce"];
       };
       resources.persistentVolumeClaims = let
         cephfsPVC = size: {
