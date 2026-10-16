@@ -57,19 +57,23 @@ Already enforced, whichever provider: gluetun's firewall kill switch, DNS over T
 
 Unblocks: weekly `update bump` PRs per kind.
 
-## 4. darwin-rebuild on the Mac
+## 4. darwin-rebuild on the Macs, falcon and the Deck
 
-Wait for the nixpkgs/home-manager bump to land on main; another agent is doing it. Then:
+Done 2026-10-16:
 
-1. Sync the main checkout with main. It currently carries uncommitted local work, so land or stash that first.
-2. Run `darwin-rebuild switch --flake .`.
+- **millionaire** (work Mac): generation 86 to 87, on the nixpkgs/home-manager bump. `trdos-check` passes 5/5 and `trdos curl` reaches `*.trdos.me` names (README 41 is closed). This Mac has no `nix.linux-builder` and no system-wide attic substituter on purpose (`flake.nix`, profile `work`): its attic cache stays per-project in devenv. It no longer lists sirver in `/etc/nix/machines`.
+- **morgenmuffel**: generation 15 to 16. The `org.nixos.linux-builder` and `org.nixos.muffin-vm` daemons run and port 31022 is open. Its lease moved to `192.168.50.52` (out of the LoadBalancer pool, so 5b step 2 is done by accident); `morgenmuffelVm.lan` in `static/builders.nix` follows it.
+- From falcon, `nix store info --store 'ssh-ng://builder@192.168.50.52:31022?ssh-key=/etc/ssh/ssh_host_ed25519_key'` (as root) answers with `Trusted: 1`, and a throwaway `aarch64-linux` derivation with `--builders` pointing at the VM printed `aarch64` and logged `building ... on 'ssh-ng://builder@192.168.50.52:31022'`.
 
-3. The Mac's `nix.linux-builder` VM restarts with an extra authorized-keys list (the pool's host keys), which makes it a native aarch64-linux
-   builder for falcon and the nodes (`morgenmuffelVm` in `static/builders.nix`; README 34). After falcon has switched too, verify on
-   falcon: `nix build --system aarch64-linux --no-link nixpkgs#hello -L` shows `building ... on 'ssh-ng://builder@192.168.50.249:31022'`,
-   and `sudo nix store ping --store ssh-ng://builder@192.168.50.249:31022 --option ssh-key /etc/ssh/ssh_host_ed25519_key` answers. If the port is not reachable, check `sudo launchctl list | grep linux-builder` on the Mac.
+Gotchas: `sudo darwin-rebuild switch --flake` evaluates as root, and root has no cached copy of `gitlab.com/koral/gcmh` (a doom emacs input) and gitlab did not answer, so it failed. Build as your user, then switch the result: `darwin-rebuild build --flake .#<host> --impure`, then `sudo nix-env -p /nix/var/nix/profiles/system --set "$(readlink -f result)"` and `sudo "$(readlink -f result)/activate"`. On millionaire the personal userspace tailscaled sat at launchd exit 78 after the activation and wrote nothing; `sudo launchctl bootout system/org.nixos.tailscaled-personal` then `sudo launchctl bootstrap system /Library/LaunchDaemons/org.nixos.tailscaled-personal.plist` brought it up, and `trdos-check` then passed.
 
-Unblocks: the build mesh (#225/#227/#233/#247) and the new modules on the Mac; native aarch64-linux builds on falcon.
+Still to do:
+
+1. **falcon's switch.** Its `/etc/nix/machines` still has only the four nodes (no VM entry, and attic still `sirver:8199`): `deploy '.#falcon.system'`. Then on falcon `nix build --system aarch64-linux --no-link <something not in cache.nixos.org> -L` shows `building ... on 'ssh-ng://builder@192.168.50.52:31022'` (`nixpkgs#hello` is substituted, so it proves nothing), or `build-all --system aarch64-linux`.
+2. **The Deck.** `systeamadeck` (192.168.50.155) was off the LAN and the tailnet (last seen 2026-10-14) through the whole window on 2026-10-16: wake it, then `deploy '.#systeamadeck'` from falcon (the devenv `deploy` adds `--skip-checks`; elsewhere `nix run nixpkgs#deploy-rs -- --skip-checks .#systeamadeck`), and run section 11 steps 2 and 8 (Syncthing identity, `systemctl --user start ludusavi`).
+3. Reserve morgenmuffel's address on the router (5b step 4) so `morgenmuffelVm.lan` stays valid; it is `.52` today.
+
+Unblocks: the build mesh (#225/#227/#233/#247); native aarch64-linux builds on falcon (after step 1).
 
 ## 5. Replace osd.7's drive
 
@@ -89,7 +93,7 @@ The pool currently holds: `.240` external gateway, `.241` internal gateway, `.24
 1. In the router's DHCP settings, exclude `192.168.50.240-192.168.50.254` from the dynamic range (or reserve them).
 2. Renew the leases of any host currently inside the range (morgenmuffel, axolotl).
 3. Reserve an address outside the range for the muffin VM's MAC `52:54:00:6d:75:66` (it got `192.168.50.86`); its node IP must not change.
-4. Reserve morgenmuffel's own address (its new lease after step 2) and put it in `morgenmuffelVm.lan` in `static/builders.nix`: falcon and the nodes reach the Mac's builder VM by that IP (port 31022).
+4. Reserve morgenmuffel's own address (its new lease after step 2) and keep `morgenmuffelVm.lan` in `static/builders.nix` equal to it (it is `.52` after the 2026-10-16 renewal): falcon and the nodes reach the Mac's builder VM by that IP (port 31022).
 
 Unblocks: safe new LoadBalancer Services (the Syncthing LAN listener and the rsync ingest receiver use this pool).
 

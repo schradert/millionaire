@@ -146,7 +146,7 @@ in rec {
   # (docs/manual-steps.md 5b), so reserve it. The host key is baked into nixpkgs' builder image, the user
   # is `builder`. The Mac authorizes every host key above in the VM; clients are the pool's hosts (static/builder.nix).
   morgenmuffelVm = {
-    lan = "192.168.50.249";
+    lan = "192.168.50.52";
     port = 31022;
     hostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJBWcxb/Blaqt1auOtE+F8QUWrUotiC5qBJ+UuEWdVCb";
     user = "builder";
