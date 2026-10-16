@@ -40,8 +40,6 @@
       # it created (as for Loki); the claim only ever grows (ceph-block expands online). New claims start at the
       # template's size.
       resources.persistentVolumeClaims.${title} = {
-        # The metrics live here: never let a manifest edit prune the claim.
-        metadata.annotations."argocd.argoproj.io/sync-options" = "Prune=false";
         spec = {
           accessModes = ["ReadWriteOnce"];
           storageClassName = "ceph-block";

@@ -49,6 +49,7 @@ in {
     };
     applications.argo-workflows = {
       namespace = "cicd";
+      deletable = ["image-build-nix" "deps-update-nix"];
       postgres.enable = true;
       postgres.instances = 2;
       # S3 artifact bucket on Ceph RGW. Rook creates the Secret and ConfigMap

@@ -221,9 +221,6 @@ in {
         };
       };
 
-      # Photo library: never let a sync or app removal delete it.
-      resources.persistentVolumeClaims.immich-server.metadata.annotations."argocd.argoproj.io/sync-options" = "Prune=false,Delete=false";
-
       resources.dragonflies.immich-dragonfly.spec = {
         replicas = 1;
         # Dragonfly sizes itself to the node's cores (32 here) and refuses to

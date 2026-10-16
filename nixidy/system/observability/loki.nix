@@ -25,8 +25,6 @@
         };
       };
       resources.persistentVolumeClaims.storage-loki-0 = {
-        # The logs live here: never let a manifest edit prune the claim.
-        metadata.annotations."argocd.argoproj.io/sync-options" = "Prune=false";
         spec = {
           accessModes = ["ReadWriteOnce"];
           storageClassName = "ceph-block";
