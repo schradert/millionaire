@@ -138,6 +138,12 @@ Every person's plays go to that person's own history, and nothing is shared or a
 
 Files are deleted 30 days after an event aired (`retentionDays` in the module), because the sports volume is a 250Gi quota on a small Ceph pool.
 
+### Jellyfin transcoding
+
+`nixidy/apps/media/jellyfin.nix`. The pod runs on falcon only (`nvidia` runtime class, node selector `nvidia.com/gpu.present`, no `nvidia.com/gpu` request, same as Tdarr's node), so ffmpeg can use the RTX A2000's NVENC and NVDEC and the card stays shared with the desktop, dvdrip and Tdarr. The image's `jellyfin-ffmpeg` lists `h264_nvenc`, `hevc_nvenc` and `av1_nvenc` (the A2000 can decode AV1 but not encode it).
+
+Trade-off: with a required node selector Jellyfin is Pending while falcon is down. The config PVC (RBD) and the media volumes (CephFS) attach to whichever node the pod lands on, and the Deployment is `Recreate`, so a move needs no manual step.
+
 ### Tracearr
 
 `nixidy/apps/media/tracearr.nix`. Native OIDC (Keycloak). The bootstrap:

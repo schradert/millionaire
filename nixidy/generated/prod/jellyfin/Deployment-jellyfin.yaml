@@ -29,7 +29,12 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-        - image: ghcr.io/jellyfin/jellyfin:10.11.11@sha256:45f648c382a0c8b552582fcea40e95cb17c5d475473a891cba0eb7523fb92112
+        - env:
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: compute,video,utility
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: all
+          image: ghcr.io/jellyfin/jellyfin:10.11.11@sha256:45f648c382a0c8b552582fcea40e95cb17c5d475473a891cba0eb7523fb92112
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 0
@@ -119,7 +124,15 @@ spec:
             - mountPath: /tmp
               name: tmpfs
               subPath: tmp
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
+      runtimeClassName: nvidia
       serviceAccountName: jellyfin
+      tolerations:
+        - effect: PreferNoSchedule
+          key: node.trdos.me/class
+          operator: Equal
+          value: desktop
       volumes:
         - name: cache
           persistentVolumeClaim:
