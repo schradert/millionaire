@@ -20,11 +20,11 @@ spec:
                 - name: NTFY_URL
                   value: https://ntfy.trdos.me/alerts
                 - name: SELF_IMAGE
-                  value: harbor.trdos.me/library/backup-verify:0.2.0@sha256:bc3da0aecf7a575dcdcce2ea13a0dcebab3e7fb3aeaac42c818304af282f7d73
+                  value: harbor.trdos.me/library/backup-verify:0.2.1@sha256:eb3406538ba0282dac7edb463e90822d46decc39e9bea08b2ff34f70cc30543a
               envFrom:
                 - secretRef:
                     name: backup-verify
-              image: harbor.trdos.me/library/backup-verify:0.2.0@sha256:bc3da0aecf7a575dcdcce2ea13a0dcebab3e7fb3aeaac42c818304af282f7d73
+              image: harbor.trdos.me/library/backup-verify:0.2.1@sha256:eb3406538ba0282dac7edb463e90822d46decc39e9bea08b2ff34f70cc30543a
               name: backup-verify
               resources:
                 limits:
