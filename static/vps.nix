@@ -18,7 +18,7 @@
     atticEnabled = publicKey != null && publicKey != "";
   in
     lib.mkIf atticEnabled {
-      substituters = ["http://sirver:8199/main"];
+      substituters = ["http://chinchilla:8199/main"];
       trusted-public-keys = [publicKey];
     };
 }
