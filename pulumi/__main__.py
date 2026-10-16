@@ -1,3 +1,4 @@
+import base64
 import json
 
 import os
@@ -578,6 +579,35 @@ class Millionaire:
             opts=pulumi.ResourceOptions(depends_on=[attic_public_key]),
         )
 
+        # --- adb key for bonobo (docs/android-fleet.md) ---
+        # `android <device>` runs adb on bonobo. adb needs only the private key
+        # (~/.android/adbkey, PKCS#8 like adb's own) and derives the public half
+        # itself; the phone asks once to accept the new key. bonobo installs the
+        # sops copy at that path (flake.nix).
+        android_adb_key = tls.PrivateKey(
+            "android_adb_key",
+            algorithm="RSA",
+            rsa_bits=2048,
+            opts=PROTECTED,
+        )
+        Secret(
+            "android/adb/key",
+            android_adb_key.private_key_pem_pkcs8.apply(
+                lambda pem: base64.b64encode(pem.encode()).decode()
+            ),
+            "adb private key for bonobo's ~/.android/adbkey (base64-encoded PKCS#8 PEM)",
+        )
+        android_adb_key_sops_write = command.local.Command(
+            "android_adb_key_sops_write",
+            create=(
+                f'cd "{millionaire.Nix.root}" && '
+                "printf '%s' \"$ADB_KEY\" | jq -Rs . | "
+                'sops set secrets/sops/default.yaml \'["android"]["adb-key"]\' --value-stdin'
+            ),
+            environment={"ADB_KEY": android_adb_key.private_key_pem_pkcs8},
+            opts=pulumi.ResourceOptions(depends_on=[android_adb_key]),
+        )
+
         # Other nodes depend on attic being fully set up (auth token in SOPS + public key file)
         # plus hyena being up (for headscale to exist when ArgoCD syncs the operator).
         other_node_deps = [
@@ -587,7 +617,11 @@ class Millionaire:
         ]
         millionaire.NixOS("octopus", "root@nixos", depends_on=other_node_deps)
         millionaire.NixOS("dingo", "root@nixos", depends_on=other_node_deps)
-        millionaire.NixOS("bonobo", "root@nixos", depends_on=other_node_deps)
+        millionaire.NixOS(
+            "bonobo",
+            "root@nixos",
+            depends_on=[*other_node_deps, android_adb_key_sops_write],
+        )
 
         # falcon (GPU desktop, RKE2 agent) is a live, in-use host: it is registered
         # only for its one deliberate reinstall onto the standard layout, never
@@ -934,8 +968,6 @@ class Millionaire:
             opts=PROTECTED,
         )
         # Base64-encode PEM values to avoid bws CLI multiline/dash issues
-        import base64
-
         Secret(
             "harbor/core/tls-cert",
             harbor_token_cert.cert_pem.apply(

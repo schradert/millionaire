@@ -247,3 +247,23 @@ SimpleFIN Bridge (<https://beta-bridge.simplefin.org>, US, about $15/year, up to
 4. Verify: Sure, Accounts shows the SimpleFIN accounts with balances; Actual, linked accounts show a last-sync time; Firefly, `kubectl -n finance create job --from=cronjob/firefly-simplefin firefly-simplefin-test`, read its logs (no access URL is printed), delete the job, then check Accounts > Asset accounts. One run costs about N+3 requests of the 24 per day.
 
 Not covered by the Bridge: Carta (add it as a manual asset in Sure), Venmo and PayPal (CSV export, then Sure's or Firefly's CSV import).
+
+## 16. Pixel adb key (README todo 50)
+
+`android pixel` runs adb on bonobo. Its key was paired by hand; pulumi now generates it (Bitwarden `android/adb/key`, base64 PKCS#8 PEM; sops `android.adb-key` in `secrets/sops/default.yaml`) and bonobo installs it at `/home/tristan/.android/adbkey`.
+
+1. Generate the key and write it to sops (nothing else is touched). `pulumi preview` first should show exactly 3 creates:
+
+   ```sh
+   cd pulumi
+   pulumi up \
+     --target 'urn:pulumi:prod::millionaire::tls:index/privateKey:PrivateKey::android_adb_key' \
+     --target 'urn:pulumi:prod::millionaire::bitwarden:index/secret:Secret::android/adb/key' \
+     --target 'urn:pulumi:prod::millionaire::command:local:Command::android_adb_key_sops_write'
+   ```
+
+   Commit the changed `secrets/sops/default.yaml`. bonobo's sops secret and its activation script are only enabled once `android.adb-key` is in that file (`flake.nix`), so merging the config earlier is safe and the key arrives with the first bonobo deploy after this commit.
+2. Deploy bonobo only: `pulumi up --target 'urn:pulumi:prod::millionaire::command:local:Command::nixos-bonobo-deploy'` (an untargeted `up` redeploys every node, see `docs/android.md`).
+3. With wireless debugging on at the phone, run `android pixel`. The phone asks to trust the new computer: accept it once and choose always allow. Then remove the old key's trust if you want (`docs/android-fleet.md`, "On the phone").
+
+The headscale ACL needs no change: only `default@` (cluster nodes), `tag:cluster` and `tristan@` can reach the phones' ports, and `family@` cannot (`docs/android-fleet.md`, (d)).
