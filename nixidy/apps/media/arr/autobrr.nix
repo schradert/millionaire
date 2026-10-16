@@ -53,7 +53,6 @@ in {
         bitwarden = "autobrr/admin-password";
       };
       postgres.enable = true;
-      postgres.avoidNodes = ["sirver"];
       volsync.pvcs.autobrr.title = "autobrr";
       # Idempotent post-sync bootstrap (apps/app-bootstrap autobrr): download clients (qBittorrent,
       # Sonarr, Radarr, Lidarr) and a filter per arr app, as the break-glass user. IRC networks and

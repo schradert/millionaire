@@ -43,7 +43,8 @@ in {
         options.postgres = {
           enable = can.enable "CNPG PostgreSQL cluster" {};
           instances = can.int "Number of instances (primary + standbys)" {default = 1;};
-          avoidNodes = can.list.str "Hostnames CNPG pods should prefer not to run on (e.g. a node with a failing disk)" {default = [];};
+          # TEMPORARY: sirver has a failing root disk (docs/backlog.md, hardware item). Drop it from the default once the disk is replaced.
+          avoidNodes = can.list.str "Hostnames CNPG pods should prefer not to run on (e.g. a node with a failing disk)" {default = ["sirver"];};
           storageSize = can.str "PVC size per instance" {default = "5Gi";};
           storageClass = can.str "Storage class name" {default = "ceph-block";};
           version = can.str "PostgreSQL major version" {default = "17";};

@@ -19,7 +19,6 @@
       namespace = "media";
       postgres = {
         enable = true;
-        avoidNodes = ["sirver"];
         extraDatabases = ["lidarr-log"];
       };
       volsync.pvcs.lidarr.title = "lidarr";

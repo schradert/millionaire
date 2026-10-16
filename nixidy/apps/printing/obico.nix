@@ -23,7 +23,6 @@
     applications.obico = {
       namespace = "printing";
       postgres.enable = true;
-      postgres.avoidNodes = ["sirver"];
       volsync.pvcs.obico.title = "obico";
       # Django SECRET_KEY, generated in-cluster.
       generatedSecrets.obico-secret-key.key = "SECRET_KEY";

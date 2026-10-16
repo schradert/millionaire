@@ -20,7 +20,6 @@ in {
       namespace = "identity";
       postgres.enable = true;
       postgres.instances = 2;
-      postgres.avoidNodes = ["sirver"];
       helm.releases.keycloak = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {

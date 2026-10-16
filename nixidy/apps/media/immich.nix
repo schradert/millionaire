@@ -93,7 +93,6 @@ in {
       postgres = {
         enable = true;
         instances = 2;
-        avoidNodes = ["sirver"];
         # immich v2.x needs VectorChord; the stock CNPG operand image ships
         # neither vchord nor the legacy pgvecto.rs "vectors" extension, so
         # bootstrap would die on CREATE EXTENSION. Use immich's purpose-built
