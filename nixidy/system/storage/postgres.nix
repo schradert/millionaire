@@ -45,6 +45,11 @@ in {
         objectStore = {
           destinationPath = "s3://${bucketName}/cnpg/${name}/";
           endpointURL = "https://s3.${region}.backblazeb2.com";
+          # A WAL segment is 16 MiB however little it holds, and a cluster with any writes switches one every few
+          # minutes: uncompressed they were the largest share of the bucket (docs/backups-cost.md). Objects already
+          # there stay as they are and age out with the retention policy.
+          wal.compression = "gzip";
+          data.compression = "gzip";
           s3Credentials = {
             accessKeyId = {
               name = secretName;

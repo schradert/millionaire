@@ -18,6 +18,8 @@ spec:
           weight: 100
   backup:
     barmanObjectStore:
+      data:
+        compression: gzip
       destinationPath: s3://trdos-me--volsync/cnpg/jellystat/
       endpointURL: https://s3.us-west-004.backblazeb2.com
       s3Credentials:
@@ -27,6 +29,8 @@ spec:
         secretAccessKey:
           key: ACCESS_SECRET_KEY
           name: jellystat-b2-postgres
+      wal:
+        compression: gzip
     retentionPolicy: 30d
   bootstrap:
     initdb:

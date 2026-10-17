@@ -5,6 +5,8 @@ metadata:
   namespace: media
 spec:
   configuration:
+    data:
+      compression: gzip
     destinationPath: s3://trdos-me--volsync/cnpg/immich/
     endpointURL: https://s3.us-west-004.backblazeb2.com
     s3Credentials:
@@ -14,4 +16,6 @@ spec:
       secretAccessKey:
         key: ACCESS_SECRET_KEY
         name: immich-b2-postgres
+    wal:
+      compression: gzip
   retentionPolicy: 30d
