@@ -15,8 +15,9 @@ in {
   }: let
     rgw = "http://rook-ceph-rgw-ceph-objectstore.storage.svc.cluster.local:80";
     image = with pinned.images.rclone; "${repository}:${tag}@${digest}";
-    secretName = "rgw-offsite-b2";
     cronJobName = claim: "rgw-offsite-${claim}";
+    # One per claim: two apps in a namespace (mimir and pyroscope) must not own the same object.
+    secretName = claim: "${cronJobName claim}-b2";
     # A run that did not succeed within a day and a half missed a night.
     selector = ''cronjob=~"rgw-offsite-.*"'';
   in {
@@ -47,27 +48,26 @@ in {
         };
         config = lib.mkIf (config.rgwOffsite != {}) {
           resources = lib.mkMerge [
-            {
-              externalSecrets.${secretName}.spec = {
-                secretStoreRef.name = "bitwarden";
-                secretStoreRef.kind = "ClusterSecretStore";
-                data = [
-                  {
-                    secretKey = "id";
-                    remoteRef.key = "backblaze/bucket/application_key_id";
-                  }
-                  {
-                    secretKey = "password";
-                    remoteRef.key = "backblaze/bucket/application_key";
-                  }
-                ];
-                target.template.data = {
-                  RCLONE_CONFIG_B2_ACCESS_KEY_ID = "{{ .id }}";
-                  RCLONE_CONFIG_B2_SECRET_ACCESS_KEY = "{{ .password }}";
-                };
-              };
-            }
             (lib.mkMerge (lib.mapAttrsToList (claim: o: {
+                externalSecrets.${secretName claim}.spec = {
+                  secretStoreRef.name = "bitwarden";
+                  secretStoreRef.kind = "ClusterSecretStore";
+                  data = [
+                    {
+                      secretKey = "id";
+                      remoteRef.key = "backblaze/bucket/application_key_id";
+                    }
+                    {
+                      secretKey = "password";
+                      remoteRef.key = "backblaze/bucket/application_key";
+                    }
+                  ];
+                  target.template.data = {
+                    RCLONE_CONFIG_B2_ACCESS_KEY_ID = "{{ .id }}";
+                    RCLONE_CONFIG_B2_SECRET_ACCESS_KEY = "{{ .password }}";
+                  };
+                };
+
                 cronJobs.${cronJobName claim}.spec = {
                   inherit (o) schedule;
                   concurrencyPolicy = "Forbid";
@@ -104,7 +104,7 @@ in {
                             "--stats=60s"
                             "-v"
                           ];
-                          envFrom = lib.toList {secretRef.name = secretName;};
+                          envFrom = lib.toList {secretRef.name = secretName claim;};
                           env =
                             lib.mapAttrsToList (name: value: {inherit name value;}) {
                               HOME = "/tmp";
