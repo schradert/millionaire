@@ -223,8 +223,8 @@ in {
               osd_class_update_on_start = "false";
               device_failure_prediction_mode = "local";
             };
-            # Recovery/backfill (e.g. draining an out OSD) yields to client IO.
-            cephConfig.osd.osd_mclock_profile = "high_client_ops";
+            # TEMPORARY (sirver reinstall, osd.0 drain): recovery over client IO. Back to high_client_ops after.
+            cephConfig.osd.osd_mclock_profile = "high_recovery_ops";
             # CPU requests at the 7d p95 plus headroom (mon ~47m, mgr ~78m, the rest idle); the chart's memory
             # requests and limits are left alone. They merge with the chart defaults, so only CPU is restated.
             resources = lib.mapAttrs (_: cpu: {requests.cpu = cpu;}) {
