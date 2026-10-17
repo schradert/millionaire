@@ -280,24 +280,20 @@ in {
               {
                 name = "sirver";
                 # Bays 6 (6XS4209D, the old root) and 7 (6XS41YTD, the old osd.7) are
-                # SMART-failing and are in only as replica-only redundancy: low CRUSH
-                # weight here, primary affinity 0 from the rook-ceph-osd-affinity
-                # CronJob below. Not counted as capacity (docs/node-standard.md, "The
-                # two bad disks"). Bay 2 (6XS42DQ9) is the root since 2026-10-17.
+                # SMART-failing and are in only as replica-only redundancy: CRUSH
+                # weight 0.2 and primary affinity 0, both set by the rook-ceph-osd-affinity
+                # CronJob below (config.initialWeight is passed to the prepare job but
+                # was not applied: the OSDs came up at the full 0.82). Not counted as
+                # capacity (docs/node-standard.md, "The two bad disks"). Bay 2
+                # (6XS42DQ9) is the root since 2026-10-17.
                 devices = [
                   {name = "/dev/disk/by-id/scsi-35000c50067fc5df3";}
                   {name = "/dev/disk/by-id/scsi-35000c50067fc640b";}
                   {name = "/dev/disk/by-id/scsi-35000c50067fcc0d3";}
                   {name = "/dev/disk/by-id/scsi-35000c50067fcc2fb";}
                   {name = "/dev/disk/by-id/scsi-35000c50067fe560f";}
-                  {
-                    name = "/dev/disk/by-id/scsi-35000c50067fb404b";
-                    config.initialWeight = "0.2";
-                  }
-                  {
-                    name = "/dev/disk/by-id/scsi-35000c50067faa64b";
-                    config.initialWeight = "0.2";
-                  }
+                  {name = "/dev/disk/by-id/scsi-35000c50067fb404b";}
+                  {name = "/dev/disk/by-id/scsi-35000c50067faa64b";}
                 ];
               }
               {
@@ -639,13 +635,15 @@ in {
                 };
               };
             }) (lib.unique (map (o: o.node) retiredOsds)));
-        # Primary affinity 0 on the OSDs that sit on disks known to be failing (matched by serial, so the OSD id does not
-        # matter), so they hold a replica but never serve as primary. It is an osdmap setting, not a Ceph config option or a
-        # CephCluster field, and a purged and recreated OSD starts again at 1, so this runs every 10 minutes rather than as a
-        # sync hook (the OSD is created by the operator after the sync). A serial with no OSD yet is skipped.
+        # Primary affinity 0 and a low CRUSH weight on the OSDs that sit on disks known to be failing (matched by serial, so the
+        # OSD id does not matter), so they hold a replica but never serve as primary and take little data. Both are osdmap/CRUSH
+        # settings, not Ceph config options or CephCluster fields (the CephCluster device config.initialWeight was ignored), and
+        # a purged and recreated OSD starts again at 1 and full weight, so this runs every 10 minutes rather than as a sync hook
+        # (the OSD is created by the operator after the sync). A serial with no OSD yet is skipped.
         # docs/node-standard.md, "sirver reinstall plan".
         cronJobs.rook-ceph-osd-affinity.spec = let
           lowTrustSerials = ["6XS4209D" "6XS41YTD"];
+          lowTrustWeight = "0.2";
           script = ''
             set -u
             mkdir -p /etc/ceph
@@ -659,6 +657,12 @@ in {
             for serial in ${lib.concatStringsSep " " lowTrustSerials}; do
               id=$(for i in $(ceph osd ls); do ceph osd metadata "$i" 2>/dev/null | grep -q "_$serial[\",]" && echo "$i"; done | head -1)
               if [ -z "$id" ]; then echo "$serial: no OSD on it, skipping"; continue; fi
+              cw=$(ceph osd tree -f json | python3 -c 'import json,sys;i="osd."+sys.argv[1];print(next((n["crush_weight"] for n in json.load(sys.stdin)["nodes"] if n["name"]==i),-1))' "$id")
+              if python3 -c 'import sys;sys.exit(abs(float(sys.argv[1])-float(sys.argv[2]))>0.001)' "$cw" ${lowTrustWeight}; then
+                echo "osd.$id ($serial): crush weight already ${lowTrustWeight}"
+              else
+                ceph osd crush reweight "osd.$id" ${lowTrustWeight} || rc=$?
+              fi
               if ceph osd dump | grep -E "^osd\.$id " | grep -q "primary_affinity 0"; then
                 echo "osd.$id ($serial): primary affinity already 0"
               else
