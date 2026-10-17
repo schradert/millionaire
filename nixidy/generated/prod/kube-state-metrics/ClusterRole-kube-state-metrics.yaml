@@ -226,3 +226,10 @@ rules:
     verbs:
       - list
       - watch
+  - apiGroups:
+      - volsync.backube
+    resources:
+      - replicationsources
+    verbs:
+      - list
+      - watch

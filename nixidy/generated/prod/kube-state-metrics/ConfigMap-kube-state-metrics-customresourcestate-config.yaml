@@ -26,6 +26,28 @@ data:
           help: status.creationTime of the snapshot
           name: creation_timestamp_seconds
       - groupVersionKind:
+          group: volsync.backube
+          kind: ReplicationSource
+          version: v1alpha1
+        labelsFromPath:
+          name:
+          - metadata
+          - name
+          namespace:
+          - metadata
+          - namespace
+        metricNamePrefix: volsync_replicationsource
+        metrics:
+        - each:
+            info:
+              labelsFromPath:
+                persistentvolumeclaim:
+                - spec
+                - sourcePVC
+            type: Info
+          help: The PVC a ReplicationSource backs up (spec.sourcePVC)
+          name: info
+      - groupVersionKind:
           group: argoproj.io
           kind: Application
           version: v1alpha1
