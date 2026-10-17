@@ -90,6 +90,10 @@ expect "rate limit defers" "$out" "deferred   org.jellyfin.mobile: GitHub rate l
 out=$(run "" act=channel)
 expect "channel: apps first" "$out" "-- Termux, Termux:Boot and Shizuku"
 expect "channel: Shizuku may restart itself" "$out" "+ shell pm grant moe.shizuku.privileged.api android.permission.WRITE_SECURE_SETTINGS"
+expect "channel: battery exemption verified" "$out" "battery: com.termux is exempt from optimisation"
+expect "channel: no battery warning" "$out" "NOT on the Doze whitelist" absent
+expect "channel: phantom killer off, read back" "$out" "settings_enable_monitor_phantom_procs=false (want false), max_phantom_processes=2147483647"
+expect "channel: phantom killer set" "$out" "+ shell settings put global settings_enable_monitor_phantom_procs false; /system/bin/device_config put activity_manager max_phantom_processes 2147483647"
 expect "channel: setup is pushed to shared storage" "$out" "+ adb push"
 expect "channel: setup typed into Termux" "$out" "+ adb shell input text 'sh%s/sdcard/Download/termux-channel/setup.sh'"
 expect "channel: host key pinned" "$out" "pinned the host key; the channel user is u0_a345"
