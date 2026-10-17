@@ -1,0 +1,17 @@
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: streamystats
+  namespace: media
+spec:
+  configuration:
+    destinationPath: s3://trdos-me--volsync/cnpg/streamystats/
+    endpointURL: https://s3.us-west-004.backblazeb2.com
+    s3Credentials:
+      accessKeyId:
+        key: ACCESS_KEY_ID
+        name: streamystats-b2-postgres
+      secretAccessKey:
+        key: ACCESS_SECRET_KEY
+        name: streamystats-b2-postgres
+  retentionPolicy: 30d

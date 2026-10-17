@@ -105,12 +105,11 @@ in {
         gid = 999;
         extensions = ["vector" "vchord" "cube" "earthdistance"];
         sharedPreloadLibraries = ["vchord.so"];
-        # immich's operand image lacks the barman-cloud tools, so archiving failed
-        # ("barman-cloud-check-wal-archive: executable file not found") and WAL piled up
-        # on the 5Gi PVC. The DB relies on immich's built-in dump job (default 02:00)
-        # into the immich-server PVC, which VolSync backs up (unverified). Re-enable with a CNPG-based
-        # vectorchord image or the barman-cloud plugin.
-        backup.enable = false;
+        # immich's operand image lacks the barman-cloud tools (in-tree archiving failed with
+        # "barman-cloud-check-wal-archive: executable file not found" and WAL piled up on the 5Gi PVC), so the
+        # Barman Cloud plugin runs them in a sidecar. immich's own daily dump on the VolSync-backed PVC
+        # stays as a second, logical copy (backup-verify restores it weekly).
+        backup.method = "plugin";
       };
       volsync.pvcs = {
         immich-server.title = "immich-server";

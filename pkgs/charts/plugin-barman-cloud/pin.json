@@ -1,0 +1,9 @@
+{
+  "version": "0.8.1",
+  "hash": "sha256-Zp6HKGx0o5vF7lGXQwKvIypTSPEZbp7Z4lwTVT9TZiA=",
+  "source": {
+    "type": "helm-repo",
+    "repo": "https://cloudnative-pg.github.io/charts/",
+    "chart": "plugin-barman-cloud"
+  }
+}

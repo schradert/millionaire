@@ -1,0 +1,10 @@
+{
+  "version": "0.15.1",
+  "hash": "sha256-3LjeMgRHO5OdcC2i/AvLlGpY/evDSDGijud8uXO1PRw=",
+  "source": {
+    "type": "github-release",
+    "owner": "cloudnative-pg",
+    "repo": "plugin-barman-cloud",
+    "tagPrefix": "v"
+  }
+}

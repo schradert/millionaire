@@ -73,8 +73,9 @@
         uid = 999;
         gid = 999;
         extensions = ["vector" "uuid-ossp" "pg_trgm"];
-        # That image has no barman-cloud tools (see immich): the dump CronJob below is the backup.
-        backup.enable = false;
+        # That image has no barman-cloud tools (see immich), so the Barman Cloud plugin archives from a
+        # sidecar. The dump CronJob below stays as a second, logical copy.
+        backup.method = "plugin";
       };
       # Idempotent post-sync bootstrap (apps/app-bootstrap streamystats, >= 0.24.0): a Jellyfin API key
       # named Streamystats (signed in as the Jellyfin admin) and the Jellyfin server in Streamystats.
