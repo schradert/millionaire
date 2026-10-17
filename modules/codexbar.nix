@@ -1,9 +1,12 @@
 # CodexBar (menu-bar usage for AI coding providers), Claude only.
 #
-# Nothing is set up by hand: the provider list, the app's preferences and the login item are all
-# declared here, and Claude is read through the `claude` CLI (`source = "cli"`), which runs
-# Claude Code's own `/usage` with the login Claude Code already holds. Unlike the OAuth source it
-# never reads Claude Code's Keychain item, so no Keychain prompt and no token to copy.
+# The provider list, the app's preferences and the login item are declared here. Claude's quota
+# (session, weekly) comes from `source = "auto"`: the app tries Claude Code's OAuth login, then the
+# `claude` CLI, then claude.ai's cookies from the browser. This Mac's Claude Code has no login of its
+# own (`claude auth status` says loggedIn false; the desktop app holds the session), so the cookie
+# import is the live path, and macOS gates the browser's cookie key behind one Keychain prompt
+# ("Always Allow") that only a person can answer (docs/productivity.md). Local token and cost totals
+# need no login and show at once.
 {
   home = {
     config,
@@ -20,7 +23,8 @@
         {
           id = "claude";
           enabled = true;
-          source = "cli";
+          source = "auto";
+          cookieSource = "auto";
         }
       ];
     };
@@ -59,8 +63,8 @@
         fi
       '';
 
-      # Start at login (and now, on the switch) so the menu bar shows Claude usage without opening
-      # the app. `claude` sits in the user profile, which launchd's PATH lacks.
+      # Start at login (and now, on the switch) so the menu bar fills without opening the app.
+      # `claude` sits in the user profile, which launchd's PATH lacks.
       launchd.agents.codexbar = {
         enable = true;
         config = {
