@@ -22,7 +22,7 @@
             publicKey = (import ../static/builders.nix).nodes.sirver.hostKey;
           };
           axolotl = {
-            hostNames = ["axolotl" "192.168.50.250"];
+            hostNames = ["axolotl" (import ../static/builders.nix).axolotl.lan];
             publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAOwwGlApwAVdNrflHHk/DkxDapP7RevXV8jjnOrjqfD";
           };
         };

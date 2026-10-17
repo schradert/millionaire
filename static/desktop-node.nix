@@ -8,6 +8,8 @@
 # - the LAN NIC is named `eno1`, the name nixidy/system/network/cilium.nix pins
 #   cilium's `devices` / L2-announcement interfaces to (desktops get predictable
 #   names like enp0s31f6 otherwise);
+# - that NIC asks the router for the address static/builders.nix records for the host
+#   (a DHCP lease moved axolotl .250 -> .108 and took its Cilium/DNS down; see below);
 # - with an NVIDIA GPU (profiles.nvidia), the container toolkit and a `nvidia`
 #   containerd runtime for the GPU operator (nixidy/system/ai/nvidia-gpu-operator.nix
 #   runs with driver and toolkit disabled: NixOS owns both).
@@ -18,6 +20,7 @@
   ...
 }: let
   cfg = config.desktopNode;
+  lan = (import ./builders.nix).${config.networking.hostName}.lan;
   gpu = config.profiles.nvidia.enable;
 in {
   options.desktopNode.lanLink = lib.mkOption {
@@ -53,7 +56,18 @@ in {
       IdleAction = "ignore";
     };
 
-    networking.networkmanager.unmanaged = ["interface-name:cilium_*" "interface-name:lxc*" "interface-name:tailscale0"];
+    # eno1 is networkd's: NetworkManager's DHCP client cannot request a given address, networkd's can,
+    # which is what the headless nodes already rely on (static/builder.nix). NetworkManager keeps wifi/VPNs.
+    networking.networkmanager.unmanaged = ["interface-name:cilium_*" "interface-name:lxc*" "interface-name:tailscale0"] ++ lib.optional (cfg.lanLink != null) "interface-name:eno1";
+    systemd.network.enable = true;
+    systemd.network.networks."40-eno1" = lib.mkIf (cfg.lanLink != null) {
+      matchConfig.Name = "eno1";
+      networkConfig = {
+        DHCP = "yes";
+        IPv6PrivacyExtensions = "kernel";
+      };
+      dhcpV4Config.RequestAddress = lan;
+    };
     # Nodes run tailscale with accept-dns=false, so the desktop never got headscale's AdGuard and
     # *.trdos.me (tailnet-only) did not resolve in the browser. Split DNS: only trdos.me goes to
     # AdGuard over the tailnet, everything else stays on the DHCP resolver. A routing domain (~), not

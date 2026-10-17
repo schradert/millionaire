@@ -431,12 +431,15 @@ Gotchas, all observed:
    `sirver_tailnet_ip`) now names dingo's tailnet IP (`100.64.0.6`, read with `tailscale ip -4` on dingo). Nothing is deployed that uses it (no CAPI CRDs on the cluster), so it applies at the next cloud-burst
    deploy: the next `pulumi up` replaces the Bitwarden secret `headscale/node-ip/sirver` with `headscale/node-ip/dingo`.
 7. **falcon and axolotl had `server: https://sirver:9345` in their running config.** falcon was switched at the end (dry run: only `home-manager-tristan` restarts; `grep ^server` now reads dingo).
-   axolotl was not: its toplevel needs the DisplayLink zip copied from its own store into falcon's (roll gotcha 8), and it is a laptop; its agent works from the saved server list (above), and its
-   next switch fixes the file.
+   axolotl was not (its toplevel needs the DisplayLink zip copied from its own store into falcon's, roll gotcha 8); it was switched afterwards, see 8.
 8. **axolotl's DHCP lease moved from .250 to .108 during the move** (read: MAC `28:f1:0e:16:e8:5d` in falcon's and dingo's neighbour tables; ssh and ping to .250 timed out; the Node still said
    .250; cilium-health read 0/1 for it on every node; pods on it saw `EAI_AGAIN`, and the `oidc-home-assistant` and `oidc-sure` e2e flows failed, home-assistant with "No route to host"). Not caused by the move.
    Followed "What the roll found" 2: `systemctl restart rke2-agent` on it and delete its `cilium` and `cilium-envoy` pods; the Node reports .108 now, cilium-health 7/7, and the identity family passes 14 of 14.
-   `static/builders.nix` still names .250 for axolotl, and axolotl has no `RequestAddress`.
+   The desktops (axolotl, falcon) had no `RequestAddress`: NetworkManager manages their NIC and has no such setting that I found (not tested). `static/desktop-node.nix` now hands `eno1` to systemd-networkd
+   (`40-eno1`, `DHCP=yes`, `RequestAddress` = the host's `lan` in `static/builders.nix`) and marks `eno1` NetworkManager-unmanaged, the headless nodes' mechanism (#1063).
+   Switched on axolotl 2026-10-16 (20:23 PDT, detached switch; home-manager held it for two minutes): `networkctl reconfigure eno1` with `RequestAddress=192.168.50.250` got .108 again, twice. .250 is
+   outside the router's pool (it ends at .239, `nixidy/system/network/cilium.nix`; the router itself was not read), so a request for it cannot be met: `builders.nix` now records .108 (also
+   `flake.nix`, `modules/ssh.nix` and pulumi's axolotl target, which named .250), the node's address did not change and rke2/cilium needed no restart for it. A router reservation (`docs/manual-steps.md` 5b) would pin it.
 
 ## Taking a node down for hardware work
 
