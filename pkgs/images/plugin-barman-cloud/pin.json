@@ -1,0 +1,9 @@
+{
+  "version": "v0.15.1",
+  "digest": "sha256:c75acad19a36e8176cfe2885761ff1b836c6ef977d7257e298c99a28b5c302ef",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/cloudnative-pg/plugin-barman-cloud"
+  },
+  "follows": "charts/plugin-barman-cloud"
+}

@@ -39,6 +39,23 @@ in {
       }: let
         db = config.postgres;
         secretName = "${name}-b2-postgres";
+        plugin = db.backup.method == "plugin";
+        pluginName = "barman-cloud.cloudnative-pg.io";
+        # Shared by the in-tree `backup.barmanObjectStore` and the plugin's ObjectStore `configuration`.
+        objectStore = {
+          destinationPath = "s3://${bucketName}/cnpg/${name}/";
+          endpointURL = "https://s3.${region}.backblazeb2.com";
+          s3Credentials = {
+            accessKeyId = {
+              name = secretName;
+              key = "ACCESS_KEY_ID";
+            };
+            secretAccessKey = {
+              name = secretName;
+              key = "ACCESS_SECRET_KEY";
+            };
+          };
+        };
       in {
         options.postgres = {
           enable = can.enable "CNPG PostgreSQL cluster" {};
@@ -65,7 +82,8 @@ in {
           };
           monitoring = can.enable "Prometheus PodMonitor" {default = true;};
           backup = {
-            enable = can.enable "barman-cloud WAL archiving and base backups to B2 (needs the barman tools in the operand image)" {default = true;};
+            enable = can.enable "barman-cloud WAL archiving and base backups to B2" {default = true;};
+            method = can.enum ["barmanObjectStore" "plugin"] "How: barmanObjectStore runs the barman tools in the operand image (the stock image has them); plugin runs them in a sidecar from the Barman Cloud plugin (nixidy/system/storage/barman-cloud.nix), for images without them" {default = "barmanObjectStore";};
             # CNPG cron has a leading seconds field: `0 0 * * *` would run every hour.
             schedule = can.str "Cron schedule for base backups (seconds first)" {default = "0 0 0 * * *";};
             retentionPolicy = can.str "Backup retention policy" {default = "30d";};
@@ -147,23 +165,15 @@ in {
                     ++ db.initSQL;
                   postInitApplicationSQL = db.initApplicationSQL;
                 };
-                backup = lib.mkIf db.backup.enable {
-                  barmanObjectStore = {
-                    destinationPath = "s3://${bucketName}/cnpg/${name}/";
-                    endpointURL = "https://s3.${region}.backblazeb2.com";
-                    s3Credentials = {
-                      accessKeyId = {
-                        name = secretName;
-                        key = "ACCESS_KEY_ID";
-                      };
-                      secretAccessKey = {
-                        name = secretName;
-                        key = "ACCESS_SECRET_KEY";
-                      };
-                    };
-                  };
+                backup = lib.mkIf (db.backup.enable && !plugin) {
+                  barmanObjectStore = objectStore;
                   retentionPolicy = db.backup.retentionPolicy;
                 };
+                plugins = lib.mkIf (db.backup.enable && plugin) (lib.toList {
+                  name = pluginName;
+                  isWALArchiver = true;
+                  parameters.barmanObjectName = name;
+                });
                 monitoring.enablePodMonitor = db.monitoring;
                 postgresql.shared_preload_libraries = db.sharedPreloadLibraries;
               };
@@ -201,6 +211,16 @@ in {
                 schedule = db.backup.schedule;
                 backupOwnerReference = "self";
                 cluster.name = name;
+              };
+            })
+            (lib.mkIf (db.backup.enable && plugin) {
+              scheduledBackups.${name}.spec = {
+                method = "plugin";
+                pluginConfiguration.name = pluginName;
+              };
+              objectStores.${name}.spec = {
+                configuration = objectStore;
+                retentionPolicy = db.backup.retentionPolicy;
               };
             })
             (lib.mkIf db.pooler.enable {

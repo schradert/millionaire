@@ -1,0 +1,9 @@
+{
+  "version": "v0.15.1",
+  "digest": "sha256:2287a793a804db751edd0d07d44cd549e357677e98a800eb12e2cf7c0d53f9b0",
+  "source": {
+    "type": "oci-tag",
+    "repository": "ghcr.io/cloudnative-pg/plugin-barman-cloud-sidecar"
+  },
+  "follows": "charts/plugin-barman-cloud"
+}

@@ -57,6 +57,7 @@
     ./security/generated-secrets.nix
     ./security/kubelet-csr-approver.nix
     ./storage/backup-verify.nix
+    ./storage/barman-cloud.nix
     ./storage/clickhouse.nix
     ./storage/dragonflydb.nix
     ./storage/postgres.nix

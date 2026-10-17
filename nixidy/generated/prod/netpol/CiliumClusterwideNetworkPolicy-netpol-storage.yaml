@@ -25,6 +25,14 @@ spec:
             k8s:io.kubernetes.pod.namespace: observability
     - fromEndpoints:
         - matchLabels:
+            app.kubernetes.io/name: cloudnative-pg
+            k8s:io.kubernetes.pod.namespace: storage
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
             app.kubernetes.io/instance: clickhouse
             app.kubernetes.io/name: operator
             k8s:io.kubernetes.pod.namespace: storage
