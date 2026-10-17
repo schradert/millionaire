@@ -6,6 +6,9 @@
 #   link    opens that Obtainium import on the phone, which asks for confirmation
 #   spec    android.devices.<d>.productivity as JSON: adds `prod ok|DRIFT <check>` audit lines
 #   st_key  Syncthing's GUI API key for that device (derived from its identity), for the audit's REST calls
+#   dev     the device name (for the instructions in error messages)
+#   pair_addr, pair_code   `android <device> pair <ip:port> <code>`: pair this host's key with the phone first
+#                      (Wireless debugging > Pair device with pairing code; the code arrives here, never in an argument list)
 #   act=productivity   configure the notes and calendar apps instead (`stages`: syncthing orgzly davx5 fossify;
 #                      zip_b64: the Syncthing import archive; dav_pass: the Baikal password; dry=1: print only)
 # Secrets arrive on stdin or in these variables, never in an argument list.
@@ -14,15 +17,17 @@ dry_stubs() {
   # a stand-in phone: every read finds nothing installed, every write is printed (stdin masked)
   exec 9>&2 # the callers redirect stdout and stderr; the printed commands must still show
   tailscale() { echo 100.64.0.99; }
-  nmap() { echo "Host: 100.64.0.99 ()	Ports: 37000/open/tcp//unknown///"; }
+  # stub=noport (nothing open) or stub=unpaired (a port is open, adb connect fails) test the error paths
+  nmap() { [ "${stub:-}" = noport ] || echo "Host: 100.64.0.99 ()	Ports: 37000/open/tcp//unknown///"; }
   curl() { return 7; }
   sleep() { :; }
   adb() {
     local args=("$@") n
     [ "${args[0]:-}" = -s ] && args=("${args[@]:2}")
     case "${args[*]}" in
-      devices) printf 'List of devices attached\n100.64.0.99:37000\tdevice\n'; return ;;
-      connect*) echo "connected to $2"; return ;;
+      devices) [ -n "${stub:-}" ] || printf 'List of devices attached\n100.64.0.99:37000\tdevice\n'; return ;;
+      pair*) cat >/dev/null; [ "${stub:-}" = badcode ] && echo "Failed: Wrong password or connection was dropped" || echo "Successfully paired to ${args[1]} [guid=adb-stub]"; return ;;
+      connect*) if [ "${stub:-}" = unpaired ]; then echo "failed to connect to '${args[1]}'"; else echo "connected to ${args[1]}"; fi; return ;;
       "shell getprop ro.build.version.release") echo 17; return ;;
       "shell settings get"*) echo null; return ;;
       "shell pm list packages"*|"shell dumpsys"*|"shell appops get"*|"shell content query"*) return 0 ;;
@@ -42,22 +47,43 @@ cleanup() { [ -z "$zip_pushed" ] || adb -s "$serial" shell rm -f "$zip_pushed" <
 
 main() {
   set -euo pipefail
-  local host=$1 ip port s
+  local host=$1 ip port s out
+  local ports=""
+
   trap cleanup EXIT
   [ -z "${dry:-}" ] || dry_stubs
   ip=$(tailscale ip -4 "$host")
+  if [ -n "${pair_addr:-}" ]; then
+    # Android 11+ authenticates the TLS connection with a paired key: an unpaired key just gets "failed to connect".
+    # The pairing port differs from the connect port, and the code is good for one pairing.
+    out=$(printf '%s\n' "${pair_code:-}" | adb pair "$pair_addr" 2>&1) || true
+    if ! grep -q '^Successfully paired' <<<"$out"; then
+      echo "error $host: pairing with $pair_addr failed: ${out:-no output}" >&2
+      echo "  Pairing needs the dialog Developer options > Wireless debugging > Pair device with pairing code to stay open; the code and port change each time it opens." >&2
+      return 4
+    fi
+    echo "paired $pair_addr"
+  fi
   serial=$(adb devices </dev/null | awk -v p="$ip:" 'index($1, p) == 1 && $2 == "device" {print $1; exit}')
   if [ -z "$serial" ]; then
     # the TLS port is random per boot (Android 11+)
-    for port in $(nmap -Pn -T4 --min-rate 2000 -p 5555,30000-49999 --open -oG - "$ip" </dev/null | grep -o '[0-9]*/open' | cut -d/ -f1); do
+    ports=$(nmap -Pn -T4 --min-rate 2000 -p 5555,30000-49999 --open -oG - "$ip" </dev/null | grep -o '[0-9]*/open' | cut -d/ -f1 || true)
+    for port in $ports; do
       if adb connect "$ip:$port" </dev/null | grep -Eq '^(connected|already)'; then
         serial=$ip:$port
         break
       fi
     done
   fi
+  if [ -z "$serial" ] && [ -n "$ports" ]; then
+    # a port is open and adb still cannot connect: Android 11+ drops a TLS client whose key is not paired, with no prompt on the phone
+    echo "error $host ($ip): port $(tr '\n' ' ' <<<"$ports")open, but adb connect failed: this host's adb key is not paired with the phone." >&2
+    echo "  On the phone: Developer options > Wireless debugging > Pair device with pairing code (note the pairing IP:port and the 6-digit code, the pairing port is not the connect port), then:" >&2
+    echo "  android ${dev:-<device>} pair <ip:pairing-port> <code>" >&2
+    return 3
+  fi
   if [ -z "$serial" ]; then
-    echo "error $host ($ip): no adb port; turn on Developer options > Wireless debugging" >&2
+    echo "error $host ($ip): no open adb port; turn on Developer options > Wireless debugging (it turns itself off when Wi-Fi changes)" >&2
     return 3
   fi
   a() { adb -s "$serial" "$@" </dev/null; }

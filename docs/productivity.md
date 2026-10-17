@@ -34,7 +34,7 @@ Dropped by design and removed from the repo on 2026-10-16 (PR 1069): organice, t
 
 Everything else is declared and applied by merge, `darwin-rebuild`, or `android pixel productivity`.
 
-1. **Accept the phone's adb key once** (`docs/manual-steps.md` section 16, wireless debugging on). Android asks the owner before trusting a new computer; only device owner (a factory reset) removes that.
+1. **Pair the phone's adb key once** (`docs/manual-steps.md` section 16): Developer options, Wireless debugging, Pair device with pairing code, then `android pixel pair <ip>:<pairing-port> <code>`. Wireless debugging gives an unpaired key no prompt at all, so there is no dialog to accept.
 2. **Four phone taps, printed by `android pixel productivity`** (reasons per app in `docs/android-fleet.md`, "Notes and calendar (Pixel)"): Syncthing-Fork import (menu, Settings, Import and Export, Import Configuration, OK), Orgzly repository `file:/storage/emulated/0/org`, DAVx5 Login then Create account then tick `org`, Fossify Calendar CalDAV sync then tick `org`. Android keeps each of these in the app's private storage and exposes no intent or file for them. Everything else (grants, the identity, the prefilled DAVx5 login) is automatic. Not run against the phone yet, see below.
 3. **CodexBar, one Keychain click.** Local token and cost totals show on their own. The quota bars need a Claude login CodexBar can read: Claude Code on this Mac has none (`claude auth status` says `loggedIn: false`; the desktop app holds the session), so the app falls back to claude.ai cookies from Chrome/Brave/Safari. macOS locks the browser's cookie key behind a Keychain prompt that no config can answer: open the CodexBar menu, Refresh, click Always Allow. If claude.ai is not signed in in a browser, sign in there first.
 4. **A decision for you.** The design keeps the work Mac out of Syncthing (`modules/syncthing.nix`), so notes written in Emacs on `millionaire` stay in its local, empty `~/Projects/sabedoria`. Use morgenmuffel for notes, or give this Mac a declared identity with the `syncthing-identity` flow (`docs/manual-steps.md` section 11).
@@ -76,7 +76,7 @@ Run in order; each step says what you should see.
 
 - org-bridge is one way; edits made in a calendar app are overwritten at the next export. Only `.org` files outside hidden folders; `SCHEDULED`/`DEADLINE` and TODO headings, not timestamps inside body text.
 - The event loop replays Syncthing's recent history on every start (harmless, idempotent).
-- Not exercised: the Pixel steps (the phone was offline and the adb key is unaccepted), CodexBar's quota fetch (waits for the Keychain click), org-roam-ui click-to-navigate.
+- Not exercised: the Pixel steps (the phone was offline and the adb key is not paired yet), CodexBar's quota fetch (waits for the Keychain click), org-roam-ui click-to-navigate.
 
 ## Not built (designed, unchanged)
 
