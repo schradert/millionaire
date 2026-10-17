@@ -241,7 +241,9 @@
           profiles.system.canivete.configuration = {
             imports = [./static/facter ./static/k8s-node.nix ./static/server.nix];
             boot.initrd.availableKernelModules = ["sr_mod"];
-            disko.devices.disk.root.device = "/dev/disk/by-id/scsi-35000c50067faa64b";
+            # Bay 2 (6XS42DQ9, was osd.0): the healthiest of sirver's eight disks, the new root at the reinstall
+            # (docs/node-standard.md, "sirver reinstall plan"). The old root, scsi-35000c50067faa64b, becomes an OSD.
+            disko.devices.disk.root.device = "/dev/disk/by-id/scsi-35000c50067fcd9af";
             # Mini switch on spare LAN to connect another system (dingo)
             networking.bridges.br0.interfaces = ["eno3" "eno4"];
             networking.interfaces.br0.useDHCP = true;
