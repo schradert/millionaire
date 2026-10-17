@@ -2,17 +2,18 @@
   inherit (config.canivete.meta) domain;
   inherit (config.canivete.meta.people) me;
 in {
-  # Baïkal's DAV password, copied once from Bitwarden `baikal/admin-password` into personal.yaml
-  # (`baikal/admin-password`) and decrypted like modules/api-keys.nix (0400, owned by the user), so
-  # the launchd agent needs neither a repo checkout nor `bws-get`.
+  # The owner's Baïkal DAV password (their own DAV user, nixidy/apps/home/baikal.nix), copied once from
+  # Bitwarden `baikal/<user>/password` into personal.yaml (`baikal/<user>-password`) and decrypted like
+  # modules/api-keys.nix (0400, owned by the user), so the launchd agent needs neither a repo checkout
+  # nor `bws-get`.
   system = {
     config,
     lib,
     ...
   }: {
     config = lib.mkIf config.apiKeys.enable {
-      sops.secrets.baikal-admin-password = {
-        key = "baikal/admin-password";
+      sops.secrets.baikal-password = {
+        key = "baikal/${me}-password";
         sopsFile = builtins.path {
           path = ../secrets/sops/personal.yaml;
           name = "sops-personal.yaml";
@@ -51,14 +52,14 @@ in {
         };
         remote = {
           type = "caldav";
-          url = "https://cal.${domain}/dav.php/calendars/admin/org/";
-          # Baïkal's DAV user (nixidy/apps/home/baikal.nix generatedSecrets)
-          userName = "admin";
+          url = "https://cal.${domain}/dav.php/calendars/${me}/org/";
+          # Their Baïkal DAV user (nixidy/apps/home/baikal.nix generatedSecrets)
+          userName = me;
           # Hosts that are not recipients of personal.yaml fall back to Bitwarden.
           passwordCommand =
-            if secrets ? baikal-admin-password
-            then [(lib.getExe' pkgs.coreutils "cat") secrets.baikal-admin-password.path]
-            else ["bws-get" "baikal/admin-password"];
+            if secrets ? baikal-password
+            then [(lib.getExe' pkgs.coreutils "cat") secrets.baikal-password.path]
+            else ["bws-get" "baikal/${me}/password"];
         };
         khal = {
           enable = true;

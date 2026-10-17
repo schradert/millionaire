@@ -985,7 +985,7 @@
       ],
       "provisioned": "yes",
       "where": "modules/calendar.nix:40",
-      "note": "read-only calendar view of the `org` calendar (user `admin`, Digest); the DAV password is the sops secret baikal/admin-password"
+      "note": "read-only calendar view of the `org` calendar (the owner's own DAV user, Digest); the DAV password is the sops secret baikal/tristan-password"
      }
     ],
     "android": [
@@ -1064,7 +1064,7 @@
       ],
       "provisioned": "yes",
       "where": "nixidy/apps/home/org-bridge.nix:20",
-      "note": "Runs in the cluster (home namespace), not on a client: exports org SCHEDULED/DEADLINE (VEVENT) and TODO headings (VTODO) from the Syncthing org folder to the `org` calendar; calendar-app edits are overwritten at the next export."
+      "note": "Runs in the cluster (home namespace), not on a client, one per person in syncthing.users: exports org SCHEDULED/DEADLINE (VEVENT) and TODO headings (VTODO) from that person's Syncthing org folder to their own `org` calendar; calendar-app edits are overwritten at the next export."
      }
     ],
     "tui": [
@@ -1082,7 +1082,7 @@
     "mcp": [],
     "extensions": []
    },
-   "notes": "Calendar `org` (user `admin`) is fed one way by org-bridge from the Syncthing org folder (see syncthing); khal/vdirsyncer and the phone apps only read it. DAVx5 must be given the full https://cal.trdos.me/dav.php URL."
+   "notes": "Every Keycloak admin/family user has a DAV user of their own with a calendar `org` (Bitwarden baikal/<user>/password; `admin` is break-glass). The owner's calendar is fed one way by org-bridge from the Syncthing org folder (see syncthing); khal/vdirsyncer and the phone apps only read it. DAVx5 must be given the full https://cal.trdos.me/dav.php URL."
   },
   {
    "app": "chirpstack",

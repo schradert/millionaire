@@ -31,7 +31,7 @@ spec:
       containers:
         - env:
             - name: CALDAV_URL
-              value: http://baikal.home.svc.cluster.local:80/dav.php/calendars/admin/org/
+              value: http://baikal.home.svc.cluster.local:80/dav.php/calendars/tristan/org/
             - name: ORG_DIR
               value: /org
             - name: ORG_TODO_KEYWORDS
