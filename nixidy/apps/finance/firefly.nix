@@ -131,6 +131,8 @@
           service.firefly-importer.ports.http.port = 8080;
           configMaps.firefly-importer.data.".env" = lib.concatStringsSep "\n" [
             "IGNORE_DUPLICATE_ERRORS=false"
+            # The web importer logs the tail of its access token at debug (the upstream default).
+            "LOG_LEVEL=info"
             "FIREFLY_III_URL=http://firefly.finance.svc.cluster.local:8080"
             "VANITY_URL=https://${hostname}"
           ];
