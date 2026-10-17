@@ -2,6 +2,8 @@
 
 Org files are the source of truth, synced by Syncthing, exported one way to a CalDAV calendar. This page lists what was agreed, what is deployed (checked 2026-10-16, with the evidence), the few steps only a person can do and why, and a test plan across desktop, phone, server and browser. The design decisions live in the agent memory (`project_org_productivity_stack`); this file is what exists.
 
+To connect a person or a device step by step (what is automatic, the taps that remain, how to check): `docs/onboarding.md`.
+
 ## What you agreed to use
 
 | Surface | Tool | For | State |
