@@ -192,9 +192,11 @@ reconcile() {
       fail=$((fail + 1))
       continue
     fi
+    # Android 17: system_server may not read shared storage (fuse; "Unable to open file: /sdcard/..." from pm install), so
+    # the shell copies the APK to /data/local/tmp, which it can both write and system_server can read
     # installer of record = Obtainium, so it still sees the app as its own (Android 12+ lets it update those silently)
-    sum=$(a shell "pm install -r -i dev.imranr.obtainium --user 0 '$stage/$id.apk'" 2>&1 | tr -d '\r' | tail -3 | tr '\n' ' ') || true
-    a shell "rm -f '$stage/$id.apk'" >/dev/null 2>&1 || true
+    sum=$(a shell "cp '$stage/$id.apk' /data/local/tmp/$id.apk && pm install -r -i dev.imranr.obtainium --user 0 '/data/local/tmp/$id.apk'" 2>&1 | tr -d '\r' | grep -m3 -E 'Success|Failure|Error|Exception|cp:' | tr '\n' ' ') || true
+    a shell "rm -f '$stage/$id.apk' '/data/local/tmp/$id.apk'" >/dev/null 2>&1 || true
     # keep only the newest download of each app
     find "$(rc_cache)/apk/$id" -mindepth 1 -maxdepth 1 ! -name "$tag" -exec rm -rf {} + 2>/dev/null || true
     case $sum in

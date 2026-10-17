@@ -63,7 +63,7 @@ expect "reconcile: no matching release" "$out" "unresolved com.example.gone"
 expect "reconcile: F-Droid app" "$out" "installed  com.example.fd: 2.0"
 expect "reconcile: direct APK" "$out" "installed  com.example.direct: direct"
 expect "reconcile: failures end non-zero" "$out" "exit=2"
-expect "reconcile: installs silently as the shell, Obtainium as installer of record" "$out" "+ shell pm install -r -i dev.imranr.obtainium --user 0 '/sdcard/Download/.android-reconcile/com.example.fd.apk'"
+expect "reconcile: installs silently as the shell from /data/local/tmp, Obtainium as installer of record" "$out" "pm install -r -i dev.imranr.obtainium --user 0 '/data/local/tmp/com.example.fd.apk'"
 expect "reconcile: never opens an Obtainium import" "$out" "obtainium://" absent
 
 out=$(run "" act=reconcile plan=1)

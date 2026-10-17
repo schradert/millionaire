@@ -59,7 +59,7 @@ dry_stubs() {
       "settings get"*) echo null ;;
       "pm list packages -3 -i"*) printf '%s\n' "package:com.termux  installer=dev.imranr.obtainium" "package:org.jellyfin.mobile  installer=dev.imranr.obtainium" ;;
       "for p in"*) fake_pkgs ;;
-      "pm install"*)
+      "pm install"* | "cp "*" && pm install"*)
         printf '+ shell %s\n' "$c" >&9
         if [ "${stub:-}" = failinstall ]; then echo "Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: signatures do not match]"; else echo Success; fi ;;
       "dumpsys window"*) echo "  mCurrentFocus=Window{abc u0 com.termux/com.termux.app.TermuxActivity}" ;;
