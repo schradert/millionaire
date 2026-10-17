@@ -18,6 +18,24 @@ in {
     cronJobName = claim: "rgw-offsite-${claim}";
     # One per claim: two apps in a namespace (mimir and pyroscope) must not own the same object.
     secretName = claim: "${cronJobName claim}-b2";
+    # Refuses to mirror a source that is empty or under half the size of the copy: after a rebuild the buckets start
+    # empty, and syncing that over the mirror would delete it (restore first, docs/pvc-and-postgres-restore.md).
+    # Compaction and expiry shrink a bucket gradually, never by half between two nightly runs.
+    script = o: let
+      src = "rgw:${o.bucket}";
+      dst = "b2:${bucketName}/rgw--${o.namespace}--${o.bucket}";
+    in ''
+      set -eu
+      bytes() { rclone size --json "$1" | sed -n 's/.*"bytes": *\([0-9]*\).*/\1/p'; }
+      s=$(bytes ${src}); d=$(bytes ${dst})
+      s=''${s:-0}; d=''${d:-0}
+      echo "source $s bytes, mirror $d bytes"
+      if [ "$s" -lt 1 ] || [ $((s * 2)) -lt "$d" ]; then
+        echo "refusing to sync: the source is empty or under half the mirror; restore the bucket from the mirror first" >&2
+        exit 1
+      fi
+      exec rclone sync ${src} ${dst} --transfers=8 --checkers=16 --fast-list --max-delete=${toString o.maxDelete} --cache-dir=/tmp --stats-one-line --stats=60s -v
+    '';
     # A run that did not succeed within a day and a half missed a night.
     selector = ''cronjob=~"rgw-offsite-.*"'';
   in {
@@ -91,19 +109,7 @@ in {
                         containers = lib.toList {
                           name = "rclone";
                           inherit image;
-                          args = [
-                            "sync"
-                            "rgw:${o.bucket}"
-                            "b2:${bucketName}/rgw--${config.namespace}--${o.bucket}"
-                            "--transfers=8"
-                            "--checkers=16"
-                            "--fast-list"
-                            "--max-delete=${toString o.maxDelete}"
-                            "--cache-dir=/tmp"
-                            "--stats-one-line"
-                            "--stats=60s"
-                            "-v"
-                          ];
+                          command = ["sh" "-c" (script (o // {inherit (config) namespace;}))];
                           envFrom = lib.toList {secretRef.name = secretName claim;};
                           env =
                             lib.mapAttrsToList (name: value: {inherit name value;}) {
