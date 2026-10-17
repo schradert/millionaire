@@ -91,6 +91,8 @@ to \"todo recursive\", give it a TODO keyword and a leading progress indicator."
   :config
   (setq org-mem-do-sync-with-org-id t
         org-mem-watch-dirs (list org-directory))
+  ;; org-mem-updater-mode lives in its own file; without it org-node waits for a scan that never runs.
+  (require 'org-mem-updater)
   (org-mem-updater-mode)
   ;; Feed org-roam's DB from org-mem so org-roam-ui works WITHOUT org-roam-db-sync.
   ;; org-mem-roamy-db-mode lives in a separate file; require it explicitly.

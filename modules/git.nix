@@ -142,6 +142,7 @@
             (setq! user-full-name "${user.name}"
                    user-mail-address "${email}")
             (after! magit
+              (require 'magit-todos) ; only its option is autoloaded, not the mode
               (magit-todos-mode 1)
               (setq! magit-revision-show-gravatars '("^Author:     " . "^Commit:     ")
                      magit-diff-refine-hunk 'all))
