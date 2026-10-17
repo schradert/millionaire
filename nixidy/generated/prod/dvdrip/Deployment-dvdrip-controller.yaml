@@ -31,12 +31,14 @@ spec:
                   key: token
                   name: dvdrip-ntfy
             - name: DVDRIP_IMAGE
-              value: harbor.trdos.me/library/dvdrip:0.1.7@sha256:b484ca616b5b1f879eefbe89d13b6e8c2786a5637ba562bd644004ef1154e095
+              value: harbor.trdos.me/library/dvdrip:0.1.8@sha256:4b3b46f32cdab8f04014feef5cb27fc938483954b5a86889ec36a17b5e286090
             - name: DVDRIP_JELLYFIN_URL
               value: http://jellyfin.media.svc.cluster.local:8096
+            - name: NTFY_MEDIA_URL
+              value: https://ntfy.trdos.me/media
             - name: OTEL_SERVICE_NAME
               value: dvdrip-controller
-          image: harbor.trdos.me/library/dvdrip:0.1.7@sha256:b484ca616b5b1f879eefbe89d13b6e8c2786a5637ba562bd644004ef1154e095
+          image: harbor.trdos.me/library/dvdrip:0.1.8@sha256:4b3b46f32cdab8f04014feef5cb27fc938483954b5a86889ec36a17b5e286090
           name: controller
           ports:
             - containerPort: 9090

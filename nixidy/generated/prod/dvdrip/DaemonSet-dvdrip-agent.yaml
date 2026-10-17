@@ -31,9 +31,19 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: DVDRIP_RESCUE_MINUTES
+              value: "180"
+            - name: DVDRIP_TRIM_MINUTES
+              value: "30"
+            - name: DVDRIP_RERIP
+              value: 78908b129df8,c950f29a8fd5
+            - name: DVDRIP_PRESETS
+              value: '{"07c30a5ac85c":{"name":"Rendition (2007)"},"13e61f2bb58e":{"name":"Vantage Point (2008)"},"1e81002f26cd":{"disc":2,"name":"The Illusionist (2006)"},"78908b129df8":{"name":"21 (2008)"},"ac42f9693e7a":{"name":"The Martian Child (2007)"},"f0c1551c027f":{"name":"Hitch (2005)"}}'
+            - name: DVDRIP_SEED_DIR
+              value: /rips
             - name: OTEL_SERVICE_NAME
               value: dvdrip-agent
-          image: harbor.trdos.me/library/dvdrip:0.1.7@sha256:b484ca616b5b1f879eefbe89d13b6e8c2786a5637ba562bd644004ef1154e095
+          image: harbor.trdos.me/library/dvdrip:0.1.8@sha256:4b3b46f32cdab8f04014feef5cb27fc938483954b5a86889ec36a17b5e286090
           name: agent
           ports:
             - containerPort: 9090
@@ -56,6 +66,9 @@ spec:
               name: dev
             - mountPath: /run/udev
               name: udev
+              readOnly: true
+            - mountPath: /rips
+              name: rips
               readOnly: true
       hostAliases:
         - hostnames:
@@ -86,3 +99,7 @@ spec:
         - hostPath:
             path: /run/udev
           name: udev
+        - hostPath:
+            path: /data/dvd-rips
+            type: DirectoryOrCreate
+          name: rips
