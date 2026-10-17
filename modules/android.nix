@@ -66,7 +66,7 @@ in {
     orgzly = gh "orgzly-revived/orgzly-android-revived" "com.orgzlyrevived" {
       name = "Orgzly Revived";
       prerelease = true; # weekly-unstable
-      settings = apk "fdroid" // {invertAPKFilter = true;};
+      settings = apk "fdroid"; # the F-Droid build is the only one with all-files access (docs/android-fleet.md)
     };
     davx5 = gh "bitfireAT/davx5-ose" "at.bitfire.davdroid" {
       name = "DAVx5";
