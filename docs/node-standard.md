@@ -386,7 +386,8 @@ What declares it (all in the repo; nothing is set by hand except the one-off ste
   (sirver would otherwise stay a server whatever its entry says); `nixidy kubeconfig` and the Mac's `kubeconfig` fetch from dingo.
 - Every node joins through `https://dingo:9345` (`static/k8s-node.nix`, was `sirver`). There is no DNS name for all three servers; an agent also keeps the server list in
   `agent/etc/rke2-agent-load-balancer.json` (read 2026-10-16 on sirver, octopus and falcon: it listed bonobo, chinchilla and dingo within seconds of the change, octopus dropped).
-  Whether an agent restart with dingo down uses it was not tested.
+  Read on axolotl: its `rke2-agent` restarted at 19:12 with the stale `server: https://sirver:9345` (sirver an agent by then) and came up through that saved list, `default: sirver:9345` only a fallback.
+  A restart with dingo itself down was not tested.
 - Remediation eligibility is the node label `node.trdos.me/remediation=eligible` (`nodeRemediation.eligible`), not the absence of `control-plane` ("Node remediation").
 - `static/builders.nix`: bonobo and chinchilla got dingo's build caps (1 core, 3G/4G); sirver and octopus kept theirs.
 - Argo Workflows' build templates ask for a node without the `node-role.kubernetes.io/etcd` label (and not sirver) instead of the hostnames bonobo and chinchilla
@@ -428,8 +429,13 @@ Gotchas, all observed:
 6. **A sirver agent does not serve 9345 or 6443 any more.** Everything that pointed at it moved (join URL, kubeconfig recipes, `ssh -J 192.184.168.248 dingo ...` for the off-LAN `kubectl`, the
    apiserver probes). Not moved, because nothing is deployed that uses it: the cloud-burst supervisor address (`static/cloud-worker.nix`, `nixidy/system/cicd/capi-cluster.nix`,
    pulumi's `sirver_tailnet_ip`) still names sirver's tailnet IP: point it at dingo's (`100.64.0.6`) before CAPI is enabled (`docs/cloud-burst.md`).
-7. **falcon and axolotl still have `server: https://sirver:9345` in their running config** (read on falcon): their agent keeps working from the saved server list, and the next switch of
-   each (config only, `static/k8s-node.nix`) fixes the file.
+7. **falcon and axolotl had `server: https://sirver:9345` in their running config.** falcon was switched at the end (dry run: only `home-manager-tristan` restarts; `grep ^server` now reads dingo).
+   axolotl was not: its toplevel needs the DisplayLink zip copied from its own store into falcon's (roll gotcha 8), and it is a laptop; its agent works from the saved server list (above), and its
+   next switch fixes the file.
+8. **axolotl's DHCP lease moved from .250 to .108 during the move** (read: MAC `28:f1:0e:16:e8:5d` in falcon's and dingo's neighbour tables; ssh and ping to .250 timed out; the Node still said
+   .250; cilium-health read 0/1 for it on every node; pods on it saw `EAI_AGAIN`, and the `oidc-home-assistant` and `oidc-sure` e2e flows failed, home-assistant with "No route to host"). Not caused by the move.
+   Followed "What the roll found" 2: `systemctl restart rke2-agent` on it and delete its `cilium` and `cilium-envoy` pods; the Node reports .108 now, cilium-health 7/7, and the identity family passes 14 of 14.
+   `static/builders.nix` still names .250 for axolotl, and axolotl has no `RequestAddress`.
 
 ## Taking a node down for hardware work
 
