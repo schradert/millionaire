@@ -1,5 +1,9 @@
 {
   home = {...}: {
+    # Sync, then show the agenda. The launchd agent (modules/vdirsyncer.nix) cannot reach a LAN-only
+    # Baïkal from a Mac that is not on the headscale tailnet (macOS Local Network privacy refuses
+    # background processes: "No route to host"); a terminal can.
+    home.shellAliases.cal = "vdirsyncer sync && khal calendar";
     programs.khal = {
       enable = true;
       locale = {

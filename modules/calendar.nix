@@ -16,7 +16,8 @@ in {
       # paths ("~/..." would resolve to "$HOME/~/...").
       basePath = ".local/share/vdirsyncer/calendars";
       accounts.org = {
-        primary = true;
+        # Not `primary`: khal names a `discover` group's calendars org1, org2, ..., so the account name
+        # is not a valid `default_calendar`, and khal here only reads.
         local = {
           type = "filesystem";
           path = "~/.local/share/vdirsyncer/calendars";
