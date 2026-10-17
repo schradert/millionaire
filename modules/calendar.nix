@@ -1,11 +1,37 @@
 {config, ...}: let
   inherit (config.canivete.meta) domain;
+  inherit (config.canivete.meta.people) me;
 in {
-  home = {
+  # Baïkal's DAV password, copied once from Bitwarden `baikal/admin-password` into personal.yaml
+  # (`baikal/admin-password`) and decrypted like modules/api-keys.nix (0400, owned by the user), so
+  # the launchd agent needs neither a repo checkout nor `bws-get`.
+  system = {
     config,
     lib,
     ...
   }: {
+    config = lib.mkIf config.apiKeys.enable {
+      sops.secrets.baikal-admin-password = {
+        key = "baikal/admin-password";
+        sopsFile = builtins.path {
+          path = ../secrets/sops/personal.yaml;
+          name = "sops-personal.yaml";
+        };
+        owner = me;
+        mode = "0400";
+      };
+    };
+  };
+
+  home = {
+    config,
+    lib,
+    osConfig ? null,
+    pkgs,
+    ...
+  }: let
+    secrets = lib.optionalAttrs (osConfig != null) osConfig.sops.secrets;
+  in {
     # vdirsyncer asks before creating a collection that is missing on one side, which a launchd
     # agent cannot answer; the local directory exists first, so `discover` is silent.
     home.activation.vdirsyncerCollections = lib.hm.dag.entryAfter ["writeBoundary"] ''
@@ -28,7 +54,11 @@ in {
           url = "https://cal.${domain}/dav.php/calendars/admin/org/";
           # Baïkal's DAV user (nixidy/apps/home/baikal.nix generatedSecrets)
           userName = "admin";
-          passwordCommand = ["bws-get" "baikal/admin-password"];
+          # Hosts that are not recipients of personal.yaml fall back to Bitwarden.
+          passwordCommand =
+            if secrets ? baikal-admin-password
+            then [(lib.getExe' pkgs.coreutils "cat") secrets.baikal-admin-password.path]
+            else ["bws-get" "baikal/admin-password"];
         };
         khal = {
           enable = true;
