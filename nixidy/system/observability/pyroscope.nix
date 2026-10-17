@@ -15,6 +15,7 @@
       namespace = "observability";
       # The metastore and write-ahead buffer; the profile segments are in the bucket (`rgwOffsite` below mirrors it to B2).
       volsync.pvcs.pyroscope.title = "data-pyroscope-0";
+      rgwOffsite.pyroscope = {};
       # Rook creates the Secret and ConfigMap "pyroscope" (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY, BUCKET_*);
       # the Secret is injected as environment variables and expanded in the config (-config.expand-env).
       objects = lib.toList {

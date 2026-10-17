@@ -22,6 +22,8 @@
       namespace = "observability";
       # The ingester holds the newest samples (up to ~13h) until their blocks are shipped and compacted in the bucket.
       volsync.pvcs.ingester.title = "storage-mimir-ingester-0";
+      # The blocks themselves (everything older than ~13h) live in the Ceph bucket: mirrored to B2 daily (storage/rgw-offsite.nix).
+      rgwOffsite.mimir = {};
       # Rook creates the Secret and ConfigMap "mimir" (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY, BUCKET_*),
       # injected into every Mimir pod as environment variables below.
       objects = lib.toList {

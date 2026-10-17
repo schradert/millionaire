@@ -50,6 +50,8 @@ in {
     applications.argo-workflows = {
       namespace = "cicd";
       deletable = ["image-build-nix" "deps-update-nix"];
+      # Workflow artifacts and archived logs: mirrored to B2 daily (storage/rgw-offsite.nix).
+      rgwOffsite.argo-workflows-bucket.bucket = "argo-workflows";
       postgres.enable = true;
       postgres.instances = 2;
       # S3 artifact bucket on Ceph RGW. Rook creates the Secret and ConfigMap

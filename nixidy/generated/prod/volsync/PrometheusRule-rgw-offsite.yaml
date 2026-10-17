@@ -1,0 +1,22 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    release: prometheus
+  name: rgw-offsite
+  namespace: storage
+spec:
+  groups:
+    - name: rgw-offsite
+      rules:
+        - alert: RgwOffsiteStale
+          annotations:
+            description: 'The Ceph RGW bucket is not being copied off-site. Check: kubectl -n {{ $labels.namespace }} get cronjob,job,pod and the newest job''s logs; docs/pvc-and-postgres-restore.md.'
+            summary: No successful B2 mirror of {{ $labels.namespace }}/{{ $labels.cronjob }} in 36h
+          expr: |
+            (time() - kube_cronjob_status_last_successful_time{cronjob=~"rgw-offsite-.*"} > 36 * 3600)
+            or
+            ((time() - kube_cronjob_created{cronjob=~"rgw-offsite-.*"} > 36 * 3600) unless on (namespace, cronjob) kube_cronjob_status_last_successful_time{cronjob=~"rgw-offsite-.*"})
+          for: 1h
+          labels:
+            severity: warning
