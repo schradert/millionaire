@@ -662,7 +662,7 @@ concerns other clusters' bluestore labels. (Inferred from that log line and ceph
 3. On falcon: `sudo zpool export data` (not `destroy` until step 1 is signed off), then after sign-off `sudo zpool destroy data && sudo wipefs -a /dev/disk/by-id/wwn-0x5000039b38dbee27-part1 && sudo sgdisk --zap-all /dev/disk/by-id/wwn-0x5000039b38dbee27 && sudo wipefs -a /dev/disk/by-id/wwn-0x5000039b38dbee27`.
 4. Merge the node entry; `kubectl -n storage logs job/rook-ceph-osd-prepare-falcon` shows the OSD; `ceph osd tree` shows host `falcon`. The balancer and `pg_autoscaler` then move about 0.9 TiB onto it.
 
-### Procedure
+### Reinstall procedure
 
 **Gate A: before anything.** All of these must hold; a failed one stops the plan.
 
