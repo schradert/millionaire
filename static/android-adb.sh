@@ -821,6 +821,9 @@ while [ ! -d "$SVDIR/sshd" ] && [ "$i" -lt 10 ]; do i=$((i + 1)); sleep 1; done
 # openssh was installed before termux-services: reinstall it once so the service directory is linked into $SVDIR
 [ -d "$SVDIR/sshd" ] || { pkg reinstall -y openssh; sleep 3; }
 [ -d "$SVDIR/sshd" ] || { echo "error: no sshd service in $SVDIR" >&2; exit 1; }
+# runsvdir scans $SVDIR every 5 seconds: wait for runsv to supervise sshd, or `sv up` says "unable to open supervise/ok"
+i=0
+while [ ! -e "$SVDIR/sshd/supervise/ok" ] && [ "$i" -lt 40 ]; do i=$((i + 1)); sleep 1; done
 sv-enable sshd
 sleep 3
 sv status sshd | tee "$D/svstatus"
