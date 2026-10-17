@@ -17,6 +17,11 @@
 //! 4. Delete the devices that are not in the table (never the hub itself).
 //! 5. Restart Syncthing if it says it needs one.
 //!
+//! `GUI` (optional, a JSON object) is patched into `/rest/config/gui` before the devices, with the
+//! same rule: only when a field it sets differs. nixidy/apps/home/syncthing.nix sets
+//! `insecureAdminAccess`, which tells Syncthing the GUI is protected from outside (oauth2-proxy and
+//! a network policy) and so removes its "GUI Authentication: Set User and Password" banner.
+//!
 //! A field is compared only when the table sets it, so a rerun against a configured hub sends
 //! nothing, and changes made in the GUI to anything else survive.
 
@@ -168,6 +173,17 @@ pub async fn run() -> Result<()> {
         }
     }
 
+    if let Ok(raw) = std::env::var("GUI") {
+        let want: Value = serde_json::from_str(&raw).map_err(|e| format!("GUI is not JSON: {e}"))?;
+        if !want.is_object() {
+            return Err("GUI must be a JSON object".into());
+        }
+        if !covers(&api.get("/rest/config/gui").await?, &want) {
+            api.call(Method::PATCH, "/rest/config/gui", Some(&want)).await?;
+            println!("updated gui");
+        }
+    }
+
     let devices: Vec<Value> = devices.into_iter().filter(|d| d["deviceID"] != json!(me)).collect();
     let current_devices = ensure(&api, "devices", "deviceID", &devices).await?;
 
@@ -220,6 +236,14 @@ mod tests {
         assert!(!covers(&cur, &json!({"path": "/y"})));
         assert!(!covers(&cur, &json!({"versioning": {"params": {"maxAge": "2"}}})));
         assert!(!covers(&cur, &json!({"label": "new"})), "a missing key is a difference");
+    }
+
+    #[test]
+    fn gui_is_patched_only_when_a_set_field_differs() {
+        let cur = json!({"address": "0.0.0.0:8384", "user": "", "insecureAdminAccess": false, "theme": "default"});
+        assert!(!covers(&cur, &json!({"insecureAdminAccess": true})));
+        let done = json!({"address": "0.0.0.0:8384", "user": "", "insecureAdminAccess": true, "theme": "dark"});
+        assert!(covers(&done, &json!({"insecureAdminAccess": true})), "a GUI change to anything else survives");
     }
 
     #[test]
