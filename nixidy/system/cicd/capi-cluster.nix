@@ -19,9 +19,9 @@
     ...
   }: let
     clusterName = "millionaire";
-    # sirver's tailnet IPv4, captured by pulumi after the tailnet deploy;
+    # dingo's (an RKE2 server) tailnet IPv4, captured by pulumi after the tailnet deploy;
     # substituted into the rendered manifests by vals at switch time.
-    sirverTailnetIp = pulumi.vals "command:local:Command" "sirver_tailnet_ip" "stdout";
+    supervisorTailnetIp = pulumi.vals "command:local:Command" "dingo_tailnet_ip" "stdout";
     skipDryRun = {
       "argocd.argoproj.io/sync-options" = "SkipDryRunOnMissingResource=true";
     };
@@ -95,10 +95,10 @@
                     permissions: "0600"
                     encoding: b64
                     content: {{ .rke2Token | b64enc }}
-                  - path: /var/lib/cloud-worker/sirver-ip
+                  - path: /var/lib/cloud-worker/supervisor-ip
                     permissions: "0644"
                     encoding: b64
-                    content: {{ .sirverIp | b64enc }}
+                    content: {{ .supervisorIp | b64enc }}
                 runcmd:
                   - mkdir -p /run/cluster-api && touch /run/cluster-api/bootstrap-success.complete
               '';
@@ -114,8 +114,8 @@
               remoteRef.key = "rke2/agent-token";
             }
             {
-              secretKey = "sirverIp";
-              remoteRef.key = "headscale/node-ip/sirver";
+              secretKey = "supervisorIp";
+              remoteRef.key = "headscale/node-ip/dingo";
             }
           ];
         };
@@ -252,7 +252,7 @@
               services.cidrBlocks = ["10.43.0.0/16"];
             };
             controlPlaneEndpoint = {
-              host = sirverTailnetIp;
+              host = supervisorTailnetIp;
               port = 6443;
             };
             infrastructureRef = {
@@ -266,7 +266,7 @@
           metadata.annotations = skipDryRun;
           spec = {
             controlPlaneEndpoint = {
-              host = sirverTailnetIp;
+              host = supervisorTailnetIp;
               port = 6443;
             };
             controlPlaneLoadBalancer.enabled = false;

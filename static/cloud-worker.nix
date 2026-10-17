@@ -6,11 +6,11 @@
 #
 #   /var/lib/cloud-worker/ts-authkey  — headscale pre-auth key (reusable+ephemeral)
 #   /var/lib/cloud-worker/rke2-token  — RKE2 agent join token
-#   /var/lib/cloud-worker/sirver-ip   — sirver's tailnet IPv4 (supervisor address)
+#   /var/lib/cloud-worker/supervisor-ip — dingo's (an RKE2 server) tailnet IPv4 (supervisor address)
 #
 # Boot order: cloud-init writes the files -> tailscaled joins the tailnet ->
 # cloud-worker-rke2-config renders the runtime RKE2 drop-in (server URL from
-# sirver-ip, node-ip = tailnet IP, provider-id from Hetzner metadata) ->
+# supervisor-ip, node-ip = tailnet IP, provider-id from Hetzner metadata) ->
 # rke2-agent joins. The RKE2 token embeds the cluster CA hash, so connecting
 # to the supervisor by IP is fine (no hostname/SAN dependency, no MagicDNS).
 #
@@ -95,7 +95,7 @@
     script = ''
       set -eu
       d=/var/lib/cloud-worker
-      for f in rke2-token sirver-ip; do
+      for f in rke2-token supervisor-ip; do
         [ -s "$d/$f" ] || { echo "missing $d/$f (cloud-init bootstrap data)" >&2; exit 1; }
       done
       ip=""
@@ -107,7 +107,7 @@
       id=$(curl -sf --max-time 10 http://169.254.169.254/hetzner/v1/metadata/instance-id)
       mkdir -p /etc/rancher/rke2/config.yaml.d
       cat > /etc/rancher/rke2/config.yaml.d/50-burst.yaml <<EOF
-      server: https://$(cat "$d/sirver-ip"):9345
+      server: https://$(cat "$d/supervisor-ip"):9345
       node-ip: $ip
       kubelet-arg:
         - provider-id=hcloud://$id

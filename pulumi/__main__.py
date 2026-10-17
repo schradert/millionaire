@@ -572,19 +572,6 @@ class Millionaire:
             ],
         )
 
-        # Cloud-burst workers pin `sirver` to its tailnet IP in /etc/hosts;
-        # capture it once sirver's deploy (tailnet.nix) brings tailscale up.
-        sirver_tailnet_ip = command.local.Command(
-            "sirver_tailnet_ip",
-            create="ssh -i ~/.ssh/personal sirver tailscale ip -4",
-            opts=pulumi.ResourceOptions(depends_on=[sirver.refresh]),
-        )
-        Secret(
-            "headscale/node-ip/sirver",
-            sirver_tailnet_ip.stdout.apply(strip),
-            "sirver tailnet IPv4 (pinned by cloud-burst workers)",
-        )
-
         # --- Attic post-deploy setup (after chinchilla has atticd running) ---
         # Generate admin token, then use attic client to create/configure cache
         attic_token = command.local.Command(
@@ -699,7 +686,20 @@ class Millionaire:
             headscale_cluster_node_key_sops,
         ]
         millionaire.NixOS("octopus", "root@nixos", depends_on=other_node_deps)
-        millionaire.NixOS("dingo", "root@nixos", depends_on=other_node_deps)
+        dingo = millionaire.NixOS("dingo", "root@nixos", depends_on=other_node_deps)
+
+        # Cloud-burst workers join the cluster through dingo (an RKE2 server) by its tailnet IP;
+        # capture it once dingo's deploy (tailnet.nix) brings tailscale up.
+        dingo_tailnet_ip = command.local.Command(
+            "dingo_tailnet_ip",
+            create="ssh -i ~/.ssh/personal dingo tailscale ip -4",
+            opts=pulumi.ResourceOptions(depends_on=[dingo.refresh]),
+        )
+        Secret(
+            "headscale/node-ip/dingo",
+            dingo_tailnet_ip.stdout.apply(strip),
+            "dingo tailnet IPv4 (the RKE2 supervisor cloud-burst workers join)",
+        )
         millionaire.NixOS(
             "bonobo",
             "root@nixos",
