@@ -42,6 +42,11 @@
   in
     map (n: cfg.apps.${n} or (throw "android.devices.${dev.name}: unknown app ${n}")) names;
 
+  # Obtainium keeps category colours as ARGB ints in a JSON string under the preference `categories`
+  # (lib/providers/settings_provider.dart); apps carry only the names (lib/models/app.dart `categories`).
+  categoriesPref = builtins.toJSON (lib.mapAttrs (_: c: 4278190080 + lib.fromHexString c.color) cfg.categories);
+  categoryOf = app: assert lib.assertMsg (cfg.categories ? ${app.category}) "android.apps.${app.name}: unknown category ${app.category}"; app.category;
+
   obtainium = dev: app: {
     inherit (app) id url author name;
     additionalSettings = builtins.toJSON (baseSettings
@@ -50,7 +55,7 @@
         includePrereleases = app.prerelease && !dev.stable;
       }
       // app.settings);
-    categories = [dev.owner];
+    categories = [(categoryOf app)];
     pinned = false;
     allowIdChange = false;
   };
@@ -58,26 +63,34 @@
   appsOf = dev: lib.filter (a: !a.web) (resolve dev);
   webOf = dev: lib.filter (a: a.web) (resolve dev);
 
+  # Obtainium applies `settings` of a file import (Settings, Import/export, Import), not of the
+  # obtainium://apps link: the file gives the categories their colours and groups the list by them.
+  categorySettings = {
+    categories = categoriesPref;
+    groupBy = "category";
+  };
   importJSON = dev: {
     schemaVersion = 2;
     apps = map (obtainium dev) (appsOf dev);
-    settings = null;
+    settings = categorySettings;
   };
   bootstrapJSON = dev:
     importJSON dev
     // {
-      settings = {
-        # "shizuku" covers Dhizuku's device-owner binder (granted_owner).
-        installMethod =
-          if dev.deviceOwner
-          then "shizuku"
-          else "system";
-        enableBackgroundUpdates = true;
-        updateInterval = 360;
-        bgUpdatesOnWiFiOnly = true;
-        checkOnStart = true;
-        includePrereleasesByDefault = false;
-      };
+      settings =
+        categorySettings
+        // {
+          # "shizuku" covers Dhizuku's device-owner binder (granted_owner).
+          installMethod =
+            if dev.deviceOwner
+            then "shizuku"
+            else "system";
+          enableBackgroundUpdates = true;
+          updateInterval = 360;
+          bgUpdatesOnWiFiOnly = true;
+          checkOnStart = true;
+          includePrereleasesByDefault = false;
+        };
     };
 
   # The notes and calendar stack on a phone (`android <device> productivity`, docs/android-fleet.md): which
@@ -134,6 +147,13 @@
   devicePage = dev: let
     link = "obtainium://apps/" + lib.escapeURL (builtins.toJSON (importJSON dev).apps);
     item = a: "<li><a href=\"${esc a.url}\">${esc a.name}</a> <code>${esc a.id}</code>${lib.optionalString (a.prerelease && !dev.stable) " (pre-release)"}</li>";
+    byCategory = lib.groupBy (a: a.category) (appsOf dev);
+    section = cat: let
+      c = cfg.categories.${cat};
+    in ''
+      <h3 style="border-left:.6rem solid #${c.color};padding-left:.4rem">${esc cat} (${toString (lib.length byCategory.${cat})})</h3><p>${esc c.description}</p><ul>
+      ${lib.concatMapStringsSep "\n" item (lib.sort (a: b: lib.toLower a.name < lib.toLower b.name) byCategory.${cat})}
+      </ul>'';
     bootApk = name: let p = cfg.bootstrap.${name}; in "<li><a href=\"${esc p.url}\">${name} ${p.version}</a> <code>${p.hash}</code></li>";
   in
     page "${dev.name} apps" ''
@@ -145,9 +165,9 @@
       }.</p>
       <a class="btn" href="${esc link}">Import app list into Obtainium</a>
       <p>Import only adds or updates apps; uninstall anything not listed here by hand.</p>
-      <h2>Apps</h2><ul>
-      ${lib.concatMapStringsSep "\n" item (appsOf dev)}
-      </ul>
+      <p>For colours and a list grouped by category, import <a href="${dev.name}.json" download>${dev.name}.json</a> as a file (Settings, Import/export, Import). The link adds the apps and their categories only.</p>
+      <h2>Apps</h2>
+      ${lib.concatMapStringsSep "\n" section (lib.filter (c: byCategory ? ${c}) (lib.attrNames cfg.categories))}
       ${lib.optionalString (webOf dev != []) ''
         <h2>Web apps</h2><p>Open in the browser, then "Add to Home screen".</p><ul>
         ${lib.concatMapStringsSep "\n" (a: "<li><a href=\"${esc a.url}\">${esc a.name}</a></li>") (webOf dev)}
@@ -167,10 +187,17 @@ in {
   options.android = {
     hostname = can.str "page host on the internal gateway" {default = "android.${domain}";};
     ntfyHost = can.str "ntfy server the phones subscribe to" {default = "ntfy.${domain}";};
+    categories = can.attrs.submodule "fixed list of Obtainium categories every app belongs to (one per app)" {
+      options = {
+        color = can.str "category colour in Obtainium and on the device page, RRGGBB" {};
+        description = can.str "what belongs in the category" {};
+      };
+    };
     apps = can.attrs.submodule "app catalog; an Obtainium source per app" ({name, ...}: {
       options = {
         id = can.str "Android package id (must match the APK)" {};
         name = can.str "display name" {default = name;};
+        category = can.str "key of android.categories; Obtainium groups the app list by it" {};
         url = can.str "Obtainium source URL (GitHub/F-Droid/IzzyOnDroid/direct APK), or the page of a web app" {};
         author = can.str "author shown by Obtainium" {default = "";};
         prerelease = can.bool "track pre-releases/nightlies (ignored on stable devices)" {default = false;};
