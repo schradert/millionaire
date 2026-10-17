@@ -425,6 +425,14 @@
                         "description": "Relative to media-dvd.",
                         "nullable": true,
                         "type": "string"
+                      },
+                      "notes": {
+                        "default": [],
+                        "description": "What the last publish wants a person to know (a file already there that this disc did not\npublish, kept next to the new one); the controller sends them to ntfy.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
                       }
                     },
                     "type": "object"

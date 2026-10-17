@@ -13,7 +13,7 @@ use std::{
 use anyhow::{bail, Context, Result};
 use clap::Args;
 use kube::{
-    api::{ListParams, ObjectMeta, PostParams},
+    api::{ListParams, ObjectMeta, Patch, PatchParams, PostParams},
     Api, Client,
 };
 use serde_json::json;
@@ -48,6 +48,77 @@ pub struct AgentArgs {
     pub min_free_gb: u64,
     #[arg(long, env = "DVDRIP_METRICS_ADDR", default_value = "0.0.0.0:9090")]
     pub metrics_addr: String,
+    /// ddrescue's time budget (minutes) for a damaged disc's first pass and for each resume. A
+    /// disc that hits it keeps its image and is continued when it is reinserted.
+    #[arg(long, env = "DVDRIP_RESCUE_MINUTES", default_value_t = 60)]
+    pub rescue_minutes: u64,
+    /// ddrescue's budget (minutes) for the retry pass after the first.
+    #[arg(long, env = "DVDRIP_TRIM_MINUTES", default_value_t = 15)]
+    pub trim_minutes: u64,
+    /// Fingerprints of discs imported without a good rip (backup method `import`, e.g. held after
+    /// the bash pipeline failed them) to rip again when inserted, instead of ejecting them as
+    /// duplicates. Once ripped for real the disc is an ordinary duplicate again. Comma separated.
+    #[arg(long, env = "DVDRIP_RERIP", value_delimiter = ',')]
+    pub rerip: Vec<String>,
+    /// The bash pipeline's rips (`<LABEL>/.discid`, `raw.iso`, `raw.map`): a rescue image it left
+    /// for a disc seeds that disc's staging, so the reinsert continues it instead of reading the
+    /// disc from the start.
+    #[arg(long, env = "DVDRIP_SEED_DIR")]
+    pub seed_dir: Option<PathBuf>,
+    /// JSON object, fingerprint -> `{"name": "The Illusionist (2006)", "disc": 2}`: the library
+    /// name and disc number a new Disc starts with (instead of the label in title case, disc 1),
+    /// for discs known before they are inserted (a bonus disc, a disc with a cryptic label).
+    #[arg(long, env = "DVDRIP_PRESETS", default_value = "{}")]
+    pub presets: String,
+}
+
+/// Copy a rescue image the bash pipeline left for `fp` (`<seed>/<LABEL>/{.discid,raw.iso,raw.map}`)
+/// into `dst`. False when there is none. The map goes last: no map, no partial image.
+pub fn seed_from(seed: &Path, fp: &str, dst: &Path) -> Result<bool> {
+    for e in std::fs::read_dir(seed)?.filter_map(Result::ok) {
+        let dir = e.path();
+        if std::fs::read_to_string(dir.join(".discid")).map(|s| s.trim() == fp).unwrap_or(false)
+            && dir.join("raw.iso").is_file()
+            && dir.join("raw.map").is_file()
+        {
+            std::fs::create_dir_all(dst)?;
+            for f in ["raw.iso", "raw.map"] {
+                std::fs::copy(dir.join(f), dst.join(f)).with_context(|| format!("copying {f} from {}", dir.display()))?;
+            }
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+/// What a new Disc's spec starts with, when its fingerprint has a preset.
+#[derive(Debug, Default, PartialEq, serde::Deserialize)]
+pub struct Preset {
+    pub name: Option<String>,
+    pub disc: Option<u32>,
+}
+
+impl AgentArgs {
+    pub fn limits(&self) -> Limits {
+        Limits { rescue: Duration::from_secs(self.rescue_minutes * 60), trim: Duration::from_secs(self.trim_minutes * 60), ..Limits::default() }
+    }
+
+    /// The preset for a fingerprint (none when absent or the JSON is bad: the disc then starts
+    /// with the usual defaults and the mistake is logged).
+    pub fn preset(&self, fp: &str) -> Preset {
+        match serde_json::from_str::<BTreeMap<String, Preset>>(&self.presets) {
+            Ok(mut m) => m.remove(fp).unwrap_or_default(),
+            Err(e) => {
+                warn!(error = %e, "DVDRIP_PRESETS is not a JSON object of presets; ignoring it");
+                Preset::default()
+            }
+        }
+    }
+
+    /// An imported disc this agent was asked to rip again.
+    fn wants_rerip(&self, fp: &str, st: &crate::crd::DiscStatus) -> bool {
+        self.rerip.iter().any(|f| f.trim() == fp) && st.backup.as_ref().is_some_and(|b| b.method == "import")
+    }
 }
 
 /// A lease older than this means the agent holding a disc is gone.
@@ -306,6 +377,28 @@ impl DriveTask {
         Ok(())
     }
 
+    /// Is there a partial image (raw.iso and raw.map) in staging, from a failed attempt or, for a
+    /// disc the bash pipeline had started rescuing, copied from its rips dir? Continue it.
+    async fn partial_image(&self, fp: &str) -> bool {
+        let dir = self.a.staging.join(fp);
+        let have = |d: &Path| d.join("raw.iso").is_file() && d.join("raw.map").is_file();
+        if !have(&dir) {
+            if let Some(seed) = self.a.seed_dir.clone() {
+                let (fp, to) = (fp.to_string(), dir.clone());
+                match tokio::task::spawn_blocking(move || seed_from(&seed, &fp, &to)).await {
+                    Ok(Ok(true)) => info!("seeded staging with the bash pipeline's rescue image"),
+                    Ok(Ok(false)) => {}
+                    Ok(Err(e)) => {
+                        warn!(error = %format!("{e:#}"), "couldn't copy the bash pipeline's rescue image");
+                        tokio::fs::remove_file(dir.join("raw.map")).await.ok();
+                    }
+                    Err(e) => warn!(error = %e, "seeding failed"),
+                }
+            }
+        }
+        have(&dir)
+    }
+
     async fn existing(&self, fp: &str) -> Result<Option<Disc>> {
         Ok(self.discs.list(&ListParams::default().labels(&format!("{FINGERPRINT_LABEL}={fp}"))).await?.items.into_iter().next())
     }
@@ -317,10 +410,11 @@ impl DriveTask {
                 let name = d.metadata.name.clone().unwrap();
                 let st = d.status.clone().unwrap_or_default();
                 let rescue = st.damage.as_ref().is_some_and(|x| x.rescue_pending) && self.a.work_root.join(fp).join("raw.map").exists();
+                let rerip = self.a.wants_rerip(fp, &st);
                 if rescue {
                     info!(disc = name, "damaged disc is back: re-reading only the missing sectors");
                     (name, true)
-                } else if st.backup.is_some() {
+                } else if st.backup.is_some() && !rerip {
                     info!(disc = name, "already ripped; nothing to do");
                     self.metrics.event("duplicate");
                     crate::notify::send(&format!("{label}: already ripped ({})", d.spec.name), "duplicate").await;
@@ -333,7 +427,17 @@ impl DriveTask {
                     self.state(DriveState::Waiting, None, Some(format!("{label} is being backed up on {other}"))).await;
                     return Ok(());
                 } else {
-                    (name, false)
+                    if rerip {
+                        info!(disc = name, "imported disc, ripping it again as asked (DVDRIP_RERIP)");
+                        crate::notify::send(&format!("{label}: ripping again on request (the imported copy was not good)"), "new").await;
+                    }
+                    // A failed attempt (time limit, dirty disc) left its image and map in staging:
+                    // continue it, don't read the whole disc again.
+                    let partial = self.partial_image(fp).await;
+                    if partial {
+                        info!(disc = name, "a partial image is in staging: continuing it");
+                    }
+                    (name, partial)
                 }
             }
             None => {
@@ -344,7 +448,10 @@ impl DriveTask {
                         labels: Some([(FINGERPRINT_LABEL.to_string(), fp.to_string())].into()),
                         ..Default::default()
                     },
-                    spec: DiscSpec { name: label_to_name(label), disc: 1, ..Default::default() },
+                    spec: {
+                        let p = self.a.preset(fp);
+                        DiscSpec { name: p.name.unwrap_or_else(|| label_to_name(label)), disc: p.disc.unwrap_or(1), ..Default::default() }
+                    },
                     status: None,
                 };
                 match self.discs.create(&PostParams::default(), &d).await {
@@ -360,7 +467,9 @@ impl DriveTask {
                 info!(disc = name, "new disc");
                 self.metrics.event("new");
                 crate::notify::send(&format!("{label}: new disc, backing up on {}", self.name), "new").await;
-                (name, false)
+                // The bash pipeline may have left a partial rescue of it.
+                let partial = self.partial_image(fp).await;
+                (name, partial)
             }
         };
         let prev = self.discs.get_status(&name).await?.status.unwrap_or_default();
@@ -371,6 +480,22 @@ impl DriveTask {
                    "message": if resume { "re-reading the missing sectors" } else { "copying the disc" }, "since": now()}),
         )
         .await?;
+        // A disc ripped again on request must not stay held (the fresh rip is meant to be encoded),
+        // and takes its preset's name if it has one.
+        // After the status patch, so the controller sees BackingUp, never a released Held.
+        if prev.backup.as_ref().is_some_and(|b| b.method == "import") && self.a.rerip.iter().any(|f| f.trim() == fp) {
+            let preset = self.a.preset(fp);
+            let mut spec = json!({"spec": {"hold": false}});
+            if let Some(n) = preset.name {
+                spec["spec"]["name"] = json!(n);
+            }
+            if let Some(n) = preset.disc {
+                spec["spec"]["disc"] = json!(n);
+            }
+            if let Err(e) = self.discs.patch(&name, &PatchParams::default(), &Patch::Merge(&spec)).await {
+                warn!(disc = name, error = %e, "couldn't clear spec.hold; set hold=false by hand to encode it");
+            }
+        }
         // The Disc's lease: renewed while this drive works on it.
         let lease = {
             let (discs, name) = (self.discs.clone(), name.clone());
@@ -423,7 +548,7 @@ impl DriveTask {
         let work = self.a.work_root.join(fp);
         tokio::fs::create_dir_all(work.join("logs")).await?;
         tokio::fs::create_dir_all(st.dir.join("logs")).await?;
-        let limits = Limits::default();
+        let limits = self.a.limits();
         let start = Instant::now();
         let wall = std::time::SystemTime::now();
         self.state(DriveState::BackingUp, Some(name.to_string()), None).await;
@@ -450,6 +575,11 @@ impl DriveTask {
         self.state(DriveState::Uploading, Some(name.to_string()), None).await;
         let (src, dst) = (st.master(), work.join("master.iso"));
         let sha = tokio::task::spawn_blocking(move || copy_verified(&src, &dst, None)).await??;
+        // A new master (a first backup, or a better one after a rescue) invalidates what was
+        // derived from the old one: its remux and encodes would otherwise be reused.
+        for d in ["remux", "encodes", "repair"] {
+            tokio::fs::remove_dir_all(work.join(d)).await.ok();
+        }
         if let Some(d) = &outcome.damage {
             if d.rescue_pending {
                 // Kept on the work volume, so a reinsert on any drive resumes the rescue.
@@ -500,6 +630,9 @@ pub struct BackupArgs {
     /// Where master.iso (and a rescue's raw.iso/raw.map) go.
     #[arg(long)]
     pub out: PathBuf,
+    /// Continue the partial image (raw.iso + raw.map) already in --out: read only what is missing.
+    #[arg(long)]
+    pub resume: bool,
 }
 
 /// `dvdrip backup`: the agent's backup chain by hand (formerly dvd-backup), no API involved.
@@ -507,7 +640,11 @@ pub async fn backup_cmd(a: BackupArgs) -> Result<()> {
     let label = disc_label(&a.source).await;
     let st = Staging { dir: a.out, device: a.source, label };
     let start = Instant::now();
-    let o = backup::backup(&st, &Limits::default(), |p| tracing::debug!(progress = p)).await?;
+    let o = if a.resume {
+        backup::resume_rescue(&st, &Limits::default()).await?
+    } else {
+        backup::backup(&st, &Limits::default(), |p| tracing::debug!(progress = p)).await?
+    };
     let sha = crate::publish::sha256(&st.master())?;
     println!(
         "{}",
@@ -519,6 +656,77 @@ pub async fn backup_cmd(a: BackupArgs) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn args(rerip: &[&str]) -> AgentArgs {
+        AgentArgs {
+            node: "n".into(),
+            namespace: "media".into(),
+            staging: "/s".into(),
+            work_root: "/w".into(),
+            min_free_gb: 20,
+            metrics_addr: String::new(),
+            rescue_minutes: 180,
+            trim_minutes: 30,
+            rerip: rerip.iter().map(|s| s.to_string()).collect(),
+            seed_dir: None,
+            presets: r#"{"1e81002f26cd": {"name": "The Illusionist (2006)", "disc": 2}, "f0c1551c027f": {"name": "Hitch (2005)"}}"#.into(),
+        }
+    }
+
+    #[test]
+    fn rerip_only_applies_to_imported_discs() {
+        let st = |method: &str| crate::crd::DiscStatus { backup: Some(Backup { method: method.into(), ..Default::default() }), ..Default::default() };
+        let a = args(&["78908b129df8", " c950f29a8fd5"]);
+        assert!(a.wants_rerip("78908b129df8", &st("import")));
+        assert!(a.wants_rerip("c950f29a8fd5", &st("import")), "list entries are trimmed");
+        // Ripped for real since: an ordinary duplicate again.
+        assert!(!a.wants_rerip("78908b129df8", &st("makemkv")));
+        assert!(!a.wants_rerip("78908b129df8", &crate::crd::DiscStatus::default()));
+        // Not listed.
+        assert!(!a.wants_rerip("ffffffffffff", &st("import")));
+        assert!(!args(&[]).wants_rerip("78908b129df8", &st("import")));
+    }
+
+    #[test]
+    fn presets_name_new_discs() {
+        let a = args(&[]);
+        assert_eq!(a.preset("1e81002f26cd"), Preset { name: Some("The Illusionist (2006)".into()), disc: Some(2) });
+        assert_eq!(a.preset("f0c1551c027f"), Preset { name: Some("Hitch (2005)".into()), disc: None });
+        assert_eq!(a.preset("ffffffffffff"), Preset::default());
+        let bad = AgentArgs { presets: "not json".into(), ..a };
+        assert_eq!(bad.preset("1e81002f26cd"), Preset::default());
+    }
+
+    #[test]
+    fn rescue_limits_come_from_the_args() {
+        let l = args(&[]).limits();
+        assert_eq!((l.rescue.as_secs(), l.trim.as_secs()), (180 * 60, 30 * 60));
+    }
+
+    #[test]
+    fn seeds_from_a_bash_rescue_image() {
+        let base = std::env::temp_dir().join(format!("dvdrip-seed-{}", std::process::id()));
+        std::fs::remove_dir_all(&base).ok();
+        let (seed, dst) = (base.join("rips"), base.join("staging/c950f29a8fd5"));
+        let night = seed.join("NIGHTMARE");
+        std::fs::create_dir_all(&night).unwrap();
+        std::fs::write(night.join(".discid"), "c950f29a8fd5\n").unwrap();
+        std::fs::write(night.join("raw.iso"), b"image").unwrap();
+        // A rip with a master but no rescue, and a rescue of another disc.
+        std::fs::create_dir_all(seed.join("ELF")).unwrap();
+        std::fs::write(seed.join("ELF/.discid"), "111111111111\n").unwrap();
+        std::fs::write(seed.join("ELF/raw.iso"), b"other").unwrap();
+        std::fs::write(seed.join("ELF/raw.map"), b"map").unwrap();
+        // No map yet: not a partial image.
+        assert!(!seed_from(&seed, "c950f29a8fd5", &dst).unwrap());
+        std::fs::write(night.join("raw.map"), b"map").unwrap();
+        assert!(seed_from(&seed, "c950f29a8fd5", &dst).unwrap());
+        assert_eq!(std::fs::read(dst.join("raw.iso")).unwrap(), b"image");
+        assert_eq!(std::fs::read(dst.join("raw.map")).unwrap(), b"map");
+        assert!(!seed_from(&seed, "ffffffffffff", &base.join("none")).unwrap());
+        assert!(!base.join("none").exists());
+        std::fs::remove_dir_all(&base).ok();
+    }
 
     #[test]
     fn labels() {

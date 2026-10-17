@@ -1,7 +1,10 @@
 //! `dvdrip publish`: make media-dvd and media-movies hold what the Disc says (docs/dvd-rip.md,
 //! "Publish Job"). Copies are written as `.part` beside the target, verified and renamed; files
 //! this disc published before are moved or removed when the spec changes. Files the disc did not
-//! publish itself are never overwritten or removed.
+//! publish itself are never overwritten or removed: a movie file someone else already put at the
+//! path is kept, and the disc's own goes next to it as `<name> - dvdrip.mkv` (Jellyfin shows the
+//! two as versions of one movie); the Disc's `published.notes` say so and the controller tells
+//! ntfy.
 
 use std::{
     collections::{BTreeMap, HashSet},
@@ -118,6 +121,32 @@ fn relocate(from: &Path, to: &Path) -> Result<()> {
     std::fs::rename(from, to).with_context(|| format!("moving {} to {}", from.display(), to.display()))
 }
 
+/// The name a disc's file gets when someone else's already sits at its path: `X.mkv` ->
+/// `X - dvdrip.mkv`, which Jellyfin groups with `X.mkv` as another version of the movie.
+pub fn kept_both_name(path: &str) -> String {
+    match path.rsplit_once('.') {
+        Some((stem, ext)) if !stem.is_empty() && !stem.ends_with('/') => format!("{stem} - dvdrip.{ext}"),
+        _ => format!("{path} - dvdrip"),
+    }
+}
+
+/// Where `dest` goes in the library: itself, unless a file this disc did not publish is there,
+/// then beside it (`notes` records that). Refuses when that name is taken by a stranger too.
+fn target(movies: &Path, dest: &str, ours: &HashSet<String>, notes: &mut Vec<String>) -> Result<String> {
+    if !movies.join(dest).exists() || ours.contains(dest) {
+        return Ok(dest.to_string());
+    }
+    let alt = kept_both_name(dest);
+    if movies.join(&alt).exists() && !ours.contains(&alt) {
+        bail!("{dest} and {alt} already exist and were not published by this disc");
+    }
+    let note = format!("{dest} already exists (not from the disc rip); kept it and published the rip as {alt}");
+    if !notes.contains(&note) {
+        notes.push(note);
+    }
+    Ok(alt)
+}
+
 /// Remove `dir` and its parents up to (not including) `root` while they are empty.
 fn prune(root: &Path, mut dir: PathBuf) {
     while dir.starts_with(root) && dir != root {
@@ -188,32 +217,32 @@ pub fn publish(
     }
 
     // The encodes.
+    let mut notes: Vec<String> = Vec::new();
     let by_title: BTreeMap<u32, &PublishedFile> = prev_files.iter().filter(|f| f.title > 0).map(|f| (f.title, f)).collect();
     let mut out = Vec::new();
     for p in &files {
-        let dst = roots.movies.join(&p.dest);
+        // Someone else's file at the path stays; the rip is published beside it.
+        let dest = target(&roots.movies, &p.dest, &ours, &mut notes)?;
+        let dst = roots.movies.join(&dest);
         let src = roots.work.join(&p.source);
         let old = by_title.get(&p.title);
         if src.exists() {
-            // A fresh encode (first publish, or a re-encode): copy over whatever was there.
-            if dst.exists() && !ours.contains(&p.dest) {
-                bail!("{} already exists and was not published by this disc", dst.display());
-            }
-            info!(title = p.title, to = %p.dest, "copying");
+            // A fresh encode (first publish, or a re-encode): copy over what this disc put there.
+            info!(title = p.title, to = %dest, "copying");
             let part = part_of(&dst);
             copy_verified(&src, &part, None)?;
             if opts.retitle {
                 retitle(&part, &p.segment_title)?;
             }
             std::fs::rename(&part, &dst)?;
-            note(&p.dest)?;
-            if let Some(o) = old.filter(|o| o.path != p.dest) {
+            note(&dest)?;
+            if let Some(o) = old.filter(|o| o.path != dest) {
                 std::fs::remove_file(roots.movies.join(&o.path)).ok();
             }
         } else if let Some(o) = old {
             let from = roots.movies.join(&o.path);
-            if o.path != p.dest {
-                info!(title = p.title, from = %o.path, to = %p.dest, "moving");
+            if o.path != dest {
+                info!(title = p.title, from = %o.path, to = %dest, "moving");
                 relocate(&from, &dst)?;
             } else if !dst.exists() {
                 bail!("{} is gone and there is no encode to publish again (re-encode the disc)", dst.display());
@@ -224,7 +253,7 @@ pub fn publish(
         } else {
             bail!("title {}: no encode in the work dir to publish (re-encode the disc)", p.title);
         }
-        out.push(PublishedFile { title: p.title, path: p.dest.clone(), segment_title: p.segment_title.clone() });
+        out.push(PublishedFile { title: p.title, path: dest, segment_title: p.segment_title.clone() });
     }
 
     // The main feature's damage note.
@@ -235,11 +264,13 @@ pub fn publish(
             let path = format!("{name}/{name}.nfo");
             let dst = roots.movies.join(&path);
             if dst.exists() && !ours.contains(&path) {
-                bail!("{} already exists and was not published by this disc", dst.display());
+                // Someone's own NFO describes the movie: leave it, skip ours.
+                notes.push(format!("{path} already exists (not from the disc rip); the damage note was not written"));
+            } else {
+                std::fs::write(&dst, nfo)?;
+                note(&path)?;
+                out.push(PublishedFile { title: 0, path, segment_title: String::new() });
             }
-            std::fs::write(&dst, nfo)?;
-            note(&path)?;
-            out.push(PublishedFile { title: 0, path, segment_title: String::new() });
         }
     }
 
@@ -260,7 +291,7 @@ pub fn publish(
     }
 
     // The caller records the result in the Disc status, then calls finish().
-    Ok(Published { iso: Some(iso), files: out, generation })
+    Ok(Published { iso: Some(iso), files: out, generation, notes })
 }
 
 /// After the result is recorded: published sources and the master leave the work dir
@@ -360,16 +391,69 @@ mod tests {
     }
 
     #[test]
-    fn never_overwrites_foreign_files() {
+    fn keeps_both_when_a_foreign_file_is_in_the_way() {
         let (_tmp, r) = setup("foreign");
         std::fs::write(r.work.join("master.iso"), b"iso").unwrap();
         std::fs::write(r.work.join(encode_path(1)), b"t1").unwrap();
+        std::fs::write(r.work.join(encode_path(6)), b"t6").unwrap();
         std::fs::create_dir_all(r.movies.join("Elf")).unwrap();
         std::fs::write(r.movies.join("Elf/Elf.mkv"), b"someone else's").unwrap();
+        let titles = [t(1, Role::Main, 100.0), t(6, Role::Extra, 60.0)];
+        let mut spec = DiscSpec { name: "Elf".into(), disc: 1, ..Default::default() };
+        let p1 = publish(&r, &spec, "ELF", &titles, None, 1, &OPTS).unwrap();
+        // Theirs untouched, ours beside it, with a note for ntfy.
+        assert_eq!(std::fs::read_to_string(r.movies.join("Elf/Elf.mkv")).unwrap(), "someone else's");
+        assert_eq!(std::fs::read_to_string(r.movies.join("Elf/Elf - dvdrip.mkv")).unwrap(), "t1");
+        assert_eq!(files(&r.movies), ["Elf/Elf - dvdrip.mkv", "Elf/Elf.mkv", "Elf/extras/Title 6 - 1m00s.mkv"]);
+        assert_eq!(p1.files.iter().find(|f| f.title == 1).unwrap().path, "Elf/Elf - dvdrip.mkv");
+        assert_eq!(p1.notes.len(), 1);
+        assert!(p1.notes[0].contains("Elf/Elf.mkv") && p1.notes[0].contains("Elf/Elf - dvdrip.mkv"), "{:?}", p1.notes);
+        finish(&r, &p1);
+
+        // Publishing again (nothing re-encoded) keeps the arrangement: no move onto their file.
+        spec.titles.insert("6".into(), TitleSpec { folder: Some("clips".into()), name: None });
+        let p2 = publish(&r, &spec, "ELF", &titles, Some(&p1), 2, &OPTS).unwrap();
+        assert_eq!(std::fs::read_to_string(r.movies.join("Elf/Elf.mkv")).unwrap(), "someone else's");
+        assert_eq!(p2.files.iter().find(|f| f.title == 1).unwrap().path, "Elf/Elf - dvdrip.mkv");
+        assert_eq!(std::fs::read_to_string(r.movies.join("Elf/clips/Title 6 - 1m00s.mkv")).unwrap(), "t6");
+        finish(&r, &p2);
+
+        // A fresh encode of the main feature (a resumed rescue) replaces ours, still not theirs.
+        std::fs::write(r.work.join(encode_path(1)), b"better").unwrap();
+        let p3 = publish(&r, &spec, "ELF", &titles, Some(&p2), 3, &OPTS).unwrap();
+        assert_eq!(std::fs::read_to_string(r.movies.join("Elf/Elf - dvdrip.mkv")).unwrap(), "better");
+        assert_eq!(std::fs::read_to_string(r.movies.join("Elf/Elf.mkv")).unwrap(), "someone else's");
+        assert_eq!(p3.notes.len(), 1);
+
+        // Their file goes away: the next publish puts ours at the plain name and drops the suffix.
+        std::fs::remove_file(r.movies.join("Elf/Elf.mkv")).unwrap();
+        std::fs::write(r.work.join(encode_path(1)), b"best").unwrap();
+        let p4 = publish(&r, &spec, "ELF", &titles, Some(&p3), 4, &OPTS).unwrap();
+        assert_eq!(std::fs::read_to_string(r.movies.join("Elf/Elf.mkv")).unwrap(), "best");
+        assert!(!r.movies.join("Elf/Elf - dvdrip.mkv").exists());
+        assert!(p4.notes.is_empty());
+    }
+
+    #[test]
+    fn refuses_when_both_names_are_taken_by_strangers() {
+        let (_tmp, r) = setup("both");
+        std::fs::write(r.work.join("master.iso"), b"iso").unwrap();
+        std::fs::write(r.work.join(encode_path(1)), b"t1").unwrap();
+        std::fs::create_dir_all(r.movies.join("Elf")).unwrap();
+        std::fs::write(r.movies.join("Elf/Elf.mkv"), b"a").unwrap();
+        std::fs::write(r.movies.join("Elf/Elf - dvdrip.mkv"), b"b").unwrap();
         let spec = DiscSpec { name: "Elf".into(), disc: 1, ..Default::default() };
         let e = publish(&r, &spec, "ELF", &[t(1, Role::Main, 100.0)], None, 1, &OPTS).unwrap_err();
         assert!(e.to_string().contains("not published by this disc"), "{e}");
-        assert_eq!(std::fs::read_to_string(r.movies.join("Elf/Elf.mkv")).unwrap(), "someone else's");
+        assert_eq!(std::fs::read_to_string(r.movies.join("Elf/Elf.mkv")).unwrap(), "a");
+        assert_eq!(std::fs::read_to_string(r.movies.join("Elf/Elf - dvdrip.mkv")).unwrap(), "b");
+    }
+
+    #[test]
+    fn kept_both_names() {
+        assert_eq!(kept_both_name("Pans Labyrinth (2006)/Pans Labyrinth (2006).mkv"), "Pans Labyrinth (2006)/Pans Labyrinth (2006) - dvdrip.mkv");
+        assert_eq!(kept_both_name("Elf/extras/Title 6 - 1m00s.mkv"), "Elf/extras/Title 6 - 1m00s - dvdrip.mkv");
+        assert_eq!(kept_both_name("Elf/noext"), "Elf/noext - dvdrip");
     }
 
     #[test]

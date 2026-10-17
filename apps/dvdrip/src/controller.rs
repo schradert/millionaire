@@ -267,6 +267,10 @@ async fn apply(disc: Arc<Disc>, ctx: Arc<Ctx>) -> Result<Action, Error> {
                         patch["message"] = json!(m);
                         notify::send(&m, "done").await;
                     }
+                    // Files someone else put in the library were kept; the person decides.
+                    for note in st.published.iter().flat_map(|p| p.notes.iter()) {
+                        notify::send_media(&format!("{}: {note}", disc.spec.name)).await;
+                    }
                     ctx.metrics.event("done");
                 }
                 _ => {}
