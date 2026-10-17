@@ -119,7 +119,7 @@ After:
 ## Rolling the fleet to a new nixpkgs
 
 Done 2026-10-16 (00:30 to 03:00 PDT): chinchilla, bonobo, dingo and octopus moved to nixos 26.11.20261008.e7439b6 with rke2 v1.34.11.
-sirver stays on 26.05 / rke2 1.34.7 until its root disk is replaced (README 24, 33). That roll rebooted nothing; the second roll the same
+sirver stayed on 26.05 / rke2 1.34.7 until its root disk was replaced (README 24, 33; reinstalled onto 26.11 on 2026-10-17, "Attempt 2"). That roll rebooted nothing; the second roll the same
 day ("Next node roll", below) rebooted chinchilla and bonobo onto kernel 7.2.9. dingo, octopus and sirver still run 7.0.10 (a server reboot
 is an etcd event, and the OSD hosts octopus and sirver a Ceph one: not done).
 
@@ -164,7 +164,7 @@ Gotchas:
 `root/local/containerd` (`sync=disabled`, `copies=1`, legacy mount at `/var/lib/rancher/rke2/agent/containerd`) is declared in
 `static/k8s-node.nix`, so reinstalls get it from disko. disko does not run on live nodes, and the switch that adds the fileSystems
 entry is `nofail` (an unmigrated node keeps running on the old directory, silently), so run `static/containerd-zfs-migrate.sh` as root
-on each node BEFORE its switch. One node at a time, never while another server is down (sirver stays out until its disk is replaced). Migrated 2026-10-16: chinchilla, bonobo, dingo. Pending: octopus (README 55) and sirver (at its reinstall):
+on each node BEFORE its switch. One node at a time, never while another server is down (sirver stays out until its disk is replaced). Migrated 2026-10-16: chinchilla, bonobo, dingo. Pending: octopus (README 55); sirver got it from disko at its reinstall on 2026-10-17:
 
 1. etcd 3/3, all nodes Ready, ceph known state. `seed` (rke2 running; copies the layers into the new dataset, about the size of
    `du -sh /var/lib/rancher/rke2/agent/containerd`, 50-80 GB; the script refuses if the pool lacks 120% of that).
@@ -246,7 +246,7 @@ state still records the older toplevels, so the next `pulumi up` redeploys each 
 
 | Node | nixpkgs / rke2 | Kernel running | `externalContainerd` | `podRoutes` | Remediation | Rebooted | Switch |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| sirver | 26.05 / 1.34.7 | 7.0.10 | off | still advertises 10.0.0.0/24 (headscale approval cleared) | no label: the SNR DaemonSet's control-plane requirement keeps its agent off (none landed) | no | not rolled |
+| sirver | 26.11 / 1.34.11 (reinstalled 2026-10-17) | 7.2.9 | off | none (`AdvertiseRoutes` null, read 2026-10-17) | no label: the SNR DaemonSet's control-plane requirement keeps its agent off (none landed) | no | reinstalled 2026-10-17 |
 | octopus | 26.11 / 1.34.11 | 7.0.10 | off | false | label `exclude-from-remediation=true` | no | 39 s |
 | dingo | 26.11 / 1.34.11 | 7.0.10 | off | false | label | no | 18 s |
 | chinchilla | 26.11 / 1.34.11 | 7.2.9 | on | false | eligible: `/bin/bash`, watchdog1 (`iTCO_wdt`) armed by the agent, no label | 11:04 | 5 s |
@@ -312,7 +312,7 @@ POD=dingo etcdctl endpoint status --cluster -w table           # 3 rows, one lea
 2026-10-16, before the control plane moved: leader dingo `aa1b465deb84b6ad`, octopus `f4e927b319bde64`, sirver `2f50e46c20143168`; since "Control plane topology"
 the members are bonobo `3a437683a172854d`, chinchilla and dingo.) A server switch is only safe while all three members answer, so re-read the table immediately before each server step.
 
-### Order (as run; nothing here is pending except the octopus dataset and sirver)
+### Order (as run; nothing here is pending except the octopus dataset; sirver was reinstalled on 2026-10-17)
 
 Per node: steps 1, 2, 5, 6 and 7 of "Rolling the fleet to a new nixpkgs" (build, gates, copy, detached switch, verify) plus the node-specific steps here.
 
@@ -331,7 +331,7 @@ Per node: steps 1, 2, 5, 6 and 7 of "Rolling the fleet to a new nixpkgs" (build,
    Gates; if dingo is the etcd leader, move it first (below); switch; then `systemctl restart rke2-server` (grace period, tolerations, label);
    wait for etcd 3/3 and the node Ready, 5 to 15 minutes for the pods.
 4. **octopus**, last: the same server steps, done; the containerd dataset migration was started and aborted ("octopus: containerd dataset", below).
-5. **sirver**: not rolled (26.05, failing disk). It has no SNR agent as long as the SNR config excludes control-plane nodes; if a DaemonSet pod
+5. **sirver**: not rolled here (26.05, failing disk); reinstalled onto 26.11 on 2026-10-17 ("Attempt 2"). It has no SNR agent as long as the SNR config excludes control-plane nodes; if a DaemonSet pod
    still lands there once medik8s is re-landed, label it once by hand (`kubectl label node sirver remediation.medik8s.io/exclude-from-remediation=true`);
    its reinstall carries the label from config.
 6. **hyena**, after every node above (done, #1064): `tailnet.podRoutes = false` in its profile (`flake.nix`) so headscale stops auto-approving `10.0.0.0/8`
@@ -459,7 +459,7 @@ A node-bound pod is one whose `nodeSelector` no other node satisfies; `node-main
 | bonobo, chinchilla | Only the per-node Rook crashcollector and exporter (and mon-g on bonobo). | Servers: etcd. Their tailnet relays (`100.64.0.4`, `.5`) are the internal gateway's entry points and AdGuard returns both: take one down at a time. medik8s may reboot them (below), which is also an etcd event. |
 | dingo | Rook mon-d, crashcollector, exporter. | A server: etcd. |
 | octopus | Rook mon-a, the 7 OSDs, crashcollector, exporter. | An agent and an OSD host. |
-| sirver | Rook's 6 OSDs, `zigbee2mqtt` (the USB Zigbee stick) and `music-assistant` (the `br0` L2 segment for mDNS), both pinned by hostname. | An agent and an OSD host. Its root disk is failing (README 33). |
+| sirver | Rook's 5 OSDs (6 before osd.0 was retired), `zigbee2mqtt` (the USB Zigbee stick) and `music-assistant` (the `br0` L2 segment for mDNS), both pinned by hostname. | An agent and an OSD host. Its root is bay 2 since 2026-10-17 (README 33). |
 
 **etcd.** Agents (falcon, axolotl, sirver, octopus) are not members. Servers are bonobo, chinchilla, dingo: 3 members to 2 keeps quorum, and a second server down
 (or one failing while the first is out) is a cluster outage. Never two servers; the kubeconfig you use must not point at the one going down (the script refuses).
@@ -511,7 +511,7 @@ records what it changed as `node-maintenance.trdos.me/*` annotations on the node
   remediation reboots a server, so it is an etcd event (3 members to 2) and must not coincide with dingo being down.
 - **servers:** etcd has no spare member while one is out, so keep it to the job. A mon is replaced after 10 minutes.
 - **OSD hosts:** keep `noout` only for the job. With two OSD hosts and `failureDomain: host` there is no third host for the second copy: lifting `noout` lets Ceph mark the OSDs out after 10 minutes but
-  it cannot rebuild size 2 until the host returns (inferred from the pool config, not tested). A long OSD outage is therefore one copy on the other host: hurry, and check its SMART state first (sirver's disk is failing).
+  it cannot rebuild size 2 until the host returns (inferred from the pool config, not tested). A long OSD outage is therefore one copy on the other host: hurry, and check its SMART state first (sirver's disks are 8.6 years old).
   sirver and octopus are agents since the control plane moved: stopping them no longer touches etcd.
 
 ## Node remediation
@@ -785,12 +785,12 @@ sirver's workloads are away for about 1.5 to 3 hours; `music-assistant` (and Z-W
 3. `smartctl -t long` on bay 2; pass or switch to bay 1 (repeat 2 with osd.10). **Done: passed.**
 4. Merge the disko-device PR; build toplevel + disko script on falcon; check the disko script names only bay 2. **Done: #1094, store paths in the log.**
 5. Copy off sirver's identity files; pick the installer address plan and confirm iDRAC or a person at the chassis. **Done: identity on falcon; the iDRAC is on 192.168.0.120, not reachable from the LAN, so a person at the chassis.**
-6. Pause heavy writers; move the ZWA-2 if wanted; `node-maintenance sirver down`.
-7. Oneshot installer, find its address, pull bay 6, `nixos-anywhere ... --phases disko,install`, verify, reboot.
-8. First-boot checks, rke2 join, five OSDs re-adopted, `ceph osd unset noout`, HEALTH_OK, `node-maintenance sirver up`, resume writers.
+6. Pause heavy writers; move the ZWA-2 if wanted; `node-maintenance sirver down`. **Done 2026-10-17** (writers not paused: ArgoCD `selfHeal` reverts a scale-down; the stick not moved, `zwave-js-ui` stayed Pending).
+7. Oneshot installer, find its address, pull bay 6, `nixos-anywhere ... --phases disko,install`, verify, reboot. **Done 2026-10-17 on the second attempt** (the first had no NIC: Attempt 1; the second used `nixos-anywhere --kexec` with the firmware installer, not the one-shot).
+8. First-boot checks, rke2 join, five OSDs re-adopted, `ceph osd unset noout`, HEALTH_OK, `node-maintenance sirver up`, resume writers. **Done 2026-10-17** (Attempt 2).
 9. A day later: wipe and re-insert bay 6, add bay 7 then bay 6 as low-weight OSDs with the primary-affinity CronJob (PRs).
 10. falcon's OSD once its gates are met (DVD data confirmed, `static/falcon-system.nix` cleaned, `zpool destroy`, node entry PR).
-11. Update `docs/manual-steps.md` 5, README todos 24, 33, the "sirver is not rolled" mentions in this file, and delete the identity directory.
+11. Update `docs/manual-steps.md` 5, README todos 24, 33, the "sirver is not rolled" mentions in this file (README and this file: done 2026-10-17; `docs/manual-steps.md` 5 with step 9), and delete the identity directory (falcon `/root/sirver-identity`, after a week of clean running: 2026-10-24).
 
 ### Execution log: steps 1 to 5 (2026-10-16 19:41 PDT to 2026-10-17 02:01 PDT)
 
@@ -838,7 +838,25 @@ End state: `ceph osd tree` has no osd.0, 12 OSDs (7 on octopus, osd.2/4/5/9/10 o
 - `node-maintenance sirver up` did not unset `noout`: with the OSD pods gone from the node it saw no OSD host (`ceph: ... no ceph daemon is bound to sirver`). `ceph osd unset noout` by hand once all 12 OSDs were up; HEALTH_OK after the backfill of the writes made meanwhile.
 - The one-shot entry is consumed by one boot (`LoaderEntryOneShot` was not set after it); `zz-installer.conf` and `/boot/installer` were removed from the ESP.
 
-**Ready for the chassis: YES, for the people part; the cluster side is done**
+### Attempt 2 (2026-10-17 21:13 to about 21:40 UTC): done
+
+All times UTC, read from the commands' output, the node's conditions and the install log.
+
+- **Down.** `pre` (Gate A held, the rebuilt toplevel and disko script unchanged), then `node-maintenance sirver down` at 21:13:34: cordon, `noout`, drain (the ESP one-shot was not used), rke2-agent stopped, in 34 s.
+- **Warm kexec worked.** `nixos-anywhere --kexec <kexec-installer-firmware tarball> --store-paths <disko> <toplevel> --phases kexec tristan@192.168.50.204` at 21:14:08 ended with "machine will boot into nixos in 6s", then waited for ssh at `.204` and had to be killed: the installer is at **192.168.50.156** (eno4 asks DHCP under its own MAC `18:66:da:55:01:17`; the answer at the first sweep, 21:15:08, was the `find` by MAC). eno4 came up with the firmware: a warm `bnx2x` kexec is fine. The disks show up about 15 s after the installer answers (the first `lsblk` read none: wait).
+- **Disk view in the installer** (kernel names move between boots; by-id and serial do not): bay 2 `sdd` 6XS42DQ9 blank (no partitions, no label); bay 6 `sdh` 6XS4209D with `disk-root-ESP` and `disk-root-zfs`; the five OSDs `sda`, `sdb`, `sdc`, `sdf`, `sdg` bluestore; bay 7 `sde` 6XS41YTD blank.
+- **Bay 6 pulled** at about 21:24 (dmesg: slot 6 "SCSI device is removed" at 584 s of installer uptime, **slot 7 five seconds later**). So bay 7 (6XS41YTD, blank, the old osd.7 slot) left the controller too: pulled with it or knocked loose, not read. It is not in the disko script and held nothing, so the install was unaffected; it has to be re-seated (Phase E). The guard checked only bay 6 and the `disk-root-*` partlabels, which were gone.
+- **Install** 21:25:02 to 21:27:18 (2 min 16 s): disko, the closure (543 paths uploaded, the rest substituted), the extra files, `nixos-install`. Read before the reboot: pool `root` ONLINE on the one vdev (bay 2 only), no data errors; ed25519 host key `SHA256:sOyD+2nt/...`, the same as before; machine-id, node password, sops age key, tailscale state present; one entry, Generation 1, `fg6ixyp7...`, Linux 7.2.9; `root/local/containerd` exists. The pool was exported and the machine rebooted at 21:27:50 (by hand: the `reboot` phase was not used so that the checks came first).
+- **No NVRAM boot entry, booted from the fallback path.** The install says `Not booted with EFI ... skipping EFI variable modifications` (a kexec boot has no EFI runtime), and `efibootmgr` is not in the installer. The ESP has `EFI/BOOT/BOOTX64.EFI` and `EFI/systemd/systemd-bootx64.efi`; the firmware found bay 2 by itself: `bootctl status` on the running system reads `Loader: /boot//EFI/BOOT/BOOTX64.EFI`. `boot.loader.efi.canTouchEfiVariables` is not set for sirver (only hyena and `foreign-boot.nix` mention it, forced false), so no later switch adds an entry. Nothing needs one while the firmware keeps trying the disks; the wiped bays 6 and 7 hold nothing bootable. If the boot order ever has to be pinned: `boot.loader.efi.canTouchEfiVariables = true`, `efibootmgr` in the system packages, `bootctl install` once (not done: no evidence it is needed).
+- **First boot.** ssh at `.204` by 21:31:35 (`br0` kept the address, now requested by #1142); Node Ready 21:32:18 (kernel 7.2.9, the old node password accepted: nothing in the agent journal matching rejected, denied or forbidden); `systemctl --failed` empty; `/run/secrets` has the three secrets; tailscale 100.64.0.2; `root/local/containerd` mounted (`sync=disabled`, `copies=1`). The five OSD pods started at 21:32:22 and Rook re-adopted all five without help (`rook-ceph-osd-prepare-sirver` ran); 12 of 12 OSDs up about 21:36.
+- **`noout` again skipped by `node-maintenance up`** (the OSD pods were not on the node when it started, so it saw no OSD host): lifted by hand, HEALTH_OK with 745 `active+clean` right after; `up` finished ("sirver is back"), no Pending pods, every pod bound to sirver Running. Fixed afterwards: `down` records `osd-host` and `up` also uses the CRUSH tree, with `tools/node-maintenance-test` (a stub kubectl, offline).
+- **Timings, measured.** sirver's rke2 stopped 21:14, Ready again 21:32 (18 min out of the cluster), Ceph on one copy 21:14 to about 21:36 (22 min), against the plan's estimate of 1.5 to 3 hours: the install itself was 2 min 16 s and no writes had piled up. Attempt 1 cost an earlier window of about an hour and a half with `noout` set and one copy (the drain at 19:02; the exact end was not recorded).
+- **Falcon cleaned up** afterwards: the checkouts `~/work/sirver-install`, `sinst-kexec`, `sinst-kexec-fw`, the logs and the stock-installer root `kexec` are gone; `~/work/sirver-exec-roots/` keeps `kexec-fw`, `toplevel`, `disko` and `nixos-anywhere` (the paths above), and `/root/sirver-identity` stays for the week.
+- **Left:** wipe bay 6 and re-seat it and bay 7 after a day clean (Phase E), the primary-affinity PR (#1096) with `retiredOsds` 0 and 7 removed in the same PR, and delete `/root/sirver-identity` on falcon after a week (2026-10-24).
+
+### Ready for the chassis (written before the window; Attempts 1 and 2 above supersede its numbered list)
+
+**YES, for the people part; the cluster side is done**
 Gate A held when read (and Ceph again at 02:01: `HEALTH_OK`, 745 `active+clean`, no `noout`, balancer on), bay 2 is blank and tested, the closures and the identity are on falcon. What is left is physical, and the window (steps 6 to 8) is not started:
 
 1. Be at sirver with a keyboard and monitor, or a laptop on the iDRAC port (192.168.0.120, the `root` password): the BMC is not reachable from the LAN. Without either, a failed boot cannot be diagnosed.
@@ -850,7 +868,7 @@ Tested 2026-10-17 (Attempt 1): the stock installer boots on this chassis but has
 ## Not verified
 
 - No node has been installed through this path; the pulumi step was only rendered and syntax-checked, never run.
-- The sirver reinstall plan (above) is unrun from step 6 on (steps 1 to 5: "Execution log"). Specifically unverified: that the installer comes up reachable (the `br0` MAC and DHCP matching, `bnx2x` after the oneshot boot, iDRAC access), that the firmware-carrying kexec installer (`packages.x86_64-linux.kexec-installer-firmware`) brings the `bnx2x` NIC up (the stock one did not: Attempt 1),
+- The sirver reinstall ran on 2026-10-17 (Attempts 1 and 2). Still unverified: the one-shot path with the firmware installer (the warm kexec was used), iDRAC access (no password known), why bay 7 left the controller with bay 6,
   that this controller shows a hot-inserted disk without a reboot, what Rook does with a listed disk that still holds a ZFS pool (read from a log line only), the primary-affinity CronJob, and `readAffinity`'s effect on a bad-disk replica.
 - Whether rke2 picks up `nvidia-container-runtime` from the service PATH on NixOS, and whether the gpu-operator validator passes
   with the driver and toolkit disabled.
