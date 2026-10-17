@@ -42,6 +42,7 @@ Statuses: `open`, `in progress`, `waiting on you`, `reported`.
 - open: a per-app "what the admin can and can't see" doc for family.
 - open: Actual's SimpleFIN secrets are server-global, not per budget file (`docs/manual-steps.md` section 15).
 - open: the Firefly SimpleFIN import creates every account as an asset account, so credit cards show negative balances. Map card-type accounts to liability accounts (`nixidy/apps/finance/firefly-simplefin.php:146`).
+- backlog: Headwind MDM for a phone that is factory reset anyway (a10e, vivo) and needs remote wipe or lock: nixidy module `nixidy/apps/home/headwind.nix` (`hmdm-docker` image, CNPG cluster, internal gateway route, Keycloak login, REST reconciler from the catalog). Not worth deploying while the channel covers silent installs (`docs/android-fleet.md`, (a) and (f)).
 
 ## Workstations
 

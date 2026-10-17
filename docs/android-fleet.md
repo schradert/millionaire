@@ -1,17 +1,15 @@
 # Android fleet management: options and decision
 
-How the homelab declares and delivers the app set on each Android device over the tailnet. `docs/android.md` describes the catalog and the bootstrap; this file records the comparison (2026-10-14) and what is built.
+How the homelab declares and delivers the app set on each Android device over the tailnet. `docs/android.md` describes the catalog and the bootstrap; this file records the comparison (2026-10-14), the always-available management channel decided on 2026-10-17, and what is built.
 
 ## Decision
 
-1. **Transport: Tailscale to headscale as the Always-on VPN.** Lockdown ("Block connections without VPN") is on for `tristan` devices and off for `family`. Both are declared in `android.devices.<name>.vpn` and checked by `android <device>`. Nothing on the phone listens to the internet. The phone reaches `android.trdos.me` and hyena's ntfy over the tailnet from any network.
-2. **The phone pulls, and Obtainium reconciles.** The catalog (`modules/android.nix`) renders a per-device Obtainium import. A targeted `pulumi up` nudges the device over ntfy, and Obtainium installs and updates. This needs no device owner, so it works on the Pixel without a factory reset.
-3. **adb over the tailnet audits, and can nudge.** `android <device>` runs adb on bonobo, which holds the paired key. It reports drift (Always-on VPN, missing apps, apps that Obtainium does not manage, Obtainium installs that are not declared). `android <device> apply` opens Obtainium's import of the missing apps on the phone. It is not the always-on channel, because Android ties wireless debugging to Wi-Fi (see (d)).
-4. **Silent installs differ by device:**
-   - Android 12+ lets Obtainium update the apps it installed without a prompt, on every device.
-   - Spare devices that get a factory reset become device owners through Dhizuku (`deviceOwner = true`), so first installs are silent too.
-   - The Pixel uses Shizuku instead.
-5. **No MDM server for now.** Headwind MDM is the self-hosted option to try on the next family phone that gets a factory reset. Do not use it on the Pixel.
+1. **Transport: Tailscale to headscale as the Always-on VPN.** Lockdown ("Block connections without VPN") is on for `tristan` devices and off for `family`. Both are declared in `android.devices.<name>.vpn` and checked by `android <device>`. Nothing on the phone listens to the internet; the phone reaches `android.trdos.me` and hyena's ntfy over the tailnet from any network.
+2. **Management channel (2026-10-17): sshd in Termux on the tailnet, privileged through Shizuku.** `android.devices.<name>.channel.enable = true` (the Pixel). Termux (F-Droid) runs `sshd` on `<tailnet ip>:8022` only, key-authenticated with a pulumi-generated key that bonobo holds, accepted only from bonobo's tailnet address. Termux:Boot starts it at boot. Privileged calls go through Shizuku's `rish`. It is reachable from bonobo on any network the phone has internet on, with no Wi-Fi state involved. Details, limits and what is unverified: "(f) Management channel" below.
+3. **The reconciler installs and updates, silently.** `android <device> reconcile` and a systemd timer on bonobo (`static/android-reconcile.nix`, hourly) resolve each catalog app's newest APK the way Obtainium does (GitHub releases with the same asset filters, F-Droid and IzzyOnDroid by version code), push it over the channel and run `pm install -r` as the shell user through Shizuku: no prompt, no device owner, no factory reset. It is idempotent (it compares the installed version with the release), never uninstalls, and reports to the device's ntfy topic when the outcome changed. **If Shizuku is down (the phone rebooted away from home), every app that needs work stays `pending until Shizuku is up`; it never falls back to a prompt.**
+4. **One updater per device.** On a channel device the reconciler is the only actor: its Obtainium bootstrap has background updates off (`enableBackgroundUpdates = !channel.enable`). Obtainium stays in the catalog as the readable list and the fallback: a device without a channel still pulls through the ntfy nudge and Obtainium. Apps are installed with `dev.imranr.obtainium` as installer of record so Obtainium still lists them as its own.
+5. **Resettable devices (s21, boox, odin, family phones): the same channel; Dhizuku is no longer needed.** Termux plus Shizuku need only adb once at a desk. A factory reset and device owner would add nothing the reconciler needs. Dhizuku stays as it is for `s21` (`deviceOwner = true`) until someone tests that Obtainium drives it (see (c)).
+6. **No MDM server for now.** Headwind MDM stays a backlog item (`docs/backlog.md`): it is the answer only for a phone that will be factory reset anyway and needs remote wipe or lock, or must not depend on Shizuku.
 
 ## Options compared
 
@@ -19,9 +17,11 @@ How the homelab declares and delivers the app set on each Android device over th
 | --- | --- | --- | --- | --- | --- | --- |
 | (a) Headwind MDM | yes | no (needs device owner) | yes (device owner) | yes | yes (agent polls/pushes) | through its REST API, to be built |
 | (b) Android Management API | no (Google) | no | yes | yes | yes | API, but it is Google's |
-| (c) Obtainium + Dhizuku/Shizuku | n/a (client) | yes | updates yes; first installs with Dhizuku or Shizuku | ntfy nudge, user taps | yes | **built** (`options/android.nix`) |
-| (d) adb over the tailnet | yes | yes (wireless debugging) | yes (`adb install`) | yes | **no**: Wi-Fi only | **built** as an audit (`android`) |
+| (c) Obtainium + Dhizuku/Shizuku | n/a (client) | yes | updates yes; first installs with Dhizuku or Shizuku | ntfy nudge, user taps | yes | **built** (`options/android.nix`), now the fallback |
+| (d) adb over the tailnet | yes | yes (wireless debugging) | yes (`adb install`) | yes | **no**: Wi-Fi only | **built** as an audit, the setup path and the fallback |
 | (e) self-hosted F-Droid repo | yes | yes | client-dependent | no | yes | APK hosting only |
+| (f) Termux sshd + Shizuku (chosen) | yes | yes | yes (`pm install` as shell) | yes (bonobo pushes) | yes, once Shizuku is up | **built**: reconciler reads the catalog |
+| (g) `WRITE_SECURE_SETTINGS` keepers, Android 17 trusted-network adb | yes | yes | yes (adb) | yes | **no**: Wi-Fi only | no |
 
 ### (a) Headwind MDM
 
@@ -31,17 +31,19 @@ How the homelab declares and delivers the app set on each Android device over th
 - Constraints:
   - Android allows one device owner, so Headwind and Dhizuku exclude each other.
   - From memory, not checked here: `dpm set-device-owner` refuses while accounts are on the device.
-- Where it fits: family phones, which cannot be touched in person and gain the most from remote silent install and remove. It does not fit the Pixel: it needs a reset and replaces the launcher.
-- Next step: try it on a10e or vivo at their next reset. Write a small Rust reconciler that pushes `android.devices.<name>` into Headwind configurations through its REST API.
+- Re-checked 2026-10-17 ([agent README](https://github.com/h-mdm/hmdm-android)): device owner is optional for the agent, which "is used for silent app installation and sending the info to the server"; the README does not say what is lost without it, does not mention Tailscale or VPN configuration, and links no server repository (the server and docker repos above were read earlier). Unverified: push, Tailscale MDM keys, and non-device-owner silent install.
+- Where it fits: only a phone that will be factory reset anyway and needs remote wipe, lock or config push, or that must not depend on Shizuku. It does not fit the Pixel (a reset, and it replaces the launcher). **Not worth deploying now**: (f) already gives silent installs and updates to every device that can get Termux and Shizuku once at a desk, from infrastructure that exists, whereas Headwind adds a Java server, a CNPG database, a launcher change and a reset per phone.
+- Backlog outline (`docs/backlog.md`): nixidy module `nixidy/apps/home/headwind.nix` with the `hmdm-docker` image, a CNPG cluster `headwind` (database and role from CNPG's generated secret), the internal gateway route `mdm.trdos.me` (tailnet only, like `android.trdos.me`), the admin behind Keycloak (a per-user login, never a shared admin), and a small reconciler that pushes `android.devices.<name>` into Headwind configurations through its REST API. Enroll one reset phone first and compare it with (f).
 
 ### (b) Android Management API
 
 Google's hosted EMM API, with Managed Google Play. It is not self-hosted, it ties the fleet to a Google enterprise, and it uses device-owner provisioning (a reset). Not pursued.
 
-### (c) Obtainium + Dhizuku/Shizuku (chosen)
+### (c) Obtainium + Dhizuku/Shizuku (fallback for devices without a channel)
 
 - Versions: [Obtainium](https://github.com/ImranR98/Obtainium/releases) v1.6.17 (2026-09-13, GPL-3.0, active; pinned in `pkgs/obtainium`), [Dhizuku](https://github.com/iamr0s/Dhizuku/releases) v2.12.0 (pinned in `pkgs/dhizuku`), [Shizuku](https://github.com/RikkaApps/Shizuku/releases/tag/v13.6.0) v13.6.0 (2025-05-25).
-- Shizuku 13.6.0 "auto start without root on Android13+ when connected to a trusted WLAN", which covers the Pixel after a reboot at home.
+- Shizuku 13.6.0 "auto start without root on Android13+ when connected to a trusted WLAN": what that does and does not cover is in (f).
+- Unverified (2026-10-17): that Obtainium's `shizuku` install method drives Dhizuku's device-owner binder. Obtainium's manifest declares only Shizuku's provider, and its `InstallerMode` is `system, shizuku, external, root`; I found no Dhizuku reference in its manifest, gradle file or `apps_provider.dart` (main branch), and could not read its installer fork. Test it on `s21` before relying on it; (f) does not need it.
 - Android 12 added `PackageInstaller.SessionParams.setRequireUserAction` (API 31). An installer may skip the prompt when it is the installer of record (or is updating itself), holds `UPDATE_PACKAGES_WITHOUT_USER_ACTION`, and the app meets a target-SDK floor that rises with each release ([API 31 diff](https://developer.android.com/sdk/api_diff/31/changes/android.content.pm.PackageInstaller.SessionParams), [AOSP change](https://android.googlesource.com/platform/frameworks/base/+/c17bbf82ce4b%5E%21/)).
 - Neither Obtainium nor its forks import from a URL on a schedule. [ObtainX](https://f-droid.org/packages/dev.bikram.obtainx/) (2.9.x) imports from a file. The per-device page plus the ntfy nudge and the `obtainium://apps/<json>` link is therefore the declarative path. Obtainium only adds apps; removals stay manual (`android` lists them).
 
@@ -58,6 +60,43 @@ Google's hosted EMM API, with Managed Google Play. It is not self-hosted, it tie
 
 [fdroidserver](https://gitlab.com/fdroid/fdroidserver/-/tags) 2.4.5 (2026-06-03) builds a signed index from a directory of APKs. Clients such as [Droid-ify](https://github.com/Droid-ify/client/releases) v0.7.8 add it as a repo, and Obtainium can track a third-party F-Droid repo. It only adds value for APKs nobody publishes (self-built or patched). It does not reconcile anything. Defer until such an APK exists.
 
+### (f) Management channel: Termux sshd + Shizuku (chosen)
+
+Research 2026-10-17; each claim says how it was checked.
+
+**Host app.** `com.termux` plus `com.termux.boot`, both from GitHub in the catalog (`termux/termux-app`, `termux/termux-boot`).
+- Termux:Boot is bound to `com.termux`: its manifest sets `sharedUserId com.termux`, its `BootReceiver` reads `/data/data/com.termux/files/home/.termux/boot` and its `BootJobService` starts `com.termux`'s `TermuxService` ([termux-boot source](https://github.com/termux/termux-boot), read). All Termux apps must share one signer, so they come from one source ([README](https://github.com/termux/termux-app)).
+- **nix-on-droid (`com.termux.nix`) cannot be the host.** Its app is a fork with `TERMUX_PACKAGE_NAME = "com.termux.nix"` and its own `sharedUserId` ([build.gradle and manifest](https://github.com/nix-community/nix-on-droid-app), read); no Termux:Boot is built for it, and its own boot receiver only restores shell sessions (`SystemEventReceiver`). It stays installed for your own use; the two apps coexist (different package ids, different data).
+- **GitHub or F-Droid.** Read from the Pixel on 2026-10-17 (read-only adb): `com.termux` versionCode 1020 (a 0.119 beta) is already installed, by Obtainium, so from GitHub; Shizuku 13.6.0 (1086) is installed too. A different signer cannot be installed over it, so the catalog keeps GitHub's builds and Termux's data stays. The cost: GitHub's APKs are signed with a public test key that anyone can use to forge an update ([termux-app README](https://github.com/termux/termux-app)). Updates here come only from the catalog's GitHub release, and Android refuses a differently signed package without you, so the exposure is a forged APK that you or a root-level installer accept; F-Droid's builds avoid it. A fresh device can use F-Droid's pair instead (`fdroid "com.termux"` and `fdroid "com.termux.boot"`; mixing sources fails with `INSTALL_FAILED_SHARED_USER_INCOMPATIBLE`). Moving the Pixel to F-Droid means uninstalling Termux and its data first; not done. GitHub's builds are also debuggable, so `adb shell run-as com.termux` could drive the setup instead of typing into the terminal; not tried.
+- Termux targets SDK 28 by design (it executes binaries from its data directory; [issue 4131](https://github.com/termux/termux-app/issues/4131)). Not verified here: that sshd and `rish` work under it on Android 17 (the Pixel is on API 37). nix-on-droid has the same target and is installed.
+
+**Boot behaviour.** Termux:Boot reacts to `BOOT_COMPLETED` and has no direct-boot receiver, so its script runs only after the first unlock following a boot: Termux's files are credential-encrypted storage, which is unavailable before unlock ([Direct Boot](https://developer.android.com/privacy-and-security/direct-boot)). **After a reboot the channel is down until you unlock the phone once.** This cannot be removed. The boot script (`~/.termux/boot/sshd`) takes a wake lock (`channel.wakeLock`, default on; it costs battery, turn it off to let Doze sleep the channel) and runs `sshd` in a retry loop, so it also waits for the tailnet address to exist. Termux:Boot must be opened once so Android delivers the broadcast; `channel` does that. Not verified here: that Android 17 lets Termux's service start from the boot job (Termux sets no foreground-service type and targets SDK 28), and Doze behaviour with the screen off.
+
+**sshd.** `ListenAddress` is the phone's tailnet address (`tailscale ip -4 fallicle`, read when `channel` runs; re-run it if the node is ever re-registered), port 8022, `PasswordAuthentication no`, public key only, `AllowTcpForwarding local` (for the Syncthing audit), one `authorized_keys` line `restrict,port-forwarding,from="<bonobo tailnet ip>" <key>`. The key is pulumi's `android_ssh_key` (ED25519; Bitwarden `android/ssh/key`, sops `android.ssh-key`, installed on bonobo at `~/.android/ssh_key`); the public half is derived with `ssh-keygen -y` when `channel` runs, so only the private key is stored. The host key is generated on the phone and pinned in bonobo's `~/.android/known_hosts` over adb (no trust on first use).
+
+**Headscale ACL: no new entry.** `static/hyena.nix` already gives `default@` (bonobo, the cluster nodes), `tag:cluster` and `tristan@` `*:*`, and `family@` only AdGuard, ntfy and the gateway relays, so port 8022 is reachable from exactly those and not from `family@`. An explicit rule would duplicate `*:*`. The `from=` option on the key limits the source further to bonobo.
+
+**Shizuku.** Privileged calls run through `rish` (`/data/data/com.termux/files/usr/bin/rish`, a wrapper that sets `RISH_APPLICATION_ID=com.termux`). The `rish` script and `rish_shizuku.dex` are in the Shizuku APK's `assets/` (checked on v13.6.0, `unzip -l`), so `channel` extracts them from the pinned release and pushes them: no export dialog.
+- The official manual says Shizuku must be restarted after every reboot ([manual](https://shizuku.rikka.app/guide/setup/)). v13.6.0 added "auto start without root on Android13+ when connected to a trusted WLAN" ([release notes](https://github.com/RikkaApps/Shizuku/releases/tag/v13.6.0)). Its `BootCompleteReceiver` (master, read) runs **only at boot**, needs `WRITE_SECURE_SETTINGS` (granted once over adb by `channel`) and the last launch mode `ADB` (set by starting Shizuku once from inside the app with wireless debugging), sets `adb_wifi_enabled`, and waits 3 seconds for the wireless-debugging port. It does not check for Wi-Fi itself, and Android only enables wireless debugging on a Wi-Fi network. So after a reboot **away from home Wi-Fi Shizuku stays down**, and it does not start later when the phone reaches home, because the receiver is not run again.
+- **What covers that gap here:** when bonobo finds the channel up and Shizuku down, it tries adb (the phone's paired key, wireless debugging on trusted home Wi-Fi) and runs Shizuku's own `start.sh` (`/sdcard/Android/data/moe.shizuku.privileged.api/start.sh`, the documented computer start). That is a different path from Shizuku's boot start and needs the adb key paired once (README todo 50).
+- Shizuku needs the first `rish` use of Termux to be allowed in its dialog (one tap, once). Not verified here: that the grant survives reboots (Shizuku keeps its allow list in its own database; this is its documented behaviour, not tested).
+
+**What each state allows.**
+
+| State | Reachable over ssh | Reconciler | Audit |
+| --- | --- | --- | --- |
+| unlocked at least once since boot, Shizuku up | yes, any network | installs and updates | full, over ssh |
+| same, Shizuku down, home Wi-Fi with adb paired | yes | bonobo starts Shizuku over adb, then installs | full |
+| same, Shizuku down, anywhere else | yes | everything that needs work is `pending until Shizuku is up`, exit 5 | refused with the reason (exit 6) |
+| rebooted, not unlocked yet | no | no: exit 3, nothing happens | adb fallback if on Wi-Fi |
+| phone off or off the tailnet | no | no | no |
+
+What an unprivileged Termux could do instead (and why it is not used): from Termux, `termux-open obtainium://apps/<json>` and `am start` start activities as the Termux app, which Android 10+ restricts when Termux is in the background (it needs the "Display over other apps" permission) and, even when it opens, Obtainium shows the import for you to confirm. `dumpsys` and `settings get secure` need permissions an app does not hold. This was reasoned from Android's behaviour and Termux's targets, not tested. The reconciler therefore does nothing without Shizuku rather than prompting.
+
+**Not used: `WRITE_SECURE_SETTINGS` keepers and Android 17's trusted-network adb.** Re-evaluated, still Wi-Fi bound.
+- Keepers ([adb-auto-enable](https://github.com/mouldybread/adb-auto-enable), [KeepADB](https://f-droid.org/packages/de.hohnepeople.keepadb/)) re-enable `adb_wifi_enabled` after a reboot or a toggle. Wireless debugging still exists only on a Wi-Fi network, so they give nothing off Wi-Fi. They are also one more app with a permission that writes any secure setting. The design above grants `WRITE_SECURE_SETTINGS` only to Shizuku, which already has shell power while it runs and needs it for its own boot start.
+- Android 17 with adb 37 ([adb docs](https://developer.android.com/tools/adb)): ticking "always allow on this network" makes it a trusted wireless-debugging network, wireless debugging is allowed as soon as the device joins it, and the device and workstation connect automatically when they are on the same network (mDNS). That removes the re-enabling at home, which is exactly the Wi-Fi-only case; it does nothing on another network. The page does not say what turns wireless debugging off again (screen off, leaving the network); the older source summary in (d) says Wi-Fi changes do. Not tested. It does help here as the way bonobo's adb start of Shizuku (above) finds a wireless-debugging port at home with no tap.
+
 ### Tailscale settings that need an MDM
 
 Tailscale on Android (1.66+) reads [system policies](https://tailscale.com/kb/1315/mdm-keys) through `RestrictionsManager`: `LoginURL` (headscale), `AuthKey`, `Hostname`, `ForceEnabled` (deprecated in 1.84), `ExcludedPackageNames`, `UseTailscaleDNSSettings` and others. Only a device owner or profile owner can set these, so they arrive with (a) and stay manual on the Pixel. Tailscale's Android `AlwaysOn.Enabled` is not supported. Android's own Always-on VPN setting is what keeps the tunnel up.
@@ -66,10 +105,12 @@ Tailscale on Android (1.66+) reads [system policies](https://tailscale.com/kb/13
 
 | Device | Reset acceptable | Mode |
 | --- | --- | --- |
-| pixel (daily, `fallicle`) | **no** | Obtainium + Shizuku, adb audit from bonobo, lockdown on |
-| s21 | yes (spare) | Dhizuku device owner + Obtainium, lockdown on |
-| boox, odin | yes | Obtainium (device owner at next reset) |
-| a10e, vivo (family) | at their next reset | Obtainium now; Headwind MDM candidate |
+| pixel (daily, `fallicle`) | **no** | channel (Termux sshd + Shizuku) and bonobo's reconciler; adb audit and fallback; lockdown on |
+| s21 | yes (spare) | channel + reconciler (Dhizuku device owner kept, unverified with Obtainium); lockdown on |
+| boox, odin | yes | Obtainium now; `channel.enable = true` once adb-reachable at a desk |
+| a10e, vivo (family) | at their next reset | Obtainium now; channel once someone sets it up in person (see the recommendation below), Headwind only if reset anyway |
+
+Family phones: do not deploy Headwind now. If a family member agrees to a one-time setup at a desk (USB or wireless debugging), `channel.enable = true` gives them the same silent installs and updates, with the ACL unchanged (bonobo is `default@`, `*:*`) and `family@` devices unable to reach anything else. Untested on a family phone; the phone there needs the same unlock after reboots and the same Shizuku limits.
 
 ## Built
 
@@ -80,6 +121,15 @@ Tailscale on Android (1.66+) reads [system policies](https://tailscale.com/kb/13
 
 - `android <device> productivity [syncthing|orgzly|davx5|fossify ...] [--dry-run] [--wait 20m]` (devenv; `tools/android-productivity`, `tools/android-syncthing-bundle`, `static/android-adb.sh`) configures the notes and calendar apps of a device that declares `android.devices.<name>.productivity` (the Pixel does): grants, a prepared Syncthing import, a prefilled DAVx5 login and the screens to open, then waits for each tap (10 minutes by default, `--wait` changes it, and a line every minute says how long is left) and checks the result. Each app is its own stage: a failure, a missing app or a tap that never came ends only that stage, the others still run, a summary table closes the run and the exit status is non-zero unless every stage is `ok`. An app that will not open from its launcher intent is opened through the package manager's launcher activity, then `monkey`. `--dry-run` runs the same script against a stand-in phone and prints every adb command with secrets masked (a password or key only ever travels on stdin). The plain audit (`android <device>`) gains a "notes and calendar" block of `ok`/`DRIFT` lines and exits 2 on drift.
 - What is declared where: `modules/android.nix` (`productivity = {}` on the device), `options/android.nix` (`orgDir`, the Syncthing device and folder, the Baikal URL, user, secret name and calendar), `modules/syncthing.nix` (the hub's ID and LAN address, the device's ID), `secrets/sops/syncthing-<device>.yaml` (its identity) and Bitwarden `baikal/<user>/password` (the person's own DAV user, `baikal/tristan/password` for the Pixel).
+
+- The channel (2026-10-17): `android.devices.<name>.channel.{enable,port,wakeLock,interval}` (`options/android.nix`; adds Termux, Termux:Boot and Shizuku to the device's apps), pulumi `android_ssh_key` (ED25519, `android/ssh/key`, sops `android.ssh-key`, bonobo `~/.android/ssh_key`), `static/android-adb.sh` (transports, `channel`), `static/android-reconcile.sh` (resolver and installer), `static/android-reconcile.nix` (bonobo's timer) and `tools/android-channel-test`.
+- `android <device> [--via ssh|adb]`: tries the channel first and falls back to adb (and says which it used: "over ssh" or "over adb"). If sshd answers but Shizuku is down it tries to start Shizuku over adb, else refuses with the reason (exit 6).
+- `android <device> reconcile [--plan] [package...] [--dry-run]` (`apply` is the same on a channel device): resolves, downloads (cached under `~/.cache/android-reconcile` on bonobo, ETag-revalidated), pushes to `/sdcard/Download/.android-reconcile`, installs as the shell (`pm install -r -i dev.imranr.obtainium --user 0`), records what it installed in `~/.android/reconcile-<device>.json`, and prints `installed`, `pending`, `unresolved`, `deferred` and `FAILED` lines. Exit 0 converged, 2 failures or unresolvable apps left, 5 pending until Shizuku is up. `--plan` installs nothing.
+  - Resolution matches Obtainium's settings in the catalog: GitHub releases list (`apkFilterRegEx`, `invertAPKFilter`, `includePrereleases`, `fallbackToOlderReleases`; the ABI-matching asset, else a universal one), F-Droid and IzzyOnDroid by their API's suggested version code, a direct URL once. Checked against the live catalog on 2026-10-17: 78 of the Pixel's apps (all F-Droid/IzzyOnDroid entries and 40 GitHub ones) resolved, 0 unresolved, the rest of the GitHub entries were deferred by the unauthenticated rate limit. Regexes are matched with jq's Oniguruma, case-insensitively, not Dart's engine; an app whose filter breaks shows up as `unresolved`.
+  - GitHub allows 60 unauthenticated requests an hour. A steady-state run costs about one conditional request per GitHub app (a 304 should not count; not verified), so the first run over the Pixel's ~138 GitHub apps takes a few hourly runs (`deferred` lines). Put a token in `~/.android/github-token` on bonobo to lift it (optional).
+  - A signature mismatch (an app installed from Play or F-Droid whose catalog source signs differently) is reported as `FAILED ... signed differently`, never forced: uninstalling would delete its data. Split APK bundles are not handled (only `.apk` assets). The timer (`android-reconcile-<device>`, hourly, 10 minutes of jitter, niced, 1 GB) treats exit codes 3, 4, 5 and 6 (phone away, unpaired, pending, Shizuku down) as success; it posts to ntfy topic `android-<device>` (publisher token from sops) only when the set of problems changed or something was installed.
+- `android <device> channel [--wait 20m]`: the one-time setup over adb (see "On the phone").
+- `tools/android-channel-test`: 37 checks against the stand-in phone (`dry=1` with canned GitHub, F-Droid and phone answers): ssh first and the adb fallback, Shizuku down (pending, exit 5; refused, exit 6; started over adb), asset filters and pre-releases, F-Droid version codes, the exact `pm install` command, the signature-mismatch report, the rate limit, and the channel setup sequence. It tests the logic, not Android. Also run for real on 2026-10-17 (read-only): `android pixel --via adb` from the Mac through bonobo with the new script plumbing (extra `unzip` in the nix shell, concatenated scripts, header variables) connected to the Pixel (Pixel 9 Pro, Android 17, API 37, adb key already paired) and printed the usual audit; nothing was written to the phone and the channel itself has not been run on it.
 
 First run against the Pixel (2026-10-14, Android 17, wireless debugging was on):
 
@@ -93,9 +143,15 @@ Reconciled on 2026-10-17 (`docs/android-inventory.md`): the phone has 352 user-i
 ## On the phone (Pixel)
 
 1. Settings > Network & internet > VPN > Tailscale (gear): turn on **Always-on VPN** and **Block connections without VPN**. On a captive portal, turn lockdown off until you are logged in.
-2. Wireless debugging: on your home network choose **Always allow on this network**, so it comes back after a reboot. In Shizuku, enable start on boot (Android 13+ on trusted Wi-Fi).
+2. Wireless debugging: on your home network choose **Always allow on this network** (Android 17: wireless debugging is then allowed whenever the phone joins that network, which is what lets bonobo start Shizuku after a reboot at home).
 3. Once bonobo has the pulumi-generated adb key (`docs/manual-steps.md` §16), pair it once: Developer options > Wireless debugging > **Pair device with pairing code**, then `android pixel pair <ip>:<pairing-port> <code>` (the dialog shows the IP, pairing port and code; the pairing port differs from the connect port). Wireless debugging authenticates with a paired key and gives an unpaired one `failed to connect` with no prompt on the phone, so `android pixel` reports "port open, but adb connect failed" until then. The old hand-paired key stays trusted until you revoke it (Developer options > Revoke USB debugging authorizations, which clears every computer, so only do it after the new key works).
-4. Run `android pixel apply` (or tap the ntfy notification) and confirm the import in Obtainium, then **Install/Update all**.
+4. **Set up the channel, once** (phone unlocked, on the home Wi-Fi, screen on; needs steps 1 to 3 and a deployed bonobo that holds `~/.android/ssh_key`, `docs/manual-steps.md` §16):
+   1. `android pixel channel` (add `--wait 30m` on slow Wi-Fi). It installs Termux, Termux:Boot and Shizuku silently over adb, grants storage, notification, battery and `WRITE_SECURE_SETTINGS` (Shizuku), pushes the setup into `/sdcard/Download/termux-channel/`, opens Termux:Boot once, opens Termux and types `sh /sdcard/Download/termux-channel/setup.sh` into it (it installs openssh, writes `sshd_config`, `authorized_keys`, `rish` and `~/.termux/boot/sshd`, starts sshd), reads back the user name and host key (pinned on bonobo), starts Shizuku with its own start script, and removes the bundle.
+   2. On the phone, **allow Termux in the Shizuku dialog** that appears the first time `rish` runs. That is the one tap.
+   3. `android pixel` should now say "over ssh". Then `android pixel reconcile --plan`, and `android pixel reconcile` (the first run installs or reports ~170 apps; GitHub's rate limit spreads it over a few hours, bonobo's timer continues it).
+   4. Optional: in Shizuku, "Start via wireless debugging" and pair in-app once. It sets Shizuku's launch mode so it can also restart itself at boot on trusted Wi-Fi; bonobo's adb start covers home Wi-Fi without it.
+   - If something stops: the setup is idempotent, rerun `android pixel channel`. If Termux never shows a shell or the typed command goes astray, it prints the line to run by hand (`sh /sdcard/Download/termux-channel/setup.sh`). If the phone is locked it waits.
+   - Nothing else is yours to do: after a reboot, **unlock the phone once** (Termux:Boot cannot run before that). Away from home and rebooted, apps wait as `pending` until the phone is on home Wi-Fi again.
 5. Decide on the Play-only apps that have a FOSS twin, and on the Play-installed apps the catalog now declares (README todo 54, `docs/android-inventory.md`). Import `pixel.json` as a file once to get the category colours.
 6. Run `android pixel productivity` (try `--dry-run` first) and do the taps it prints, listed under "Notes and calendar (Pixel)" below. Then `android pixel` should show no drift in the notes and calendar block.
 
@@ -116,6 +172,7 @@ Not yet exercised on the phone (it was offline on the tailnet and the new adb ke
 
 ## Next
 
-- Finish README todo 50: run the targeted `pulumi up` and deploy bonobo (`docs/manual-steps.md` §16), then accept the new key once on the phone.
-- Run `android` from a CronJob on a node and send drift to ntfy and Alertmanager (a small Rust binary). This needs the Bitwarden key first.
+- Finish README todo 50: pair the adb key, run `android pixel channel` (see "On the phone").
+- Test on the phone, none of which was possible at writing: the `channel` sequence, `rish` from an sshd session, `pm install -i dev.imranr.obtainium`, Termux:Boot after a reboot and after the first unlock, Doze with the screen off (`wakeLock`), and Shizuku's start over adb. Record what differs here.
+- Put drift into Alertmanager too (the timer reports to ntfy only).
 - Headwind MDM nixidy module (CNPG + hmdm image) and a Rust catalog-to-Headwind reconciler, tried on a family phone at its reset.

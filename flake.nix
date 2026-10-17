@@ -280,8 +280,10 @@
             # Key names in a sops file are cleartext. sops-nix fails activation on a missing key, so
             # this is off until pulumi (android_adb_key_sops_write) has written the key and the file is committed.
             adbKeyWritten = lib.hasInfix "\nandroid:\n    adb-key:" (builtins.readFile ./secrets/sops/default.yaml);
+            # same for the phones' management channel key (pulumi android_ssh_key_sops_write)
+            sshKeyWritten = lib.hasInfix "\n    ssh-key: ENC" (builtins.readFile ./secrets/sops/default.yaml);
           in {
-            imports = [./static/facter ./static/k8s-node.nix ./static/server.nix];
+            imports = [./static/facter ./static/k8s-node.nix ./static/server.nix ./static/android-reconcile.nix];
             disko.devices.disk.root.device = "/dev/disk/by-id/ata-Micron_1100_SATA_256GB_165015496CBD";
             # Host-level TCP relay fronting the internal Cilium gateway on bonobo's
             # tailnet IP (external-dns-internal points *.trdos.me here). See tailnet.nix.
@@ -291,16 +293,27 @@
             nodeRemediation.eligible = true;
             services.rke2.role = "server";
             # The adb key `android <device>` connects with (pulumi android_adb_key, docs/android-fleet.md)
-            sops.secrets = lib.mkIf adbKeyWritten {
-              android-adb-key = {
-                key = "android/adb-key";
-                path = "${user.home}/.android/adbkey";
-                owner = me;
-                mode = "0600";
-              };
-            };
+            sops.secrets = lib.mkMerge [
+              (lib.mkIf adbKeyWritten {
+                android-adb-key = {
+                  key = "android/adb-key";
+                  path = "${user.home}/.android/adbkey";
+                  owner = me;
+                  mode = "0600";
+                };
+              })
+              # the channel key `android <device>` and bonobo's reconcile timers (static/android-reconcile.nix) ssh with
+              (lib.mkIf sshKeyWritten {
+                android-ssh-key = {
+                  key = "android/ssh-key";
+                  path = "${user.home}/.android/ssh_key";
+                  owner = me;
+                  mode = "0600";
+                };
+              })
+            ];
             # sops-install-secrets creates missing parents as root; make it the user's first
-            system.activationScripts = lib.mkIf adbKeyWritten {
+            system.activationScripts = lib.mkIf (adbKeyWritten || sshKeyWritten) {
               androidAdbDir = {
                 deps = ["users" "groups"];
                 text = "[ ! -d ${user.home} ] || install -d -o ${me} -g ${user.group} -m 0700 ${user.home}/.android";

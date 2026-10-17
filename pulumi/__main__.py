@@ -678,6 +678,33 @@ class Millionaire:
             opts=pulumi.ResourceOptions(depends_on=[android_adb_key]),
         )
 
+        # --- ssh key for the phones' management channel (docs/android-fleet.md) ---
+        # Termux's sshd on a phone accepts only this key, only from bonobo's tailnet address (`android <device> channel`
+        # derives the public half with ssh-keygen -y and writes it into the phone's authorized_keys). bonobo installs
+        # the sops copy at ~/.android/ssh_key (flake.nix); the Bitwarden copy is the backup.
+        android_ssh_key = tls.PrivateKey(
+            "android_ssh_key",
+            algorithm="ED25519",
+            opts=PROTECTED,
+        )
+        Secret(
+            "android/ssh/key",
+            android_ssh_key.private_key_openssh.apply(
+                lambda pem: base64.b64encode(pem.encode()).decode()
+            ),
+            "ssh private key of the phones' management channel, for bonobo's ~/.android/ssh_key (base64-encoded OpenSSH PEM)",
+        )
+        android_ssh_key_sops_write = command.local.Command(
+            "android_ssh_key_sops_write",
+            create=(
+                f'cd "{millionaire.Nix.root}" && '
+                "printf '%s' \"$SSH_KEY\" | jq -Rs . | "
+                'sops set secrets/sops/default.yaml \'["android"]["ssh-key"]\' --value-stdin'
+            ),
+            environment={"SSH_KEY": android_ssh_key.private_key_openssh},
+            opts=pulumi.ResourceOptions(depends_on=[android_ssh_key]),
+        )
+
         # Other nodes depend on attic being fully set up (auth token in SOPS + public key file)
         # plus hyena being up (for headscale to exist when ArgoCD syncs the operator).
         other_node_deps = [
@@ -703,7 +730,11 @@ class Millionaire:
         millionaire.NixOS(
             "bonobo",
             "root@nixos",
-            depends_on=[*other_node_deps, android_adb_key_sops_write],
+            depends_on=[
+                *other_node_deps,
+                android_adb_key_sops_write,
+                android_ssh_key_sops_write,
+            ],
         )
 
         # falcon (GPU desktop, RKE2 agent) is a live, in-use host: it is registered
