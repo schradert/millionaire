@@ -2,6 +2,8 @@
 
 How the homelab declares and delivers the app set on each Android device over the tailnet. `docs/android.md` describes the catalog and the bootstrap; this file records the comparison (2026-10-14), the always-available management channel decided on 2026-10-17, and what is built.
 
+To set up a phone (pairing, channel, the Shizuku and app taps, what a reboot does), follow `docs/onboarding.md`; this file is the reasoning and the detail behind it.
+
 ## Decision
 
 1. **Transport: Tailscale to headscale as the Always-on VPN.** Lockdown ("Block connections without VPN") is on for `tristan` devices and off for `family`. Both are declared in `android.devices.<name>.vpn` and checked by `android <device>`. Nothing on the phone listens to the internet; the phone reaches `android.trdos.me` and hyena's ntfy over the tailnet from any network.
