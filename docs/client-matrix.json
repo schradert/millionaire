@@ -56,7 +56,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:148 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:149 (sets: homelab; devices: pixel,s21)",
       "note": ""
      }
     ],
@@ -418,7 +418,7 @@
        "android"
       ],
       "provisioned": "no",
-      "where": "modules/android.nix:439 (sets: pixel; devices: pixel)",
+      "where": "modules/android.nix:443 (sets: pixel; devices: pixel)",
       "note": "Termux is in the pixel set, but ssh needs the coder CLI as ProxyCommand; Linux arm64 build untested in Termux (docs/dev-workspaces.md). Web terminal works in the browser"
      }
     ],
@@ -461,7 +461,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:139 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:140 (sets: homelab; devices: pixel,s21)",
       "note": "docs/connections.md says todo but catalog+homelab set has it: doc is stale"
      },
      {
@@ -470,7 +470,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:107 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:108 (sets: homelab; devices: pixel,s21)",
       "note": "catalog entry; git backend https://git.trdos.me/tristan/bookmarks.git"
      }
     ],
@@ -617,7 +617,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:142 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:143 (sets: homelab; devices: pixel,s21)",
       "note": ""
      }
     ],
@@ -653,14 +653,24 @@
     ],
     "desktop": [
      {
-      "name": "services.syncthing (hub as only device)",
+      "name": "services.syncthing (declared devices morgenmuffel, falcon, axolotl, Deck)",
       "platforms": [
        "macos",
        "linux"
       ],
       "provisioned": "yes",
-      "where": "modules/syncthing.nix:293",
-      "note": ""
+      "where": "modules/syncthing.nix:295",
+      "note": "Each declares its own identity (modules/syncthing.nix:41-59) and syncs the hub's `org` folder to ~/Projects/sabedoria; the work Mac (millionaire) is deliberately not a device."
+     },
+     {
+      "name": "DoomEmacs + org-node (org-directory = Syncthing org folder)",
+      "platforms": [
+       "macos",
+       "linux"
+      ],
+      "provisioned": "yes",
+      "where": "modules/emacs/default.nix:123",
+      "note": "org-directory is the Syncthing `org` folder (modules/emacs/default.nix:44); org-mem/org-node and the agenda read it from there. The work Mac has Emacs but no synced org folder: it is not a Syncthing device."
      }
     ],
     "android": [
@@ -671,7 +681,25 @@
       ],
       "provisioned": "yes",
       "where": "modules/android.nix:62 (sets: homelab,family; devices: a10e,pixel,s21,vivo)",
-      "note": ""
+      "note": "Carries only the `org` folder on the Pixel (device `pixel`, modules/syncthing.nix:61-65); `android pixel productivity` builds the identity import."
+     },
+     {
+      "name": "Orgzly Revived (capture, agenda)",
+      "platforms": [
+       "android"
+      ],
+      "provisioned": "yes",
+      "where": "modules/android.nix:66 (sets: homelab,eink; devices: boox,pixel,s21)",
+      "note": "Repository `file:/storage/emulated/0/org`, a manual tap (docs/android-fleet.md). The doc says the F-Droid build is needed for all-files access, but the catalog filter inverts `fdroid` (modules/android.nix:69) and so excludes the orgzly-revived-fdroid-*.apk asset: unverified which build Obtainium installs."
+     },
+     {
+      "name": "Emacs for Android (SourceForge build)",
+      "platforms": [
+       "android"
+      ],
+      "provisioned": "no",
+      "where": null,
+      "note": "designed only (docs/productivity.md)"
      }
     ],
     "ios": [],
@@ -690,7 +718,7 @@
     "mcp": [],
     "extensions": []
    },
-   "notes": "GUI via oauth2-proxy; sync protocol direct on the LAN at 192.168.50.242:22000 (TCP and QUIC, LoadBalancer syncthing-lan, hub.lan in modules/syncthing.nix) for provisioned desktops, global discovery/relays elsewhere (Syncthing-Fork has no fixed address declared)."
+   "notes": "GUI via oauth2-proxy; sync protocol direct on the LAN at 192.168.50.242:22000 (TCP and QUIC, LoadBalancer syncthing-lan, hub.lan in modules/syncthing.nix) for provisioned desktops, global discovery/relays elsewhere (Syncthing-Fork has no fixed address declared). The notes folder `org` (hub volume `org`, Ceph PVC org-files, modules/syncthing.nix:70; ~/Projects/sabedoria on the personal workstations, /storage/emulated/0/org on the Pixel) lives in this entry because it has no hostname of its own: shared with morgenmuffel, axolotl, falcon, the Deck and the Pixel. The work Mac (millionaire) is deliberately not a device. org-bridge exports it to CalDAV (see baikal)."
   },
   {
    "app": "actual",
@@ -830,7 +858,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:124 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:125 (sets: homelab; devices: pixel,s21)",
       "note": ""
      },
      {
@@ -934,8 +962,8 @@
        "linux"
       ],
       "provisioned": "yes",
-      "where": "modules/calendar.nix:23",
-      "note": ""
+      "where": "modules/calendar.nix:40",
+      "note": "read-only calendar view of the `org` calendar (user `admin`, Digest); the DAV password is the sops secret baikal/admin-password"
      }
     ],
     "android": [
@@ -946,7 +974,7 @@
       ],
       "provisioned": "yes",
       "where": "modules/android.nix:71 (sets: homelab; devices: pixel,s21)",
-      "note": ""
+      "note": "needs the full `https://cal.trdos.me/dav.php` URL (/.well-known/caldav redirects to plain http); `android pixel productivity` opens the login with it, the user and the password prefilled, then tick the `org` calendar"
      },
      {
       "name": "Fossify Calendar",
@@ -955,7 +983,7 @@
       ],
       "provisioned": "yes",
       "where": "modules/android.nix:75 (sets: homelab; devices: pixel,s21)",
-      "note": ""
+      "note": "reads the DAVx5 `org` calendar; CalDAV sync toggle is a manual tap (docs/android-fleet.md)"
      },
      {
       "name": "Fossify Contacts",
@@ -963,7 +991,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:147 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:148 (sets: homelab; devices: pixel,s21)",
       "note": ""
      },
      {
@@ -972,7 +1000,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:294 (sets: pixel; devices: pixel)",
+      "where": "modules/android.nix:299 (sets: pixel; devices: pixel)",
       "note": ""
      },
      {
@@ -981,7 +1009,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:435 (sets: pixel; devices: pixel)",
+      "where": "modules/android.nix:439 (sets: pixel; devices: pixel)",
       "note": ""
      }
     ],
@@ -1004,8 +1032,17 @@
        "linux"
       ],
       "provisioned": "yes",
-      "where": "modules/calendar.nix:29",
+      "where": "modules/calendar.nix:69",
       "note": ""
+     },
+     {
+      "name": "org-bridge (server-side one-way org → CalDAV export)",
+      "platforms": [
+       "any"
+      ],
+      "provisioned": "yes",
+      "where": "nixidy/apps/home/org-bridge.nix:20",
+      "note": "Runs in the cluster (home namespace), not on a client: exports org SCHEDULED/DEADLINE (VEVENT) and TODO headings (VTODO) from the Syncthing org folder to the `org` calendar; calendar-app edits are overwritten at the next export."
      }
     ],
     "tui": [
@@ -1016,14 +1053,14 @@
        "linux"
       ],
       "provisioned": "yes",
-      "where": "modules/calendar.nix:23",
+      "where": "modules/calendar.nix:63",
       "note": ""
      }
     ],
     "mcp": [],
     "extensions": []
    },
-   "notes": ""
+   "notes": "Calendar `org` (user `admin`) is fed one way by org-bridge from the Syncthing org folder (see syncthing); khal/vdirsyncer and the phone apps only read it. DAVx5 must be given the full https://cal.trdos.me/dav.php URL."
   },
   {
    "app": "chirpstack",
@@ -1099,7 +1136,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:108 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:109 (sets: homelab; devices: pixel,s21)",
       "note": ""
      },
      {
@@ -1232,7 +1269,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:120 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:121 (sets: homelab; devices: pixel,s21)",
       "note": ""
      }
     ],
@@ -1359,7 +1396,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:424 (sets: pixel; devices: pixel)",
+      "where": "modules/android.nix:428 (sets: pixel; devices: pixel)",
       "note": ""
      }
     ],
@@ -1511,7 +1548,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:149 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:150 (sets: homelab; devices: pixel,s21)",
       "note": ""
      },
      {
@@ -1520,7 +1557,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:295 (sets: pixel; devices: pixel)",
+      "where": "modules/android.nix:300 (sets: pixel; devices: pixel)",
       "note": ""
      },
      {
@@ -1529,7 +1566,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:255 (sets: pixel; devices: pixel)",
+      "where": "modules/android.nix:260 (sets: pixel; devices: pixel)",
       "note": ""
      }
     ],
@@ -1590,7 +1627,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:125 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:126 (sets: homelab; devices: pixel,s21)",
       "note": ""
      }
     ],
@@ -2003,7 +2040,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:112 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:113 (sets: homelab; devices: pixel,s21)",
       "note": ""
      }
     ],
@@ -2267,7 +2304,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:103 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:104 (sets: homelab; devices: pixel,s21)",
       "note": ""
      }
     ],
@@ -2343,7 +2380,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:138 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:139 (sets: homelab; devices: pixel,s21)",
       "note": ""
      }
     ],
@@ -2397,7 +2434,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:138 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:139 (sets: homelab; devices: pixel,s21)",
       "note": ""
      }
     ],
@@ -2440,7 +2477,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:127 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:128 (sets: homelab; devices: pixel,s21)",
       "note": ""
      }
     ],
@@ -2492,7 +2529,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:116 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:117 (sets: homelab; devices: pixel,s21)",
       "note": ""
      }
     ],
@@ -2618,7 +2655,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:103 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:104 (sets: homelab; devices: pixel,s21)",
       "note": ""
      }
     ],
@@ -2650,7 +2687,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:126 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:127 (sets: homelab; devices: pixel,s21)",
       "note": ""
      },
      {
@@ -2659,7 +2696,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:103 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:104 (sets: homelab; devices: pixel,s21)",
       "note": ""
      }
     ],
@@ -2701,7 +2738,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:103 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:104 (sets: homelab; devices: pixel,s21)",
       "note": ""
      }
     ],
@@ -2819,7 +2856,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:132 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:133 (sets: homelab; devices: pixel,s21)",
       "note": ""
      }
     ],
@@ -2884,7 +2921,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:103 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:104 (sets: homelab; devices: pixel,s21)",
       "note": ""
      }
     ],
@@ -3034,7 +3071,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:141 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:142 (sets: homelab; devices: pixel,s21)",
       "note": ""
      }
     ],
@@ -3211,7 +3248,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:140 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:141 (sets: homelab; devices: pixel,s21)",
       "note": "basic auth only; cannot pass oauth2-proxy"
      }
     ],
@@ -3274,7 +3311,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:141 (sets: homelab; devices: pixel,s21)",
+      "where": "modules/android.nix:142 (sets: homelab; devices: pixel,s21)",
       "note": ""
      }
     ],
@@ -3603,7 +3640,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:152 (sets: eink; devices: boox)",
+      "where": "modules/android.nix:153 (sets: eink; devices: boox)",
       "note": ""
      },
      {
@@ -3612,7 +3649,7 @@
        "android"
       ],
       "provisioned": "yes",
-      "where": "modules/android.nix:302 (sets: pixel; devices: pixel)",
+      "where": "modules/android.nix:307 (sets: pixel; devices: pixel)",
       "note": "pixel set; boox uses the GitHub build above"
      }
     ],
