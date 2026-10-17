@@ -145,11 +145,15 @@ pub async fn full_reconciliation(
     seen_files.extend(files.clone());
 
     // Reconcile each file that has entries
+    let mut failed = false;
     for file in &files {
         let path = org_dir.join(file);
         match reconcile_file(&path, org_dir, state, caldav).await {
             Ok(result) => results.push(result),
-            Err(e) => tracing::error!("Failed to reconcile {}: {}", file, e),
+            Err(e) => {
+                failed = true;
+                tracing::error!("Failed to reconcile {}: {}", file, e)
+            }
         }
     }
 
@@ -175,6 +179,33 @@ pub async fn full_reconciliation(
             updated: 0,
             deleted: deleted_uids.len() as u32,
         });
+    }
+
+    // The state DB is rebuilt from the files on every start, so whatever org-bridge exported
+    // earlier and no file produces now (a deleted file, a heading rescheduled while the pod was
+    // down, an old Syncthing version) is still in the calendar: delete our UIDs the state lacks.
+    // Skipped after a failed file, whose entries the state would then be missing.
+    if !failed {
+        match caldav.list_uids().await {
+            Ok(remote) => {
+                let known: HashSet<String> = state
+                    .get_all_entries()
+                    .map_err(BridgeError::Db)?
+                    .into_iter()
+                    .map(|e| e.uid)
+                    .collect();
+                for uid in remote
+                    .iter()
+                    .filter(|u| u.starts_with("org-") && !known.contains(*u))
+                {
+                    match caldav.delete_event(uid).await {
+                        Ok(()) => tracing::info!("Removed orphaned CalDAV entry {}", uid),
+                        Err(e) => tracing::warn!("Could not remove orphan {}: {}", uid, e),
+                    }
+                }
+            }
+            Err(e) => tracing::warn!("Could not list the calendar for orphans: {}", e),
+        }
     }
 
     Ok(results)

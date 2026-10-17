@@ -150,6 +150,18 @@ impl CalDavClient {
         url: &str,
         body: Option<&str>,
     ) -> Result<Response, CalDavError> {
+        self.send_as(method, url, body, "text/calendar; charset=utf-8", &[])
+            .await
+    }
+
+    async fn send_as(
+        &self,
+        method: Method,
+        url: &str,
+        body: Option<&str>,
+        content_type: &str,
+        headers: &[(&str, &str)],
+    ) -> Result<Response, CalDavError> {
         let uri = reqwest::Url::parse(url)
             .map(|u| match u.query() {
                 Some(q) => format!("{}?{q}", u.path()),
@@ -159,10 +171,11 @@ impl CalDavClient {
         let mut basic = false;
         for attempt in 0..2 {
             let mut rb = self.client.request(method.clone(), url);
+            for (k, v) in headers {
+                rb = rb.header(*k, *v);
+            }
             if let Some(b) = body {
-                rb = rb
-                    .header("Content-Type", "text/calendar; charset=utf-8")
-                    .body(b.to_string());
+                rb = rb.header("Content-Type", content_type).body(b.to_string());
             }
             if basic {
                 rb = rb.basic_auth(&self.username, Some(&self.password));
@@ -209,6 +222,37 @@ impl CalDavClient {
                 url, status, body
             )))
         }
+    }
+
+    /// The resource names (UIDs, without `.ics`) in the calendar collection.
+    pub async fn list_uids(&self) -> Result<Vec<String>, CalDavError> {
+        let url = format!("{}/", self.base_url);
+        let method = Method::from_bytes(b"PROPFIND").expect("a valid method");
+        let response = self
+            .send_as(
+                method,
+                &url,
+                Some(r#"<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:getetag/></d:prop></d:propfind>"#),
+                "application/xml; charset=utf-8",
+                &[("Depth", "1")],
+            )
+            .await?;
+        let status = response.status();
+        let body = response.text().await.map_err(CalDavError::Http)?;
+        if !status.is_success() {
+            return Err(CalDavError::Server(format!(
+                "PROPFIND {} returned {}: {}",
+                url, status, body
+            )));
+        }
+        Ok(body
+            .split("href>")
+            .skip(1)
+            .filter_map(|part| part.split('<').next())
+            .filter_map(|href| href.trim_end_matches('/').rsplit('/').next())
+            .filter_map(|name| name.strip_suffix(".ics"))
+            .map(str::to_string)
+            .collect())
     }
 
     /// DELETE a calendar resource from the CalDAV server.
@@ -439,6 +483,25 @@ mod tests {
         client.put_event("uid1", "BEGIN:VCALENDAR").await.unwrap();
         // The challenge is kept: the second request is answered without another 401.
         client.put_event("uid1", "BEGIN:VCALENDAR").await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_list_uids() {
+        let server = MockServer::start().await;
+        Mock::given(method("PROPFIND"))
+            .and(path("/cal/"))
+            .respond_with(ResponseTemplate::new(207).set_body_string(
+                "<d:multistatus xmlns:d=\"DAV:\"><d:response><d:href>/dav.php/calendars/admin/org/</d:href></d:response>\
+                 <d:response><d:href>/dav.php/calendars/admin/org/org-abc.ics</d:href></d:response>\
+                 <d:response><d:href>/dav.php/calendars/admin/org/org-todo-def.ics</d:href></d:response></d:multistatus>",
+            ))
+            .mount(&server)
+            .await;
+        let client = CalDavClient::new(&format!("{}/cal", server.uri()), "admin", "pw");
+        assert_eq!(
+            client.list_uids().await.unwrap(),
+            ["org-abc", "org-todo-def"]
+        );
     }
 
     #[tokio::test]
