@@ -36,7 +36,10 @@ in {
     templates = lib.attrNames (lib.filterAttrs (_: t: t == "directory") (builtins.readDir templatesDir));
     files = name: lib.attrNames (lib.filterAttrs (_: t: t == "regular") (builtins.readDir (templatesDir + "/${name}")));
     contents = name: lib.genAttrs (files name) (f: builtins.readFile (templatesDir + "/${name}/${f}"));
-    variables.devenv.image = with pinned.images.workspace; "${repository}:${tag}@${digest}";
+    variables.devenv = {
+      image = with pinned.images.workspace; "${repository}:${tag}@${digest}";
+      backup_bucket = "${builtins.replaceStrings ["."] ["-"] domain}--volsync";
+    };
     meta.devenv = {
       display = "devenv project";
       description = "One repository with its devenv, a persistent home and Nix store, Claude Code and opencode.";
@@ -114,7 +117,8 @@ in {
       };
     };
 
-    applications.namespaces.resources.namespaces.${workspaces} = {};
+    # VolSync movers run as root here, like in every namespace with a backed-up claim (storage/volsync.nix).
+    applications.namespaces.resources.namespaces.${workspaces}.metadata.annotations."volsync.backube/privileged-movers" = "true";
 
     applications.coder = {
       namespace = "development";
@@ -315,6 +319,43 @@ in {
     applications.${workspaces} = {
       namespace = workspaces;
       resources = {
+        # The template backs up each home volume: an ExternalSecret and a ReplicationSource per workspace (kubernetes_manifest).
+        roles.workspace-backup.rules = lib.toList {
+          apiGroups = ["external-secrets.io" "volsync.backube"];
+          resources = ["externalsecrets" "replicationsources"];
+          verbs = ["create" "delete" "get" "list" "patch" "update" "watch"];
+        };
+        roleBindings.workspace-backup = {
+          roleRef = {
+            apiGroup = "rbac.authorization.k8s.io";
+            kind = "Role";
+            name = "workspace-backup";
+          };
+          subjects = lib.toList {
+            kind = "ServiceAccount";
+            name = "coder";
+            namespace = "development";
+          };
+        };
+        # kubernetes_manifest reads the CRD to learn a kind's schema.
+        clusterRoles.coder-workspace-crds.rules = lib.toList {
+          apiGroups = ["apiextensions.k8s.io"];
+          resources = ["customresourcedefinitions"];
+          resourceNames = ["externalsecrets.external-secrets.io" "replicationsources.volsync.backube"];
+          verbs = ["get"];
+        };
+        clusterRoleBindings.coder-workspace-crds = {
+          roleRef = {
+            apiGroup = "rbac.authorization.k8s.io";
+            kind = "ClusterRole";
+            name = "coder-workspace-crds";
+          };
+          subjects = lib.toList {
+            kind = "ServiceAccount";
+            name = "coder";
+            namespace = "development";
+          };
+        };
         resourceQuotas.workspaces.spec.hard = {
           "requests.cpu" = "24";
           "requests.memory" = "64Gi";

@@ -44,6 +44,16 @@ variable "nodes" {
   default     = "falcon,axolotl"
 }
 
+variable "backup_bucket" {
+  type        = string
+  description = "B2 bucket holding the VolSync restic repositories."
+}
+
+variable "backup_region" {
+  type    = string
+  default = "us-west-004"
+}
+
 variable "bifrost_url" {
   type    = string
   default = "http://bifrost.ai.svc.cluster.local:8000"
@@ -282,6 +292,69 @@ resource "kubernetes_persistent_volume_claim_v1" "home" {
     storage_class_name = var.storage_class
     resources {
       requests = { storage = "${data.coder_parameter.home_size.value}Gi" }
+    }
+  }
+}
+
+# Off-site backup of the home volume, what nixidy's `volsync.pvcs` renders for an app's claim (nixidy/system/storage/volsync.nix):
+# the restic credentials from Bitwarden through External Secrets, and a ReplicationSource copying the claim to
+# B2 at 04:00 daily (one snapshot each of the last day, week, month and year). A stopped workspace keeps its claim and
+# its backups; deleting the workspace removes both objects and leaves the repository in the bucket, where the data stays
+# restorable (docs/pvc-and-postgres-restore.md). The Nix store volume is a cache and is not backed up.
+locals {
+  backup_repository = "volsync--workspaces--${local.name}-home"
+}
+
+resource "kubernetes_manifest" "backup_secret" {
+  manifest = {
+    apiVersion = "external-secrets.io/v1"
+    kind       = "ExternalSecret"
+    metadata = {
+      name      = local.backup_repository
+      namespace = var.namespace
+      labels    = local.labels
+    }
+    spec = {
+      secretStoreRef = { name = "bitwarden", kind = "ClusterSecretStore" }
+      data = [
+        { secretKey = "restic", remoteRef = { key = "volsync/restic/password" } },
+        { secretKey = "id", remoteRef = { key = "backblaze/bucket/application_key_id" } },
+        { secretKey = "password", remoteRef = { key = "backblaze/bucket/application_key" } },
+      ]
+      target = {
+        template = {
+          data = {
+            RESTIC_REPOSITORY     = "s3:https://s3.${var.backup_region}.backblazeb2.com/${var.backup_bucket}/${local.backup_repository}"
+            RESTIC_PASSWORD       = "{{ .restic }}"
+            AWS_ACCESS_KEY_ID     = "{{ .id }}"
+            AWS_SECRET_ACCESS_KEY = "{{ .password }}"
+            AWS_DEFAULT_REGION    = var.backup_region
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_manifest" "backup" {
+  depends_on = [kubernetes_manifest.backup_secret]
+  manifest = {
+    apiVersion = "volsync.backube/v1alpha1"
+    kind       = "ReplicationSource"
+    metadata = {
+      name      = "${local.backup_repository}-src"
+      namespace = var.namespace
+      labels    = local.labels
+    }
+    spec = {
+      sourcePVC = kubernetes_persistent_volume_claim_v1.home.metadata[0].name
+      trigger   = { schedule = "0 4 * * *" }
+      restic = {
+        copyMethod        = "Direct"
+        pruneIntervalDays = 8
+        repository        = local.backup_repository
+        retain            = { daily = 1, weekly = 1, monthly = 1, yearly = 1 }
+      }
     }
   }
 }

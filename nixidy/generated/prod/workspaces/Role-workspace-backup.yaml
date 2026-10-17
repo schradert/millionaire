@@ -1,0 +1,20 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: workspace-backup
+  namespace: workspaces
+rules:
+  - apiGroups:
+      - external-secrets.io
+      - volsync.backube
+    resources:
+      - externalsecrets
+      - replicationsources
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
