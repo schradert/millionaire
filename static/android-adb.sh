@@ -53,6 +53,9 @@ dry_stubs() {
           *) echo 2000 ;;
         esac
         ;;
+      "settings get global settings_enable_monitor_phantom_procs") echo false ;;
+      "/system/bin/device_config get activity_manager max_phantom_processes") echo 2147483647 ;;
+      "dumpsys deviceidle whitelist") printf '%s\n' "system-excidle,com.android.shell,2000" "user,com.termux,10345" "user,com.termux.boot,10346" "user,moe.shizuku.privileged.api,10347" ;;
       "settings get"*) echo null ;;
       "pm list packages -3 -i"*) printf '%s\n' "package:com.termux  installer=dev.imranr.obtainium" "package:org.jellyfin.mobile  installer=dev.imranr.obtainium" ;;
       "for p in"*) fake_pkgs ;;
@@ -729,7 +732,7 @@ rm -f "$D/done"
 echo "== management channel: packages"
 export DEBIAN_FRONTEND=noninteractive
 pkg update -y >/dev/null 2>&1 || true
-pkg install -y openssh
+pkg install -y openssh termux-services
 mkdir -p "$HOME/.ssh" "$HOME/.termux/boot" "$HOME/.rish"
 chmod 700 "$HOME/.ssh"
 printf '%s\n' '@AUTHKEY@' >"$HOME/.ssh/authorized_keys"
@@ -773,25 +776,35 @@ export RISH_APPLICATION_ID=com.termux
 exec /system/bin/sh "$HOME/.rish/rish" "$@"
 EOS
 chmod 755 "$P/bin/rish"
-echo "== management channel: boot script"
-cat >"$HOME/.termux/boot/sshd" <<'EOB'
+echo "== management channel: boot script (starts the runit supervisor; runit supervises sshd)"
+rm -f "$HOME/.termux/boot/sshd"
+cat >"$HOME/.termux/boot/channel" <<'EOB'
 #!/data/data/com.termux/files/usr/bin/sh
-# started by Termux:Boot after the first unlock following a boot; retries until the tailnet address exists
+# started by Termux:Boot after the first unlock following a boot: the wake lock, then termux-services' runit supervisor,
+# which starts and restarts sshd (it retries until the tailnet address exists)
+export PREFIX=/data/data/com.termux/files/usr
+export PATH="$PREFIX/bin:$PATH"
 @WAKE@
-echo $$ >"$HOME/.termux/sshd-loop.pid"
-: >"$HOME/.termux/sshd.log"
-while :; do
-  /data/data/com.termux/files/usr/bin/sshd -D -e >>"$HOME/.termux/sshd.log" 2>&1 || true
-  sleep 5
-done
+. "$PREFIX/etc/profile.d/start-services.sh"
 EOB
-chmod 700 "$HOME/.termux/boot/sshd"
-echo "== management channel: start"
-if [ -f "$HOME/.termux/sshd-loop.pid" ]; then kill "$(cat "$HOME/.termux/sshd-loop.pid")" 2>/dev/null || true; fi
+chmod 700 "$HOME/.termux/boot/channel"
+echo "== management channel: start (runit supervises sshd)"
+# the previous bare-sshd loop of an earlier setup, and any sshd it left behind, would hold the port
+if [ -f "$HOME/.termux/sshd-loop.pid" ]; then kill "$(cat "$HOME/.termux/sshd-loop.pid")" 2>/dev/null || true; rm -f "$HOME/.termux/sshd-loop.pid"; fi
 if [ -f "$P/var/run/sshd.pid" ]; then kill "$(cat "$P/var/run/sshd.pid")" 2>/dev/null || true; fi
-sleep 1
-nohup "$HOME/.termux/boot/sshd" >/dev/null 2>&1 &
+@WAKE@
+export SVDIR="$P/var/service" LOGDIR="$P/var/log" PATH="$P/bin:$PATH"
+. "$P/etc/profile.d/start-services.sh"
+i=0
+while [ ! -d "$SVDIR/sshd" ] && [ "$i" -lt 10 ]; do i=$((i + 1)); sleep 1; done
+# openssh was installed before termux-services: reinstall it once so the service directory is linked into $SVDIR
+[ -d "$SVDIR/sshd" ] || { pkg reinstall -y openssh; sleep 3; }
+[ -d "$SVDIR/sshd" ] || { echo "error: no sshd service in $SVDIR" >&2; exit 1; }
+sv-enable sshd
 sleep 3
+sv status sshd | tee "$D/svstatus"
+grep -q '^run: sshd' "$D/svstatus" || { echo "error: runit does not run sshd" >&2; exit 1; }
+rm -f "$D/svstatus"
 id -un >"$D/user"
 cut -d' ' -f1,2 "$P/etc/ssh/ssh_host_ed25519_key.pub" >"$D/hostkey"
 echo ok >"$D/done"
@@ -803,6 +816,30 @@ TPL
   tpl=${tpl//@IP@/$1}
   tpl=${tpl//@WAKE@/$wake}
   printf '%s\n' "$tpl"
+}
+
+# phantom_killer: Android 12+ kills an app's background child processes (the "phantom process killer": more than 32
+# of them, or ones using a lot of CPU), and sshd forks one per session. Termux documents settings_enable_monitor_phantom_procs=false
+# for Android 12L and later and device_config max_phantom_processes for Android 12 (also set here: harmless where the
+# flag is unused); the device-wide `device_config set_sync_disabled_for_tests persistent` that guides add to stop Google
+# overwriting the value is left out (it freezes every Google-pushed flag). Both values are read back and reported.
+phantom_killer() {
+  local mon max
+  a shell "settings put global settings_enable_monitor_phantom_procs false; /system/bin/device_config put activity_manager max_phantom_processes 2147483647" >/dev/null 2>&1 || true
+  mon=$(a shell settings get global settings_enable_monitor_phantom_procs 2>/dev/null | tr -d '\r' || true)
+  max=$(a shell /system/bin/device_config get activity_manager max_phantom_processes 2>/dev/null | tr -d '\r' || true)
+  say "   phantom process killer: settings_enable_monitor_phantom_procs=${mon:-unreadable} (want false), max_phantom_processes=${max:-unreadable} (want 2147483647)"
+  [ "$mon" = false ] || say "   (not off: Termux's background processes may be killed; on Android 14+ also turn on Developer options > Disable child process restrictions)" >&2
+}
+
+# battery_report <pkg...>: which of them are on the Doze whitelist (cmd deviceidle whitelist, set by loosen)
+battery_report() {
+  local wl pkg
+  wl=$(a shell dumpsys deviceidle whitelist 2>/dev/null | tr -d '\r' || true)
+  for pkg in "$@"; do
+    if grep -qE "(^|,)$pkg(,|\$)" <<<"$wl"; then say "   battery: $pkg is exempt from optimisation"
+    else say "   battery: $pkg is NOT on the Doze whitelist (Settings > Apps > $pkg > Battery > Unrestricted)" >&2; fi
+  done
 }
 
 # channel <phone tailnet ip>: sshd in Termux on the tailnet, started at boot by Termux:Boot, privileged through Shizuku.
@@ -827,12 +864,12 @@ channel() {
     loosen "$pkg"
     a shell "appops set $pkg RUN_IN_BACKGROUND allow; appops set $pkg RUN_ANY_IN_BACKGROUND allow" >/dev/null 2>&1 || true
   done
+  battery_report com.termux com.termux.boot moe.shizuku.privileged.api
   grant com.termux POST_NOTIFICATIONS READ_EXTERNAL_STORAGE WRITE_EXTERNAL_STORAGE
   allfiles com.termux
   # lets Shizuku restart itself after a reboot on trusted Wi-Fi (Android 13+; its boot receiver checks this grant)
   a shell pm grant moe.shizuku.privileged.api android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1 || say "   (Shizuku did not get WRITE_SECURE_SETTINGS: it will not restart itself after a reboot; bonobo's adb start still covers home Wi-Fi)"
-  # Android 14+ also has this as a developer option ("Disable child process restrictions"); sshd forks per session
-  a shell settings put global settings_enable_monitor_phantom_procs false >/dev/null 2>&1 || true
+  phantom_killer
 
   say "-- bundle onto the phone ($d)"
   work=$(mktemp -d)

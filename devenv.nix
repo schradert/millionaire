@@ -283,6 +283,11 @@ in {
           "https://api.bitwarden.com"
           "https://identity.bitwarden.com"
           "^.+/dns-query$"
+          # Stand-in URLs of the Android channel's dry-run stubs (static/android-adb.sh, tools/android-channel-test)
+          "^https://apt\\.izzysoft\\.de/\\*"
+          "RikkaApps/Shizuku/releases/download/v13\\.6\\.0/shizuku\\.apk"
+          "^https://f-droid\\.org/packages/com\\.example\\."
+          "^https://github\\.com/(nightly/app|x/none)"
         ];
         no-commit-to-branch.enable = lib.mkForce false;
         # MD029: README todos keep stable numbers with gaps (docs cite "todo 55"); MD060 (new in
