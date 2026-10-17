@@ -1,11 +1,12 @@
 # Cluster CLIs on workstations. `kubeconfig` fetches the RKE2 admin kubeconfig
-# from sirver into ~/.kube/trdos (context `trdos`), pointed at sirver's tailnet
-# IP; the API cert only names `sirver`, hence tls-server-name. ArgoCD logs in
+# from dingo (a server since the cluster was built and the one every node joins through)
+# into ~/.kube/trdos (context `trdos`), pointed at dingo's tailnet IP; the API cert
+# only names `dingo` (read on 192.168.50.105), hence tls-server-name. ArgoCD logs in
 # with Keycloak SSO (public client `argocd-cli`, nixidy/system/cicd/argocd.nix),
 # Harbor with the `robot$push` account (Bitwarden `harbor/robot/secret`, pulumi).
 {config, ...}: let
   inherit (config.canivete.meta) domain people;
-  inherit ((import ../static/builders.nix).nodes.sirver) tailnet;
+  inherit ((import ../static/builders.nix).nodes.dingo) tailnet;
 in {
   home = {
     config,
@@ -18,13 +19,13 @@ in {
       runtimeInputs = with pkgs; [openssh yq-go];
       text = ''
         out=''${1:-$HOME/.kube/trdos}
-        fetch() { ssh -o ConnectTimeout=5 "${people.me}@$1" 'sudo -n cat /etc/rancher/rke2/rke2.yaml'; }
-        # Tailnet first, else the edge box (a port-forward to sirver)
-        raw=$(fetch ${tailnet} || fetch 192.184.168.248)
+        fetch() { ssh -o ConnectTimeout=5 "$@" 'sudo -n cat /etc/rancher/rke2/rke2.yaml'; }
+        # Tailnet first, else through the edge box (a port-forward to sirver, which resolves `dingo`)
+        raw=$(fetch "${people.me}@${tailnet}" || fetch -J "${people.me}@192.184.168.248" "${people.me}@dingo")
         mkdir -p "$(dirname "$out")"
         umask 077
         yq '.clusters[0].cluster.server = "https://${tailnet}:6443"
-          | .clusters[0].cluster."tls-server-name" = "sirver"
+          | .clusters[0].cluster."tls-server-name" = "dingo"
           | .clusters[0].name = "trdos" | .users[0].name = "trdos"
           | .contexts[0] = {"name": "trdos", "context": {"cluster": "trdos", "user": "trdos"}}
           | .current-context = "trdos"' <<<"$raw" >"$out"

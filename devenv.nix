@@ -389,7 +389,7 @@ in {
       #   e2e list                     families and flows (runs the crate locally)
       # `media-e2e <args>` is `e2e <cmd> --family media <args>`.
       # KUBECTL overrides kubectl, e.g. off-LAN:
-      #   KUBECTL="ssh 192.184.168.248 sudo -n /var/lib/rancher/rke2/bin/kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml"
+      #   KUBECTL="ssh -J 192.184.168.248 dingo sudo -n /var/lib/rancher/rke2/bin/kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml"
       # HOME_IP is the home egress IP the VPN leak tests must never see; unset, it is taken from
       # E2E_HOME_IP_HOST (ssh host on the home network, e.g. 192.184.168.248: `curl ifconfig.me`
       # there), else the Job's own egress. Log and report per runner: $E2E_OUT/<run>/<runner>.{log,json}.

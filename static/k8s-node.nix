@@ -26,7 +26,10 @@ in {
   canivete.kubernetes.yaml.disable-scheduler = lib.mkForce false;
   environment.systemPackages = [pkgs.kubectl];
   # TODO use 9345 supervisor port upstream for RKE2
-  canivete.kubernetes.yaml.server = lib.mkForce "https://sirver:9345";
+  # Every node joins through dingo, the one server that stays a server across the 2026-10 move to bonobo, chinchilla and
+  # dingo. No name resolves to all three (bare node names are /etc/hosts entries, builder.nix). An agent also keeps the
+  # servers it learned in agent/etc/rke2-agent-load-balancer.json; whether a restart with dingo down uses that is untested.
+  canivete.kubernetes.yaml.server = lib.mkForce "https://dingo:9345";
   # kubelet copies the node's resolv.conf search domains into pods, so tailscale's
   # ts.trdos.me collides with CoreDNS's *.trdos.me wildcard (coredns.nix) and pods
   # resolve external names to the gateway VIP. Give kubelet a tailnet-search-free resolv.conf.

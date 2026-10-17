@@ -1,8 +1,8 @@
 # Node-level remediation: medik8s Node Health Check decides a node is unhealthy, Self Node Remediation fences it
 # (the node reboots itself, then its pods are force-moved with the out-of-service taint so RBD volumes detach).
 # Neither project ships a chart (OLM only), so both are their upstream `config/default` kustomizations. Only the
-# worker agents are ever remediated: control-plane/etcd nodes and desktops are outside the selector and run no
-# SNR agent. Pause: docs/node-standard.md "Node remediation".
+# nodes labelled `node.trdos.me/remediation=eligible` (static/node-remediation.nix, a per-node choice) are ever
+# remediated; every other node is outside the selector and runs no SNR agent. Pause: docs/node-standard.md "Node remediation".
 {...}: {
   nixidy = {
     lib,
@@ -39,15 +39,12 @@
     injectCa = prefix: {metadata.annotations."cert-manager.io/inject-ca-from" = "${ns}/${prefix}-serving-cert";};
     failOpen = names: {webhooks = lib.genAttrs names (_: {failurePolicy = lib.mkForce "Ignore";});};
     dropOwnedKinds = lib.filter (obj: !(lib.elem obj.kind ["Namespace" "CustomResourceDefinition"]));
+    # Opt-in by a node label, not by rke2 role: bonobo and chinchilla stay eligible as etcd members.
     agents = [
       {
-        key = "node-role.kubernetes.io/control-plane";
-        operator = "DoesNotExist";
-      }
-      {
-        key = "node.trdos.me/class";
-        operator = "NotIn";
-        values = ["desktop"];
+        key = "node.trdos.me/remediation";
+        operator = "In";
+        values = ["eligible"];
       }
     ];
     template = {
@@ -102,10 +99,17 @@
           nodeHealthChecks.agents = {
             metadata.annotations = crWave;
             spec = {
-              # Agents only. Control-plane nodes are never remediated (sirver's disk is failing and octopus hangs on a
-              # graceful reboot: a reboot there is an etcd and OSD event to plan, not to automate). Desktops (falcon,
-              # axolotl) sleep and reboot at the user's will, which would read as unhealthy.
-              selector.matchExpressions = agents;
+              # Eligible nodes only (bonobo, chinchilla). sirver and octopus hold the OSDs (sirver's disk is failing and
+              # octopus hangs on a graceful reboot: a reboot there is a Ceph event to plan, not to automate), dingo is
+              # the server every node joins through, and the desktops (falcon, axolotl) sleep and reboot at the user's
+              # will, which would read as unhealthy. A node under `node-maintenance` carries the exclude label.
+              selector.matchExpressions =
+                agents
+                ++ lib.toList {
+                  key = "remediation.medik8s.io/exclude-from-remediation";
+                  operator = "NotIn";
+                  values = ["true"];
+                };
               # Two nodes are selected and one must stay healthy, so at most one is remediated at a time.
               minHealthy = 1;
               # octopus' etcd flaps once left a kubelet Unknown for 4 minutes; 15 is well above that.
