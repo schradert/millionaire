@@ -63,6 +63,7 @@
     ./storage/dragonflydb.nix
     ./storage/postgres.nix
     ./storage/retain.nix
+    ./storage/rgw-offsite.nix
     ./storage/rook-ceph.nix
     ./storage/volsync.nix
   ];

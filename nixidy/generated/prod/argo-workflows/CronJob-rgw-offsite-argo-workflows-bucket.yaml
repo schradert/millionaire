@@ -1,0 +1,95 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rgw-offsite-argo-workflows-bucket
+  namespace: cicd
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 21600
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: rgw-offsite-argo-workflows-bucket
+        spec:
+          automountServiceAccountToken: false
+          containers:
+            - args:
+                - sync
+                - rgw:argo-workflows
+                - b2:trdos-me--volsync/rgw--cicd--argo-workflows
+                - --transfers=8
+                - --checkers=16
+                - --fast-list
+                - --max-delete=2000
+                - --cache-dir=/tmp
+                - --stats-one-line
+                - --stats=60s
+                - -v
+              env:
+                - name: HOME
+                  value: /tmp
+                - name: RCLONE_CONFIG_B2_ENDPOINT
+                  value: https://s3.us-west-004.backblazeb2.com
+                - name: RCLONE_CONFIG_B2_NO_CHECK_BUCKET
+                  value: "true"
+                - name: RCLONE_CONFIG_B2_PROVIDER
+                  value: Other
+                - name: RCLONE_CONFIG_B2_TYPE
+                  value: s3
+                - name: RCLONE_CONFIG_RGW_ENDPOINT
+                  value: http://rook-ceph-rgw-ceph-objectstore.storage.svc.cluster.local:80
+                - name: RCLONE_CONFIG_RGW_FORCE_PATH_STYLE
+                  value: "true"
+                - name: RCLONE_CONFIG_RGW_NO_CHECK_BUCKET
+                  value: "true"
+                - name: RCLONE_CONFIG_RGW_PROVIDER
+                  value: Ceph
+                - name: RCLONE_CONFIG_RGW_TYPE
+                  value: s3
+                - name: RCLONE_CONFIG_RGW_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      key: AWS_ACCESS_KEY_ID
+                      name: argo-workflows-bucket
+                - name: RCLONE_CONFIG_RGW_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      key: AWS_SECRET_ACCESS_KEY
+                      name: argo-workflows-bucket
+              envFrom:
+                - secretRef:
+                    name: rgw-offsite-b2
+              image: rclone/rclone:1.75.2@sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5
+              name: rclone
+              resources:
+                limits:
+                  memory: 512Mi
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - mountPath: /tmp
+                  name: tmp
+          restartPolicy: Never
+          securityContext:
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          volumes:
+            - emptyDir: {}
+              name: tmp
+  schedule: 0 5 * * *
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 1
