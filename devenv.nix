@@ -288,6 +288,9 @@ in {
           "RikkaApps/Shizuku/releases/download/v13\\.6\\.0/shizuku\\.apk"
           "^https://f-droid\\.org/packages/com\\.example\\."
           "^https://github\\.com/(nightly/app|x/none)"
+          # shell-variable templates of static/android-reconcile.sh's resolver ($repo, $id) and its apk directory
+          "/\\$(repo|id)(/|\\?|$)"
+          "^https://apt\\.izzysoft\\.de/fdroid/index/apk/$"
         ];
         no-commit-to-branch.enable = lib.mkForce false;
         # MD029: README todos keep stable numbers with gaps (docs cite "todo 55"); MD060 (new in
