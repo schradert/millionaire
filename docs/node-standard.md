@@ -373,6 +373,77 @@ is skipped when the dataset exists; `zfs list -Hpo avail root` was 2.3 TB), run 
 stopped, start**: the new toplevel's fstab entry mounts the dataset as soon as it exists and the unit is started, which would put a partial copy over the live directory.
 `ceph osd set noout` around the cutover; the OSDs are hostNetwork pods and came back fast in every earlier restart. After it: README 48.
 
+## Taking a node down for hardware work
+
+Short answer: cordon, then drain, then stop rke2, then power off; the reverse afterwards. `node-maintenance <host> down|up [--dry-run]` (devshell, `devenv.nix`) does
+it with every check below; `down` stops at "ready to power off" unless `--poweroff` is given, and `--dry-run` runs the read-only checks and prints what it
+would change. What is below was read on the live cluster on 2026-10-16/17 unless it says otherwise.
+
+### What happens, per node
+
+All 229 PersistentVolumes are `ceph-block` or `ceph-filesystem` and none has node affinity, so a pod evicted from any node comes back elsewhere with its data.
+A node-bound pod is one whose `nodeSelector` no other node satisfies; `node-maintenance` lists them before it does anything.
+
+| Node | Goes Pending until it is back | Also |
+| --- | --- | --- |
+| falcon | `jellyfin` and `tdarr-node` (`nvidia.com/gpu.present=true`, only falcon has the card; runtimeClass `nvidia`), the dvdrip agent DaemonSet (`dvd.trdos.me/drive=true`, the disc drive) and the GPU encode/publish Jobs, the `dvdrip-import` CronJob (`kubernetes.io/hostname=falcon`, suspended). `ollama`, `vllm`, `heretic` carry the same GPU selector but none is deployed. | 31 non-DaemonSet pods are evicted (dry run), 2 of them cannot be placed (left column). A disc being read when it goes down is `Failed: interrupted` and is retried when the agent is back (`docs/dvd-rip.md`). falcon holds no etcd, mon or OSD. |
+| axolotl | Nothing: no pod on it has a `nodeSelector`. | 17 pods move. It held three L2 VIP leases when read (the external gateway `192.168.50.240`, forgejo-ssh, owncast-rtmp): another node takes each over when its 15 s lease expires (duration read from the Lease; the gap itself was not measured). |
+| bonobo, chinchilla | Only the per-node Rook crashcollector and exporter. | Their tailnet relays (`100.64.0.4`, `.5`) are the internal gateway's entry points and AdGuard returns both: take one down at a time. Argo Workflows' templates run only on these two. medik8s remediates them (below). |
+| dingo | Rook mon-d, crashcollector, exporter. | A server: etcd. |
+| octopus | Rook mon-a, the 7 OSDs, crashcollector, exporter. | A server and an OSD host. |
+| sirver | Rook's 6 OSDs, `zigbee2mqtt` (the USB Zigbee stick) and `music-assistant` (the `br0` L2 segment for mDNS), both pinned by hostname. | A server and an OSD host. Its root disk is failing (README 33). |
+
+**etcd.** Agents (falcon, axolotl, bonobo, chinchilla) are not members. Servers are dingo, octopus, sirver: 3 members to 2 keeps quorum, and a second server down
+(or one failing while the first is out) is a cluster outage. Never two servers; the kubeconfig you use must not point at the one going down (the script refuses).
+Check `etcdctl endpoint status --cluster` shows 3 healthy ("Gates" above) and move the leader off first.
+
+**Ceph.** Pools are size 2 / min_size 1 (read with `ceph osd pool ls detail`): with one OSD host out Ceph stays writable and every PG is degraded, with one copy of the
+data on the other host. Never both OSD hosts (the script refuses). `ceph osd set noout` before and `unset` after, so the OSDs the node takes with it are not marked
+out after `mon_osd_down_out_interval` (600 s, read). Rook also manages disruption (`managePodBudgets`, `osdMaintenanceTimeout: 30` in the CephCluster, a `rook-ceph-osd`
+PDB); whether Rook's own noout survives a drain was not tested, so the script sets the cluster-wide flag itself and re-reads it after the drain.
+Mons are on octopus and dingo, and a third on bonobo or chinchilla (mon-f was still Pending when read): none on desktops or sirver (#1074, #1082). A mon host going down needs the other two mons in quorum: the
+`rook-ceph-mon-pdb` blocks the drain otherwise, and the script refuses (at the time of writing mon-f was Pending, so a dry run on dingo or octopus refuses).
+Rook fails a mon over after 10 min out of quorum: within that the mon returns, after it Rook starts a new one on bonobo or chinchilla.
+
+**Builds.** falcon is the Macs' and the nodes' main builder (`static/builders.nix`); the attic cache runs on chinchilla, not falcon. Probed on falcon (nix 2.35.2) with a LAN address
+that does not answer, which is what a powered-off host looks like: nix prints `cannot build on 'ssh-ng://...': failed to start SSH connection` after about 2 s and builds locally if `max-jobs`
+allows it (`max-jobs = 0` fails with "Failed to find a machine for remote build"). The nodes name falcon through `/etc/hosts` (its LAN address), so with falcon off they use the other pool nodes
+(CPU-capped, `static/builders.nix`) and local builds. The Macs have no local Linux fallback: x86_64-linux builds go to the four nodes, and aarch64-linux has nowhere to go (falcon's emulation is the only
+aarch64 entry in `modules/builders.nix`; the nodes also list morgenmuffel's VM). Do nixidy renders and `build-all --remote` (they run on falcon) before. An address that silently drops packets
+hung for the full 60 s cap (a blackhole address) and for 40 s (an unregistered tailnet IP); a registered tailnet peer that is powered off was not tested, and the nodes list their peers by tailnet name.
+
+**Alerts.** `NodeNotReady`, `KubeNodeNotReady`, `KubeNodeUnreachable` rules exist (read from the PrometheusRules); silence them in Alertmanager first if the noise matters.
+Not checked: delivery to ntfy.
+
+### Procedure
+
+1. Pre-checks: node Ready, every other node Ready, Ceph HEALTH_OK, etcd 3/3 (servers), mon quorum survives (mon hosts), no `Pending` surprises, kubeconfig on another server, ssh and
+   sudo work, and for falcon no disc being read and no running dvdrip Job (`kubectl get drives; kubectl -n media get pods -l dvd.trdos.me/disc`). `node-maintenance <host> down --dry-run`.
+2. `kubectl cordon <node>`: CNPG moves the replicated Postgres primaries off the node on its own (`status.phase: Switchover`, observed in the roll).
+3. OSD hosts only: `ceph osd set noout` (the script runs it in the `rook-ceph-operator` pod: there is no toolbox).
+4. Single-instance Postgres (`instances: 1`; their `-primary` PDB allows no eviction, so the drain would block): delete the primary pod, it is stopped gracefully and recreated elsewhere (3 minutes on bonobo).
+5. Servers: if the node is the etcd leader, `etcdctl move-leader <member id of another healthy server, not sirver>` from the leader's own pod ("Moving the etcd leader off a node").
+6. `kubectl drain <node> --ignore-daemonsets --delete-emptydir-data`. It retries PDB-blocked pods; a replicated primary clears once its switchover has finished.
+7. `systemctl stop rke2-agent` (`rke2-server` on a server); a server's etcd then shows 2 of 3 healthy. Then `systemctl poweroff`.
+8. After the hardware work: boot. Check the address is the same: chinchilla, bonobo, dingo, octopus carry `RequestAddress` (#1063); falcon, axolotl and sirver do not (grep of the repo), so they depend on the
+   router's lease, and a different address breaks the builder lists, `/etc/hosts` entries and rke2 joins (then restart rke2 and delete the node's cilium pods, "What the roll found" 2).
+9. Node Ready, servers: etcd 3/3. `kubectl uncordon <node>`. OSD hosts: wait for every OSD up, `ceph osd unset noout`, wait for HEALTH_OK. Re-enable the DVD drive.
+10. Node-bound pods Running (jellyfin and tdarr-node for falcon). The node's DaemonSet pods take 5 to 15 minutes (cilium rate-limits endpoint creation); the node is Ready long before.
+
+`node-maintenance` also pauses falcon's DVD drive (`Drive.spec.enabled=false`) so a disc inserted mid-work is not started, labels an agent `exclude-from-remediation` for the duration, and
+records what it changed as `node-maintenance.trdos.me/*` annotations on the node, so `up` restores only what `down` changed. Not exercised: a real `down`/`up` (this was written with dry runs only).
+
+### How long can it stay down
+
+- **falcon, axolotl:** as long as you like. medik8s does not touch them (label `exclude-from-remediation=true`, read with `kubectl get nodes -L`), no Rook mon is placed on them (#1074), VolSync and CNPG
+  backups have no node binding in their config. The node-bound pods stay Pending and nothing times out. After an unplanned loss (not drained) their RBD-backed pods stay `Terminating` on the dead node
+  until you apply the `node.kubernetes.io/out-of-service` taint, which medik8s would set for an eligible node (the 2026-10-16 drill: the replacement waited for it); do that by hand only once the machine is off.
+- **bonobo, chinchilla:** medik8s remediates an eligible node that stays NotReady for 15 minutes (about 17 minutes to detect, drill); `node-maintenance` sets the exclude label for the outage. Whether NHC
+  itself, and not only the SNR agent DaemonSet, skips a labelled node was read for the DaemonSet only ("Node remediation"): keep it short, or pause remediation (a `pauseRequests` entry) for a long job.
+- **servers:** etcd has no spare member while one is out, so keep it to the job. A mon is replaced after 10 minutes.
+- **OSD hosts:** keep `noout` only for the job. With two OSD hosts and `failureDomain: host` there is no third host for the second copy: lifting `noout` lets Ceph mark the OSDs out after 10 minutes but
+  it cannot rebuild size 2 until the host returns (inferred from the pool config, not tested). A long OSD outage is therefore one copy on the other host: hurry, and check its SMART state first (sirver's disk is failing).
+
 ## Node remediation
 
 `nixidy/system/cluster/medik8s.nix` runs medik8s Node Health Check (NHC) and Self Node Remediation (SNR) in the `medik8s` namespace

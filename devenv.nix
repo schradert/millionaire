@@ -512,6 +512,475 @@ in {
         esac
       '';
 
+      # Take a node out for hardware work and bring it back: gates, cordon, (OSD hosts: ceph noout), drain, stop rke2,
+      # then it stops at "ready to power off". Procedure and why: docs/node-standard.md, "Taking a node down for hardware work".
+      #   node-maintenance falcon down --dry-run    every read-only check, prints what it would change
+      #   node-maintenance falcon down [--poweroff]
+      #   node-maintenance falcon up
+      scripts.node-maintenance.exec = ''
+        set -uo pipefail
+        usage() {
+          cat >&2 <<'USAGE'
+        Usage: node-maintenance <host> down|up [--dry-run] [--poweroff] [--timeout <minutes>]
+
+          down   gates, cordon, (OSD hosts: ceph noout), drain, stop rke2, then stop at "ready to power off"
+          up     after the hardware work: wait Ready, check the LAN address, uncordon, unset noout,
+                 wait for Ceph and for the node-bound pods
+          --dry-run   run every read-only check and print what would be changed; change nothing
+          --poweroff  (down only) also run `systemctl poweroff` over ssh; never done without it
+          --timeout   minutes each wait may take on `up` (default 20)
+
+        Uses $KUBECONFIG (or $KUBECTL, as `e2e` does). Nodes are reached as tristan@<node address> with
+        ~/.ssh/personal; NODE_SSH_USER, NODE_SSH_KEY and NODE_SSH_OPTS (e.g. "-J 192.184.168.248") override.
+        Procedure and reasons: docs/node-standard.md, "Taking a node down for hardware work".
+        USAGE
+          exit 2
+        }
+
+        k=''${KUBECTL:-kubectl}
+        host=""; action=""; dry=0; poweroff=0; wait_min=20
+        while [ $# -gt 0 ]; do
+          case "$1" in
+            --dry-run) dry=1 ;;
+            --poweroff) poweroff=1 ;;
+            --timeout) wait_min=''${2:-}; shift ;;
+            -h|--help) usage ;;
+            -*) echo "unknown option $1" >&2; usage ;;
+            *) if [ -z "$host" ]; then host=$1; elif [ -z "$action" ]; then action=$1; else usage; fi ;;
+          esac
+          shift
+        done
+        case "$action" in down|up) ;; *) usage ;; esac
+        [ -n "$host" ] || usage
+        case "$wait_min" in '''|*[!0-9]*) echo "--timeout takes whole minutes" >&2; exit 2 ;; esac
+        if [ "$action" = up ] && [ "$poweroff" = 1 ]; then echo "--poweroff only applies to down" >&2; exit 2; fi
+
+        fails=0
+        step() { printf '\n==> %s\n' "$*"; }
+        info() { printf '    %s\n' "$*"; }
+        pass() { printf '  [PASS] %s\n' "$*"; }
+        warn() { printf '  [WARN] %s\n' "$*"; }
+        fail() { printf '  [FAIL] %s\n' "$*"; fails=$((fails + 1)); }
+        die() { printf '\nSTOPPED: %s\n' "$*" >&2; exit 1; }
+        # A change: printed, and run unless --dry-run.
+        # ACT_AS=<text> shows that instead of the function call.
+        act() {
+          if [ "$dry" = 1 ]; then printf '  [dry-run] would run: %s\n' "''${ACT_AS:-$*}"; return 0; fi
+          printf '  + %s\n' "''${ACT_AS:-$*}"
+          "$@"
+        }
+        # waitfor <what> <minutes> <cmd...>: poll every 10 s. --dry-run only evaluates it once.
+        waitfor() {
+          local what=$1 mins=$2 end; shift 2
+          if "$@" >/dev/null 2>&1; then pass "$what"; return 0; fi
+          if [ "$dry" = 1 ]; then warn "$what: not true now, would wait up to $mins min"; return 0; fi
+          end=$(( $(date +%s) + mins * 60 ))
+          while [ "$(date +%s)" -lt "$end" ]; do
+            sleep 10
+            if "$@" >/dev/null 2>&1; then pass "$what"; return 0; fi
+          done
+          warn "$what: still not true after $mins min"
+          return 1
+        }
+
+        # ---- cluster state -------------------------------------------------------------------------------------------------
+        getnodes() { nodes=$($k get nodes -o json) || return 1; }
+        getnodes || { echo "cannot reach the API server (KUBECONFIG=''${KUBECONFIG:-unset})" >&2; exit 1; }
+        nodejson() { jq -c --arg n "$host" '.items[] | select(.metadata.name == $n)' <<<"$nodes"; }
+        [ -n "$(nodejson)" ] || { echo "no node $host; nodes: $(jq -r '[.items[].metadata.name] | join(" ")' <<<"$nodes")" >&2; exit 1; }
+        nodeprop() { nodejson | jq -r "$1"; }
+        ip=$(nodeprop '[.status.addresses[] | select(.type == "InternalIP") | .address] | first // empty')
+        is_ready() { [ "$(nodeprop '[.status.conditions[] | select(.type == "Ready") | .status] | first')" = True ]; }
+        is_cordoned() { [ "$(nodeprop '.spec.unschedulable // false')" = true ]; }
+        nodelabel() { jq -r --arg n "$host" --arg l "$1" '.items[] | select(.metadata.name == $n) | .metadata.labels[$l] // empty' <<<"$nodes"; }
+        ann() { jq -r --arg n "$host" --arg a "node-maintenance.trdos.me/$1" '.items[] | select(.metadata.name == $n) | .metadata.annotations[$a] // empty' <<<"$nodes"; }
+
+        servers=$(jq -r '.items[] | select(.metadata.labels | has("node-role.kubernetes.io/etcd")) | .metadata.name' <<<"$nodes")
+        is_server=0; grep -qx "$host" <<<"$servers" && is_server=1
+        osd_hosts=$($k -n storage get pods -l app=rook-ceph-osd -o json 2>/dev/null | jq -r '[.items[].spec.nodeName] | unique | .[]' 2>/dev/null)
+        is_osd=0; grep -qx "$host" <<<"$osd_hosts" && is_osd=1
+        monpods=$($k -n storage get pods -l app=rook-ceph-mon -o json 2>/dev/null)
+        [ -n "$monpods" ] || monpods='{"items":[]}'
+        mons_here=$(jq -r --arg n "$host" '.items[] | select(.spec.nodeName == $n) | .metadata.labels.mon' <<<"$monpods" | paste -sd' ' -)
+        class=$(nodelabel node.trdos.me/class)
+        drives_json=$($k get drives.dvd.trdos.me -o json 2>/dev/null || true)
+        [ -n "$drives_json" ] || drives_json='{"items":[]}'
+        drives_here=$(jq -r --arg n "$host" '.items[] | select(.status.node == $n) | .metadata.name' <<<"$drives_json" | paste -sd' ' -)
+
+        roles="agent"
+        [ "$is_server" = 1 ] && roles="server (etcd + apiserver)"
+        [ -n "$class" ] && roles="$roles, class=$class"
+        [ "$is_osd" = 1 ] && roles="$roles, OSD host"
+        [ -n "$mons_here" ] && roles="$roles, ceph mon ''${mons_here}"
+        [ -n "$drives_here" ] && roles="$roles, DVD drive ''${drives_here}"
+        [ -n "$(nodelabel nvidia.com/gpu.present)" ] && roles="$roles, GPU"
+
+        # ---- helpers: ceph, etcd, ssh --------------------------------------------------------------------------------------
+        # The rook operator image carries the ceph CLI and the admin keyring (there is no toolbox Deployment).
+        cephc() {
+          $k -n storage exec deploy/rook-ceph-operator -c rook-ceph-operator -- \
+            ceph -c /var/lib/rook/storage/storage.config --keyring /var/lib/rook/storage/client.admin.keyring "$@"
+        }
+        ceph_health() { cephc status -f json 2>/dev/null | jq -r '.health.status'; }
+        ceph_pgs_clean() { cephc status -f json 2>/dev/null | jq -e '.pgmap as $p | ($p.pgs_by_state | map(select(.state_name == "active+clean") | .count) | add // 0) == $p.num_pgs' >/dev/null; }
+        ceph_noout() { cephc osd dump -f json 2>/dev/null | jq -e '.flags_set | index("noout")' >/dev/null; }
+        # OSDs of every host except $1 that are not up
+        osds_down_elsewhere() {
+          cephc osd tree -f json 2>/dev/null | jq -r --arg n "$1" '
+            . as $t | [$t.nodes[] | select(.type == "host" and .name != $n) | .children[]] as $ids
+            | [$t.nodes[] | select(.type == "osd" and (.id as $i | $ids | index($i))) | select(.status != "up") | .name] | join(" ")'
+        }
+        osds_down_here() {
+          cephc osd tree -f json 2>/dev/null | jq -r --arg n "$1" '
+            . as $t | [$t.nodes[] | select(.type == "host" and .name == $n) | .children[]] as $ids
+            | [$t.nodes[] | select(.type == "osd" and (.id as $i | $ids | index($i))) | select(.status != "up") | .name] | join(" ")'
+        }
+        witness=$(grep -vx "$host" <<<"$servers" | grep -vx sirver | head -1)
+        [ -n "$witness" ] || witness=$(grep -vx "$host" <<<"$servers" | head -1)
+        etcdctl_on() {
+          local p=$1 t=/var/lib/rancher/rke2/server/tls/etcd; shift
+          $k -n kube-system exec "etcd-$p" -- etcdctl --endpoints=https://127.0.0.1:2379 \
+            --cacert=$t/server-ca.crt --cert=$t/server-client.crt --key=$t/server-client.key "$@"
+        }
+        # `endpoint status --cluster` as JSON (health, leader) and as text (the member ids in hex, for move-leader)
+        etcd_json() { etcdctl_on "$witness" endpoint status --cluster -w json 2>/dev/null; }
+        etcd_rows() { etcdctl_on "$witness" endpoint status --cluster 2>/dev/null; }
+        etcd_members() { etcd_json | jq 'length' 2>/dev/null; }
+        etcd_all_healthy() {
+          etcd_json | jq -e --argjson want "$(wc -l <<<"$servers" | tr -d ' ')" \
+            'length == $want and all(.[]; ((.Status.errors // []) | length) == 0)' >/dev/null
+        }
+        etcd_leader_ip() { etcd_json | jq -r '.[] | select(.Status.leader == .Status.header.member_id) | .Endpoint | sub("https://"; "") | sub(":2379"; "")'; }
+        # a state change over ssh, printed as the command it is
+        actssh() {
+          local shown="ssh ''${NODE_SSH_OPTS:+$NODE_SSH_OPTS }''${NODE_SSH_USER:-tristan}@$ip sudo $*"
+          if [ "$dry" = 1 ]; then printf '  [dry-run] would run: %s\n' "$shown"; return 0; fi
+          printf '  + %s\n' "$shown"
+          rssh sudo "$@"
+        }
+        rssh() {
+          # shellcheck disable=SC2086
+          ssh -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=10 ''${NODE_SSH_OPTS:-} \
+            -i "''${NODE_SSH_KEY:-$HOME/.ssh/personal}" "''${NODE_SSH_USER:-tristan}@$ip" "$@"
+        }
+
+        # Pods whose nodeSelector no other Ready, schedulable node satisfies: they go (or stay) Pending while $host is out.
+        # mode "on": the pods running on $host; mode "any": also unscheduled ones (for `up`).
+        bound_pods() {
+          $k get pods -A -o json | jq -r --argjson nodes "$nodes" --arg n "$host" --arg mode "$1" '
+            ($nodes.items | map(select(.metadata.name != $n)
+               | select(.spec.unschedulable != true)
+               | select(([.status.conditions[] | select(.type == "Ready") | .status] | first) == "True"))) as $others
+            | ($nodes.items | map(select(.metadata.name == $n)) | first | .metadata.labels) as $mine
+            | .items[]
+            | select(.status.phase == "Running" or .status.phase == "Pending")
+            | select((.metadata.ownerReferences[0].kind // "") != "DaemonSet")
+            | select(.spec.nodeSelector != null)
+            | . as $p
+            | select(if $mode == "on" then .spec.nodeName == $n else (.spec.nodeName == $n or .spec.nodeName == null) end)
+            | select(all($p.spec.nodeSelector | to_entries[]; $mine[.key] == .value))
+            | select(($others | map(select(.metadata.labels as $l | all($p.spec.nodeSelector | to_entries[]; $l[.key] == .value))) | length) == 0)
+            | "\(.metadata.namespace)/\(.metadata.name)\t\(.status.phase)\t\(.spec.nodeSelector | to_entries | map("\(.key)=\(.value)") | join(","))"'
+        }
+        # Pods on $host that a drain would evict (everything but DaemonSet pods; finished pods are deleted too).
+        evictable() {
+          $k get pods -A -o json --field-selector "spec.nodeName=$host" | jq -r '
+            .items[] | select((.metadata.ownerReferences[0].kind // "") != "DaemonSet")
+            | select(.metadata.annotations["kubernetes.io/config.mirror"] == null)
+            | "\(.metadata.namespace)/\(.metadata.name)\t\(.status.phase)"'
+        }
+        # of those, the ones a PodDisruptionBudget with 0 allowed disruptions blocks right now
+        pdb_blocked() {
+          local pdbs; pdbs=$($k get pdb -A -o json)
+          $k get pods -A -o json --field-selector "spec.nodeName=$host,status.phase=Running" | jq -r --argjson pdbs "$pdbs" '
+            .items[] | . as $p
+            | select((.metadata.ownerReferences[0].kind // "") != "DaemonSet")
+            | ($pdbs.items | map(select(.metadata.namespace == $p.metadata.namespace and .status.disruptionsAllowed == 0
+                and (.spec.selector.matchLabels != null)
+                and all(.spec.selector.matchLabels | to_entries[]; $p.metadata.labels[.key] == .value))) | first | .metadata.name) as $b
+            | select($b != null) | "\(.metadata.namespace)/\(.metadata.name)\t\($b)"'
+        }
+        single_instance_pods() { # "<ns> <pod>" of single-instance CNPG primaries on $host
+          local single; single=$($k get clusters.postgresql.cnpg.io -A -o json 2>/dev/null | jq -c '[.items[] | select(.spec.instances == 1) | .metadata.namespace + "/" + .metadata.name]' 2>/dev/null)
+          [ -n "$single" ] || single='[]'
+          $k get pods -A -l cnpg.io/instanceRole=primary --field-selector "spec.nodeName=$host" -o json 2>/dev/null | jq -r --argjson s "$single" '
+            .items[] | select((.metadata.namespace + "/" + .metadata.labels["cnpg.io/cluster"]) as $c | $s | index($c))
+            | "\(.metadata.namespace) \(.metadata.name)"'
+        }
+        multi_instance_primaries() {
+          local single; single=$($k get clusters.postgresql.cnpg.io -A -o json 2>/dev/null | jq -c '[.items[] | select(.spec.instances == 1) | .metadata.namespace + "/" + .metadata.name]' 2>/dev/null)
+          [ -n "$single" ] || single='[]'
+          $k get pods -A -l cnpg.io/instanceRole=primary --field-selector "spec.nodeName=$host" -o json 2>/dev/null | jq -r --argjson s "$single" '
+            .items[] | select((.metadata.namespace + "/" + .metadata.labels["cnpg.io/cluster"]) as $c | ($s | index($c)) == null)
+            | "\(.metadata.namespace)/\(.metadata.labels["cnpg.io/cluster"])"'
+        }
+
+        printf 'node-maintenance %s %s%s\n' "$host" "$action" "$([ "$dry" = 1 ] && echo ' (dry run: nothing is changed)')"
+        printf 'node %s  address %s  Ready=%s  cordoned=%s\nroles: %s\n' "$host" "$ip" "$(is_ready && echo yes || echo NO)" "$(is_cordoned && echo yes || echo no)" "$roles"
+
+        # =====================================================================================================================
+        if [ "$action" = down ]; then
+
+        step "Pre-checks"
+        is_ready && pass "$host is Ready" || fail "$host is not Ready: \`down\` is for a healthy node (use \`up\` once it is back)"
+        if [ -n "$(ann down-since)" ]; then fail "$host is already in maintenance since $(ann down-since) (run \`up\`)"; fi
+
+        srv=$($k config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || true)
+        case "$srv" in
+          "") ;;
+          *"//$ip:"*|*"//$ip") fail "the kubeconfig talks to $srv, which is $host: point KUBECONFIG at another server first" ;;
+          *) pass "kubeconfig server $srv is not $host" ;;
+        esac
+
+        strict=0; { [ "$is_server" = 1 ] || [ "$is_osd" = 1 ] || [ -n "$mons_here" ]; } && strict=1
+        notready=$(jq -r --arg n "$host" '[.items[] | select(.metadata.name != $n) | select(([.status.conditions[] | select(.type == "Ready") | .status] | first) != "True") | .metadata.name] | join(" ")' <<<"$nodes")
+        if [ -z "$notready" ]; then pass "every other node is Ready"
+        elif [ "$strict" = 1 ]; then fail "other nodes not Ready: $notready (this node carries etcd, OSDs or a mon)"
+        else warn "other nodes not Ready: $notready"; fi
+        cordoned=$(jq -r --arg n "$host" '[.items[] | select(.metadata.name != $n and .spec.unschedulable == true) | .metadata.name] | join(" ")' <<<"$nodes")
+        [ -z "$cordoned" ] || info "already cordoned (left alone): $cordoned"
+
+        if [ "$is_server" = 1 ]; then
+          others=$(grep -vx "$host" <<<"$servers" | paste -sd' ' -)
+          bad=""; for s in $others; do
+            [ "$(jq -r --arg n "$s" '.items[] | select(.metadata.name == $n) | [.status.conditions[] | select(.type == "Ready") | .status] | first' <<<"$nodes")" = True ] || bad="$bad $s"
+          done
+          [ -z "$bad" ] && pass "the other servers ($others) are Ready" || fail "server(s) not Ready:$bad: never take two servers down"
+          if etcd_all_healthy; then
+            pass "etcd: $(etcd_members)/$(wc -l <<<"$servers" | tr -d ' ') members healthy (read through etcd-$witness)"
+          else
+            fail "etcd is not 3/3 healthy (members answering: $(etcd_members)); re-read \`etcdctl endpoint status --cluster\` before touching a server"
+          fi
+        fi
+
+        health=$(ceph_health)
+        case "$health" in
+          HEALTH_OK) pass "ceph HEALTH_OK" ;;
+          "") if [ "$strict" = 1 ]; then fail "cannot read ceph status (rook-ceph-operator pod)"; else warn "cannot read ceph status"; fi ;;
+          *) if [ "$strict" = 1 ]; then fail "ceph is $health (detail: \`ceph health detail\`), and $host carries ceph daemons"; else warn "ceph is $health; $host carries no ceph daemon, so this does not change"; fi ;;
+        esac
+
+        if [ -n "$mons_here" ]; then
+          q=$(cephc quorum_status -f json 2>/dev/null)
+          total=$(jq -r '.monmap.mons | length' <<<"$q" 2>/dev/null); total=''${total:-0}
+          left=$(jq -r --arg here "$mons_here" '[.quorum_names[] | select(. as $m | ($here | split(" ") | index($m)) == null)] | length' <<<"$q" 2>/dev/null); left=''${left:-0}
+          if [ "$total" -gt 0 ] && [ $((left * 2)) -gt "$total" ]; then pass "mon quorum: $left of $total mons stay in quorum without mon ''${mons_here}"
+          else fail "mon quorum: only $left of $total mons would stay in quorum without mon ''${mons_here} (all mons must be in quorum first)"; fi
+        fi
+
+        if [ "$is_osd" = 1 ]; then
+          other_osd=$(grep -vx "$host" <<<"$osd_hosts" | paste -sd' ' -)
+          down_else=$(osds_down_elsewhere "$host")
+          [ -z "$down_else" ] && pass "the OSDs on the other host(s) ($other_osd) are all up" || fail "OSDs down on another host: $down_else: never take both OSD hosts down"
+          for oh in $other_osd; do
+            [ "$(jq -r --arg n "$oh" '.items[] | select(.metadata.name == $n) | [.status.conditions[] | select(.type == "Ready") | .status] | first' <<<"$nodes")" = True ] || fail "OSD host $oh is not Ready"
+          done
+          ceph_pgs_clean && pass "all PGs active+clean" || fail "PGs are not all active+clean"
+          if ceph_noout; then info "noout is already set (it will be left set by \`up\`)"; fi
+        fi
+
+        # DVD drive: never interrupt a disc being read
+        busy=$(jq -r --arg n "$host" '.items[] | select(.status.node == $n) | select(.status.state == "Reading" or .status.state == "BackingUp" or .status.state == "Uploading" or .status.state == "Ejecting") | "\(.metadata.name)=\(.status.state)"' <<<"$drives_json" | paste -sd' ' -)
+        [ -z "$busy" ] || fail "a disc is being read ($busy): wait for the drive to go Waiting (\`kubectl get drives\`)"
+        jobs=$($k get pods -A -l dvd.trdos.me/disc --field-selector "spec.nodeName=$host,status.phase=Running" -o json 2>/dev/null | jq -r '.items[] | "\(.metadata.namespace)/\(.metadata.name)"' | paste -sd' ' -)
+        [ -z "$jobs" ] || fail "dvdrip encode/publish Jobs are running here: $jobs (an interrupted Job restarts from the start)"
+        { [ -n "$drives_here" ] && [ -z "$busy" ] && [ -z "$jobs" ]; } && pass "no disc is being read or encoded on $host"
+
+        pending=$($k get pods -A --field-selector status.phase=Pending -o json | jq -r '[.items[] | "\(.metadata.namespace)/\(.metadata.name)"] | join(" ")')
+        [ -z "$pending" ] && pass "no Pending pods cluster-wide" || warn "Pending pods before starting: $pending"
+
+        if rssh 'sudo -n true' >/dev/null 2>&1; then pass "ssh and passwordless sudo on $host ($ip)"; else fail "cannot ssh to $ip and run \`sudo -n true\` (NODE_SSH_USER / NODE_SSH_KEY / NODE_SSH_OPTS)"; fi
+
+        step "What this takes down"
+        bound=$(bound_pods on)
+        ev=$(evictable | grep -vc 'Succeeded\|Failed' || true)
+        info "$ev running pods are evicted and recreated on other nodes (RBD/CephFS volumes follow them)."
+        if [ -n "$bound" ]; then
+          info "pods no other node can run (nodeSelector); they stay Pending until $host is back:"
+          while IFS=$'\t' read -r p _ sel; do info "  $p   ($sel)"; done <<<"$bound"
+        else info "no pod is bound to $host by a nodeSelector."; fi
+        blocked=$(pdb_blocked)
+        if [ -n "$blocked" ]; then
+          info "blocked by a PodDisruptionBudget with 0 allowed disruptions right now (the drain retries them):"
+          while IFS=$'\t' read -r p b; do info "  $p   (pdb $b)"; done <<<"$blocked"
+        fi
+        [ -z "$drives_here" ] || info "DVD drive(s) $drives_here: paused for the duration (re-enabled by \`up\`)."
+        vips=$($k -n kube-system get lease -o json | jq -r --arg n "$host" '[.items[] | select(.metadata.name | startswith("cilium-l2announce-")) | select(.spec.holderIdentity == $n) | .metadata.name | sub("cilium-l2announce-"; "")] | join(" ")')
+        [ -z "$vips" ] || info "L2 announcements held now: $vips; another node takes each over once its 15 s lease lapses."
+        if [ "$is_osd" = 1 ]; then info "OSDs here: $($k -n storage get pods -l app=rook-ceph-osd --field-selector "spec.nodeName=$host" --no-headers | wc -l | tr -d ' '); with size 2 and min_size 1 Ceph stays writable but every PG is degraded."; fi
+
+        if [ "$fails" -gt 0 ]; then
+          if [ "$dry" = 1 ]; then printf '\nDRY RUN: %s gate(s) FAILED, a real run would refuse. Plan below is for reference.\n' "$fails"
+          else die "$fails gate(s) failed; nothing was changed"; fi
+        fi
+
+        step "Plan"
+        step_no=0
+        n() { step_no=$((step_no + 1)); printf '%s. ' "$step_no"; }
+
+        n; echo "record the starting state on the node (annotations node-maintenance.trdos.me/*)"
+        act $k annotate node "$host" --overwrite \
+          "node-maintenance.trdos.me/down-since=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+          "node-maintenance.trdos.me/lan-ip=$ip" \
+          "node-maintenance.trdos.me/was-cordoned=$(is_cordoned && echo true || echo false)" \
+          "node-maintenance.trdos.me/noout-before=$(if [ "$is_osd" = 1 ] && ceph_noout; then echo true; else echo false; fi)" \
+          "node-maintenance.trdos.me/excluded-by-us=$([ -z "$(nodelabel remediation.medik8s.io/exclude-from-remediation)" ] && echo true || echo false)"
+
+        if [ -z "$(nodelabel remediation.medik8s.io/exclude-from-remediation)" ]; then
+          n; echo "exclude the node from medik8s remediation (it would read as unhealthy after 15 min NotReady)"
+          act $k label node "$host" remediation.medik8s.io/exclude-from-remediation=true
+        fi
+
+        if [ -n "$drives_here" ]; then
+          n; echo "pause the DVD drive(s) (a new disc is not started during the work)"
+          for d in $drives_here; do
+            if [ "$(jq -r --arg d "$d" '.items[] | select(.metadata.name == $d) | .spec.enabled // true' <<<"$drives_json")" = true ]; then
+              act $k annotate drives.dvd.trdos.me "$d" --overwrite node-maintenance.trdos.me/paused=true
+              act $k patch drives.dvd.trdos.me "$d" --type merge -p '{"spec":{"enabled":false}}'
+            else info "$d is already disabled; left as it is"; fi
+          done
+        fi
+
+        n; echo "cordon (CNPG switches the Postgres primaries off the node by itself)"
+        act $k cordon "$host"
+
+        if [ "$is_osd" = 1 ]; then
+          n; echo "ceph osd set noout (the OSDs go down with the node; do not mark them out and remap after 10 min)"
+          ACT_AS="ceph osd set noout   (in the rook-ceph-operator pod)" act cephc osd set noout
+        fi
+
+        sp=$(single_instance_pods)
+        if [ -n "$sp" ]; then
+          n; echo "delete the single-instance Postgres primaries (their PDB allows no eviction; recreated elsewhere)"
+          while read -r ns p; do act $k -n "$ns" delete pod "$p"; done <<<"$sp"
+        fi
+        mp=$(multi_instance_primaries | sort -u | paste -sd' ' -)
+        [ -z "$mp" ] || info "(replicated primaries here, moved by the switchover after the cordon: $mp)"
+
+        if [ "$is_server" = 1 ]; then
+          n; echo "move the etcd leader off $host if it is the leader"
+          leader_ip=$(etcd_leader_ip)
+          if [ "$leader_ip" = "$ip" ]; then
+            avoid=''${NODE_MAINT_AVOID_LEADER:-sirver}
+            target_row=""
+            for pass_avoid in no yes; do
+              for cand in $(grep -vx "$host" <<<"$servers"); do
+                [ -z "$target_row" ] || break
+                case " $avoid " in *" $cand "*) [ "$pass_avoid" = yes ] || continue ;; esac
+                cip=$(jq -r --arg n "$cand" '.items[] | select(.metadata.name == $n) | [.status.addresses[] | select(.type == "InternalIP") | .address] | first' <<<"$nodes")
+                row=$(etcd_rows | awk -F', ' -v ip="$cip" 'index($1, "//" ip ":") {print $2}')
+                [ -n "$row" ] && target_row="$row:$cand"
+              done
+            done
+            [ -n "$target_row" ] || die "$host is the etcd leader and no other member answers"
+            info "$host is the etcd leader; handing it to ''${target_row#*:} (member ''${target_row%%:*})"
+            ACT_AS="kubectl -n kube-system exec etcd-$host -- etcdctl move-leader ''${target_row%%:*}" act etcdctl_on "$host" move-leader "''${target_row%%:*}"
+          else info "$host is not the etcd leader (leader is at ''${leader_ip:-unknown}); nothing to move"; fi
+        fi
+
+        n; echo "drain: kubectl drain $host --ignore-daemonsets --delete-emptydir-data"
+        if [ "$dry" = 1 ]; then
+          act $k drain "$host" --ignore-daemonsets --delete-emptydir-data --timeout=15m
+        else
+          printf '  + %s drain %s --ignore-daemonsets --delete-emptydir-data --timeout=15m\n' "$k" "$host"
+          $k drain "$host" --ignore-daemonsets --delete-emptydir-data --timeout=15m || die "drain did not finish (a PDB is blocking?). $host is cordoned; fix it and rerun, or back out with \`$k uncordon $host\`$([ "$is_osd" = 1 ] && echo " and \`ceph osd unset noout\`")"
+          left=$(evictable | grep -v 'Succeeded\|Failed' | paste -sd' ' -)
+          [ -z "$left" ] && pass "no workload pod is left on $host" || warn "still on $host: $left"
+          if [ "$is_osd" = 1 ]; then ceph_noout && pass "ceph noout is set" || warn "noout is NOT set after the drain (rook may have cleared it): ceph osd set noout"; fi
+        fi
+
+        n; echo "stop rke2 on the node"
+        if [ "$is_server" = 1 ]; then unit=rke2-server; else unit=rke2-agent; fi
+        actssh systemctl stop "$unit"
+        if [ "$is_server" = 1 ] && [ "$dry" != 1 ]; then
+          sleep 15
+          healthy=$(etcd_json | jq '[.[] | select(((.Status.errors // []) | length) == 0)] | length')
+          info "etcd from etcd-$witness: ''${healthy:-0} of $(wc -l <<<"$servers" | tr -d ' ') members answer (quorum needs 2)"
+        fi
+
+        if [ "$poweroff" = 1 ]; then
+          n; echo "power off"
+          actssh systemctl poweroff
+          [ "$dry" = 1 ] || printf '\n%s powering off. After the hardware work: boot it, then `node-maintenance %s up`.\n' "$host" "$host"
+        else
+          printf '\nREADY TO POWER OFF %s.' "$host"
+          printf '\n  ssh %s%s@%s sudo systemctl poweroff     (or rerun with --poweroff)\n  After the hardware work: boot it, then `node-maintenance %s up`.\n' "''${NODE_SSH_OPTS:+$NODE_SSH_OPTS }" "''${NODE_SSH_USER:-tristan}" "$ip" "$host"
+        fi
+        [ "$dry" = 1 ] && { [ "$fails" -gt 0 ] && exit 1 || { printf '\nDRY RUN: all gates pass; nothing was changed.\n'; exit 0; }; }
+        exit 0
+        fi
+
+        # =====================================================================================================================
+        step "Where the node is"
+        since=$(ann down-since)
+        if [ -n "$since" ]; then info "in maintenance since $since (recorded by \`down\`)"; else info "no maintenance record on the node (\`down\` was not run, or was done by hand)"; fi
+        is_cordoned && info "cordoned" || info "schedulable"
+
+        step "Boot and join"
+        info "Power the machine on if it is off. Waiting for it to rejoin (up to $wait_min min)."
+        node_ready() { getnodes && is_ready; }
+        waitfor "$host is Ready" "$wait_min" node_ready
+        getnodes; ip_now=$(nodeprop '[.status.addresses[] | select(.type == "InternalIP") | .address] | first // empty')
+        want=$(ann lan-ip)
+        if [ -z "$want" ]; then
+          info "address now $ip_now (no record of the one before; the declared one is \`lan\` in static/builders.nix)"
+        elif [ "$ip_now" = "$want" ]; then pass "LAN address unchanged: $ip_now"
+        else fail "address changed from $want to ''${ip_now:-none}: the router did not honour RequestAddress. Fix the lease, then restart rke2 and delete the cilium pods on the node (\"What the roll found\" 2 in docs/node-standard.md)"; fi
+        if [ "$fails" -gt 0 ]; then
+          if [ "$dry" = 1 ]; then printf '\nDRY RUN: a gate FAILED, a real run would stop here.\n'; else die "the node is up with a different address; nothing else was done"; fi
+        fi
+
+        if [ "$is_server" = 1 ]; then
+          step "etcd"
+          waitfor "etcd 3/3 healthy" "$wait_min" etcd_all_healthy
+        fi
+
+        step "Uncordon, ceph, drives"
+        if [ "$(ann was-cordoned)" = true ]; then info "$host was already cordoned before \`down\`: left cordoned"
+        elif is_cordoned; then act $k uncordon "$host"
+        else info "already schedulable"; fi
+
+        if [ "$is_osd" = 1 ]; then
+          osds_up() { [ -z "$(osds_down_here "$host")" ]; }
+          waitfor "every OSD on $host is up" "$wait_min" osds_up
+          if ceph_noout; then
+            if [ "$(ann noout-before)" = true ]; then info "noout was set before \`down\`: left set"
+            else ACT_AS="ceph osd unset noout   (in the rook-ceph-operator pod)" act cephc osd unset noout; fi
+          else info "noout is not set"; fi
+          ceph_ok() { [ "$(ceph_health)" = HEALTH_OK ]; }
+          waitfor "ceph HEALTH_OK" "$wait_min" ceph_ok
+        else
+          h=$(ceph_health); info "ceph: ''${h:-unreadable} (no ceph daemon is bound to $host)"
+        fi
+
+        for d in $drives_here; do
+          if [ "$(jq -r --arg d "$d" '.items[] | select(.metadata.name == $d) | .metadata.annotations["node-maintenance.trdos.me/paused"] // empty' <<<"$drives_json")" = true ]; then
+            act $k patch drives.dvd.trdos.me "$d" --type merge -p '{"spec":{"enabled":true}}'
+            act $k annotate drives.dvd.trdos.me "$d" node-maintenance.trdos.me/paused-
+          fi
+        done
+
+        step "Node-bound pods"
+        nb_ok() { ! bound_pods any | awk -F'\t' '$2 != "Running"' | grep -q .; }
+        bp=$(bound_pods any)
+        if [ -z "$bp" ]; then info "no pod is bound to $host by a nodeSelector"
+        else
+          waitfor "every pod bound to $host is Running" "$wait_min" nb_ok
+          while IFS=$'\t' read -r p ph sel; do info "  $p $ph ($sel)"; done < <(bound_pods any)
+        fi
+        rest=$($k get pods -A --field-selector status.phase=Pending -o json | jq -r '[.items[] | "\(.metadata.namespace)/\(.metadata.name)"] | join(" ")')
+        [ -z "$rest" ] && pass "no Pending pods cluster-wide" || warn "Pending pods: $rest (the node's DaemonSet pods take 5 to 15 min: cilium rate-limits endpoint creation)"
+
+        step "Clear the maintenance record"
+        if [ "$(ann excluded-by-us)" = true ]; then act $k label node "$host" remediation.medik8s.io/exclude-from-remediation-; fi
+        if [ -n "$since" ]; then
+          act $k annotate node "$host" node-maintenance.trdos.me/down-since- node-maintenance.trdos.me/lan-ip- node-maintenance.trdos.me/was-cordoned- node-maintenance.trdos.me/noout-before- node-maintenance.trdos.me/excluded-by-us-
+        fi
+        if [ "$dry" = 1 ]; then printf '\nDRY RUN: nothing was changed.\n'; else printf '\n%s is back.\n' "$host"; fi
+        [ "$fails" -gt 0 ] && exit 1
+        exit 0
+      '';
+
       # A Syncthing device ID is the hash of the device's TLS certificate, so a device's identity is
       # declared like any config: the key pair is generated once here, encrypted to the host
       # (.sops.yaml: secrets/sops/syncthing-<host>.yaml) and installed by modules/syncthing.nix; the ID is
