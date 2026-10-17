@@ -111,6 +111,13 @@ in {
           HUB_DEVICE_ID = hubDeviceID;
           DEVICES = builtins.toJSON devices;
           FOLDERS = builtins.toJSON folders;
+          # The GUI has no user or password of its own, so Syncthing shows "GUI Authentication: Set User and
+          # Password" unless `insecureAdminAccess` says something else protects it: here oauth2-proxy (Keycloak
+          # SSO, group admin) is the only route in and the `home` network policy admits only oauth2-proxy to
+          # 8384. A GUI password would prompt every SSO user a second time (README Conventions), and the one
+          # oauth2-proxy serves many apps so it cannot inject a per-upstream one. Clients that bypass SSO
+          # (org-bridge, Prometheus) use the API key.
+          GUI = builtins.toJSON {insecureAdminAccess = true;};
         };
         secrets.api = "syncthing";
       };

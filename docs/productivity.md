@@ -6,7 +6,7 @@ Org files are the source of truth, synced by Syncthing, exported one way to a Ca
 
 | Surface | Tool | For | State |
 | --- | --- | --- | --- |
-| Server | Syncthing hub (`nixidy/apps/home/syncthing.nix`, GUI `sync.trdos.me`, sync port `192.168.50.242:22000`) | the `org` folder (Ceph PVC `org-files`) and the 12 other folders | deployed. Live: `org` is shared with morgenmuffel, axolotl, the Deck, falcon and the Pixel (declared today); morgenmuffel and axolotl were connected, the Deck, falcon and the phone offline |
+| Server | Syncthing hub (`nixidy/apps/home/syncthing.nix`, GUI `sync.trdos.me`, sync port `192.168.50.242:22000`) | the `org` folder (Ceph PVC `org-files`) and the 12 other folders | deployed. The GUI has no password of its own (oauth2-proxy SSO and the `home` network policy protect it; `insecureAdminAccess` is set by the bootstrap Job, which removes Syncthing's red "Set User and Password" banner; org-bridge and Prometheus use the API key). Live: `org` is shared with morgenmuffel, axolotl, the Deck, falcon and the Pixel (declared today); morgenmuffel and axolotl were connected, the Deck, falcon and the phone offline |
 | Server | Baïkal CalDAV (`nixidy/apps/home/baikal.nix`, `cal.trdos.me`) | the calendar every client reads | deployed. Live: user `admin`, calendar `org` |
 | Server | org-bridge (`org-bridge/`, `nixidy/apps/home/org-bridge.nix`) | one-way export of org SCHEDULED/DEADLINE (VEVENT) and TODO headings (VTODO) to the Baïkal `org` calendar | deployed from a reproducible Nix image (`modules/images.nix`, `pkgs/images/org-bridge/pin.json`, 0.1.3-1) |
 | Server | SiYuan (`nixidy/apps/home/siyuan.nix`, `siyuan.trdos.me`) | the fallback if org on the phone grates; outside the sync path | deployed |
