@@ -278,14 +278,14 @@ What the roll found:
 
 1. **A cold boot does not keep the DHCP address.** chinchilla came back as 192.168.50.161 instead of .85. Observed: a plain discover got .161 whether the client id was the
    DUID or the MAC, one asking for .85 (`RequestAddress`) got it; why the router lost the binding is not known. Everything keyed to `lan` in `static/builders.nix` (peer
-   names in `/etc/hosts`, rke2 join, attic, etcd peer URLs) pointed at nothing, and Ceph mon-c could not rejoin: Rook failed it over onto falcon (`mon: a,d,e`). #1074 keeps mon, mgr, mds and rgw off nodes with a `node.trdos.me/class` label (`placement` in `rook-ceph.nix`); the operator left mon-e Pending, waited its 10 min failover timeout twice (the second because the pod was unscheduled), then created mon-f on sirver (`mon: a,d,f`, HEALTH_OK). Nothing needed doing by hand.
+   names in `/etc/hosts`, rke2 join, attic, etcd peer URLs) pointed at nothing, and Ceph mon-c could not rejoin: Rook failed it over onto falcon (`mon: a,d,e`). #1074 keeps mon, mgr, mds and rgw off nodes with a `node.trdos.me/class` label (`placement` in `rook-ceph.nix`); the operator left mon-e Pending, waited its 10 min failover timeout twice (the second because the pod was unscheduled), then created mon-f on sirver (`mon: a,d,f`, HEALTH_OK). Nothing needed doing by hand. A mon on sirver is unwanted (the mon store is hostPath `/var/lib/rook` on its failing root disk), so the mon placement also excludes `kubernetes.io/hostname=sirver` until the disk is replaced (README todo 33; delete the expression then).
    Fixed in #1063: `RequestAddress=<lan>` on `40-eno1` (chinchilla, bonobo, dingo, octopus; sirver has a bridge). bonobo rebooted with it and kept .142; `networkctl reconfigure eno1`
    on chinchilla (a fresh discover) re-acquired .85 from the declared config. dingo and octopus carry it but were not rebooted. A server reboot without it would move an etcd peer URL.
 2. **After an address change restart rke2 and the cilium pods.** rke2's node address and the `CiliumNode` keep the old one: pods started on chinchilla had no DNS or apiserver
    access and peers routed its pod /24 to the dead address, until `kubectl -n kube-system delete pod cilium-<node> cilium-envoy-<node>`.
 3. **`kubectl cordon` makes CNPG switch the primaries off the node by itself** (`status.phase: Switchover`; 11 on chinchilla, 4 on bonobo). A drain then blocks only on the
    single-instance clusters (their `-primary` PDB allows no disruption): delete those pods (a graceful Postgres stop, recreated elsewhere; 3 minutes) rather than waiting.
-4. **Rook fails a mon over after 10 minutes out of quorum**, drained or not. A node with a mon (now octopus, dingo, falcon) has to be back within that or the mon moves.
+4. **Rook fails a mon over after 10 minutes out of quorum**, drained or not. A node with a mon (check `ceph -s`; none is allowed on sirver, falcon or axolotl) has to be back within that or the mon moves.
 5. sirver was found schedulable (the 02:45 cordon had been lifted) with 120 pods on the failing disk, so it was cordoned for the roll and uncordoned at the end.
 6. The first start of the external containerd (2.4.1) logs `failed to unmarshal sandbox spec` for every sandbox rke2's 2.2.7 had created; all of them had been killed by the
    cutover and nothing referred to them afterwards.

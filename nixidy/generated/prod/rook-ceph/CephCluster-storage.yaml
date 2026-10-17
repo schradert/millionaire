@@ -103,6 +103,10 @@ spec:
             - matchExpressions:
                 - key: node.trdos.me/class
                   operator: DoesNotExist
+                - key: kubernetes.io/hostname
+                  operator: NotIn
+                  values:
+                    - sirver
   priorityClassNames:
     mgr: system-cluster-critical
     mon: system-node-critical
