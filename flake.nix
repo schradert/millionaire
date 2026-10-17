@@ -171,7 +171,9 @@
 
       canivete.meta = {
         domain = "trdos.me";
-        root = "sirver";
+        # The first server nodes join and the one `nixidy kubeconfig` fetches from. canivete makes the root node a server,
+        # so it cannot be sirver, which is an agent (docs/node-standard.md, "Control plane topology").
+        root = "dingo";
         people.me = "tristan";
         people.users.tristan = {
           name = "Tristan Schrader";
