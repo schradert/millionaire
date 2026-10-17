@@ -116,6 +116,7 @@
             gh-notify
             gh-skyline
             gh-signoff
+            gh-stack
           ];
           settings.editor = "hx";
           settings.git_protocol = "ssh";
