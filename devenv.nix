@@ -984,7 +984,7 @@ in {
       # A Syncthing device ID is the hash of the device's TLS certificate, so a device's identity is
       # declared like any config: the key pair is generated once here, encrypted to the host
       # (.sops.yaml: secrets/sops/syncthing-<host>.yaml) and installed by modules/syncthing.nix; the ID is
-      # public and goes in `syncthing.devices.<host>.id`. Never regenerate for a host in use (its ID changes).
+      # public and goes in `syncthing.users.<person>.devices.<host>.id`. Never regenerate for a host in use (its ID changes).
       scripts.syncthing-identity.exec = ''
         set -euo pipefail
         host="''${1:?Usage: syncthing-identity <host> [--force]}"

@@ -10,6 +10,7 @@
 }: let
   cfg = config.android;
   inherit (config.canivete.meta) domain;
+  meUser = config.canivete.meta.people.me;
   pins = import ../lib/pins.nix {inherit lib;};
   sync = import ../lib/syncthing.nix {inherit lib;};
   apk = name: let
@@ -89,13 +90,13 @@
   };
   productivityOf = dev: let
     p = dev.productivity;
-    st = config.syncthing;
-    me = st.devices.${p.syncthingDevice} or (throw "android.devices.${dev.name}.productivity: no syncthing.devices.${p.syncthingDevice}");
+    st = config.syncthing.users.${p.syncthingUser} or (throw "android.devices.${dev.name}.productivity: no syncthing.users.${p.syncthingUser}");
+    me = st.devices.${p.syncthingDevice} or (throw "android.devices.${dev.name}.productivity: no syncthing.users.${p.syncthingUser}.devices.${p.syncthingDevice}");
     names = map (a: a.id) (resolve dev);
     ids = lib.mapAttrs (_: n: cfg.apps.${n}.id) productivityApps;
   in
     assert lib.assertMsg (lib.all (id: lib.elem id names) (lib.attrValues ids)) "android.devices.${dev.name}.productivity needs the apps ${lib.concatStringsSep ", " (lib.attrValues productivityApps)} in its sets";
-    assert lib.assertMsg (lib.elem p.folder (lib.optionals (me.folders != null) me.folders)) "android.devices.${dev.name}.productivity: syncthing.devices.${p.syncthingDevice}.folders must include ${p.folder}"; {
+    assert lib.assertMsg (lib.elem p.folder (lib.optionals (me.folders != null) me.folders)) "android.devices.${dev.name}.productivity: syncthing.users.${p.syncthingUser}.devices.${p.syncthingDevice}.folders must include ${p.folder}"; {
       inherit (p) orgDir caldav;
       apps = ids;
       syncthing = {
@@ -198,8 +199,9 @@ in {
           type = lib.types.nullOr (lib.types.submodule {
             options = {
               orgDir = can.str "the Syncthing folder on the phone, and Orgzly's repository (a path Android's all-files access reaches)" {default = "/storage/emulated/0/org";};
-              syncthingDevice = can.str "its entry in syncthing.devices (identity from `syncthing-identity`, folders list)" {default = name;};
-              folder = can.str "the syncthing.folders id that holds the org files" {default = "org";};
+              syncthingUser = can.str "whose Syncthing hub (a key of syncthing.users) the phone joins" {default = meUser;};
+              syncthingDevice = can.str "its entry in that user's devices (identity from `syncthing-identity`, folders list)" {default = name;};
+              folder = can.str "the folder id (that user's syncthing folders) that holds the org files" {default = "org";};
               caldav = {
                 url = can.str "Baikal's CalDAV root (DAVx5 base URL)" {default = "https://cal.${domain}/dav.php";};
                 user = can.str "Baikal DAV user" {default = "admin";};

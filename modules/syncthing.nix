@@ -1,7 +1,9 @@
-# Syncthing devices and folders (options/syncthing.nix). The hub applies them to itself
-# (nixidy/apps/home/syncthing.nix, app-bootstrap syncthing) and each client to its own
-# Syncthing (the `home` module below), so a device is accepted only by an ID recorded here.
-# Folder ids follow docs/games-inventory.md (saves map).
+# Syncthing devices and folders per person (options/syncthing.nix `syncthing.users`): one hub each. The hub
+# applies them to itself (nixidy/apps/home/syncthing.nix, app-bootstrap syncthing) and each Nix-managed
+# client (the owner's hosts only, `home` below) to its own Syncthing, so a device is accepted only by an ID
+# recorded here. `users.tristan` is the owner's table (the original hub, `sync.trdos.me`, the LAN address);
+# another person is one more entry (docs/productivity.md, "Adding a person"). Folder ids follow
+# docs/games-inventory.md (saves map).
 {...}: let
   everywhere = p: {
     linux = p;
@@ -27,7 +29,7 @@
   wow = "${steam}/steamapps/compatdata/3175038736/pfx/drive_c/Program Files (x86)/World of Warcraft/_retail_";
   both = ["workstation" "gaming"];
 in {
-  syncthing.devices = {
+  syncthing.users.tristan.devices = {
     # The hub's pinned identity (nixidy/apps/home/syncthing.nix). Redo only if its Secret is lost:
     #   kubectl -n home exec deploy/syncthing -c syncthing -- syncthing --device-id --home /var/syncthing/config
     hub.id = "WHD56GJ-S5XJMEV-PJNFHRL-7XZKKIE-IONK2R2-ZIQEN3P-JSQKR77-GLFEDQE";
@@ -65,7 +67,7 @@ in {
     };
   };
 
-  syncthing.folders = {
+  syncthing.users.tristan.folders = {
     # living files
     org = {
       label = "Org";
@@ -226,7 +228,7 @@ in {
     inherit (flake.config.canivete.meta.people) me;
     host = toString (config.networking.hostName or "");
     file = ../secrets/sops + "/syncthing-${host}.yaml";
-    mine = flake.config.syncthing.devices.${host} or null;
+    mine = flake.config.syncthing.users.${me}.devices.${host} or null;
   in {
     options.syncthingIdentity.secrets = lib.mkOption {
       type = lib.types.attrs;
@@ -261,7 +263,8 @@ in {
     pkgs,
     ...
   }: let
-    inherit (flake.config) syncthing;
+    # the clients are the owner's (the hosts of this repo)
+    syncthing = flake.config.syncthing.users.${flake.config.canivete.meta.people.me};
     sync = import ../lib/syncthing.nix {inherit lib;};
     os =
       if pkgs.stdenv.hostPlatform.isDarwin
@@ -290,7 +293,7 @@ in {
       {
         assertions = lib.toList {
           assertion = hub.id != null;
-          message = "syncthing.devices.hub.id is not recorded (modules/syncthing.nix)";
+          message = "syncthing.users.<owner>.devices.hub.id is not recorded (modules/syncthing.nix)";
         };
         services.syncthing = {
           enable = true;

@@ -56,7 +56,7 @@ elif [ -n "$dry" ]; then
   syncthing generate --home "$tmp" >/dev/null 2>&1
   have_identity=1
 elif [ "$mode" = apply ]; then
-  echo "no Syncthing identity for $name: run \`syncthing-identity $name\`, record the ID in syncthing.devices.$name.id (modules/syncthing.nix) and merge it so the hub accepts it (docs/manual-steps.md step 11)" >&2
+  echo "no Syncthing identity for $name: run \`syncthing-identity $name\`, record the ID in syncthing.users.<person>.devices.$name.id (modules/syncthing.nix) and merge it so the hub accepts it (docs/manual-steps.md step 11)" >&2
   exit 1
 fi
 
@@ -72,7 +72,7 @@ emit stages "${stages[*]:-}"
 [ -z "$wait_s" ] || emit wait_s "$wait_s"
 [ -z "$dry" ] || emit dry 1
 if [ "$id" = null ] && [ -z "$dry" ]; then
-  echo "syncthing.devices.$name.id is not recorded (modules/syncthing.nix)" >&2
+  echo "syncthing.users.<person>.devices.$name.id is not recorded (modules/syncthing.nix)" >&2
   exit 1
 fi
 

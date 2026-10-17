@@ -659,8 +659,8 @@
        "linux"
       ],
       "provisioned": "yes",
-      "where": "modules/syncthing.nix:295",
-      "note": "Each declares its own identity (modules/syncthing.nix:41-59) and syncs the hub's `org` folder to ~/Projects/sabedoria; the work Mac (millionaire) is deliberately not a device."
+      "where": "modules/syncthing.nix:298",
+      "note": "Each declares its own identity (modules/syncthing.nix:43-61) and syncs the hub's `org` folder to ~/Projects/sabedoria; the work Mac (millionaire) is deliberately not a device."
      },
      {
       "name": "DoomEmacs + org-node (org-directory = Syncthing org folder)",
@@ -681,7 +681,7 @@
       ],
       "provisioned": "yes",
       "where": "modules/android.nix:62 (sets: homelab,family; devices: a10e,pixel,s21,vivo)",
-      "note": "Carries only the `org` folder on the Pixel (device `pixel`, modules/syncthing.nix:61-65); `android pixel productivity` builds the identity import."
+      "note": "Carries only the `org` folder on the Pixel (device `pixel`, modules/syncthing.nix:63-67); `android pixel productivity` builds the identity import."
      },
      {
       "name": "Orgzly Revived (capture, agenda)",
@@ -718,7 +718,29 @@
     "mcp": [],
     "extensions": []
    },
-   "notes": "GUI via oauth2-proxy; sync protocol direct on the LAN at 192.168.50.242:22000 (TCP and QUIC, LoadBalancer syncthing-lan, hub.lan in modules/syncthing.nix) for provisioned desktops, global discovery/relays elsewhere (Syncthing-Fork has no fixed address declared). The notes folder `org` (hub volume `org`, Ceph PVC org-files, modules/syncthing.nix:70; ~/Projects/sabedoria on the personal workstations, /storage/emulated/0/org on the Pixel) lives in this entry because it has no hostname of its own: shared with morgenmuffel, axolotl, falcon, the Deck and the Pixel. The work Mac (millionaire) is deliberately not a device. org-bridge exports it to CalDAV (see baikal)."
+   "notes": "GUI via oauth2-proxy; sync protocol direct on the LAN at 192.168.50.242:22000 (TCP and QUIC, LoadBalancer syncthing-lan, users.tristan.devices.hub.lan in modules/syncthing.nix) for provisioned desktops, global discovery/relays elsewhere (Syncthing-Fork has no fixed address declared). The notes folder `org` (hub volume `org`, Ceph PVC org-files, modules/syncthing.nix:72; ~/Projects/sabedoria on the personal workstations, /storage/emulated/0/org on the Pixel) lives in this entry because it has no hostname of its own: shared with morgenmuffel, axolotl, falcon, the Deck and the Pixel. The work Mac (millionaire) is deliberately not a device. org-bridge exports it to CalDAV (see baikal)."
+  },
+  {
+   "app": "syncthing (per user hub GUI)",
+   "category": "files",
+   "hostnames": [
+    "sync-<user>.trdos.me"
+   ],
+   "exposure": "tailnet",
+   "auth": "oauth2-proxy (Keycloak SSO): that user and admins",
+   "clients": {
+    "browser": [
+     "https://sync-<user>.trdos.me"
+    ],
+    "desktop": [],
+    "android": [],
+    "ios": [],
+    "cli": [],
+    "tui": [],
+    "mcp": [],
+    "extensions": []
+   },
+   "notes": "One Syncthing hub per person in `syncthing.users` (modules/syncthing.nix, nixidy/apps/home/syncthing.nix), beside the owner's `sync.trdos.me` hub (the syncthing entry). Nobody but the owner is declared today, so no `sync-<user>` route exists yet. Their devices are not Nix-managed: they add the hub by its device ID (GUI, Actions, Show ID) in their own Syncthing and reach it through relays and global discovery (no LAN address). A new routed host matches this entry through the <user> placeholder in docs/client-matrix.json."
   },
   {
    "app": "actual",
