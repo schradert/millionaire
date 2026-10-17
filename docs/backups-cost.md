@@ -50,7 +50,7 @@ Cost by source today (billed, including deleted versions): `cnpg/` 3.10 TB = $21
 | VolSync sources for loki, tempo, pyroscope, alertmanager, mimir-ingester, argo-events, harbor-jobservice, lingarr, frigate clips and exports, and every Coder workspace home | First syncs 2026-10-17: loki 1.7 GiB, mimir-ingester 1.3, tempo 0.4, pyroscope 0.04, one workspace home 0.3 (stored, after dedup); the rest are empty or kilobytes |
 | `rgwOffsite` mirror of the Ceph RGW buckets (Mimir, Pyroscope, Argo Workflows) | First sync: mimir 17.8 GiB, pyroscope 3.3 GiB, argo-workflows 0 |
 | CNPG `wal` and `data` compression `gzip` on every cluster | Measured on gatus after it took effect (12:42 PDT): five consecutive 16 MiB segments stored as 24 KB, 796 KB, 560 KB, 530 KB and 628 KB. Old objects stay as they are and age out with the 30-day retention |
-| B2 lifecycle rule (Pulumi, PR #1138, **not applied**) | Deletes hidden versions 7 days after hiding. The deletion is permanent, so it is left for a manual `pulumi up --target 'urn:pulumi:prod::millionaire::b2:index/bucket:Bucket::volsync'` (preview: 1 resource to update, nothing else) |
+| B2 lifecycle rule (Pulumi, PR #1138, **applied 2026-10-17**) | Deletes hidden versions 7 days after hiding (`daysFromHidingToDeleting: 7`, read back from the bucket after the targeted `pulumi up`). The 2.04 TB of hidden versions drain over the following week |
 
 Not backed up, by decision (`volsync.exempt` in `nixidy/system/storage/backup-coverage.nix`, which also feeds the `PVCWithoutBackup` alert): `frigate-media` (rolling recordings: it turns over weekly, so restic would upload nearly all of it each time and B2 would keep every replaced object), `media-downloads`, `media-sports`, `dvd-rip-work`, the model and Nix caches, `libretranslate`, `jellyfin-cache`, Trivy's database, Mimir's compactor and store-gateway volumes, and `tracearr-db` (its own daily dump on `tracearr-backup` is backed up).
 
@@ -76,7 +76,7 @@ Totals:
 |---|---|---|
 | Today | 5.26 | 36.6 |
 | Before this work, one month on (estimate) | about 6.2 | about 43 |
-| Merged state, lifecycle rule not applied, 30 days on (old WAL aged out) | about 4.3 | about 30 |
+| Merged state, lifecycle rule applied but hidden versions not yet drained, 30 days on (old WAL aged out) | about 4.3 | about 30 |
 | **Merged state plus the lifecycle rule applied** | **about 2.3** | **about 16** |
 
 How these were derived. Today is the measured `totalSize`. "One month on" assumes the roughly 30 GiB a day of WAL that barman now expires (the 984 GiB of current WAL over its 30-day window) keeps becoming hidden versions, about +0.9 TB a month; that is an estimate from one rate, not a measurement over time. The third row is today's 2.16 TB of non-CNPG data, plus this work's 0.03 TB, plus 0.08 TB of CNPG, plus the 2.04 TB of hidden versions that stay until a lifecycle rule exists. The last row drops the hidden versions to about one week of churn (about 0.03 TB, assumed): 2.16 + 0.03 + 0.08 + 0.03 = 2.30 TB.
