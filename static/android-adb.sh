@@ -282,10 +282,13 @@ main() {
     serial="ssh:$ssh_dest:${chan_port:-8022}"
     if ! priv_ok; then
       # sshd answers but Shizuku is down (the phone rebooted): adb can start it when the phone is on home Wi-Fi
-      local ssh_serial=$serial started=""
+      local ssh_serial=$serial started="" adb_serial=""
       priv=down
       transport=adb
-      if adb_connect "$ip" 2>/dev/null && shizuku_start_adb; then started=1; fi
+      if adb_connect "$ip" 2>/dev/null; then
+        adb_serial=$serial
+        if shizuku_start_adb; then started=1; fi
+      fi
       transport=ssh
       serial=$ssh_serial
       if [ -n "$started" ]; then
@@ -294,7 +297,14 @@ main() {
           sleep 3
         done
       fi
-      if [ "$priv" = up ]; then echo "shizuku started over adb"; else echo "shizuku down"; fi
+      # Shizuku did not come up (or never will on this release) but wireless debugging answers: adb is the same shell
+      if [ "$priv" != up ] && [ -n "$adb_serial" ]; then
+        transport=adb
+        serial=$adb_serial
+        priv=up
+        echo "shizuku down, adb (wireless debugging) answers: using adb for this run"
+      fi
+      if [ "$transport" = ssh ] && [ "$priv" = up ]; then echo "shizuku started over adb"; elif [ "$priv" != up ]; then echo "shizuku down"; fi
     fi
   elif [ "$via" = ssh ]; then
     echo "error $host ($ip): the management channel does not answer (sshd in Termux down, or never set up: android ${dev:-<device>} channel)" >&2
