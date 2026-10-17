@@ -56,6 +56,12 @@ client ──tailnet──▶ AdGuard (*.trdos.me → relays 100.64.0.4/.5) ─�
   Bifrost, `git clone` + `direnv allow` once, a detached zellij session named
   after the project. Apps: web terminal, SSH helper, port forwarding, a Zed
   link (`zed://ssh/coder.<ws>/…`). Autostop 8h, bumped 1h per activity.
+  Backup: the home volume (not the Nix store) is copied to B2 daily at 04:00 by
+  a VolSync ReplicationSource the template creates beside it (restic, one
+  snapshot each of the last day, week, month and year). It needs a Role on
+  `externalsecrets` and `replicationsources` in `workspaces` and get/list on
+  the CRDs for the `coder` ServiceAccount (`kubernetes_manifest` reads CRD
+  schemas). Restore: `docs/pvc-and-postgres-restore.md`.
 - **Image** `harbor.trdos.me/library/workspace` (`apps/workspace/image.nix`,
   published by the in-cluster image-publish workflow): user `coder` (1000),
   single-user Nix (unsandboxed, `filter-syscalls = false`), git, gh, tea,
