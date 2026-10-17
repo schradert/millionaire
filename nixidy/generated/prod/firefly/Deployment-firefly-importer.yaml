@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: c433cd5cfe57a365b7d26bdd70406015f30934289adc82125148d0762863c867
+        checksum/configMaps: 58ca5196a1df117aaeb540ebf4d69cfbbfef8d965f9e3d33bfcf5ad96ea37e3e
       labels:
         app.kubernetes.io/controller: firefly-importer
         app.kubernetes.io/instance: firefly-importer
@@ -34,6 +34,8 @@ spec:
         - env:
             - name: FIREFLY_III_ACCESS_TOKEN_FILE
               value: /secrets/app_token.txt
+            - name: LOG_LEVEL
+              value: info
           image: fireflyiii/data-importer:version-2.2.1@sha256:98cb3aa6dbd6681cbdc590a5d70dd7d964b637bac863d947bcbc20448ac56b8a
           livenessProbe:
             failureThreshold: 6
