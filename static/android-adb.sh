@@ -394,8 +394,16 @@ dav_calendars() {
   sed -n 's/^Row: [0-9]* calendar_displayName=\(.*\), account_type=bitfire\.at\.davdroid$/\1/p' <<<"$rows"
 }
 
+# the address books DAVx5 hands to the Contacts Provider: it makes one sync account per ticked address book, type
+# at.bitfire.davdroid.address_book (core strings.xml), named "<book> (<account>)" plus a collection id suffix
+dav_addressbooks() {
+  local d
+  d=$(a shell dumpsys account 2>/dev/null || true)
+  sed -n 's/.*Account {name=\(.*\), type=at\.bitfire\.davdroid\.address_book}.*/\1/p' <<<"$d" | sort -u
+}
+
 audit() {
-  local s=$1 id hub org ver st dir accts cals pkg apps
+  local s=$1 id hub org ver st dir accts cals books pkg apps
   apps=$(sp '.apps | to_entries | map("\(.key)=\(.value)") | join(" ")')
   for pkg in $apps; do
     ver=$(a shell dumpsys package "${pkg#*=}" 2>/dev/null | sed -n 's/^ *versionName=//p' | head -1 || true)
@@ -444,6 +452,14 @@ audit() {
     echo "prod DRIFT davx5: no Baikal account (android $(sp .syncthing.device) productivity)"
   else
     echo "prod ok davx5: account $(tr '\n' ' ' <<<"$accts")"
+    books=$(dav_addressbooks)
+    if grep -q "^$(sp .caldav.addressbook) (" <<<"$books"; then
+      echo "prod ok davx5: address book $(sp .caldav.addressbook) is synced"
+    elif [ -z "$books" ]; then
+      echo "prod DRIFT davx5: no address book synced (tick $(sp .caldav.addressbook) under CardDAV in DAVx5), or the accounts are not readable over adb"
+    else
+      echo "prod DRIFT davx5: address book $(sp .caldav.addressbook) is not ticked (has: $(tr '\n' ' ' <<<"$books"))"
+    fi
     cals=$(dav_calendars)
     if grep -qx "$(sp .caldav.calendar)" <<<"$cals"; then
       echo "prod ok davx5: calendar $(sp .caldav.calendar) is synced"
@@ -636,10 +652,10 @@ stage_davx5() {
   say "== DAVx5 ($pkg)"
   need_pkg "$pkg" || return
   loosen "$pkg"
-  grant "$pkg" POST_NOTIFICATIONS READ_CALENDAR WRITE_CALENDAR
+  grant "$pkg" POST_NOTIFICATIONS READ_CALENDAR WRITE_CALENDAR READ_CONTACTS WRITE_CONTACTS
   accounts=$(dav_accounts)
   if [ -n "$accounts" ]; then
-    say "   account exists ($(tr '\n' ' ' <<<"$accounts")); tick the $(sp .caldav.calendar) calendar in the account if the audit says it is not synced"
+    say "   account exists ($(tr '\n' ' ' <<<"$accounts")); tick the $(sp .caldav.calendar) calendar (CalDAV) and the $(sp .caldav.addressbook) address book (CardDAV) in the account if the audit says they are not synced"
     note "account exists"
     return
   fi
@@ -650,7 +666,7 @@ stage_davx5() {
   # the password goes in on stdin and reaches `am` as a shell variable on the phone, never in an argument list here
   printf '%s\n' "${dav_pass:-}" | adb -s "$s" shell "IFS= read -r pw; am start -n $pkg/.ui.setup.LoginActivity -a android.intent.action.VIEW -d '$host' --es username '$user' --es password \"\$pw\"" >/dev/null
   say "   TAP (on the phone): Login, then (after the server is found) the name page: Create account."
-  say "   then in the account tick the '$(sp .caldav.calendar)' calendar (DAVx5 preselects none)."
+  say "   then in the account tick the '$(sp .caldav.calendar)' calendar under CalDAV and the '$(sp .caldav.addressbook)' address book under CardDAV (DAVx5 preselects none)."
   if [ -n "${dry:-}" ]; then
     say "   (dry run: would now wait for the account, then for the '$(sp .caldav.calendar)' calendar)"
     note "dry run"
@@ -666,7 +682,12 @@ stage_davx5() {
   fi
   if poll "${wait_s:-600}" dav_has_calendar; then
     say "   calendar $(sp .caldav.calendar) is synced"
-    note "account created, calendar synced"
+    if dav_addressbooks | grep -q "^$(sp .caldav.addressbook) ("; then
+      note "account created, calendar and address book synced"
+    else
+      say "   address book $(sp .caldav.addressbook) not ticked yet (CardDAV tab; the audit checks it)" >&2
+      note "account created, calendar synced, address book $(sp .caldav.addressbook) not seen"
+    fi
   else
     say "   calendar $(sp .caldav.calendar) not ticked (or the Calendar Provider is not readable over adb)" >&2
     note "account created, calendar $(sp .caldav.calendar) not seen within $(minutes "${wait_s:-600}")"

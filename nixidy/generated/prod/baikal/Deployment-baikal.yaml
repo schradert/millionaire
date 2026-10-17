@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: f82196e2ee1a5fc8b1bc885ac359fc483fe4f5a1ebee7bce3ee3efbccb8609bf
+        checksum/configMaps: de40a8e5e45b6e1bf9f8175677c12dc3f500b80834d5c235cf32700ac5f57236
       labels:
         app.kubernetes.io/controller: baikal
         app.kubernetes.io/instance: baikal
