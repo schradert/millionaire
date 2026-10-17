@@ -1,9 +1,27 @@
 # VolSync and CNPG restores
 
-Both back up to B2 bucket `trdos-me--volsync`: VolSync (restic) under `volsync--<app>--<pvc>`, CNPG (barman) under `cnpg/<cluster>/`.
+Three off-site paths, all into B2 bucket `trdos-me--volsync`: VolSync (restic) under `volsync--<app>--<pvc>` for volumes, CNPG (barman) under `cnpg/<cluster>/`, and an rclone mirror of the Ceph object buckets under `rgw--<namespace>--<bucket>/`.
 Every CNPG cluster has a daily base backup (`ScheduledBackup`, 00:00) plus continuous WAL: 26 through the operand image's own barman tools
-(`postgres.backup.method = "barmanObjectStore"`, the default) and `immich` and `streamystats` through the Barman Cloud plugin (`"plugin"`, below).
-Both were rehearsed on 2026-10-10 into scratch objects; live data was not touched.
+(`postgres.backup.method = "barmanObjectStore"`, the default) and `immich` and `streamystats` through the Barman Cloud plugin (`"plugin"`, below). Base backups and WAL are gzip-compressed since 2026-10-17; recovery reads both forms (rehearsed with gatus, below).
+The CNPG and VolSync paths were rehearsed on 2026-10-10 into scratch objects; live data was not touched.
+Recovery with compressed WAL was rehearsed 2026-10-17 on `gatus` (the busiest cluster: a base backup from 00:00 plus about 14 hours of WAL, those written after 12:42 PDT gzip-compressed): a scratch cluster reached "Cluster in healthy state" in about 14 minutes, replaying the WAL at about 3 s a segment, with the same tables and 9,194 `endpoint_results` rows against the live 9,313 (the live database was 4 minutes ahead of the recovered one).
+What the bucket costs and what grows: `docs/backups-cost.md`.
+
+## Coverage: every PVC has an off-site path or a listed reason
+
+Checked 2026-10-17 against `kubectl get pvc -A`. A claim is covered when a VolSync source targets it (`volsync.pvcs` on its app), when it is a CNPG volume, or when it is in `volsync.exempt` (`nixidy/system/storage/backup-coverage.nix`, with the reason). Anything else fires `PVCWithoutBackup` after an hour, and the daily alert digest mails it.
+
+| Kind | Volumes | Off-site path | A restore gives |
+|---|---|---|---|
+| App state and config | about 70 sources (`kubectl get replicationsource -A`) | VolSync, daily 04:00, one snapshot each of the last day, week, month and year | the volume as of the newest snapshot |
+| Media libraries | `media-dvd`, `media-movies`, `media-tv`, `media-music`, `media-books`, `media-audiobooks`, `media-comics`, `media-manga`, `media-podcasts`, `media-games` | VolSync (movies at 06:00) | the library as of the snapshot; the 1.2 TB DVD volume takes hours |
+| Logs, traces, metrics | `storage-loki-0`, `storage-tempo-0`, `data-pyroscope-0`, `storage-mimir-ingester-0`, Prometheus | VolSync | files of a live store copied at 04:00 (crash-consistent, no quiesce); see below |
+| Ceph RGW buckets | Mimir blocks, Pyroscope segments, Argo Workflows artifacts and logs | `rgwOffsite` rclone mirror, daily 05:00 (CronJob `rgw-offsite-<claim>` in the app's namespace) | the bucket as of last night; see below |
+| Job and queue state | argo-events JetStream, harbor-jobservice, alertmanager (silences) | VolSync | events in flight, job history, silences as of the snapshot |
+| Databases | 31 CNPG clusters | barman (base backup + WAL) | any point in time inside 30 days |
+| Frigate | `frigate-config`, `frigate-clips` (snapshots), `frigate-exports` | VolSync | config, snapshots and what people exported; not the recordings |
+| Coder workspaces | each workspace's `-home` volume | VolSync, created by the Coder template (below) | the home directory as of the snapshot |
+| No off-site copy, by decision | `frigate-media` (rolling recordings), `media-downloads`, `media-sports`, `dvd-rip-work`, `tracearr-db`, `ollama`/`vllm`/`heretic-*` (apps off), `libretranslate`, `jellyfin-cache`, `deps-update-nix`, `image-build-nix`, Trivy's database, Mimir compactor and store-gateway, workspace `-nix` volumes | none | caches rebuild from elsewhere; `tracearr-db` comes back from its daily dump on `tracearr-backup` |
 
 ## VolSync restores are deliberate
 
@@ -53,6 +71,48 @@ spec:
 - Clean up: `kubectl -n <ns> delete pod,replicationdestination,pvc -l dr-rehearsal=true`. Deleting the destination also removes its cache PVC.
 
 To restore for real, scale the app to 0 and use `restore = true` (above) or restore to a scratch PVC as above and repoint the workload.
+
+## Loki, Tempo, Pyroscope, Prometheus and the Mimir ingester: what a volume restore gives
+
+These are VolSync sources like any app's, restored the same way (above), but the data is a live store read file by file at 04:00 without quiescing it. The copy is crash-consistent, the same state a node crash would leave:
+the stores replay their write-ahead logs on start, so a restore returns what was on disk at about 04:00 and loses the hours since.
+
+- **Loki** (14-day retention, filesystem store): chunks, TSDB index and WAL. Logs written after the snapshot are gone; the rest of the 14 days returns. Rehearsed 2026-10-17: snapshot 27e56cda restored into a scratch PVC in 72 s with the expected tree (`chunks`, `compactor`, `rules`, `tsdb-shipper-active`, `tsdb-shipper-cache`, `wal`; 1.98 GB against 1.9 GiB live). Not started against a Loki, so "starts cleanly from a restored copy" is not shown.
+- **Tempo** (7-day retention): traces up to the snapshot; same caveat.
+- **Pyroscope**: the volume holds only the metastore and write-ahead buffer. The profile segments are in the RGW bucket, restored from its mirror (next section); restoring the volume without the bucket leaves a metastore pointing at missing objects.
+- **Mimir ingester**: the samples not yet shipped to the bucket (up to about 13 h) and its WAL. The long-term blocks are in the bucket, restored from its mirror. Restoring the ingester volume alone returns only the last hours.
+- **Prometheus**: the local TSDB, as before. Everything is also remote-written to Mimir.
+
+## Ceph RGW buckets: Mimir, Pyroscope, Argo Workflows (`rgwOffsite`)
+
+Each claim in `rgwOffsite` (`nixidy/system/storage/rgw-offsite.nix`) has a CronJob `rgw-offsite-<claim>` in the app's namespace (observability: `rgw-offsite-mimir`, `rgw-offsite-pyroscope`; cicd: `rgw-offsite-argo-workflows-bucket`) that runs `rclone sync` from the bucket to
+`b2:trdos-me--volsync/rgw--<namespace>--<bucket>/` at 05:00 America/Los_Angeles, with the credentials Rook created for the claim. A restore gives the bucket as of last night: Mimir's blocks (all metric history older than the ingester's last hours), Pyroscope's segments, Argo's artifacts and archived logs.
+Objects the source deleted (Mimir compaction, expiry) are deleted from the mirror too, so it is a copy of the current state, not a history. The Job exits 1 without syncing when the source is empty or under half the mirror's size (a rebuilt cluster starts with empty buckets, and syncing those over the mirror would erase it); `RgwOffsiteStale` fires after 36 h without a success and `KubeJobFailed` on a failure. Pyroscope's run logs `Failed to copy ... object not found` and a retry: segments are compacted away while it lists, and the second attempt succeeds.
+
+Restore after the cluster is rebuilt (the ObjectBucketClaim comes back empty from Git; Rook recreates the bucket and its Secret):
+
+```sh
+# 1. keep the mirror job from running while the bucket is empty (it refuses an empty source anyway, but a half-restored one is not empty)
+kubectl -n observability patch cronjob rgw-offsite-mimir -p '{"spec":{"suspend":true}}'
+# 2. copy back, with the same image, credentials and endpoints as the CronJob: only the command differs
+kubectl -n observability get cronjob rgw-offsite-mimir -o json | jq '{apiVersion:"batch/v1",kind:"Job",metadata:{name:"rgw-restore-mimir"},spec:.spec.jobTemplate.spec}
+  | .spec.template.spec.containers[0].command=["rclone","copy","b2:trdos-me--volsync/rgw--observability--mimir","rgw:mimir","--transfers=8","-v"]' | kubectl create -f -
+kubectl -n observability logs -f job/rgw-restore-mimir
+# 3. resume the mirror, delete the Job, restart Mimir's store-gateway and compactor so they re-read the bucket index
+kubectl -n observability patch cronjob rgw-offsite-mimir -p '{"spec":{"suspend":false}}'
+```
+
+Verification (2026-10-17): the first syncs completed (mimir 17.8 GiB, pyroscope 3.3 GiB, argo-workflows empty). `rclone check --one-way --size-only` of the live bucket against the mirror: Mimir 77 of 77 objects match, and source and mirror are the same 19,163,399,393 bytes;
+Pyroscope has 126 of about 7,100 objects not yet mirrored (written since the last run, none different). The refusal was exercised by running the Job's script against a bucket that does not exist: `source 0 bytes, mirror 19163399393 bytes`, exit 1, mirror untouched.
+The copy-back above was not run end to end: do it into a scratch bucket before relying on it.
+
+## Coder workspace homes
+
+The `devenv` template (`nixidy/apps/development/coder/templates/devenv/main.tf`) creates, next to each workspace's `-home` claim, an ExternalSecret and a ReplicationSource named `volsync--workspaces--coder-<workspace uuid>-home` (secret) and `...-home-src`, with the same schedule and retention as a nixidy-declared source;
+`workspaces` carries `volsync.backube/privileged-movers`. They exist while the workspace does (a stopped workspace keeps its claim and its backups). Deleting a workspace removes both objects and its claim; the restic repository stays in B2.
+The `-nix` volume is a cache and is not backed up. Verified 2026-10-17 on a throwaway workspace and on the existing one: the first sync ran within seconds of creation (the existing home: 628 MiB, 483 MiB added, snapshot 87096c91), and a restore of the throwaway workspace's snapshot into a scratch PVC (the recipe above, `workspaces` namespace) held 4,238 files and 334,324 KiB, identical to the live home.
+
+Restore a workspace home: stop the workspace (`coder stop`), run the scratch recipe above with `repository: volsync--workspaces--coder-<uuid>-home` and `destinationPVC: coder-<uuid>-home`, then start it. For a deleted workspace, create a new one, then use an ExternalSecret in `workspaces` that copies one of the existing ones with `RESTIC_REPOSITORY` ending in the old uuid, name it as the destination's `repository`, and restore into the new `-home`. The Coder template cannot use `restore = true` (that is a nixidy option on an app).
 
 ## CNPG: restore into a scratch cluster (rehearsed with health/mealie)
 
@@ -159,9 +219,8 @@ another database with an in-app dump, add an entry `namespace/cluster|repository
 - `volsync--jitsi--prosody-src` showed a `lastSyncDuration` of 2701h: its first sync completed on 2026-10-15, 112 days after the object was created (2026-06-25). Until #852 its
   `sourcePVC` was `prosody-data`, a claim that never existed, so the mover never started. Cosmetic now; the duration runs from creation to the first success.
 - CNPG ScheduledBackups: every one of the 28 clusters has one (2026-10-17; immich and streamystats were the exceptions until the plugin, above). The older "no recent backup" entries (windmill, chirpstack, hydra/keto/kratos) were checked on 2026-10-17: all clusters report a `lastSuccessfulBackup` within a day except immich and streamystats, which had never had one.
-- No VolSync source, by decision: `frigate-media` (1Ti of rolling camera recordings: churn makes restic expensive and the clips have no value
-  after their retention), `media-downloads` (transient), `media-sports` (re-acquirable), `dvd-rip-work` (rip scratch), and the model caches
-  in `ai` (`ollama`, `vllm`, `heretic-*`).
+- No VolSync source, by decision: the last row of the coverage table, each with its reason in `volsync.exempt`. `frigate-media` turns over every week (restic would upload nearly all of it each time and B2 would keep every replaced object), so only clips, snapshots and exports are backed up; the continuous and event recordings are not.
+- `heretic-output` was empty (checked 2026-10-17) and its app is off: its source is declared in the disabled module and starts when the app returns.
 
 ## Monthly automated verification
 

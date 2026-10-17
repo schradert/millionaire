@@ -23,6 +23,9 @@ Statuses: `open`, `in progress`, `waiting on you`, `reported`.
 - open: Pulumi state still holds the old Keycloak admin password (`pulumi/__main__.py:734`, rotated after a leak); a refresh or replace would desync it. Reported.
 - open: Streamystats has no per-user sign-in path (it takes a Jellyfin password, SSO users have none), so there is no human route (`nixidy/apps/media/streamystats.nix:25`).
 - open: client matrix lint (`tools/client-matrix-lint`) only checks that cited lines exist, not that they still point at the right content. `docs/client-matrix.json`.
+- done (2026-10-17): every PVC has an off-site path or a listed reason (`volsync.exempt`, `PVCWithoutBackup`); the three Ceph RGW buckets are mirrored to B2 (`rgwOffsite`); CNPG WAL is gzipped; Coder workspace homes are backed up by the template. Cost report and projection: `docs/backups-cost.md`.
+- open: apply the B2 lifecycle rule (PR #1138): `cd pulumi && pulumi up --target 'urn:pulumi:prod::millionaire::b2:index/bucket:Bucket::volsync'` permanently deletes 2.04 TB of hidden versions (about $14 a month), 7 days after they were hidden. Not run by an agent because the deletion cannot be undone.
+- open: rehearse the RGW copy-back into a scratch bucket (`docs/pvc-and-postgres-restore.md`); the CNPG restore of a cluster with compressed WAL is rehearsed (gatus), the monthly `backup-verify` still skips plugin-backed clusters.
 - open: other platform work: README 1-58 (e.g. 22 network policies, 30-31 backups, 32 VolSync restore default).
 
 ## Media
