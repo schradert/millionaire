@@ -63,6 +63,9 @@ spec:
             - mountPath: /media/comics
               name: media-comics
               readOnly: true
+            - mountPath: /media/downloads
+              name: media-downloads
+              readOnly: true
             - mountPath: /media/manga
               name: media-manga
               readOnly: true
@@ -82,6 +85,9 @@ spec:
         - name: media-comics
           persistentVolumeClaim:
             claimName: media-comics
+        - name: media-downloads
+          persistentVolumeClaim:
+            claimName: media-downloads
         - name: media-manga
           persistentVolumeClaim:
             claimName: media-manga

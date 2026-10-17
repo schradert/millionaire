@@ -176,9 +176,12 @@ pub async fn kodi(ctx: &Ctx, f: &mut Flow) -> R<()> {
     Ok(())
 }
 
-/// Kavita imports the EPUB into a test library, and its OPDS feed (API key) lists it.
+/// Kavita imports the EPUB into a test library, and its OPDS feed (API key) lists it. The library
+/// lives under `/media/downloads/e2e-<run>` (read-only in Kavita), outside the real libraries:
+/// Kavita's scanner does not skip dot-folders, so a hidden folder inside `/media/books` was also
+/// indexed by the real Books library (a ghost series that outlived the run).
 pub async fn kavita(ctx: &Ctx, f: &mut Flow) -> R<()> {
-    let root = ctx.dir("books");
+    let root = ctx.lib_root("kavita");
     let epub = content::epub();
     let n = download(ctx, &epub.url, &root.join("Lewis Carroll/Alices Adventures in Wonderland").join(epub.file)).await?;
     f.ok("fs", "place EPUB", format!("{n} bytes, {}", epub.license));
