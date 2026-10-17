@@ -122,7 +122,7 @@ Do these after step 1. Each app should land logged in as tristan, with admin rig
 
 (All e2e families, the runners and the safety rules: `docs/e2e.md`.)
 
-Once qBittorrent runs (step 2), run the full suite from the devshell. Off-LAN, prefix `KUBECTL="ssh 192.184.168.248 sudo -n /var/lib/rancher/rke2/bin/kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml"`. The leak tests compare against the home egress IP: set `E2E_HOME_IP_HOST=192.184.168.248` (the script then runs `curl ifconfig.me` there) or `HOME_IP=<ip>`.
+Once qBittorrent runs (step 2), run the full suite from the devshell. Off-LAN, prefix `KUBECTL="ssh -J 192.184.168.248 dingo sudo -n /var/lib/rancher/rke2/bin/kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml"`. The leak tests compare against the home egress IP: set `E2E_HOME_IP_HOST=192.184.168.248` (the script then runs `curl ifconfig.me` there) or `HOME_IP=<ip>`.
 
 ```sh
 media-e2e run --full   # = e2e run --family media --full

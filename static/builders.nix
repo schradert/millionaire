@@ -15,8 +15,9 @@
 #              takes a build, never etcd or kubelet).
 #  etcd        RKE2 server running etcd, which has suffered outages under load.
 #
-# Etcd servers get 25% of their cores, agents 50%, and dingo (a 4-core etcd
-# server with ~4G of RAM to spare) a single core. The small boxes carry the
+# Etcd servers get 25% of their cores, agents 50%; the three etcd servers (bonobo,
+# chinchilla and dingo, 4 cores each) get a single core. sirver and octopus kept their old caps
+# when they stopped being etcd servers. The small boxes carry the
 # lowest weight, and omitting `big-parallel` keeps heavy derivations off them.
 # falcon (`falcon` below) is an RKE2 agent too (a GPU desktop, static/desktop-node.nix)
 # but sits outside this cap table: the biggest builder, uncapped, with idle
@@ -65,7 +66,6 @@ in rec {
       buildCores = 4;
       memHigh = "32G";
       memMax = "48G";
-      etcd = true;
       big = true;
     };
     octopus = node {
@@ -78,7 +78,6 @@ in rec {
       buildCores = 4;
       memHigh = "24G";
       memMax = "32G";
-      etcd = true;
       big = true;
     };
     dingo = node {
@@ -99,10 +98,11 @@ in rec {
       tailnet = "100.64.0.4";
       hostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOE1ODVjUl7u/8lMUUyJzxPjY5Y1NfZcRE6YB7iHmJDv";
       jobs = 1;
-      quota = 200;
-      buildCores = 2;
+      quota = 100;
+      buildCores = 1;
       memHigh = "3G";
       memMax = "4G";
+      etcd = true;
     };
     chinchilla = node {
       cores = 4;
@@ -110,10 +110,11 @@ in rec {
       tailnet = "100.64.0.5";
       hostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKGwjjOAZmqLT5kuVXdLWpctImvmF5io1IMIEsWsnbdb";
       jobs = 1;
-      quota = 200;
-      buildCores = 2;
+      quota = 100;
+      buildCores = 1;
       memHigh = "3G";
       memMax = "4G";
+      etcd = true;
     };
   };
   # sirver: out of the pool until its root disk is replaced (README 33)

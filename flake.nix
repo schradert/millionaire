@@ -263,7 +263,7 @@
           };
         };
 
-        # Agents
+        # bonobo and chinchilla: servers with dingo (docs/node-standard.md, "Control plane topology")
         bonobo = {
           remoteBuild = true;
           profiles.system.canivete.configuration = {
@@ -286,6 +286,7 @@
             # Own containerd unit, so rke2 restarts keep pods running (docs/node-standard.md, "Next node roll").
             externalContainerd.enable = true;
             nodeRemediation.eligible = true;
+            services.rke2.role = "server";
             # The adb key `android <device>` connects with (pulumi android_adb_key, docs/android-fleet.md)
             sops.secrets = lib.mkIf adbKeyWritten {
               android-adb-key = {
@@ -315,6 +316,7 @@
             tailnet.gatewayRelay = "100.64.0.5";
             externalContainerd.enable = true;
             nodeRemediation.eligible = true;
+            services.rke2.role = "server";
           };
         };
 

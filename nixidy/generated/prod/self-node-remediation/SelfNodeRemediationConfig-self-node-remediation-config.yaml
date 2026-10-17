@@ -8,10 +8,8 @@ metadata:
   namespace: medik8s
 spec:
   customDsNodeSelectorRequirements:
-    - key: node-role.kubernetes.io/control-plane
-      operator: DoesNotExist
-    - key: node.trdos.me/class
-      operator: NotIn
+    - key: node.trdos.me/remediation
+      operator: In
       values:
-        - desktop
+        - eligible
   watchdogFilePath: /dev/watchdog1

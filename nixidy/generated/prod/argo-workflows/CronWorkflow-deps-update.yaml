@@ -28,11 +28,12 @@ spec:
             requiredDuringSchedulingIgnoredDuringExecution:
               nodeSelectorTerms:
                 - matchExpressions:
+                    - key: node-role.kubernetes.io/etcd
+                      operator: DoesNotExist
                     - key: kubernetes.io/hostname
-                      operator: In
+                      operator: NotIn
                       values:
-                        - bonobo
-                        - chinchilla
+                        - sirver
                     - key: kubernetes.io/arch
                       operator: In
                       values:

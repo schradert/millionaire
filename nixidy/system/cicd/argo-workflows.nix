@@ -303,13 +303,18 @@ in {
             }
           ];
           templates = let
-            # Workers only: keep builds off the etcd control-plane nodes.
+            # Keep builds off the etcd nodes (a 4-core box running etcd must not also run a nix build), and off
+            # sirver, whose root disk is failing.
             affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms = lib.toList {
               matchExpressions = [
                 {
+                  key = "node-role.kubernetes.io/etcd";
+                  operator = "DoesNotExist";
+                }
+                {
                   key = "kubernetes.io/hostname";
-                  operator = "In";
-                  values = ["bonobo" "chinchilla"];
+                  operator = "NotIn";
+                  values = ["sirver"];
                 }
                 {
                   key = "kubernetes.io/arch";
@@ -542,9 +547,13 @@ in {
               affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms = lib.toList {
                 matchExpressions = [
                   {
+                    key = "node-role.kubernetes.io/etcd";
+                    operator = "DoesNotExist";
+                  }
+                  {
                     key = "kubernetes.io/hostname";
-                    operator = "In";
-                    values = ["bonobo" "chinchilla"];
+                    operator = "NotIn";
+                    values = ["sirver"];
                   }
                   {
                     key = "kubernetes.io/arch";

@@ -14,12 +14,14 @@ spec:
     namespace: medik8s
   selector:
     matchExpressions:
-      - key: node-role.kubernetes.io/control-plane
-        operator: DoesNotExist
-      - key: node.trdos.me/class
+      - key: node.trdos.me/remediation
+        operator: In
+        values:
+          - eligible
+      - key: remediation.medik8s.io/exclude-from-remediation
         operator: NotIn
         values:
-          - desktop
+          - "true"
   unhealthyConditions:
     - duration: 15m
       status: "False"
