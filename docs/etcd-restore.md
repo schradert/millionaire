@@ -12,6 +12,9 @@
   (7 days). Checked 2026-10-16 in the bucket: 74 objects (dingo 25, sirver 25, octopus 24), the first from 2026-10-10, each
   newest within 6-7 h. The 28 cap has not been reached yet, so S3 pruning is still unobserved: recheck after 2026-10-17.
   Credentials are the VolSync B2 key, read at run time from the first `volsync--*` secret in the cluster.
+- Since 2026-10-16 the servers are bonobo, chinchilla and dingo (docs/node-standard.md, "Control plane topology"): the timer is gone from sirver and octopus and the first runs on the new servers
+  are `etcd/offsite-bonobo-bonobo-1792200866` and `etcd/offsite-chinchilla-chinchilla-1792202662`. S3 retention prunes by name prefix when that node saves, so the 26 `offsite-sirver-*` and 25
+  `offsite-octopus-*` objects (read with `b2 ls` 2026-10-16) never expire: delete them by hand when no restore needs them. `etcd-restore-test` should now be run against a bonobo, chinchilla or dingo snapshot.
 - rke2's own schedule still writes local snapshots every 12h to `/var/lib/rancher/rke2/server/db/snapshots` on each server (5 kept).
 - Secrets in snapshots are encrypted at rest by rke2 (`rke2 secrets-encrypt status`: Enabled, AES-CBC key `aescbckey`).
   Verified 2026-10-10 on `offsite-sirver-sirver-1791640393`: all 333 `/registry/secrets/` values start with
@@ -70,24 +73,25 @@ The first, manual rehearsal (2026-10-10, snapshot `offsite-sirver-sirver-1791617
 
 ## Real restore (NOT exercised on the live cluster)
 
-Follows the RKE2 docs for multi-server snapshot restore. Servers: sirver, octopus, dingo. Never restart all servers
+Follows the RKE2 docs for multi-server snapshot restore. Servers: bonobo, chinchilla, dingo (sirver and octopus were servers until 2026-10-16). Never restart all servers
 at once for any other reason (see the 2026-06-11 pipe-freeze outage); this procedure is the exception and is for total etcd loss
 or corruption only.
 
-1. Choose the restore node (sirver) and put the snapshot on it, e.g. `/var/lib/rancher/rke2/server/db/snapshots/restore.db` (root-only dir).
-2. On octopus and dingo, then sirver: `systemctl stop rke2-server` followed by `rke2-killall.sh`.
+1. Choose the restore node (dingo: the one nodes join through) and put the snapshot on it, e.g. `/var/lib/rancher/rke2/server/db/snapshots/restore.db` (root-only dir).
+2. On bonobo and chinchilla, then dingo: `systemctl stop rke2-server`, followed by `rke2-killall.sh` on dingo (bonobo and chinchilla run an external containerd, so their
+   etcd and apiserver processes outlive rke2 and `rke2-killall.sh` must not be run there, docs/node-standard.md; kill those processes by name instead. Not exercised).
    Confirm `pgrep etcd` is empty on all three.
-3. On sirver, as root, in the foreground (not through the unit, whose `TimeoutStartSec` would interfere):
+3. On dingo, as root, in the foreground (not through the unit, whose `TimeoutStartSec` would interfere):
    `rke2 server --cluster-reset --cluster-reset-restore-path=/var/lib/rancher/rke2/server/db/snapshots/restore.db`.
    `/etc/rancher/rke2/config.yaml` (including `token-file`) is read automatically. Wait for
    "Managed etcd cluster membership has been reset, restart without --cluster-reset flag now", then the process exits.
    Directly from S3 instead: add `--etcd-s3 --etcd-s3-endpoint s3.us-west-004.backblazeb2.com --etcd-s3-region us-west-004
    --etcd-s3-bucket trdos-me--volsync --etcd-s3-folder etcd --etcd-s3-access-key ... --etcd-s3-secret-key ...` and pass
    the snapshot name as the restore path.
-4. `systemctl start rke2-server` on sirver. Wait for `kubectl get nodes` and `/readyz` etcd checks to pass.
-5. One at a time: on octopus, then dingo, `rm -rf /var/lib/rancher/rke2/server/db` and `systemctl start rke2-server`.
+4. `systemctl start rke2-server` on dingo. Wait for `kubectl get nodes` and `/readyz` etcd checks to pass.
+5. One at a time: on bonobo, then chinchilla, `rm -rf /var/lib/rancher/rke2/server/db` and `systemctl start rke2-server`.
    Wait for the node to join and `etcdctl member list` (or `kubectl get nodes`) to show three members before the next.
-6. Agents (bonobo, chinchilla) should reconnect; restart `rke2-agent` only on those that do not.
+6. Agents (sirver, octopus, falcon, axolotl) should reconnect; restart `rke2-agent` only on those that do not.
 7. Anything created after the snapshot is gone from the API (PVs on Ceph persist but their PVC/PV objects may not).
    Let ArgoCD resync (`kubectl annotate application <name> -n cicd argocd.argoproj.io/refresh=hard --overwrite`),
    then reconcile orphaned Ceph images by hand.

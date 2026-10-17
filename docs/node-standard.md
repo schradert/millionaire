@@ -309,8 +309,8 @@ POD=dingo etcdctl endpoint status --cluster -w table           # 3 rows, one lea
 ```
 
 (The etcd image has no shell: the flags go on `etcdctl` itself. Run it from a pod of a server that is not being switched. Verified read-only on
-2026-10-16: leader dingo `aa1b465deb84b6ad`, octopus `f4e927b319bde64`, sirver `2f50e46c20143168`.) sirver's disk is failing: a server switch is
-only safe while all three members answer, so re-read the table immediately before each server step.
+2026-10-16, before the control plane moved: leader dingo `aa1b465deb84b6ad`, octopus `f4e927b319bde64`, sirver `2f50e46c20143168`; since "Control plane topology"
+the members are bonobo `3a437683a172854d`, chinchilla and dingo.) A server switch is only safe while all three members answer, so re-read the table immediately before each server step.
 
 ### Order (as run; nothing here is pending except the octopus dataset and sirver)
 
@@ -373,6 +373,70 @@ is skipped when the dataset exists; `zfs list -Hpo avail root` was 2.3 TB), run 
 stopped, start**: the new toplevel's fstab entry mounts the dataset as soon as it exists and the unit is started, which would put a partial copy over the live directory.
 `ceph osd set noout` around the cutover; the OSDs are hostNetwork pods and came back fast in every earlier restart. After it: README 48.
 
+## Control plane topology
+
+Since 2026-10-16 (evening PDT) the RKE2 servers and etcd members are **bonobo, chinchilla and dingo**. sirver and octopus are agents (and the two Ceph OSD hosts); falcon and
+axolotl are agents as before. Why: octopus's etcd sat on one spinning disk (README 47) and sirver's member on the failing root disk (read 2026-10-16 18:15: 1484 `took too long`
+warnings in 10 minutes on sirver's member against 38 on dingo's and octopus's). bonobo (Micron 1100 SATA SSD, `rotational` read as 0) and chinchilla
+(Micron MTFDDAK SSD, `rotational` 0) have SSDs like dingo.
+
+What declares it (all in the repo; nothing is set by hand except the one-off steps under "Gotchas"):
+
+- `services.rke2.role = "server"` for bonobo, chinchilla and dingo in `flake.nix`. canivete forces the role of `canivete.meta.root` to server, so `root` moved from sirver to dingo
+  (sirver would otherwise stay a server whatever its entry says); `nixidy kubeconfig` and the Mac's `kubeconfig` fetch from dingo.
+- Every node joins through `https://dingo:9345` (`static/k8s-node.nix`, was `sirver`). There is no DNS name for all three servers; an agent also keeps the server list in
+  `agent/etc/rke2-agent-load-balancer.json` (read 2026-10-16 on sirver, octopus and falcon: it listed bonobo, chinchilla and dingo within seconds of the change, octopus dropped).
+  Read on axolotl: its `rke2-agent` restarted at 19:12 with the stale `server: https://sirver:9345` (sirver an agent by then) and came up through that saved list, `default: sirver:9345` only a fallback.
+  A restart with dingo itself down was not tested.
+- Remediation eligibility is the node label `node.trdos.me/remediation=eligible` (`nodeRemediation.eligible`), not the absence of `control-plane` ("Node remediation").
+- `static/builders.nix`: bonobo and chinchilla got dingo's build caps (1 core, 3G/4G); sirver and octopus kept theirs.
+- Argo Workflows' build templates ask for a node without the `node-role.kubernetes.io/etcd` label (and not sirver) instead of the hostnames bonobo and chinchilla
+  (`nixidy/system/cicd/argo-workflows.nix`); an `image-publish` run scheduled after the change succeeded.
+- Prometheus scrapes etcd on the three servers (`prometheus.nix`), gatus probes their apiservers from hyena (`static/hyena.nix`); the `etcd-snapshot-offsite` timer follows the role.
+
+How it was done (add before remove, one change at a time, `etcdctl endpoint status --cluster` and Ceph read between steps; times are PDT on 2026-10-16, from the node journals):
+
+| Step | What | Result |
+| --- | --- | --- |
+| 1. #1092, #1098, #1101 | PRs merged ahead of each step; toplevels built on falcon from main, `nix copy` right before each switch (the roll's recipe) | bonobo, chinchilla, octopus and sirver run exactly main's toplevel (store paths compared); dingo too after its config-only switch |
+| 2. bonobo joins | pre-pull `hardened-etcd` and `hardened-kubernetes` for 1.34.11, `exclude-from-remediation` label, detached switch at 18:19:20 | the switch stopped `rke2-agent` and started `rke2-server` by itself; member added 18:19:27, voting 18:19:46, node `control-plane,etcd` and Ready 18:19:59 (40 s); `/readyz` through bonobo ok; the node was never NotReady, 17 shims before, 19 after (the two new static pods), the node's mon stayed |
+| 3. sirver leaves | `ceph osd set noout`, `member remove` 18:37:44, `systemctl stop rke2-server` 18:37:50, detached switch to the agent toplevel | `rke2-agent` active 18:38:13 and Ready within a minute without ever going NotReady; the OSDs did not restart (`up since 15h` before and after); `unset noout`, HEALTH_OK |
+| 4. chinchilla joins | as bonobo, switch at 18:49:11 | member 18:49:31, Ready with the labels 18:49:42 (31 s), 62 shims before, 66 after |
+| 5. octopus leaves | as sirver: `member remove` 19:06:27, stop 19:06:31, switch 19:06:32 | `rke2-agent` started about 19:06:50, Ready throughout, 107 shims after, no OSD restart, HEALTH_OK |
+
+Etcd `took too long` per member (counted with `kubectl logs --since`): before, 5 minutes: dingo 59, octopus 18, sirver 689. After sirver left, 4 minutes: dingo 11, bonobo 11, octopus 35 (octopus's own
+disk). After chinchilla joined, 10 minutes: bonobo 26, chinchilla 14, dingo 57, octopus 125. After octopus left (19:06 to 19:16, 10 minutes): bonobo 15, chinchilla 9, dingo 70.
+The order is the rollback: a join that fails leaves the old members in place (`systemctl stop rke2-server` on the new node and `etcdctl member remove` for it would undo it; not exercised, nothing failed),
+and after step 3 the cluster was already on bonobo, dingo and octopus, so a failed chinchilla would have left three healthy members.
+
+Gotchas, all observed:
+
+1. **A demoted server keeps its Node labels and annotations.** `kubectl label node <n> node-role.kubernetes.io/control-plane- node-role.kubernetes.io/etcd-` and
+   `kubectl annotate node <n> etcd.rke2.cattle.io/local-snapshots-timestamp- etcd.rke2.cattle.io/node-address- etcd.rke2.cattle.io/node-name- etcd.rke2.cattle.io/s3-snapshots-timestamp- rke2.io/encryption-config-hash-`
+   (done on both). Delete `/var/lib/rancher/rke2/server` and `/etc/rancher/rke2/rke2.yaml` on the node afterwards (done: only those). Nothing else on the node needed cleaning:
+   the agent's start logged "Static pod cleanup in progress" and removed the old etcd, kube-apiserver, kube-controller-manager and kube-scheduler pods itself, so the leftover processes
+   did not hold port 6443 (sirver's first attempt to kill and delete them by hand ran in a `systemd-run` unit whose PATH has no coreutils; only `systemctl` worked, and rke2 did the cleanup).
+2. **An agent's `rke2-server.service` is a stub.** `k8s-node.nix` always sets `rke2-server.serviceConfig.TimeoutStartSec`, so sirver's agent toplevel contains a `rke2-server.service` with only
+   environment and that timeout (read in the built toplevel), no ExecStart. The dry run on a node still running the real one lists it under "would stop/start"; stop the real `rke2-server` first and the stub is never started.
+3. **`member remove` before the stop, from a member that stays.** The removed member's etcd exits at once; the node's own apiserver then has no datastore, so stop `rke2-server` straight away
+   (about 6 seconds apart on both). Read the member id from `member list` first; never remove the leader (`move-leader` first, "Moving the etcd leader off a node").
+4. **A node labelled `exclude-from-remediation` loses its SNR agent pod and gets it back when the label goes** (bonobo: `Init` for a few seconds, then `Running`). The label is only needed
+   because a joining server is NotReady for as long as its local apiserver is down; neither join took more than a minute.
+5. **The snapshot timer fires at once on a new server** (`Persistent=true`, no earlier run) while its apiserver is still starting: bonobo's first run failed at 18:19:24 and its retry 15 minutes
+   later (18:34:35) succeeded; chinchilla's succeeded at 19:04:32. Both objects are in the bucket (`etcd/offsite-bonobo-bonobo-1792200866`, `etcd/offsite-chinchilla-chinchilla-1792202662`, read with `b2 ls`).
+   The 26 `offsite-sirver-*` and 25 `offsite-octopus-*` objects (and dingo's) stay: S3 retention prunes by name prefix when that node saves, and neither does any more. Delete them by hand
+   when no restore needs them.
+6. **A sirver agent does not serve 9345 or 6443 any more.** Everything that pointed at it moved (join URL, kubeconfig recipes, `ssh -J 192.184.168.248 dingo ...` for the off-LAN `kubectl`, the
+   apiserver probes). Not moved, because nothing is deployed that uses it: the cloud-burst supervisor address (`static/cloud-worker.nix`, `nixidy/system/cicd/capi-cluster.nix`,
+   pulumi's `sirver_tailnet_ip`) still names sirver's tailnet IP: point it at dingo's (`100.64.0.6`) before CAPI is enabled (`docs/cloud-burst.md`).
+7. **falcon and axolotl had `server: https://sirver:9345` in their running config.** falcon was switched at the end (dry run: only `home-manager-tristan` restarts; `grep ^server` now reads dingo).
+   axolotl was not: its toplevel needs the DisplayLink zip copied from its own store into falcon's (roll gotcha 8), and it is a laptop; its agent works from the saved server list (above), and its
+   next switch fixes the file.
+8. **axolotl's DHCP lease moved from .250 to .108 during the move** (read: MAC `28:f1:0e:16:e8:5d` in falcon's and dingo's neighbour tables; ssh and ping to .250 timed out; the Node still said
+   .250; cilium-health read 0/1 for it on every node; pods on it saw `EAI_AGAIN`, and the `oidc-home-assistant` and `oidc-sure` e2e flows failed, home-assistant with "No route to host"). Not caused by the move.
+   Followed "What the roll found" 2: `systemctl restart rke2-agent` on it and delete its `cilium` and `cilium-envoy` pods; the Node reports .108 now, cilium-health 7/7, and the identity family passes 14 of 14.
+   `static/builders.nix` still names .250 for axolotl, and axolotl has no `RequestAddress`.
+
 ## Taking a node down for hardware work
 
 Short answer: cordon, then drain, then stop rke2, then power off; the reverse afterwards. `node-maintenance <host> down|up [--dry-run]` (devshell, `devenv.nix`) does
@@ -388,12 +452,12 @@ A node-bound pod is one whose `nodeSelector` no other node satisfies; `node-main
 | --- | --- | --- |
 | falcon | `jellyfin` and `tdarr-node` (`nvidia.com/gpu.present=true`, only falcon has the card; runtimeClass `nvidia`), the dvdrip agent DaemonSet (`dvd.trdos.me/drive=true`, the disc drive) and the GPU encode/publish Jobs, the `dvdrip-import` CronJob (`kubernetes.io/hostname=falcon`, suspended). `ollama`, `vllm`, `heretic` carry the same GPU selector but none is deployed. | 31 non-DaemonSet pods are evicted (dry run), 2 of them cannot be placed (left column). A disc being read when it goes down is `Failed: interrupted` and is retried when the agent is back (`docs/dvd-rip.md`). falcon holds no etcd, mon or OSD. |
 | axolotl | Nothing: no pod on it has a `nodeSelector`. | 17 pods move. It held three L2 VIP leases when read (the external gateway `192.168.50.240`, forgejo-ssh, owncast-rtmp): another node takes each over when its 15 s lease expires (duration read from the Lease; the gap itself was not measured). |
-| bonobo, chinchilla | Only the per-node Rook crashcollector and exporter. | Their tailnet relays (`100.64.0.4`, `.5`) are the internal gateway's entry points and AdGuard returns both: take one down at a time. Argo Workflows' templates run only on these two. medik8s remediates them (below). |
+| bonobo, chinchilla | Only the per-node Rook crashcollector and exporter (and mon-g on bonobo). | Servers: etcd. Their tailnet relays (`100.64.0.4`, `.5`) are the internal gateway's entry points and AdGuard returns both: take one down at a time. medik8s may reboot them (below), which is also an etcd event. |
 | dingo | Rook mon-d, crashcollector, exporter. | A server: etcd. |
-| octopus | Rook mon-a, the 7 OSDs, crashcollector, exporter. | A server and an OSD host. |
-| sirver | Rook's 6 OSDs, `zigbee2mqtt` (the USB Zigbee stick) and `music-assistant` (the `br0` L2 segment for mDNS), both pinned by hostname. | A server and an OSD host. Its root disk is failing (README 33). |
+| octopus | Rook mon-a, the 7 OSDs, crashcollector, exporter. | An agent and an OSD host. |
+| sirver | Rook's 6 OSDs, `zigbee2mqtt` (the USB Zigbee stick) and `music-assistant` (the `br0` L2 segment for mDNS), both pinned by hostname. | An agent and an OSD host. Its root disk is failing (README 33). |
 
-**etcd.** Agents (falcon, axolotl, bonobo, chinchilla) are not members. Servers are dingo, octopus, sirver: 3 members to 2 keeps quorum, and a second server down
+**etcd.** Agents (falcon, axolotl, sirver, octopus) are not members. Servers are bonobo, chinchilla, dingo: 3 members to 2 keeps quorum, and a second server down
 (or one failing while the first is out) is a cluster outage. Never two servers; the kubeconfig you use must not point at the one going down (the script refuses).
 Check `etcdctl endpoint status --cluster` shows 3 healthy ("Gates" above) and move the leader off first.
 
@@ -401,8 +465,8 @@ Check `etcdctl endpoint status --cluster` shows 3 healthy ("Gates" above) and mo
 data on the other host. Never both OSD hosts (the script refuses). `ceph osd set noout` before and `unset` after, so the OSDs the node takes with it are not marked
 out after `mon_osd_down_out_interval` (600 s, read). Rook also manages disruption (`managePodBudgets`, `osdMaintenanceTimeout: 30` in the CephCluster, a `rook-ceph-osd`
 PDB); whether Rook's own noout survives a drain was not tested, so the script sets the cluster-wide flag itself and re-reads it after the drain.
-Mons are on octopus and dingo, and a third on bonobo or chinchilla (mon-f was still Pending when read): none on desktops or sirver (#1074, #1082). A mon host going down needs the other two mons in quorum: the
-`rook-ceph-mon-pdb` blocks the drain otherwise, and the script refuses (at the time of writing mon-f was Pending, so a dry run on dingo or octopus refuses).
+Mons are on octopus, dingo and bonobo (`mon: a,d,g`, read 2026-10-16 after #1089): none on desktops or sirver (#1074, #1082). A mon host going down needs the other two mons in quorum: the
+`rook-ceph-mon-pdb` blocks the drain otherwise, and the script refuses.
 Rook fails a mon over after 10 min out of quorum: within that the mon returns, after it Rook starts a new one on bonobo or chinchilla.
 
 **Builds.** falcon is the Macs' and the nodes' main builder (`static/builders.nix`); the attic cache runs on chinchilla, not falcon. Probed on falcon (nix 2.35.2) with a LAN address
@@ -422,7 +486,7 @@ Not checked: delivery to ntfy.
 2. `kubectl cordon <node>`: CNPG moves the replicated Postgres primaries off the node on its own (`status.phase: Switchover`, observed in the roll).
 3. OSD hosts only: `ceph osd set noout` (the script runs it in the `rook-ceph-operator` pod: there is no toolbox).
 4. Single-instance Postgres (`instances: 1`; their `-primary` PDB allows no eviction, so the drain would block): delete the primary pod, it is stopped gracefully and recreated elsewhere (3 minutes on bonobo).
-5. Servers: if the node is the etcd leader, `etcdctl move-leader <member id of another healthy server, not sirver>` from the leader's own pod ("Moving the etcd leader off a node").
+5. Servers: if the node is the etcd leader, `etcdctl move-leader <member id of another healthy server>` from the leader's own pod ("Moving the etcd leader off a node").
 6. `kubectl drain <node> --ignore-daemonsets --delete-emptydir-data`. It retries PDB-blocked pods; a replicated primary clears once its switchover has finished.
 7. `systemctl stop rke2-agent` (`rke2-server` on a server); a server's etcd then shows 2 of 3 healthy. Then `systemctl poweroff`.
 8. After the hardware work: boot. Check the address is the same: chinchilla, bonobo, dingo, octopus carry `RequestAddress` (#1063); falcon, axolotl and sirver do not (grep of the repo), so they depend on the
@@ -438,11 +502,13 @@ records what it changed as `node-maintenance.trdos.me/*` annotations on the node
 - **falcon, axolotl:** as long as you like. medik8s does not touch them (label `exclude-from-remediation=true`, read with `kubectl get nodes -L`), no Rook mon is placed on them (#1074), VolSync and CNPG
   backups have no node binding in their config. The node-bound pods stay Pending and nothing times out. After an unplanned loss (not drained) their RBD-backed pods stay `Terminating` on the dead node
   until you apply the `node.kubernetes.io/out-of-service` taint, which medik8s would set for an eligible node (the 2026-10-16 drill: the replacement waited for it); do that by hand only once the machine is off.
-- **bonobo, chinchilla:** medik8s remediates an eligible node that stays NotReady for 15 minutes (about 17 minutes to detect, drill); `node-maintenance` sets the exclude label for the outage. Whether NHC
-  itself, and not only the SNR agent DaemonSet, skips a labelled node was read for the DaemonSet only ("Node remediation"): keep it short, or pause remediation (a `pauseRequests` entry) for a long job.
+- **bonobo, chinchilla:** medik8s remediates an eligible node that stays NotReady for 15 minutes (about 17 minutes to detect, drill); `node-maintenance` sets the exclude label for the outage, and the NHC
+  selector now also requires `exclude-from-remediation` not `true` (`nixidy/system/cluster/medik8s.nix`), so a labelled node is out of NHC's selection as well as of the SNR agent's. They are etcd members now: a
+  remediation reboots a server, so it is an etcd event (3 members to 2) and must not coincide with dingo being down.
 - **servers:** etcd has no spare member while one is out, so keep it to the job. A mon is replaced after 10 minutes.
 - **OSD hosts:** keep `noout` only for the job. With two OSD hosts and `failureDomain: host` there is no third host for the second copy: lifting `noout` lets Ceph mark the OSDs out after 10 minutes but
   it cannot rebuild size 2 until the host returns (inferred from the pool config, not tested). A long OSD outage is therefore one copy on the other host: hurry, and check its SMART state first (sirver's disk is failing).
+  sirver and octopus are agents since the control plane moved: stopping them no longer touches etcd.
 
 ## Node remediation
 
@@ -452,12 +518,13 @@ records what it changed as `node-maintenance.trdos.me/*` annotations on the node
 reboots it through the hardware watchdog, and the operator then sets the `node.kubernetes.io/out-of-service` taint so its pods are
 force-deleted and their RBD volumes detach and move.
 
-- **Selected**: the agents only (bonobo, chinchilla): no `node-role.kubernetes.io/control-plane` label and `node.trdos.me/class` not
-  `desktop`. The SNR agent DaemonSet gets the same requirements, AND-ed with the operator's own `remediation.medik8s.io/exclude-from-remediation NotIn true`
-  (read in the operator source, v0.13.0, `updateDsNodeSelectors`). The first landing (#958) still saw agent pods on every node, so the node label is the
-  second guard: `static/node-remediation.nix` sets it on every node that is not `nodeRemediation.eligible`.
-- **Never touched**: sirver, octopus, dingo (a reboot there is an etcd and OSD event to plan: sirver's disk is failing, octopus hangs on
-  a graceful reboot) and the desktops falcon and axolotl (they sleep and reboot at will, which would read as unhealthy).
+- **Selected**: the nodes with the label `node.trdos.me/remediation=eligible` (bonobo, chinchilla) and without `exclude-from-remediation=true`. Eligibility is a per-node fact
+  (`nodeRemediation.eligible` in `flake.nix`, applied as that label by `static/node-remediation.nix`), not derived from the rke2 role: until 2026-10-16 the selector was "no
+  `control-plane` label", which stopped matching bonobo and chinchilla when they became etcd servers. The SNR agent DaemonSet gets the label requirement, AND-ed with the
+  operator's own `remediation.medik8s.io/exclude-from-remediation NotIn true` (read in the operator source, v0.13.0, `updateDsNodeSelectors`). The first landing (#958) still saw agent
+  pods on every node, so the exclude label is the second guard: `static/node-remediation.nix` sets it on every node that is not `nodeRemediation.eligible`.
+- **Never touched**: sirver, octopus (the OSD hosts: sirver's disk is failing, octopus hangs on a graceful reboot), dingo (the server every node joins through) and the desktops
+  falcon and axolotl (they sleep and reboot at will, which would read as unhealthy). A reboot of bonobo or chinchilla is an etcd event (above).
 - **One at a time**: `minHealthy: 1` of the two selected nodes; with one already remediating, the other is never started.
 - **15 minutes**: well above the 4-minute `Unknown` that octopus' etcd flaps caused on 2026-10-11.
 - **Signals**: Alertmanager `NodeRemediationInProgress` (warning, via ntfy) and `NodeRemediationStuck`; `kubectl get nodehealthcheck,selfnoderemediation -A`.
@@ -471,8 +538,9 @@ force-deleted and their RBD volumes detach and move.
   as before), and the SNR config's `watchdogFilePath` is `/dev/watchdog1` (`iTCO_wdt`, 30 s). The two paths are fixed, so they never collide
   whichever driver registers first. Opening `/dev/watchdog` itself would fail with EBUSY.
 - **Software fallback**: the agent runs `nsenter -m/proc/1/ns/mnt /bin/bash -c 'echo b > /proc/sysrq-trigger'`; a tmpfiles rule links `/bin/bash`.
-- **Excluded nodes** carry `remediation.medik8s.io/exclude-from-remediation=true` through rke2's `node-label`, applied at the node's next rke2 restart.
-  sirver (not rolled) is kept out by the control-plane requirement; if an agent pod still lands there, `kubectl label node sirver remediation.medik8s.io/exclude-from-remediation=true` once.
+- **Excluded nodes** carry `remediation.medik8s.io/exclude-from-remediation=true` through rke2's `node-label`, applied at the node's next rke2 restart; **eligible** nodes carry
+  `node.trdos.me/remediation=eligible` the same way (read on bonobo's rke2 command line 2026-10-16: `--node-labels=node.trdos.me/remediation=eligible`). sirver has had the exclude label from its
+  agent start on 2026-10-16.
 
 ### Drill, 2026-10-16: passed, NHC is on
 
@@ -600,7 +668,7 @@ concerns other clusters' bluestore labels. (Inferred from that log line and ceph
 3. On falcon: `sudo zpool export data` (not `destroy` until step 1 is signed off), then after sign-off `sudo zpool destroy data && sudo wipefs -a /dev/disk/by-id/wwn-0x5000039b38dbee27-part1 && sudo sgdisk --zap-all /dev/disk/by-id/wwn-0x5000039b38dbee27 && sudo wipefs -a /dev/disk/by-id/wwn-0x5000039b38dbee27`.
 4. Merge the node entry; `kubectl -n storage logs job/rook-ceph-osd-prepare-falcon` shows the OSD; `ceph osd tree` shows host `falcon`. The balancer and `pg_autoscaler` then move about 0.9 TiB onto it.
 
-### Procedure
+### Reinstall procedure
 
 **Gate A: before anything.** All of these must hold; a failed one stops the plan.
 

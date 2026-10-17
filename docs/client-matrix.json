@@ -3372,7 +3372,7 @@
    "notes": ""
   },
   {
-   "app": "Kubernetes API (sirver:6443)",
+   "app": "Kubernetes API (dingo:6443)",
    "category": "platform",
    "hostnames": [],
    "exposure": "tailnet",
