@@ -1074,10 +1074,12 @@ in {
         sqlite3 -separator ' ' "$dir/state/db.sqlite" "SELECT hostname, ipv4 FROM nodes WHERE deleted_at IS NULL ORDER BY ipv4"
       '';
 
-      # `android <device> [apply | productivity [app...] [--dry-run]]`: compares a phone with
+      # `android <device> [apply | pair <ip:port> <code> | productivity [app...] [--dry-run]]`: compares a phone with
       # android.devices.<device> over adb on the tailnet (docs/android-fleet.md). adb runs on bonobo, which
-      # holds the paired key. The audit also checks the notes and calendar stack (Syncthing-Fork, Orgzly
-      # Revived, DAVx5, Fossify Calendar) when the device declares `productivity`. `apply` opens Obtainium's
+      # holds the paired key; `pair` pairs that key once (Android 11+ wireless debugging drops an unpaired key
+      # with no prompt) from the phone's "Pair device with pairing code" dialog, then runs the audit. The
+      # audit also checks the notes and calendar stack (Syncthing-Fork, Orgzly Revived, DAVx5, Fossify
+      # Calendar) when the device declares `productivity`. `apply` opens Obtainium's
       # import of the missing apps. `productivity` configures those four apps as far as Android allows
       # (tools/android-productivity, static/android-adb.sh) and says exactly what to tap; `--dry-run` runs
       # the same script against a stand-in phone and prints what it would do. Nothing is ever uninstalled.
@@ -1085,7 +1087,7 @@ in {
         inherit ((import ./static/builders.nix).nodes) bonobo;
       in ''
         set -euo pipefail
-        dev=''${1:?Usage: android <device> [apply | productivity [syncthing orgzly davx5 fossify] [--dry-run]]}
+        dev=''${1:?Usage: android <device> [apply | pair <ip:port> <code> | productivity [syncthing orgzly davx5 fossify] [--dry-run]]}
         mode=''${2:-status}
         shift; [ $# -eq 0 ] || shift
         extra=("$@")
@@ -1098,12 +1100,22 @@ in {
         hdr=""
         dry=""
         for x in ''${extra[@]+"''${extra[@]}"}; do [ "$x" != --dry-run ] || dry=1; done
+        if [ "$mode" = pair ]; then
+          # the code is good for one pairing; it travels in the script header on ssh's stdin, never in an argument list
+          pargs=(); for x in ''${extra[@]+"''${extra[@]}"}; do [ "$x" = --dry-run ] || pargs+=("$x"); done
+          [ "''${#pargs[@]}" -eq 2 ] && [[ "''${pargs[0]}" =~ ^[0-9.]+:[0-9]+$ ]] && [[ "''${pargs[1]}" =~ ^[0-9]+$ ]] \
+            || { echo "Usage: android $dev pair <ip:pairing-port> <code> (Developer options > Wireless debugging > Pair device with pairing code)" >&2; exit 64; }
+          hdr=$(printf 'pair_addr=%q\npair_code=%q\n' "''${pargs[0]}" "''${pargs[1]}")
+        fi
+        hdr=$(printf 'dev=%q\n%s' "$dev" "$hdr")
         script() { cat "$root/static/android-adb.sh"; }
         if [ "$mode" = productivity ]; then
-          hdr=$("$root/tools/android-productivity" apply "$dev" ''${extra[@]+"''${extra[@]}"} <<<"$want")
+          ph=$("$root/tools/android-productivity" apply "$dev" ''${extra[@]+"''${extra[@]}"} <<<"$want")
+          hdr="$hdr"$'\n'"$ph"
         elif [ "$(jq '.productivity != null' <<<"$want")" = true ]; then
-          hdr=$("$root/tools/android-productivity" audit "$dev" <<<"$want") \
-            || hdr=$(printf 'spec=%q\n' "$(jq -c .productivity <<<"$want")")
+          ph=$("$root/tools/android-productivity" audit "$dev" <<<"$want") \
+            || ph=$(printf 'spec=%q\n' "$(jq -c .productivity <<<"$want")")
+          hdr="$hdr"$'\n'"$ph"
         fi
         if [ -n "$dry" ]; then
           { printf '%s\n' "$hdr"; echo 'dry=1'; script; } | bash -s -- "$host"
