@@ -35,9 +35,9 @@ fabric).
 ### 1. Tailnet (PR #38) — `pulumi up` from the LAN
 
 Pulumi ordering is wired: hyena deploy (policy) → preauth keys →
-SOPS write → node deploys → sirver IP capture.
+SOPS write → node deploys → dingo IP capture.
 
-- [ ] `ssh sirver tailscale status` — logged in; `headscale nodes list` on
+- [ ] `ssh dingo tailscale status` — logged in; `headscale nodes list` on
       hyena shows 5 cluster peers (user `default`, **untagged** — the headscale
       autoApprover approves their routes by user `default@`, not by tag; the
       `tag:cluster` owner is kept for future CAPI workers). Pod CIDRs are
@@ -49,7 +49,7 @@ SOPS write → node deploys → sirver IP capture.
       for sibling pod CIDRs; `cilium status` green; `kubectl get nodes`
       unchanged (no node-IP flips)
 - [ ] BWS has `headscale/preauth-key/k8s-cloud-worker`, `rke2/agent-token`,
-      `headscale/node-ip/sirver`
+      `headscale/node-ip/dingo`
 
 ### 2. Cilium prep (PR #39) — `nixidy switch`
 
@@ -85,7 +85,7 @@ kubectl -n capi get secret cloud-worker-bootstrap -o jsonpath='{.data.value}' | 
 - [ ] large transfer across sites (MTU/PMTUD truth test): e.g. `kubectl cp`
       a ~100MB file or iperf via pod IPs — watch for stalls
 - [ ] multi-hour soak: rke2-agent stays connected (its supervisor LB learns
-      unreachable LAN server IPs — verify it keeps using the pinned sirver
+      unreachable LAN server IPs — verify it keeps using the pinned dingo
       address without flapping; `journalctl -u rke2-agent | grep -i 'connect'`)
 - [ ] teardown: `hcloud server delete spike` → headscale peer vanishes
       (ephemeral), `kubectl delete node spike` (manual only for the spike —

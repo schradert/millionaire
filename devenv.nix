@@ -635,8 +635,7 @@ in {
             . as $t | [$t.nodes[] | select(.type == "host" and .name == $n) | .children[]] as $ids
             | [$t.nodes[] | select(.type == "osd" and (.id as $i | $ids | index($i))) | select(.status != "up") | .name] | join(" ")'
         }
-        witness=$(grep -vx "$host" <<<"$servers" | grep -vx sirver | head -1)
-        [ -n "$witness" ] || witness=$(grep -vx "$host" <<<"$servers" | head -1)
+        witness=$(grep -vx "$host" <<<"$servers" | head -1)
         etcdctl_on() {
           local p=$1 t=/var/lib/rancher/rke2/server/tls/etcd; shift
           $k -n kube-system exec "etcd-$p" -- etcdctl --endpoints=https://127.0.0.1:2379 \
@@ -861,7 +860,8 @@ in {
           n; echo "move the etcd leader off $host if it is the leader"
           leader_ip=$(etcd_leader_ip)
           if [ "$leader_ip" = "$ip" ]; then
-            avoid=''${NODE_MAINT_AVOID_LEADER:-sirver}
+            # servers (space separated) to keep the leadership off, e.g. one on a failing disk; none now
+            avoid=''${NODE_MAINT_AVOID_LEADER:-}
             target_row=""
             for pass_avoid in no yes; do
               for cand in $(grep -vx "$host" <<<"$servers"); do

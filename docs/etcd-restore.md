@@ -14,7 +14,7 @@
   Credentials are the VolSync B2 key, read at run time from the first `volsync--*` secret in the cluster.
 - Since 2026-10-16 the servers are bonobo, chinchilla and dingo (docs/node-standard.md, "Control plane topology"): the timer is gone from sirver and octopus and the first runs on the new servers
   are `etcd/offsite-bonobo-bonobo-1792200866` and `etcd/offsite-chinchilla-chinchilla-1792202662`. S3 retention prunes by name prefix when that node saves, so the 26 `offsite-sirver-*` and 25
-  `offsite-octopus-*` objects (read with `b2 ls` 2026-10-16) never expire: delete them by hand when no restore needs them. `etcd-restore-test` should now be run against a bonobo, chinchilla or dingo snapshot.
+  `offsite-octopus-*` objects (read with `b2 ls` 2026-10-16) never expire. They can go (`b2 rm`, by hand) now: `etcd-restore-test` passed 2026-10-16 against `offsite-chinchilla-chinchilla-1792202662` (24 namespaces, 552 of 552 Secrets), the condition for dropping them.
 - rke2's own schedule still writes local snapshots every 12h to `/var/lib/rancher/rke2/server/db/snapshots` on each server (5 kept).
 - Secrets in snapshots are encrypted at rest by rke2 (`rke2 secrets-encrypt status`: Enabled, AES-CBC key `aescbckey`).
   Verified 2026-10-10 on `offsite-sirver-sirver-1791640393`: all 333 `/registry/secrets/` values start with

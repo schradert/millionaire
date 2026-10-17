@@ -424,11 +424,12 @@ Gotchas, all observed:
    because a joining server is NotReady for as long as its local apiserver is down; neither join took more than a minute.
 5. **The snapshot timer fires at once on a new server** (`Persistent=true`, no earlier run) while its apiserver is still starting: bonobo's first run failed at 18:19:24 and its retry 15 minutes
    later (18:34:35) succeeded; chinchilla's succeeded at 19:04:32. Both objects are in the bucket (`etcd/offsite-bonobo-bonobo-1792200866`, `etcd/offsite-chinchilla-chinchilla-1792202662`, read with `b2 ls`).
-   The 26 `offsite-sirver-*` and 25 `offsite-octopus-*` objects (and dingo's) stay: S3 retention prunes by name prefix when that node saves, and neither does any more. Delete them by hand
-   when no restore needs them.
+   The 26 `offsite-sirver-*` and 25 `offsite-octopus-*` objects stay: S3 retention prunes by name prefix when that node saves, and neither does any more. `etcd-restore-test` passed against
+   `offsite-chinchilla-chinchilla-1792202662` on 2026-10-16 (docs/etcd-restore.md), so they can be deleted by hand.
 6. **A sirver agent does not serve 9345 or 6443 any more.** Everything that pointed at it moved (join URL, kubeconfig recipes, `ssh -J 192.184.168.248 dingo ...` for the off-LAN `kubectl`, the
-   apiserver probes). Not moved, because nothing is deployed that uses it: the cloud-burst supervisor address (`static/cloud-worker.nix`, `nixidy/system/cicd/capi-cluster.nix`,
-   pulumi's `sirver_tailnet_ip`) still names sirver's tailnet IP: point it at dingo's (`100.64.0.6`) before CAPI is enabled (`docs/cloud-burst.md`).
+   apiserver probes). The cloud-burst supervisor address (`static/cloud-worker.nix`, `nixidy/system/cicd/capi-cluster.nix`, pulumi's `dingo_tailnet_ip`, was
+   `sirver_tailnet_ip`) now names dingo's tailnet IP (`100.64.0.6`, read with `tailscale ip -4` on dingo). Nothing is deployed that uses it (no CAPI CRDs on the cluster), so it applies at the next cloud-burst
+   deploy: the next `pulumi up` replaces the Bitwarden secret `headscale/node-ip/sirver` with `headscale/node-ip/dingo`.
 7. **falcon and axolotl had `server: https://sirver:9345` in their running config.** falcon was switched at the end (dry run: only `home-manager-tristan` restarts; `grep ^server` now reads dingo).
    axolotl was not: its toplevel needs the DisplayLink zip copied from its own store into falcon's (roll gotcha 8), and it is a laptop; its agent works from the saved server list (above), and its
    next switch fixes the file.
