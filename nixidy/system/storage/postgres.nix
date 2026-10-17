@@ -171,6 +171,8 @@ in {
                 };
                 plugins = lib.mkIf (db.backup.enable && plugin) (lib.toList {
                   name = pluginName;
+                  # CRD default, declared so ArgoCD's diff stays clean.
+                  enabled = true;
                   isWALArchiver = true;
                   parameters.barmanObjectName = name;
                 });
