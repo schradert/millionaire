@@ -196,7 +196,7 @@ in {
           lockdown = can.bool "Block connections without VPN (captive portals need it off for a moment)" {default = config.owner == "tristan";};
         };
         productivity = lib.mkOption {
-          type = lib.types.nullOr (lib.types.submodule {
+          type = lib.types.nullOr (lib.types.submodule ({config, ...}: {
             options = {
               orgDir = can.str "the Syncthing folder on the phone, and Orgzly's repository (a path Android's all-files access reaches)" {default = "/storage/emulated/0/org";};
               syncthingUser = can.str "whose Syncthing hub (a key of syncthing.users) the phone joins" {default = meUser;};
@@ -204,12 +204,12 @@ in {
               folder = can.str "the folder id (that user's syncthing folders) that holds the org files" {default = "org";};
               caldav = {
                 url = can.str "Baikal's CalDAV root (DAVx5 base URL)" {default = "https://cal.${domain}/dav.php";};
-                user = can.str "Baikal DAV user" {default = "admin";};
-                secret = can.str "Bitwarden Secrets Manager key of its password (nixidy/apps/home/baikal.nix generatedSecrets)" {default = "baikal/admin-password";};
+                user = can.str "Baikal DAV user: the person's own, one per Keycloak admin/family user (nixidy/apps/home/baikal.nix)" {default = config.syncthingUser;};
+                secret = can.str "Bitwarden Secrets Manager key of its password (nixidy/apps/home/baikal.nix generatedSecrets)" {default = "baikal/${config.caldav.user}/password";};
                 calendar = can.str "calendar collection org-bridge exports to; the one to tick in DAVx5" {default = "org";};
               };
             };
-          });
+          }));
           default = null;
           description = "notes and calendar apps (Syncthing-Fork, Orgzly Revived, DAVx5, Fossify Calendar) configured over adb by `android <device> productivity`; null leaves the device out";
         };
