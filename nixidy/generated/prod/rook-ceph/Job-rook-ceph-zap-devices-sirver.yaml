@@ -1,0 +1,83 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "1"
+  name: rook-ceph-zap-devices-sirver
+  namespace: storage
+spec:
+  activeDeadlineSeconds: 1800
+  backoffLimit: 1
+  template:
+    spec:
+      containers:
+        - command:
+            - /bin/sh
+            - -c
+            - |
+              set -u
+              mkdir -p /etc/ceph
+              cat > /etc/ceph/ceph.conf <<EOF
+              [global]
+              fsid = $ROOK_FSID
+              mon_host = $(echo "$ROOK_MON_ENDPOINTS" | tr ',' '\n' | cut -d= -f2 | paste -sd, -)
+              EOF
+              install -m 600 /etc/ceph-admin/keyring /etc/ceph/keyring
+              rc=0
+              for dev in /dev/disk/by-id/scsi-35000c50067faa64b; do
+                if [ ! -e "$dev" ]; then echo "$dev: not present on $(hostname), skipping"; continue; fi
+                # blkid sees the signature even while the disk is open; show-label does not.
+                if [ "$(blkid -o value -s TYPE "$dev" 2>/dev/null)" != "ceph_bluestore" ]; then
+                  echo "$dev: no bluestore signature, nothing to zap"
+                  continue
+                fi
+                if ! label=$(ceph-bluestore-tool show-label --dev "$dev" 2>&1); then
+                  echo "$dev: cannot read the bluestore label (in use?): $label"; rc=1; continue
+                fi
+                fsid=$(echo "$label" | sed -n 's/.*"ceph_fsid": "\([^"]*\)".*/\1/p' | head -1)
+                id=$(echo "$label" | sed -n 's/.*"whoami": "\([^"]*\)".*/\1/p' | head -1)
+                if [ "$fsid" != "$ROOK_FSID" ]; then echo "$dev: fsid $fsid is not this cluster, refusing"; rc=1; continue; fi
+                if ceph osd find "$id" >/dev/null 2>&1; then echo "$dev: osd.$id still exists, purge first"; rc=1; continue; fi
+                echo "$dev: osd.$id is gone, zapping"
+                ceph-volume lvm zap --destroy "$dev" || rc=$?
+              done
+              exit $rc
+          env:
+            - name: ROOK_MON_ENDPOINTS
+              valueFrom:
+                configMapKeyRef:
+                  key: data
+                  name: rook-ceph-mon-endpoints
+            - name: ROOK_FSID
+              valueFrom:
+                secretKeyRef:
+                  key: fsid
+                  name: rook-ceph-mon
+          image: quay.io/ceph/ceph:v19.2.3@sha256:af0c5903e901e329adabe219dfc8d0c3efc1f05102a753902f33ee16c26b6cee
+          name: zap
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /dev
+              name: dev
+            - mountPath: /etc/ceph
+              name: ceph-conf
+            - mountPath: /etc/ceph-admin
+              name: admin-keyring
+              readOnly: true
+      hostPID: true
+      nodeSelector:
+        kubernetes.io/hostname: sirver
+      restartPolicy: OnFailure
+      serviceAccountName: rook-ceph-purge-osd
+      volumes:
+        - hostPath:
+            path: /dev
+          name: dev
+        - emptyDir: {}
+          name: ceph-conf
+        - name: admin-keyring
+          secret:
+            secretName: rook-ceph-admin-keyring

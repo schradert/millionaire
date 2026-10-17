@@ -181,7 +181,6 @@ spec:
           - name: /dev/disk/by-id/scsi-35000c50067fcc2fb
           - name: /dev/disk/by-id/scsi-35000c50067fe560f
           - name: /dev/disk/by-id/scsi-35000c50067fb404b
-          - name: /dev/disk/by-id/scsi-35000c50067faa64b
         name: sirver
       - devices:
           - name: /dev/disk/by-id/scsi-36b82a720cf60ce002fd94d462aff700b

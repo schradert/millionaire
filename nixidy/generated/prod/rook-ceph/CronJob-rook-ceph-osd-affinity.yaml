@@ -26,7 +26,7 @@ spec:
                   EOF
                   install -m 600 /etc/ceph-admin/keyring /etc/ceph/keyring
                   rc=0
-                  for serial in 6XS4209D 6XS41YTD; do
+                  for serial in 6XS41YTD; do
                     id=$(for i in $(ceph osd ls); do ceph osd metadata "$i" 2>/dev/null | grep -q "_$serial[\",]" && echo "$i"; done | head -1)
                     if [ -z "$id" ]; then echo "$serial: no OSD on it, skipping"; continue; fi
                     cw=$(ceph osd tree -f json | python3 -c 'import json,sys;i="osd."+sys.argv[1];print(next((n["crush_weight"] for n in json.load(sys.stdin)["nodes"] if n["name"]==i),-1))' "$id")
