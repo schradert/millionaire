@@ -101,7 +101,14 @@ pub fn extract_file_path(event: &SyncthingEvent) -> Option<String> {
 
 /// Check if a file path is an org file.
 pub fn is_org_file(path: &str) -> bool {
-    path.ends_with(".org")
+    path.ends_with(".org") && !is_hidden(path)
+}
+
+/// Whether any component of a folder-relative path starts with a dot. Syncthing keeps its own
+/// state there (`.stversions` holds the old copies of deleted files, `.stfolder` the marker), and
+/// none of it is a note.
+pub fn is_hidden(path: &str) -> bool {
+    path.split('/').any(|c| c.starts_with('.'))
 }
 
 #[derive(Debug)]
@@ -150,6 +157,13 @@ mod tests {
             }),
         };
         assert_eq!(extract_file_path(&event), Some("org/notes.org".to_string()));
+    }
+
+    #[test]
+    fn test_hidden_paths_are_not_org_files() {
+        assert!(!is_org_file(".stversions/inbox~20261016-164002.org"));
+        assert!(!is_org_file("notes/.stversions/a.org"));
+        assert!(is_org_file("notes/inbox.org"));
     }
 
     #[test]

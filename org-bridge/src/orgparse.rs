@@ -136,7 +136,11 @@ pub fn parse_directory(org_dir: &Path) -> Vec<OrgEntry> {
         .follow_links(true)
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().is_some_and(|ext| ext == "org"));
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "org"))
+        .filter(|e| {
+            let rel = e.path().strip_prefix(org_dir).unwrap_or(e.path());
+            !crate::syncthing::is_hidden(&rel.to_string_lossy())
+        });
 
     for entry in walker {
         let path = entry.path();
