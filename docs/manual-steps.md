@@ -90,7 +90,7 @@ Unblocks: full OSD count; clears the lingering `DiskSmartFailing` history for `s
 
 The Cilium LoadBalancer pool is `192.168.50.240-254` (`nixidy/system/network/cilium.nix`) and the router's DHCP range overlaps it: morgenmuffel got `.249`, axolotl `.250`, a MacBook `.248`, a SwitchBot `.245`. Any new LoadBalancer Service could take a live host's address.
 
-The pool currently holds: `.240` external gateway, `.241` internal gateway, `.242` Syncthing sync port (`syncthing-lan`, `syncthing.devices.hub.lan` in `modules/syncthing.nix`), `.251` forgejo SSH, `.252` owncast RTMP, `.253` archive-ingest (flag off), `.254` jitsi. `.242` was picked on 2026-10-15 because neither ping nor ARP from falcon got an answer (as for `.243`, `.244`, `.246`, `.247`).
+The pool currently holds: `.240` external gateway, `.241` internal gateway, `.242` Syncthing sync port (`syncthing-lan`, `syncthing.users.tristan.devices.hub.lan` in `modules/syncthing.nix`), `.251` forgejo SSH, `.252` owncast RTMP, `.253` archive-ingest (flag off), `.254` jitsi. `.242` was picked on 2026-10-15 because neither ping nor ARP from falcon got an answer (as for `.243`, `.244`, `.246`, `.247`).
 
 1. In the router's DHCP settings, exclude `192.168.50.240-192.168.50.254` from the dynamic range (or reserve them).
 2. Renew the leases of any host currently inside the range (morgenmuffel, axolotl).

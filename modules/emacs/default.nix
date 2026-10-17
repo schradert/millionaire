@@ -40,11 +40,13 @@
       );
     # The Syncthing `org` folder (modules/syncthing.nix) is the one place the org files live;
     # Emacs, org-mem/org-node and the agenda all read it from there.
-    orgDirectory = "${config.home.homeDirectory}/${flake.config.syncthing.folders.org.path.${
-      if pkgs.stdenv.hostPlatform.isDarwin
-      then "darwin"
-      else "linux"
-    }}";
+    orgDirectory = "${config.home.homeDirectory}/${flake.config.syncthing.users.${
+        flake.config.canivete.meta.people.me
+      }.folders.org.path.${
+        if pkgs.stdenv.hostPlatform.isDarwin
+        then "darwin"
+        else "linux"
+      }}";
     nullOr = type:
       mkOption {
         type = types.nullOr type;
