@@ -79,10 +79,14 @@ spec:
               subPath: config.yml
             - mountPath: /tmp/cache
               name: cache
+            - mountPath: /media/frigate/clips
+              name: clips
             - mountPath: /config
               name: config
             - mountPath: /dev/dri
               name: dri
+            - mountPath: /media/frigate/exports
+              name: exports
             - mountPath: /media/frigate
               name: media
             - mountPath: /dev/shm
@@ -99,12 +103,18 @@ spec:
           name: base-config
         - emptyDir: {}
           name: cache
+        - name: clips
+          persistentVolumeClaim:
+            claimName: frigate-clips
         - name: config
           persistentVolumeClaim:
             claimName: frigate-config
         - hostPath:
             path: /dev/dri
           name: dri
+        - name: exports
+          persistentVolumeClaim:
+            claimName: frigate-exports
         - name: media
           persistentVolumeClaim:
             claimName: frigate-media
