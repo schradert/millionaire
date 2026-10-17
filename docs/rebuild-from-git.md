@@ -17,14 +17,14 @@ Notes assembled from the repo on 2026-10-10. The sequence has never been run end
 
 ## Sequence
 
-1. **Hosts.** NixOS for sirver, octopus, dingo (servers) and bonobo, chinchilla (agents) from `static/` via pulumi's
+1. **Hosts.** NixOS for bonobo, chinchilla, dingo (servers) and sirver, octopus (agents) from `static/` via pulumi's
    `millionaire.NixOS` (nixos-anywhere) or `deploy-rs` on already-installed hosts. Hyena (headscale, AdGuard, ntfy; Hetzner) is
    independent of the cluster and must be up first: nodes join the tailnet through it, and pulumi orders every other node after it.
    The node config currently deployed may differ from `main`; check `git log` and run `deploy --dry-activate` first.
    falcon and axolotl become RKE2 agents only through their own reinstall (`docs/node-standard.md`).
 2. **Secrets for hosts.** Pulumi writes node-side secrets into `secrets/sops/default.yaml` (`*_sops_write` commands) before nodes
    deploy; the age identity is placed on each node at install. README todo 15 plans to remove this.
-3. **RKE2.** First server with the token from sops, others join via `https://sirver:9345`. CNI is Cilium (installed by ArgoCD, not
+3. **RKE2.** First server (dingo, `canivete.meta.root`) with the token from sops, others join via `https://dingo:9345`. CNI is Cilium (installed by ArgoCD, not
    RKE2), so nodes stay NotReady until step 5 pulls Cilium. Plan for this.
 4. **Bootstrap secrets.** The `__bootstrap` nixidy application holds what ArgoCD and external-secrets need before Bitwarden is
    reachable, including the Bitwarden machine token from sops (`bitwarden`) and the Bitwarden SDK server TLS chain.

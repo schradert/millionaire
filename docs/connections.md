@@ -23,7 +23,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | Service | Auth | macOS | NixOS workstations | Steam Deck | Android | Credential |
 |---|---|---|---|---|---|---|
 | headscale (tailnet) | preauth key | done: `modules/tailnet.nix` (personal Macs) | done: `static/tailnet-personal.nix` | todo (sops recipient) | done: Tailscale | sops `headscale/preauth-key/personal` (pulumi) |
-| Kubernetes API (sirver:6443) | admin kubeconfig | done: `modules/kubernetes.nix` (kubectl, k9s, helm, cilium-cli; `kubeconfig` writes `~/.kube/trdos`) | done: `modules/kubernetes.nix` | n-a | n-a | `/etc/rancher/rke2/rke2.yaml` over ssh |
+| Kubernetes API (dingo:6443) | admin kubeconfig | done: `modules/kubernetes.nix` (kubectl, k9s, helm, cilium-cli; `kubeconfig` writes `~/.kube/trdos`) | done: `modules/kubernetes.nix` | n-a | n-a | `/etc/rancher/rke2/rke2.yaml` over ssh (from dingo; the control plane is bonobo, chinchilla and dingo) |
 | argocd | OIDC | done: argocd CLI, `argocd-login` (SSO), `modules/kubernetes.nix` | done: same | n-a | n-a | Keycloak public client `argocd-cli` (argocd.nix) |
 | argo-rollouts | oauth2-proxy | done: kubectl-argo-rollouts, `modules/kubernetes.nix` | done: same | n-a | n-a | kubeconfig |
 | argo-workflows | OIDC | web | web | n-a | web | — |
