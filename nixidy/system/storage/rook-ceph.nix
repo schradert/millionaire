@@ -279,13 +279,14 @@ in {
             storage.nodes = [
               {
                 name = "sirver";
-                # Bays 6 (6XS4209D, the old root) and 7 (6XS41YTD, the old osd.7) are
-                # SMART-failing and are in only as replica-only redundancy: CRUSH
-                # weight 0.2 and primary affinity 0, both set by the rook-ceph-osd-affinity
-                # CronJob below (config.initialWeight is passed to the prepare job but
-                # was not applied: the OSDs came up at the full 0.82). Not counted as
-                # capacity (docs/node-standard.md, "The two bad disks"). Bay 2
-                # (6XS42DQ9) is the root since 2026-10-17.
+                # Bay 7 (6XS41YTD, the old osd.7) is SMART-failing and is in only as a
+                # replica-only OSD: CRUSH weight 0.2 and primary affinity 0, set by
+                # the rook-ceph-osd-affinity CronJob below (config.initialWeight is
+                # passed to the prepare job but was not applied: the OSD came up at
+                # the full 0.82). Not counted as capacity (docs/node-standard.md,
+                # "The two bad disks"). Bay 6 (6XS4209D, the old root) was osd.0 for
+                # 30 minutes on 2026-10-17 and threw write errors: retired below.
+                # Bay 2 (6XS42DQ9) is the root since 2026-10-17.
                 devices = [
                   {name = "/dev/disk/by-id/scsi-35000c50067fc5df3";}
                   {name = "/dev/disk/by-id/scsi-35000c50067fc640b";}
@@ -293,7 +294,6 @@ in {
                   {name = "/dev/disk/by-id/scsi-35000c50067fcc2fb";}
                   {name = "/dev/disk/by-id/scsi-35000c50067fe560f";}
                   {name = "/dev/disk/by-id/scsi-35000c50067fb404b";}
-                  {name = "/dev/disk/by-id/scsi-35000c50067faa64b";}
                 ];
               }
               {
@@ -371,9 +371,16 @@ in {
       };
       resources = let
         # Retired OSDs: id, the node that holds the disk, and the disk by-id.
-        # Empty since the two bad disks came back as OSDs (they take the freed
-        # ids 0 and 7; a listed id is purged on every sync).
-        retiredOsds = [];
+        # osd.0 is bay 6 (6XS4209D, the old root): Medium Error write errors
+        # 2026-10-17, retired for good. Remove the entry only when no new OSD can
+        # take id 0 (a listed id is purged on every sync).
+        retiredOsds = [
+          {
+            id = 0;
+            node = "sirver";
+            device = "/dev/disk/by-id/scsi-35000c50067faa64b";
+          }
+        ];
       in {
         # Hooks are not live resources, so a change to retiredOsds alone is no
         # diff and would never sync (see nixidy/system/cicd/bootstrap.nix). This
@@ -381,7 +388,7 @@ in {
         configMaps.rook-ceph-retired-osds.data = {
           retired = builtins.toJSON retiredOsds;
           # Bump to rerun the hooks after a change to their scripts or images.
-          revision = "4";
+          revision = "5";
         };
         # OSDs retired in git: every sync runs this hook, which takes each id
         # through out → safe-to-destroy → down (noup so the daemon stays down)
@@ -642,7 +649,7 @@ in {
         # (the OSD is created by the operator after the sync). A serial with no OSD yet is skipped.
         # docs/node-standard.md, "sirver reinstall plan".
         cronJobs.rook-ceph-osd-affinity.spec = let
-          lowTrustSerials = ["6XS4209D" "6XS41YTD"];
+          lowTrustSerials = ["6XS41YTD"];
           lowTrustWeight = "0.2";
           script = ''
             set -u

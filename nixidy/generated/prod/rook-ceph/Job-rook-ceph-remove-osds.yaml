@@ -26,7 +26,7 @@ spec:
               EOF
               install -m 600 /etc/ceph-admin/keyring /etc/ceph/keyring
               rc=0
-              for id in ; do
+              for id in 0; do
                 if ! ceph osd find "$id" >/dev/null 2>&1; then
                   echo "osd.$id: not in the cluster, nothing to do"
                   continue
