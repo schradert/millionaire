@@ -173,7 +173,7 @@
             # `helix`; not on MELPA, so explicit recipe + pin (unstraightened
             # rejects unpinned github packages). Commit lives in pkgs/helix-mode.
             tangle.packages = ''(package! helix :recipe (:host github :repo "mgmarlow/helix-mode") :pin "${pinned.helix-mode.pin.version}")'';
-            tangle.config = "(use-package! helix :config (helix-mode 1))";
+            tangle.config = "(use-package! helix :config (helix-mode))";
           }
         ];
       })

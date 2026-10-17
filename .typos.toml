@@ -47,6 +47,8 @@ regist = "regist"
 # Android package ids and app names (modules/android.nix): org.mian.gitnex, Transportr
 mian = "mian"
 transportr = "transportr"
+# serie: the git graph viewer (modules/git.nix)
+serie = "serie"
 Transportr = "Transportr"
 # nmap -Pn (skip host discovery)
 Pn = "Pn"
