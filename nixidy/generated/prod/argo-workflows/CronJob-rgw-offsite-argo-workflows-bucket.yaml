@@ -62,7 +62,7 @@ spec:
                       name: argo-workflows-bucket
               envFrom:
                 - secretRef:
-                    name: rgw-offsite-b2
+                    name: rgw-offsite-argo-workflows-bucket-b2
               image: rclone/rclone:1.75.2@sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5
               name: rclone
               resources:
