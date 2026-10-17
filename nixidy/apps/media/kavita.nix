@@ -102,6 +102,19 @@ in {
               }
             ];
           };
+          # Not a library: media-e2e's test library lives under /media/downloads/e2e-<run>.
+          # Kavita's scanner does not skip dot-folders, so a hidden test folder inside Books was
+          # indexed by the real library (a ghost series).
+          persistence.media-downloads = {
+            type = "persistentVolumeClaim";
+            existingClaim = "media-downloads";
+            advancedMounts.kavita.kavita = [
+              {
+                path = "/media/downloads";
+                readOnly = true;
+              }
+            ];
+          };
           # Native OIDC, no oauth2-proxy. OPDS clients (e-readers) use the same
           # route: Kavita enforces its per-user API key on /api/opds.
           route.kavita = {

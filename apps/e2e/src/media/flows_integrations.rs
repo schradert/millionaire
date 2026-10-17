@@ -141,7 +141,16 @@ pub async fn bazarr(ctx: &Ctx, f: &mut Flow) -> R<()> {
         return Err(Fail::new("bazarr", "providers", "none enabled"));
     }
     let health = json(get("/api/system/health"), "bazarr", "health").await?;
-    let issues: Vec<String> = health["data"].as_array().into_iter().flatten().map(|h| format!("{}: {}", h["object"], h["issue"])).collect();
+    // The suite's own test root folders (`/media/downloads/<run>/...`, left in Sonarr/Radarr by the
+    // chain flows until the final cleanup) are deliberately not mounted in Bazarr.
+    let test_roots = format!("{}/", ctx.lib_root("").to_string_lossy().trim_end_matches('/'));
+    let issues: Vec<String> = health["data"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|h| !h["object"].as_str().is_some_and(|o| o.starts_with(&test_roots)))
+        .map(|h| format!("{}: {}", h["object"], h["issue"]))
+        .collect();
     if !issues.is_empty() {
         return Err(Fail::new("bazarr", "health", issues.join("; ")));
     }
