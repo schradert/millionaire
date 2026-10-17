@@ -34,7 +34,8 @@ spec:
   monitoring:
     enablePodMonitor: true
   plugins:
-    - isWALArchiver: true
+    - enabled: true
+      isWALArchiver: true
       name: barman-cloud.cloudnative-pg.io
       parameters:
         barmanObjectName: immich

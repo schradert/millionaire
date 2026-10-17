@@ -1,6 +1,8 @@
 # VolSync and CNPG restores
 
 Both back up to B2 bucket `trdos-me--volsync`: VolSync (restic) under `volsync--<app>--<pvc>`, CNPG (barman) under `cnpg/<cluster>/`.
+Every CNPG cluster has a daily base backup (`ScheduledBackup`, 00:00) plus continuous WAL: 26 through the operand image's own barman tools
+(`postgres.backup.method = "barmanObjectStore"`, the default) and `immich` and `streamystats` through the Barman Cloud plugin (`"plugin"`, below).
 Both were rehearsed on 2026-10-10 into scratch objects; live data was not touched.
 
 ## VolSync restores are deliberate
@@ -83,12 +85,48 @@ The `barmanObjectStore` recovery path is deprecated and removed in CNPG 1.30; mo
 For a real restore, use the same Cluster spec under the original name after deleting the broken cluster (and its PVC), with
 `bootstrap.recovery.source` set and `backup` re-added.
 
+## CNPG with the Barman Cloud plugin: immich and streamystats (rehearsed 2026-10-17 on streamystats)
+
+The immich and streamystats operand image (immich's vectorchord image) has no barman-cloud tools, so in-tree archiving cannot run. They use
+`postgres.backup.method = "plugin"` (`nixidy/system/storage/postgres.nix`): the Barman Cloud plugin (`nixidy/system/storage/barman-cloud.nix`, in `storage`
+next to the operator) injects a sidecar into each instance pod, and the cluster gets an `ObjectStore` (same B2 bucket and `cnpg/<cluster>/` path as the
+others), `spec.plugins` for WAL archiving, and a `ScheduledBackup` with `method: plugin`. Retention is the ObjectStore's `retentionPolicy` (30d).
+Checked live on 2026-10-17: `ContinuousArchiving` is true on both, a manual `Backup` of each completed (immich `20261017T093049`, 149 MiB; streamystats
+the same id, 50 MiB), and the objects (`base/<id>/data.tar`, `backup.info`, `wals/`) are in B2 under `cnpg/<cluster>/<cluster>/`.
+
+Manual backup (a one-off, not declared): a `Backup` with `spec: {cluster: {name: <name>}, method: plugin, pluginConfiguration: {name: barman-cloud.cloudnative-pg.io}}`.
+
+Restore into a scratch cluster (rehearsed: streamystats base backup plus WAL restored from B2 in about 2 minutes; 19 tables and 10935 rows, identical to live):
+
+```yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata: {name: dr-scratch-<name>, namespace: media, labels: {dr-rehearsal: "true"}}
+spec:
+  instances: 1
+  imageName: <the live cluster's imageName>   # immich's image, with postgresUID/postgresGID 999 and the same shared_preload_libraries
+  postgresUID: 999
+  postgresGID: 999
+  storage: {size: 5Gi, storageClass: ceph-block}
+  postgresql: {shared_preload_libraries: [vchord.so]}
+  bootstrap: {recovery: {source: <name>}}
+  externalClusters:
+  - name: <name>
+    plugin:
+      name: barman-cloud.cloudnative-pg.io
+      parameters: {barmanObjectName: <name>, serverName: <name>}   # the ObjectStore in the same namespace
+```
+
+No `plugins`/`backup` section on the scratch cluster, so it never writes to the bucket. A real restore is the same spec under the original name after deleting
+the broken cluster and its PVCs, with `plugins` added back. `backup-verify` (monthly) only picks clusters with `spec.backup.barmanObjectStore`, so these two
+are not restore-checked automatically.
+
 ## Immich: restore the in-app dump into a scratch cluster (rehearsed 2026-10-15)
 
-Immich's CNPG cluster has no barman (its operand image lacks barman-cloud, and the Barman Cloud plugin is not installed), so there is
-no base backup or WAL archive for it. Its only database backup is Immich's own job: a daily 02:00 `pg_dump` (gzip) into
+Besides the plugin backup above (point-in-time, since 2026-10-17), Immich has its own job: a daily 02:00 `pg_dump` (gzip) into
 `/usr/src/app/upload/backups/` on the `immich-server` PVC, which VolSync backs up daily to `volsync--immich--immich-server`.
-The dump is therefore up to about 26h old at the time of a VolSync snapshot (RPO ~1 day, no point-in-time recovery).
+It is a logical copy that survives a bad migration or a cluster-level problem. The dump is up to about 26h old at the time of a VolSync snapshot (RPO ~1 day).
+Streamystats has the same kind of second copy (its `streamystats-dump` CronJob and VolSync source); that one is not restore-checked.
 
 Restore (what `backup-verify` step `dump` does, in `backup-verify`; to do it by hand use any scratch namespace):
 
@@ -110,7 +148,7 @@ CronJob `backup-verify-dump` (Sunday 08:00 America/Los_Angeles, `STEPS=dump`, en
 `nixidy/system/storage/backup-verify.nix`) repeats this weekly: newest dump in the latest VolSync snapshot must be under 60h old,
 load without error, and yield at least as many tables as the previous run (kept in ConfigMap `backup-verify-state`). Failure fails the
 Job (`KubeJobFailed`), POSTs to ntfy, and alerts `DumpRestoreVerificationFailed` / `DumpRestoreVerificationStale` (10 days). To cover
-another database without barman, add an entry `namespace/cluster|repository|path regex` to `dumpSources`.
+another database with an in-app dump, add an entry `namespace/cluster|repository|path regex` to `dumpSources`.
 
 ## Backup coverage gaps
 
@@ -120,7 +158,7 @@ another database without barman, add an entry `namespace/cluster|repository|path
   `volsync--tdarr--tdarr-server/` (2 keys, 1 config, no snapshots) is reclaimable. For any future "damaged" repository, list its `keys/` before blaming the password.
 - `volsync--jitsi--prosody-src` showed a `lastSyncDuration` of 2701h: its first sync completed on 2026-10-15, 112 days after the object was created (2026-06-25). Until #852 its
   `sourcePVC` was `prosody-data`, a claim that never existed, so the mover never started. Cosmetic now; the duration runs from creation to the first success.
-- CNPG ScheduledBackups with no recent backup: windmill and chirpstack (93d), immich (107d), hydra/keto/kratos (205d, clusters no longer exist).
+- CNPG ScheduledBackups: every one of the 28 clusters has one (2026-10-17; immich and streamystats were the exceptions until the plugin, above). The older "no recent backup" entries (windmill, chirpstack, hydra/keto/kratos) were checked on 2026-10-17: all clusters report a `lastSuccessfulBackup` within a day except immich and streamystats, which had never had one.
 - No VolSync source, by decision: `frigate-media` (1Ti of rolling camera recordings: churn makes restic expensive and the clips have no value
   after their retention), `media-downloads` (transient), `media-sports` (re-acquirable), `dvd-rip-work` (rip scratch), and the model caches
   in `ai` (`ollama`, `vllm`, `heretic-*`).

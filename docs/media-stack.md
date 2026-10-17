@@ -51,7 +51,7 @@ Ryot has a music type, but no integration reads Navidrome, Maloja or ListenBrain
 
 | App | Auth | Per-user | Bootstrap | Data | Metrics | E2E |
 |---|---|---|---|---|---|---|
-| Immich | OIDC (email link) | yes | yes (API key, e2e admin) | CNPG without barman (in-app daily dump on the VolSync-backed PVC; restore verified weekly by `backup-verify-dump`) + library PVC VolSync | ServiceMonitor, dashboard | oidc-immich, upload |
+| Immich | OIDC (email link) | yes | yes (API key, e2e admin) | CNPG with the Barman Cloud plugin (daily base backup + WAL to B2, since 2026-10-17) plus the in-app daily dump on the VolSync-backed PVC (restore verified weekly by `backup-verify-dump`) + library PVC VolSync | ServiceMonitor, dashboard | oidc-immich, upload |
 | Owncast | own admin password | n/a | none | PVC + VolSync | none | planned |
 
 ### Tracking hub: Ryot
@@ -81,7 +81,7 @@ How the bootstrap acts as tristan: impersonation links are a Ryot Pro feature, a
    - `integrations-bookshelf`, `integrations-kapowarr`, `integrations-suwayomi` check the wiring; `books-bookshelf` adds a public-domain author (Dostoevsky, by metadata id) to both Bookshelf instances and lists his works.
    - Kapowarr and Suwayomi have no content flow: Kapowarr needs a ComicVine key to add any volume, and Suwayomi has only the Local source until an extension store is configured.
    - Bookshelf's name search is not used: `hardcover.bookinfo.pro/search` (third party) timed out on 2026-10-15 while its id endpoints answered.
-5. **Immich database backups. Done 2026-10-15.** CNPG barman stays off (the operand image lacks barman-cloud and the Barman Cloud plugin is not installed), so the backup is Immich's daily in-app dump on the VolSync-backed PVC (RPO ~1 day, no PITR). The restore is now verified: the newest dump was restored from B2 into a scratch cluster (72 tables, 233165 rows, identical to live) and `backup-verify-dump` repeats it weekly, with alerts. Procedure: `docs/pvc-and-postgres-restore.md`. Open: a barman-capable image or the plugin would give PITR.
+5. **Immich database backups. Done 2026-10-15, upgraded 2026-10-17.** The operand image lacks barman-cloud, so in-tree CNPG backups cannot run; since 2026-10-17 the Barman Cloud plugin (`nixidy/system/storage/barman-cloud.nix`) archives WAL and takes the daily base backup from a sidecar (same for streamystats), giving point-in-time recovery. Immich's daily in-app dump on the VolSync-backed PVC stays as a second copy, restored from B2 into a scratch cluster weekly by `backup-verify-dump` (72 tables, 233165 rows, identical to live on 2026-10-15). Procedures: `docs/pvc-and-postgres-restore.md`. Open: `backup-verify` (monthly) does not restore-check plugin-backed clusters; the plugin restore was rehearsed by hand on streamystats only.
 6. **Music tracking per user. Done 2026-10-15** (see "Music scrobbling per user" below). Each declared family or admin user has their own Maloja, multi-scrobbler routes and Navidrome link. Open:
    - The ListenBrainz forward (listenbrainz.org) is still a TODO and needs each person's own token, which only they can supply.
    - Pano Scrobbler (phone) still uses the owner's Maloja route only.
