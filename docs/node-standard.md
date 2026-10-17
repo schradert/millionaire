@@ -497,9 +497,228 @@ So a dead agent costs about 17 minutes to detect and 3 more to move its volumes.
 on it (watchdog started), `rke2-agent` active with `containerd` the child of PID 1. If it misbehaves, re-add a `pauseRequests` entry in `nixidy/system/cluster/medik8s.nix`.
 Not exercised: the isolated-agent self-fence (a real network cut), NHC with the other agent unhealthy (`minHealthy: 1`), and a remediation of chinchilla.
 
+## sirver reinstall plan
+
+Written 2026-10-16 (evening PDT) from read-only surveys of sirver, octopus, falcon, Ceph and the repo. **Nothing in the procedure has been run.** What was read live is
+marked "read"; what is inferred from configuration or from how the tools behave is marked "inferred" or "assumed". It starts once sirver is an RKE2 agent (the etcd
+move to bonobo, chinchilla and dingo is separate work: "Gate A" below).
+
+Goals: (1) get sirver off its failing root disk by installing onto one of its better disks; (2) keep the two bad disks (the old root, bay 6, and the old osd.7, bay 7)
+in Ceph "only for redundancy"; (3) make falcon, octopus and sirver the three OSD hosts at replication `size 2`, with no capacity loss.
+
+### Survey (read 2026-10-16 17:50 to 18:10 PDT)
+
+sirver is a Dell PowerEdge R630 (read: `/sys/class/dmi/id`), UEFI, systemd-boot, eight 2.5" SAS bays behind a `megaraid_sas` controller that shows the disks as plain
+SCSI disks (`scsi-35000c500...` by-id). Every bay is occupied: there is no empty one. All eight are Seagate ST9900805SS (900 GB 10K SAS), manufactured week 18 of 2013, so
+all of them are 8.6 years old. **Kernel names (`sda`...) are not stable across boots** (osd.9's Deployment says `ROOK_BLOCK_PATH=/dev/sda`, today's root, while osd.9 is up
+on `sdh`): everything below goes by serial, by-id and bay (`by-path pci-0000:02:00.0-scsi-0:0:<bay>:0` = the controller's slot, which is also smartctl's `megaraid,<bay>`).
+
+| Bay | Serial | by-id (`scsi-3...`) | Role today | Grown defects | Uncorrected R / W / V | Corrected write | Non-medium errs | Power-on h | Health |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 | 6XS42DVQ | `5000c50067fcc2fb` | osd.9, 268 GiB (114 PGs) | 3 | 0 / 0 / 1 | 30 | 17244 | 75853 | OK |
+| 1 | 6XS42EQA | `5000c50067fc640b` | osd.10, 337 GiB (129 PGs) | 16 | 0 / 0 / 0 | 4 | 813 | 75360 | OK |
+| **2** | **6XS42DQ9** | **`5000c50067fcd9af`** | **osd.0, 329 GiB (140 PGs)** | **4** | **0 / 0 / 0** | 16 | 24392 | 75552 | OK |
+| 3 | 6XS42A75 | `5000c50067fe560f` | osd.2, 422 GiB (114 PGs) | 9 | 0 / 0 / 0 | 77 | 35393 | 75437 | OK |
+| 4 | 6XS42DX1 | `5000c50067fcc0d3` | osd.4, 403 GiB (122 PGs) | 34 | 0 / 0 / 0 | 25 | 8284 | 75399 | OK |
+| 5 | 6XS42ESH | `5000c50067fc5df3` | osd.5, 345 GiB (126 PGs) | 46 | 0 / 0 / 9 | 6 | 2730 | 75854 | OK |
+| 6 | 6XS4209D | `5000c50067faa64b` | **root** (ZFS `root`, 361 G allocated of 832 G) | 8 | 0 / **79** / 0 | 1410 | 28074 | 141 (the counter looks reset; the others read 75k) | **impending failure** `asc=5d/ascq=10` |
+| 7 | 6XS41YTD | `5000c50067fb404b` | empty, zapped 2026-10-13 (was osd.7) | 17 | 0 / 0 / **81** | 10 | 27515 | 75574 | **impending failure** |
+
+(smartctl through the `smartctl-exporter` pod on sirver: the host has no smartctl. "R / W / V" = total uncorrected errors for read / write / verify. The root pool: `zpool status`
+read DEGRADED, 176 write errors on its one vdev, last scrub 2026-10-01 repaired 0 B. The exporter's `smartctl_scsi_grown_defect_list` history reaches back about 6.8 days and no disk's
+count moved in the last four days.)
+
+OSD to device map (read with `ceph osd metadata`, so by serial rather than by kernel name): osd.0 6XS42DQ9, osd.2 6XS42A75, osd.4 6XS42DX1, osd.5 6XS42ESH, osd.9 6XS42DVQ,
+osd.10 6XS42EQA. Utilisation of sirver's OSDs is 32 to 50 % (host 41.8 %, 2.1 TiB of 4.9 TiB), octopus's is 9.6 to 12.6 % (host 10.8 %, 2.1 TiB of 19 TiB). Pools are all `size 2 / min_size 1`,
+`failureDomain: host`; `nearfull 0.85`, `backfillfull 0.90`, `full 0.95`.
+
+**New root: bay 2, serial 6XS42DQ9, `/dev/disk/by-id/scsi-35000c50067fcd9af`, osd.0.** The criteria were zero uncorrected errors in all three counters (that removes bays 0, 5, 6, 7), then
+the fewest grown defects (bay 2 has 4; bay 3 has 9, bay 1 has 16, bay 4 has 34). Runner-up: bay 1 (osd.10, `scsi-35000c50067fc640b`): 16 defects but the fewest corrected write errors (4)
+and the fewest non-medium errors (813). The differences between the good five are small and every disk is the same age: "healthiest" here means "least bad", not "good". The root pool is a
+single vdev again; the mitigation is that the node holds nothing that is not reproducible once etcd has left it (below), and that a reinstall is a procedure with a script.
+
+**What purging osd.0 moves.** osd.0 holds 329 GiB in 140 PGs. With `failureDomain: host` its PGs keep their sirver copy on sirver, so the 329 GiB re-replicates onto osd.2, 4, 5, 9, 10 (free
+416, 436, 493, 571, 501 GiB, 2.4 TiB in all). Afterwards each of the five holds about 421 GiB of 838 (50 %; the fullest, osd.2, rises from 50 to about 55 %), far from the 85 % nearfull
+line. Source: osd.0 itself (a healthy disk), so the drain does not read from octopus or from a bad disk. Estimate, not measured: 1 to 3 hours with the declared `high_client_ops` profile
+(about 105 k object copies at the ~12 objects/s the last purge saw), minutes to an hour with `high_recovery_ops`.
+
+**octopus (read).** 8 PERC H710P virtual disks, each one physical disk, none with a defect: slots 0,1,2,3,5,7 HGST "HUS7230..." (3 TB, 7200 rpm, 27 to 40k h, 0 grown defects, 0 uncorrected),
+slots 4,6 Seagate "ST3300..." (3 TB, 21.6k h, 0 defects, 0 uncorrected). The root is one virtual disk (`scsi-36b82a720cf60ce002fd94d2e2991b17e`, ZFS `root` 2.72 T, 358 G used, ONLINE), the OSDs are the other
+seven (osd.1,3,6,8,11,12,13 at `scsi-36b82a720cf60ce002fd94d462aff700b` ... `...d962fc2bcad`, 268 to 351 GiB each). Which physical slot is the root was not read (no `perccli` here). No change is needed.
+
+**falcon (read).** NVMe PC801 1 TB (root pool, 346 G used, standard layout) and `sda`, a Toshiba MG08ADA400NY, 4 TB 7200 rpm, `wwn-0x5000039b38dbee27`
+(`ata-TOSHIBA_MG08ADA400NY_X1Q0A2MPFYXG`): SMART PASSED, 15 884 h, 0 reallocated, 0 pending, 0 offline-uncorrectable, 0 CRC errors, no self-test ever run. It holds the ZFS pool `data`
+(3.62 T, 1.62 T used, all of it `data/dvd-rips`; `data/media`, `data/backup`, `data/scratch` are empty). It is the only spare spinning disk in the fleet and the only candidate for falcon's OSD.
+Its contents are NOT yet confirmed to be in the cluster (the 2026-10-16 library check in `docs/dvd-rip.md` covers published ISOs and movies, not the leftovers, rescue images and
+`.discid` files the importer and the `rerip` seed read from `/data/dvd-rips`): that is a gate, see "falcon" below.
+
+### Ceph layout: falcon, octopus, sirver at `size 2`
+
+What three OSD hosts buy (arithmetic from the CRUSH weights, approximate: the pool has 745 PGs, not a continuum):
+
+| | host weights (TiB) | share of all copies (octopus / sirver / falcon) | at today's 2.1 TiB of data, held (TiB) | most data the layout holds below nearfull |
+| --- | --- | --- | --- | --- |
+| today, 2 hosts | 19.1 / 4.9 | 1.00 / 1.00 | 2.1 / 2.1 | about 4.2 TiB (sirver is full first: it holds a whole copy) |
+| 3 hosts, bad disks at full weight | 19.1 / 5.7 / 3.6 | 0.94 / 0.64 / 0.42 | 1.97 / 1.35 / 0.88 | about 7.3 TiB (falcon fills first) |
+| 3 hosts, bad disks at 25 % weight | 19.1 / 4.5 / 3.6 | 0.95 / 0.58 / 0.47 | 1.99 / 1.21 / 0.99 | about 6.5 TiB |
+
+So the capacity goes up, not down, even though sirver gives one disk to its root: it gains the two bad disks and the cluster gains falcon's 4 TB. And the failure mode changes. Today a host
+outage leaves single copies for as long as it lasts, and Ceph cannot re-replicate because there is no third host. With three, an out host's PGs rebuild onto the other two (octopus out: its 1.97 TiB
+fits on sirver and falcon, which hold 2.2 TiB of their 9.3 TiB; sirver out: its 1.35 TiB fits on falcon, which would hold 2.2 of 3.6 TiB, 61 %). The cost: (1) any planned outage still wants `noout` (otherwise a 10-minute
+outage starts a 1 to 2 TiB rebuild on single 7200 rpm and 10K disks); `node-maintenance` does that. falcon is a desktop that is switched off or rebooted for hardware work: with it as an OSD host a
+falcon outage becomes a Ceph maintenance (`node-maintenance falcon down` sets `noout` for OSD hosts); (2) falcon's one disk would carry about 0.42 of a copy where each of octopus's seven carries about 0.13 and
+each of sirver's about 0.09: it will be the busiest disk in the cluster. If it shows slow ops, give it `config.initialWeight` below its capacity (half, 1.8 TiB, costs about a third of the headroom row above); (3) `pg_autoscaler` will
+re-split pools for the extra OSDs (a one-time backfill).
+
+**The two bad disks "only for redundancy".** What Ceph offers, and what it cannot:
+
+- `ceph osd primary-affinity osd.N 0`: the OSD never becomes the primary of a PG unless it is the only one left, so client reads and the PG's coordination go to the healthy partner and the bad disk only holds a
+  replica. Writes still go to both copies, so every client write waits for the slower of the two: a dying disk that retries for seconds stalls writes cluster-wide, and affinity does nothing about that. Read-side caveat:
+  the CephCluster has `csi.readAffinity.enabled = true` (`rook-ceph.nix`), which makes kernel RBD/CephFS clients read from the nearest replica; a pod running on sirver would read from the replica on sirver's bad disk
+  even with affinity 0 (inferred from what the option does; not tested). Keep sirver light in compute, or leave it cordoned for general pods once the zwave and music-assistant pins are the only reasons to run there.
+- A low CRUSH weight (`config.initialWeight` per device in the CephCluster node list, TiB; 0.2 against the default 0.82) holds less data on the disk, shortens any rebuild after it dies and shrinks the data at risk. Weight does not
+  change the write-stall problem; it only reduces how many PGs have a copy there.
+- The honest risk: a replica on a failing disk is only as good as its partner. For every PG whose copies are one on a bad disk and one elsewhere, redundancy is real only while the elsewhere copy is intact; if that one
+  is lost or corrupted at the wrong time, the bad disk is the only source and it may not read. BlueStore checksums turn silent corruption into a read error, and a deep scrub repairs it from the other copy: the
+  protection is the scrub schedule, not the disk. sda (bay 6) has 79 uncorrected **write** errors (it has already failed to store data); bay 7 has 81 uncorrected verify errors. Use them as extra redundancy, not as
+  capacity: do not count their space in any "how much can we store" figure, add bay 7 first and bay 6 a day later, watch `ceph osd perf` (commit latency), `dmesg | grep -i 'medium error'` and the scrub results for a week, and
+  `ceph osd out` a disk the moment it stalls writes. (Rook crash-loops an OSD whose disk errors out; Ceph marks it down and rebuilds elsewhere: that part is safe.)
+
+**Doing it declaratively.** `primary-affinity` is an osdmap setting set with `ceph osd primary-affinity`, not a Ceph config option (`ceph config help osd_primary_affinity` answers ENOENT, read) and not a CephCluster field. The CephCluster
+schema does have a per-device `config` map (`initialWeight`, `osdsPerDevice`, `deviceClass`, `metadataDevice`, `databaseSizeMB`, `walSizeMB`, `encryptedDevice`; the prepare job's desired-device dump shows `InitialWeight`), so the weight is
+declarative and the affinity needs a Job in `nixidy/system/storage/rook-ceph.nix`, in the style of `rook-ceph-remove-osds`: a **CronJob** (every 10 minutes, `concurrencyPolicy: Forbid`) in the ceph image with the admin keyring, not a PostSync
+hook, because the OSD is created by the operator after the sync, and because purging and recreating an OSD resets its affinity to 1 (a new id is a new entry in the osdmap). The script walks `ceph osd ls`, matches each id's
+`ceph osd metadata` `device_ids` against a list of serials (`6XS4209D`, `6XS41YTD`) and runs `ceph osd primary-affinity osd.$id 0` (idempotent), skipping serials that have no OSD yet. Drafted as a PR (below), not merged.
+
+**falcon as an OSD host (gated).** Adding the host is one `nodes` entry in `rook-ceph.nix` (`name = "falcon"; devices = [{name = "/dev/disk/by-id/wwn-0x5000039b38dbee27";}]`; falcon carries only the `PreferNoSchedule`
+`node.trdos.me/class=desktop` taint, and OSD pods are pinned by hostname, so nothing else is needed). What Rook does with a disk that still holds a ZFS pool: it does not format it. The prepare job's inventory skips a disk that has partitions
+("skipping device sda because it has child, considering the child instead", read in sirver's prepare log for its root), so a listed whole disk with `sda1` carrying a `zfs_member` is not available and no OSD is created; `cleanupPolicy.wipeDevicesFromOtherClusters` only
+concerns other clusters' bluestore labels. (Inferred from that log line and ceph-volume's rule; not exercised on falcon.) So the wipe is a deliberate manual step, after the gates:
+
+1. `/data/dvd-rips` is fully in the cluster. Check against `kubectl -n media get discs` and the importer (`kubectl -n media create job --from=cronjob/dvdrip-import ...`, `docs/dvd-rip.md`); nothing in it is needed as a rescue seed (`raw.iso` + `raw.map` for held discs: "Nightmare"); coordinate with whoever is running the DVD work. If anything is not in the cluster, copy it first. The 2026-10-11 restic safety net of falcon is 22.8 GiB of `/home` plus the root snapshot, far too small to hold the 1.6 TiB, so this pool is the only copy of anything not yet in the cluster.
+2. Remove `boot.zfs.extraPools = ["data"]`, the `/data*` `fileSystems`, `systemd.services.zfs-import-data.postStart` and `dataDatasets` from `static/falcon-system.nix` (and point `services.dvd-rip` at a path that exists: its default is `/data/dvd-rips`), switch falcon.
+3. On falcon: `sudo zpool export data` (not `destroy` until step 1 is signed off), then after sign-off `sudo zpool destroy data && sudo wipefs -a /dev/disk/by-id/wwn-0x5000039b38dbee27-part1 && sudo sgdisk --zap-all /dev/disk/by-id/wwn-0x5000039b38dbee27 && sudo wipefs -a /dev/disk/by-id/wwn-0x5000039b38dbee27`.
+4. Merge the node entry; `kubectl -n storage logs job/rook-ceph-osd-prepare-falcon` shows the OSD; `ceph osd tree` shows host `falcon`. The balancer and `pg_autoscaler` then move about 0.9 TiB onto it.
+
+### Procedure
+
+**Gate A: before anything.** All of these must hold; a failed one stops the plan.
+
+1. sirver is an agent and the cluster no longer depends on it: `etcdctl member list` shows bonobo, chinchilla and dingo and not sirver; `ssh sirver systemctl is-active rke2-agent` is `active` (and `rke2-server` is not);
+   **no node's `/etc/rancher/rke2/config.yaml` has `server: https://sirver:9345`**. Today `static/k8s-node.nix` forces that URL on every node (read, and it is what sirver's own config says), so after the conversion every node's join address is a
+   node that is about to be reinstalled and sirver itself would point at itself. The etcd move has to repoint it (to a server) before this plan runs.
+2. Backups, the "checks" in docs/etcd-restore.md and docs/pvc-and-postgres-restore.md, plus what sirver carries that is not in them:
+   - VolSync: `kubectl get replicationsources -A -o json | jq -r '.items[] | [.metadata.namespace,.metadata.name,.status.lastSyncTime,(.spec.trigger.manual//"-")] | @tsv' | sort -k3 | head` (read at 18:00 PDT: 81 sources, none unsynced, the oldest synced 2026-10-16 10:30 UTC, none with a manual trigger).
+   - CNPG: newest completed `backups.postgresql.cnpg.io` per cluster is under a day (the known gaps are in docs/pvc-and-postgres-restore.md, "Backup coverage gaps").
+   - etcd: `etcd-restore-test` (devshell) passes against the newest `offsite-*` snapshot of the NEW servers, and `EtcdOffsiteSnapshotStale` is not firing for them. sirver's old `s3-offsite-sirver-*` records and objects remain after it leaves etcd.
+   - Bitwarden: `kubectl -n security get cronjob bws-backup -o jsonpath='{.status.lastSuccessfulTime}'` (read: 2026-10-16T07:30:19Z, weekly), and `bws-backup-restore-test` if it has not been run since the last secret change.
+   - sirver's identity files, copied off in step C2 (they are in no backup).
+3. Ceph: `HEALTH_OK`, every PG `active+clean`, the balancer idle, no `noout`, `ceph osd df tree` as in the survey. `HEALTH_WARN` for anything is a stop: the plan lowers redundancy for hours.
+4. The pods that cannot leave sirver (below) are acceptable to stop for the window.
+
+Helper used below (the rook operator pod carries the CLI and the admin keyring; there is no toolbox):
+
+```sh
+ceph() { kubectl -n storage exec deploy/rook-ceph-operator -c rook-ceph-operator -- ceph -c /var/lib/rook/storage/storage.config --keyring /var/lib/rook/storage/client.admin.keyring "$@"; }
+```
+
+**Phase B: free bay 2 (online, hours; reversible until the zap).** Declarative, through the existing `removedOsds` machinery (`rook-ceph-remove-osds` then `rook-ceph-zap-devices-sirver`):
+
+1. One PR to `nixidy/system/storage/rook-ceph.nix` (render on falcon): delete `{name = "/dev/disk/by-id/scsi-35000c50067fcd9af";}` from sirver's `devices`, append `{id = 0; node = "sirver"; device = "/dev/disk/by-id/scsi-35000c50067fcd9af";}` to `retiredOsds`, bump the ConfigMap `revision`.
+   Optional, to finish in under an hour: set `cephConfig.osd.osd_mclock_profile = "high_recovery_ops"` in the same PR and revert it after (the last purge ran at about 12 objects/s under `high_client_ops` and about 200 under `high_recovery_ops`).
+   Merging it starts the drain, so merge it when the plan starts.
+2. Watch: `kubectl -n storage logs -f job/rook-ceph-remove-osds` (`osd.0: waiting for its data to migrate (n/745 PGs clean)`), `ceph -s` (judge by the `remapped` PG count, not by misplaced objects), `ceph osd df tree`.
+   Expected: osd.0 goes out, its 140 PGs backfill, `safe-to-destroy` succeeds, the hook removes osd.0 and `rook-ceph-osd-0` is deleted, then the zap Job wipes the label.
+   The failure modes seen on 2026-10-12/13 when osd.7 was retired: Rook re-adopts an OSD whose bluestore label is still on a disk (the zap Job is what ends that), and a re-adopted OSD keeps `noup` (the hook now forces the removal once every PG is clean).
+3. Verify: `ceph osd ls` has no 0; `ssh sirver lsblk -o NAME,FSTYPE,SERIAL /dev/disk/by-id/scsi-35000c50067fcd9af` shows no filesystem (bluestore label gone); `ceph health` OK; the five OSDs (2, 4, 5, 9, 10) hold about 421 GiB each.
+4. Test the disk before trusting it: in the sirver exporter pod `smartctl -t long /dev/<its kernel name today>` (`readlink -f /dev/disk/by-id/scsi-35000c50067fcd9af`), several hours (not measured). Pass = `smartctl -l selftest` "Completed without error", grown defects still 4, no new `Medium error` in `dmesg`. If it fails, repeat Phase B for the runner-up (osd.10, `scsi-35000c50067fc640b`) and change the disko device to it.
+
+**Phase C: prepare the window (no outage yet).**
+
+1. Merge the disko-device PR (`flake.nix`, sirver: `disko.devices.disk.root.device = "/dev/disk/by-id/scsi-35000c50067fcd9af"`). Verified on falcon: it changes `system.build.diskoScript` (`...jzpsks1j-disko` to `...xhxxiinz-disko`) and leaves the sirver toplevel
+   (`...m4fgyygvskrp19f4lglzycwww514ar89-nixos-system-sirver-26.11.20261008.e7439b6`) byte-identical, so no deploy and no `nixos-sirver-deploy` trigger changes. Nothing installs without `NIXOS_ANYWHERE_INSTALL=sirver` (`pulumi/millionaire/nixos.py`, read: the guard exits 1 otherwise, and the install resource has `protect=True`, `ignore_changes=["create"]`).
+   The built disko script names exactly one disk, `scsi-35000c50067fcd9af` (34 references, read in the built script), plus the partlabels `disk-root-ESP` and `disk-root-zfs`. There is no OSD device in it and the only zpool is `root` (`nix eval` of `disko.devices.disk` / `zpool`: `["root"]`, `["root"]`).
+   **Both of sirver's roots would then share partlabels and a pool name**: the old root's partitions are labelled `disk-root-ESP`/`disk-root-zfs` (read in the prepare job's udev dump) and its pool is `root`. disko's `zpool create` and `mkfs.vfat` address the partitions by those labels, so with both disks present
+   udev's `by-partlabel` link can point at the OLD disk and disko would format it; and with both present at boot, `zpool import root` is ambiguous (ZFS refuses a name that matches two pools; inferred). So the old root must be physically out of the chassis for the install (C5).
+2. Collect sirver's identity into a mode-700 directory on falcon (not in git, deleted at the end). The install keeps it exactly, so nothing re-registers:
+   `etc/ssh/ssh_host_ed25519_key{,.pub}` (the public half is pinned as `hostKey` in `static/builders.nix`, read: they match; sirver is not a sops recipient, it decrypts with the `server` age identity; `ssh-keygen -lf` before and after), `etc/rancher/node/password` (rke2 refuses a re-registering node whose
+   password differs from the `sirver.node-password.rke2` Secret; if lost, `kubectl -n kube-system delete secret sirver.node-password.rke2` once), `var/lib/tailscale/tailscaled.state` (keeps the node key and its tailnet address 100.64.0.2, which `static/hyena.nix`'s probe, `static/builders.nix` and the cloud-burst `headscale/node-ip/sirver` secret use),
+   and `etc/machine-id` (see the address note in C4). Plus `root/.config/sops/age/keys.txt` (the `server` age identity: `sops --decrypt --extract '["passwords"]["age"]' secrets/sops/default.yaml`, as `pulumi/millionaire/nixos.py` does). Directories 755 except `root/`, keys 600 (as in the desktop procedure).
+   `sudo cat` of each over ssh; the host is quiet but its disk is failing, so no `du`/`find` over `/var/lib`.
+3. On falcon build `system.build.toplevel` and `system.build.diskoScript` of sirver (the flake is 26.11 / rke2 1.34.11; sirver is still on 26.05 / 1.34.7, so this install is also its roll) and `inputs.nixos-anywhere`, with the nodes as `--builders`.
+   `grep -o '/dev/disk/by-id/[^ "]*'` over the disko script's closure must print only `scsi-35000c50067fcd9af`.
+4. The installer and the address. sirver's uplink is `eno4` (`18:66:da:55:01:17`, Broadcom `bnx2x`), enslaved to `br0`, which carries the DHCP lease `192.168.50.204`; `br0`'s MAC is `b6:53:68:1e:eb:81` (not a port's: `addr_assign_type 3`, systemd-networkd's persistent
+   policy, inferred to be derived from `/etc/machine-id`, which is why that file is preserved). The kexec installer and `static/installer-oneshot.sh` both copy `ip addr` into the installer's network setup, matched by MAC: the entry that has the address belongs to
+   `br0`, which does not exist in the installer, so **the installer will probably come up on `eno4` via DHCP under eno4's own MAC, possibly at a different address** (inferred from how the nixos-images network step matches interfaces; not observed). Find it by MAC
+   (`18:66:da:55:01:17` in the router's client list, or an ARP scan from falcon) or from the iDRAC console (the BMC exists: `/dev/ipmi0` read; its address and credentials were not found anywhere in the repo or memory: confirm them first; without it a failed boot is a keyboard-and-monitor job).
+   The e1000e kexec problem of falcon and axolotl does not apply (sirver's NICs are `bnx2x`, octopus's `igb`, both read), but `bnx2x` after a kexec is untested: use `installer-oneshot.sh` (cold NIC start), the same as the desktops. The ESP has 457M free (read), the script wants about 350M.
+   The pulumi install path is not the one to use here: `pulumi/__main__.py` targets `root@nixos`, builds on the target (`--build-on remote`) and would need `pulumi state unprotect`/`state delete` first (the instructions are in `nixos.py`). Use the manual `--store-paths` flow of "Reinstalling a desktop node onto the standard layout", with one
+   addition: run its `prlimit --nofile=1048576:1048576` loop on the installer's PID 1, sshd and nix-daemon before the `disko,install` phases (the "Too many open files" fix, `nixos-deploy-fix.md`), because `nixos-install` copies thousands of paths.
+5. Ask whoever is at the machine to be there for the window: the old root (bay 6, serial 6XS4209D) is pulled during it.
+
+**Phase D: the window (sirver is out for about 1.5 to 3 hours; estimate, not measured).**
+
+1. `ceph osd set noout` is done by `node-maintenance`; the OSDs go down with the node and Ceph stays writable on one copy of every PG. Pause the heavy writers first (qBittorrent and the media downloaders, anything with a large rolling write) so the single-copy period is quiet, and move the ZWA-2 stick if Z-Wave matters (below).
+   `node-maintenance sirver down --dry-run`, then `node-maintenance sirver down` (cordons, sets `noout`, drains, stops rke2, stops at "ready to power off"; the dry run on 2026-10-16 listed the pods that cannot move: `music-assistant`, `zigbee2mqtt`, the Rook crashcollector/exporter/OSD pods). The kubeconfig must point at another server.
+2. Arm the installer: `installer-oneshot.sh` as root on sirver, reboot, find the installer's address (C4). In the installer, with the old root still present, check `lsblk -o NAME,SERIAL,SIZE,PARTLABEL` and that `by-id/scsi-35000c50067fcd9af` is a blank 838 G disk (the label was zapped in Phase B).
+3. **Pull bay 6 (6XS4209D) now**, while the installer runs from RAM. It is the rollback: with it back in its bay the old system boots as it was.
+4. `nixos-anywhere --store-paths <diskoScript> <toplevel> --extra-files <dir> --phases disko,install root@<installer address>` (no `reboot` phase: reboot by hand after the checks). The `--extra-files` directory is the one from C2.
+   Then in the installer: `zpool list` shows `root` on `scsi-35000c50067fcd9af-part2` only, `/mnt/etc/ssh/ssh_host_ed25519_key.pub` equals the old one, `efibootmgr` (or `ls /mnt/boot/EFI/BOOT/BOOTX64.EFI`) shows a boot entry or the fallback file on the new ESP.
+5. `reboot`. Expect the node at 192.168.50.204 (check; else follow step 8 of "Taking a node down", restart rke2 and delete the node's cilium pod, and fix `static/builders.nix`'s `lan` and the pinned `/etc/hosts`; or add `RequestAddress` for `br0` and redeploy). First boot checks: `systemctl --failed`, sops secrets decrypted (`/run/secrets`), `tailscale status` (same 100.64.0.2), `findmnt /var/lib/rancher/rke2/agent/containerd` (the `root/local/containerd` dataset comes from disko: this install ends the sirver containerd migration), `zpool status`.
+6. rke2 joins as an agent (`journalctl -u rke2-agent`): the node-password check passes (preserved); `kubectl get node sirver` goes Ready (the cordon and the node's labels are on the Node object, which persists); the SNR exclusion label comes from `static/node-remediation.nix`.
+7. Rook re-adopts the five OSDs. Nothing touched their disks: the disko script names no OSD device, and the bluestore labels (osd id, osd uuid, cluster fsid, key) are on the disks. The OSD Deployments still exist in the API, pinned by hostname; the operator reconciles when the node returns and runs `rook-ceph-osd-prepare-sirver`, whose `ceph-volume raw list` finds the six labels
+   and maps each id to whatever kernel name it has now (its log today reads `6 ceph-volume raw osd devices configured on this node`, with osd.0 on `/dev/sdf`, while the Deployment still says `/dev/sdc`: names are not load-bearing). `/var/lib/rook` comes back empty and is rebuilt (inferred: the OSD data and keys are in the labels). Watch `kubectl -n storage get pods -l app=rook-ceph-osd -w` until the five are `Running` and `ceph osd tree` shows them up; if the prepare job does not run,
+   `kubectl -n storage rollout restart deploy/rook-ceph-operator`.
+8. `node-maintenance sirver up` (it restores only what `down` recorded, waits for every OSD to be up, then runs `ceph osd unset noout` and waits for `HEALTH_OK`; if it balks at the reinstalled node, `ceph osd unset noout` and `kubectl uncordon sirver` by hand once all five OSDs are up and `ceph -s` shows nothing unexpected). The writes made while sirver was away backfill (a small amount if the writers were paused). Resume the paused workloads.
+
+**Phase E: the bad disks become OSDs (days later, one at a time).**
+
+1. After a day clean on the new root: re-insert bay 6. The disk still has the old GPT and the old `root` pool. `udev` will re-point `by-partlabel/disk-root-*` at it, so wipe immediately by explicit path:
+   `zpool labelclear -f /dev/disk/by-id/scsi-35000c50067faa64b-part2; sgdisk --zap-all /dev/disk/by-id/scsi-35000c50067faa64b; wipefs -a /dev/disk/by-id/scsi-35000c50067faa64b; udevadm settle; udevadm trigger -s block`, and check `ls -l /dev/disk/by-partlabel` points at the new disk.
+   Whether this controller presents a hot-inserted disk to the OS without a reboot was not tested; if it does not, shut sirver down with the disk in and do the same wipe from the installer image (the old pool is never imported).
+2. Bay 7 (6XS41YTD, blank today) first: add `{name = "/dev/disk/by-id/scsi-35000c50067fb404b"; config.initialWeight = "0.2";}` to sirver's devices in `rook-ceph.nix`, together with the primary-affinity CronJob (PR below). Bay 6 a day later, same form. Watch the first week as described under "The two bad disks". Rook picks up osd ids freely (osd.0 and osd.7 are free); the CronJob matches by serial, so the ids do not matter.
+3. Falcon's OSD as above, whenever its gates are met (independent of sirver, but easier after it: the rebalance is one at a time).
+4. When both bad disks are in: `ceph osd tree` shows sirver with five healthy OSDs and two at low weight; update `docs/manual-steps.md` 5 (the "replace osd.7's drive" step is superseded: bay 7 returns as an OSD, not a replacement) and the README todos 24 and 33.
+
+**The pods that stop (read 2026-10-16).** `music-assistant` (nodeSelector `kubernetes.io/hostname=sirver`; its macvlan attaches to `br0`, which exists only on sirver) has no alternative: it stays down for the window. `zigbee2mqtt` is also pinned to sirver but runs in onboarding mode against a placeholder path
+(`/dev/serial/by-id/TBD-zigbee-stick`, an empty directory: there is no Zigbee stick), so nothing is lost. `zwave-js-ui` is not pinned: it takes whichever node advertises `devic.es/zwave`, today only sirver (the Nabu Casa ZWA-2 on its USB port; the generic-device-plugin DaemonSet runs on all seven nodes). Plugging the stick into another node
+(any: the by-id path is the same everywhere) lets Z-Wave run through the window; otherwise it is Pending until sirver is back. The Postgres, Redis and application pods drain to other nodes (21 pods at the dry run), and the Ceph mgr, MDS (one hot standby) and RGW (one instance: S3 is unavailable for the minutes it takes to reschedule) move with them.
+
+### Risks and rollbacks
+
+| What goes wrong | Where it stands | What to do |
+| --- | --- | --- |
+| The install fails, or the new system will not boot | Until bay 6 is wiped (Phase E) the old root is intact on the shelf. Before the `disko` phase ran, bay 6 simply goes back and the old system boots. After it, bay 2 carries a new pool named `root` and partlabels `disk-root-*`, which collide with the old root's, so the old system will not boot until bay 2 is blank again (boot the installer and `sgdisk --zap-all` it, or iDRAC virtual media). Ceph is unaffected either way: osd.0 is already gone and the cluster is healthy without it. | Fix the cause (installer log, `efibootmgr`, the iDRAC console) and retry with bay 6 still out. Nothing on the old root is needed that is not reproducible, so there is no data at stake, only time. |
+| The new root is already installed and later fails | A reinstall: this procedure again, 1 to 2 hours, no data loss (the node keeps nothing that is not in Ceph, git or the identity files kept from C2). Keep that directory until the node has run clean for a week. | Re-run Phase D from step 2. |
+| Rook does not re-adopt an OSD | Its data is on the untouched disk. Causes seen before: the prepare job did not run, or a stale OSD Deployment or `noup` flag. | `kubectl -n storage logs job/rook-ceph-osd-prepare-sirver`; restart the operator; `ceph osd rm-noup osd.N`. If a bluestore label were gone the OSD is lost and Ceph rebuilds it from octopus (one copy until then). Never `ceph osd purge` an OSD that is merely down: that deletes its place. |
+| An OSD fails during the window (size 2, `noout`, sirver down) | Every PG has one live copy, on octopus. An octopus disk dying (seven healthy ones, 0 defects, a 1.5 to 3 hour window) makes the PGs it holds (about 1/7 of them, 100 to 127 PGs, about 300 GiB) `down`: unavailable, not yet lost, because sirver's copies are intact on disk. They peer again when sirver returns; **writes made to those PGs during the window were only on the dead disk and are lost**. `ceph pg <pg> query` shows what is blocking; `ceph osd lost` / `mark_unfound_lost` are last resorts. | Keep the window short and quiet (pause writers), do Phase D only with a full set of passing gates, and do not combine it with any other octopus work. This is the same exposure every `node-maintenance` of an OSD host has today; falcon as a third host removes it only for outages long enough to un-set `noout`. |
+| A bad disk (bay 6 or 7) stalls the whole cluster | Writes wait for both replicas. | `ceph osd out osd.N` (its data rebuilds from the partner), `ceph osd primary-affinity` does not help; remove it from the device list and add it to `retiredOsds`. |
+| The disk picked as root dies later | The same single-vdev root as before, on a better disk. | Reinstall onto the runner-up (bay 1) by the same procedure; nothing else depends on it. |
+| `br0`'s DHCP lease changes | Possible (see C4). Chinchilla came back on another address on 2026-10-16 and lost its Ceph mon. | Router reservation for `18:66:da:55:01:17` / the bridge MAC, or `RequestAddress` on `br0`; until fixed the builder lists, `/etc/hosts` entries and the rke2 join names (all `192.168.50.204`) are wrong. |
+| Both OSD hosts' data at risk | Only one OSD host is ever taken down at a time (`node-maintenance` refuses otherwise). | Never run this during an octopus outage. |
+
+Downtime (estimates): Phase B and the self-test run online in the background (hours, no outage, a drain load on sirver's disks). The window: drain 15 to 30 minutes, installer boot 5 to 10, install and first boot 30 to 60, rke2 join and OSD re-adoption 10 to 20, then 5 to 15 minutes before the node's DaemonSet pods are back (roll gotcha 3).
+sirver's workloads are away for about 1.5 to 3 hours; `music-assistant` (and Z-Wave, unless the stick is moved) is down for that time; Ceph is on one copy of everything for the same time and degraded-then-backfilling afterwards.
+
+### Execution checklist (ordered)
+
+1. Gate A (etcd conversion done and the join URL moved off sirver; backups; Ceph HEALTH_OK).
+2. PR: purge osd.0 (`rook-ceph.nix`: device out of sirver's list, `retiredOsds` += osd.0, optionally the `high_recovery_ops` profile). Merge, watch the drain, verify bay 2 is blank.
+3. `smartctl -t long` on bay 2; pass or switch to bay 1 (repeat 2 with osd.10).
+4. Merge the disko-device PR; build toplevel + disko script on falcon; check the disko script names only bay 2.
+5. Copy off sirver's identity files; pick the installer address plan and confirm iDRAC or a person at the chassis.
+6. Pause heavy writers; move the ZWA-2 if wanted; `node-maintenance sirver down`.
+7. Oneshot installer, find its address, pull bay 6, `nixos-anywhere ... --phases disko,install`, verify, reboot.
+8. First-boot checks, rke2 join, five OSDs re-adopted, `ceph osd unset noout`, HEALTH_OK, `node-maintenance sirver up`, resume writers.
+9. A day later: wipe and re-insert bay 6, add bay 7 then bay 6 as low-weight OSDs with the primary-affinity CronJob (PRs).
+10. falcon's OSD once its gates are met (DVD data confirmed, `static/falcon-system.nix` cleaned, `zpool destroy`, node entry PR).
+11. Update `docs/manual-steps.md` 5, README todos 24, 33, the "sirver is not rolled" mentions in this file, and delete the identity directory.
+
 ## Not verified
 
 - No node has been installed through this path; the pulumi step was only rendered and syntax-checked, never run.
+- The sirver reinstall plan (above) is all unrun. Specifically unverified: that the installer comes up reachable (the `br0` MAC and DHCP matching, `bnx2x` after the oneshot boot, iDRAC access), that a purged-and-zapped sirver disk passes a long self-test,
+  that this controller shows a hot-inserted disk without a reboot, what Rook does with a listed disk that still holds a ZFS pool (read from a log line only), the primary-affinity CronJob, and `readAffinity`'s effect on a bad-disk replica.
 - Whether rke2 picks up `nvidia-container-runtime` from the service PATH on NixOS, and whether the gpu-operator validator passes
   with the driver and toolkit disabled.
 - Boot ordering of the `data` pool import, dataset creation and the `/data/*` mounts on real hardware.

@@ -84,6 +84,8 @@ osd.7 was sirver bay 7, serial `6XS41YTD` (`/dev/disk/by-id/scsi-35000c50067fb40
 
 Unblocks: full OSD count; clears the lingering `DiskSmartFailing` history for `sde`.
 
+**Superseded plan (2026-10-16):** the drive in bay 7 is not replaced; it returns as a low-weight, primary-affinity-0 OSD after sirver's reinstall, together with the old root disk, and sirver's new root is bay 2. See `docs/node-standard.md`, "sirver reinstall plan".
+
 ## 5b. Reserve the LoadBalancer pool on the router
 
 The Cilium LoadBalancer pool is `192.168.50.240-254` (`nixidy/system/network/cilium.nix`) and the router's DHCP range overlaps it: morgenmuffel got `.249`, axolotl `.250`, a MacBook `.248`, a SwitchBot `.245`. Any new LoadBalancer Service could take a live host's address.
