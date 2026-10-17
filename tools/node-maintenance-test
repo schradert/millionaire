@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# node-maintenance-test: dry-run `node-maintenance sirver up` against a stub kubectl and check that `noout` is lifted
+# when `down` recorded it, even though no OSD pod is on the node any more (the 2026-10-17 bug: `up` skipped it twice).
+# Offline: the stub answers from fixtures, nothing touches a cluster. Run from the devshell: `node-maintenance-test`.
+set -euo pipefail
+dir=$(mktemp -d); trap 'rm -rf "$dir"' EXIT
+
+# the stub: `kubectl ... exec ... ceph <args>` answers from $CEPH_*; node reads from $dir/nodes.json; everything else is an empty list
+cat > "$dir/kubectl" <<'STUB'
+#!/usr/bin/env bash
+args="$*"
+case "$args" in
+  *"exec deploy/rook-ceph-operator"*"osd dump"*) echo '{"flags_set":["noout"]}' ;;
+  *"exec deploy/rook-ceph-operator"*"osd tree"*) cat "$STUB_DIR/tree.json" ;;
+  *"exec deploy/rook-ceph-operator"*"status -f json"*) echo '{"health":{"status":"HEALTH_OK"},"pgmap":{"num_pgs":1,"pgs_by_state":[{"state_name":"active+clean","count":1}]}}' ;;
+  "get nodes -o json") cat "$STUB_DIR/nodes.json" ;;
+  *"get pods"*|*"get drives"*|*"get lease"*|*"get pdb"*|*"get cluster"*|*"get deploy"*) echo '{"items":[]}' ;;
+  *) echo '{"items":[]}' ;;
+esac
+STUB
+chmod +x "$dir/kubectl"
+
+node() { # node <annotations json>
+  jq -n --argjson a "$1" '{items:[{metadata:{name:"sirver",labels:{},annotations:$a},spec:{unschedulable:true},status:{addresses:[{type:"InternalIP",address:"192.168.50.204"}],conditions:[{type:"Ready",status:"True"}]}}]}'
+}
+tree_with() { jq -n --argjson has "$1" '{nodes:([{id:-3,name:"sirver",type:"host",children:(if $has then [2] else [] end)}] + (if $has then [{id:2,name:"osd.2",type:"osd",status:"up"}] else [] end))}'; }
+
+fails=0
+check() { # check <name> <annotations> <osds in crush: true|false> <expected regex in output>
+  node "$2" > "$dir/nodes.json"; tree_with "$3" > "$dir/tree.json"
+  out=$(STUB_DIR=$dir KUBECTL="$dir/kubectl" node-maintenance sirver up --dry-run 2>&1 || true)
+  if grep -qE "$4" <<<"$out"; then echo "ok   $1"; else echo "FAIL $1: expected /$4/"; echo "$out" | sed 's/^/     /' | tail -12; fails=$((fails + 1)); fi
+}
+
+lift='would run: ceph osd unset noout'
+check "recorded osd-host, no OSD pods, noout set by down -> unset"      '{"node-maintenance.trdos.me/osd-host":"true","node-maintenance.trdos.me/noout-before":"false"}' false "$lift"
+check "old record (no osd-host), host in the CRUSH tree -> unset"       '{"node-maintenance.trdos.me/noout-before":"false"}' true "$lift"
+check "noout was set before down -> left set"                           '{"node-maintenance.trdos.me/osd-host":"true","node-maintenance.trdos.me/noout-before":"true"}' false 'noout was set before'
+check "not an OSD host (no record, empty CRUSH host) -> noout untouched" '{"node-maintenance.trdos.me/noout-before":"false"}' false 'no ceph daemon is bound'
+[ "$fails" = 0 ] && echo "all node-maintenance up checks passed" || { echo "$fails check(s) failed"; exit 1; }
