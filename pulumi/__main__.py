@@ -733,7 +733,7 @@ class Millionaire:
         if pulumi.Config().get_bool("axolotlNode"):
             millionaire.NixOS(
                 "axolotl",
-                "tristan@192.168.50.250",
+                "tristan@192.168.50.108",
                 identity="$HOME/.ssh/personal",
                 jump=os.environ.get("NIXOS_ANYWHERE_JUMP"),
                 preserve_host_key=True,

@@ -333,7 +333,7 @@
         ];
         # Dell Precision 7510 laptop on DisplayLink docks (./static/axolotl.nix).
         axolotl = {
-          hostname = "192.168.50.250";
+          hostname = (import ./static/builders.nix).axolotl.lan;
           sshUser = "tristan";
           sshOpts = ["-J" "tristan@192.184.168.248"];
           remoteBuild = true;

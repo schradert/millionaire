@@ -24,7 +24,7 @@
 # CPU/IO scheduling so its desktop stays responsive (static/builder.nix).
 # `nodes` is every cluster host (addresses, caps); `builders` is the subset that takes remote builds.
 # Hosts in neither table are not in the pool at all; axolotl (an RKE2 agent) only has
-# its LAN address, at the end, so the Macs can resolve its name (modules/builders.nix).
+# its LAN address, at the end, so the Macs can resolve its name (modules/builders.nix); static/desktop-node.nix requests that address from DHCP.
 #
 # lan/tailnet are the box's addresses; hostKey pins its ssh host key (also its
 # build-client identity towards peers, see static/builder.nix).
@@ -157,5 +157,7 @@ in rec {
     features = ["benchmark" "big-parallel"];
   };
 
-  axolotl.lan = "192.168.50.250";
+  # A DHCP lease (the router's pool ends at .239, nixidy/system/network/cilium.nix), and one inside the pool: it moved from .250
+  # (outside it) to .108 on 2026-10-16 and the router answers .108 to a request for .250. static/desktop-node.nix requests this address.
+  axolotl.lan = "192.168.50.108";
 }
