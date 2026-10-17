@@ -6,6 +6,8 @@
   }: {
     applications.loki = {
       namespace = "observability";
+      # Logs are data: the chunks and index go to B2 daily (restic, the volume's files as of the 04:00 copy; docs/pvc-and-postgres-restore.md).
+      volsync.pvcs.loki.title = "storage-loki-0";
       # The StatefulSet's volumeClaimTemplate (10Gi) is immutable, so the volume grows through the PVC it
       # created; the claim only ever grows (ceph-block expands online). New claims still start at 10Gi.
       # The store, the canary and the memcached exporters all name their port http-metrics;

@@ -1,0 +1,33 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    release: prometheus
+  name: volsync-coverage
+  namespace: storage
+spec:
+  groups:
+    - name: volsync-coverage
+      rules:
+        - alert: PVCWithoutBackup
+          annotations:
+            description: |
+              No VolSync ReplicationSource targets it and it is not a CNPG volume. Add `volsync.pvcs.<name>.title = "{{ $labels.persistentvolumeclaim }}"` to its app,
+              or list it in `volsync.exempt` (nixidy/system/storage/backup-coverage.nix) with the reason it needs none.
+            summary: PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} has no off-site backup
+          expr: |
+            kube_persistentvolumeclaim_info{namespace!="backup-verify",persistentvolumeclaim!~"volsync-(src|dst)-.*|dr-scratch-.*"}
+            unless on (namespace, persistentvolumeclaim) volsync_replicationsource_info
+            unless on (namespace, persistentvolumeclaim) kube_persistentvolumeclaim_labels{label_cnpg_io_cluster!=""}
+            unless on (namespace, persistentvolumeclaim) (kube_persistentvolumeclaim_info{namespace="ai",persistentvolumeclaim=~"(ollama|vllm|heretic-cache)|heretic-output"} or kube_persistentvolumeclaim_info{namespace="cicd",persistentvolumeclaim=~"(deps-update-nix|image-build-nix)|data-harbor-trivy-0"} or kube_persistentvolumeclaim_info{namespace="home",persistentvolumeclaim=~"frigate-media"} or kube_persistentvolumeclaim_info{namespace="media",persistentvolumeclaim=~"dvd-rip-work|jellyfin-cache|libretranslate|media-downloads|media-sports|tracearr-db"} or kube_persistentvolumeclaim_info{namespace="observability",persistentvolumeclaim=~"storage-mimir-(compactor|store-gateway)-0"} or kube_persistentvolumeclaim_info{namespace="workspaces",persistentvolumeclaim=~".*-nix"})
+          for: 1h
+          labels:
+            severity: warning
+        - alert: BackupCoverageBlind
+          annotations:
+            description: kube-state-metrics lists ReplicationSources through customResourceState (nixidy/system/observability/kube-state-metrics.nix). Check its logs and RBAC.
+            summary: 'No volsync_replicationsource_info series: PVCWithoutBackup cannot tell which volumes are backed up'
+          expr: absent(volsync_replicationsource_info)
+          for: 30m
+          labels:
+            severity: warning

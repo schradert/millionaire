@@ -9,6 +9,8 @@
   }: {
     applications.heretic = {
       namespace = "ai";
+      # The abliterated models it writes. The cache (model downloads) is not backed up.
+      volsync.pvcs.heretic-output.title = "heretic-output";
       helm.releases.heretic = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {

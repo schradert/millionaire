@@ -9,6 +9,7 @@
     # and span metrics and remote-writes them to Prometheus (prometheus.nix enables the receiver).
     applications.tempo = {
       namespace = "observability";
+      volsync.pvcs.tempo.title = "storage-tempo-0";
       # The chart's own ServiceMonitor selects on helm.sh/chart and app.kubernetes.io/version, labels nixidy
       # strips from the rendered Service, so it would match nothing.
       resources.serviceMonitors.tempo.spec = {

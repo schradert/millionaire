@@ -1,0 +1,18 @@
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: volsync--argo-events--eventbus-src
+  namespace: cicd
+spec:
+  restic:
+    copyMethod: Direct
+    pruneIntervalDays: 8
+    repository: volsync--argo-events--eventbus
+    retain:
+      daily: 1
+      monthly: 1
+      weekly: 1
+      yearly: 1
+  sourcePVC: eventbus-default-js-vol-eventbus-default-js-0
+  trigger:
+    schedule: 0 4 * * *

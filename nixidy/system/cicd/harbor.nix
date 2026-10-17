@@ -43,6 +43,8 @@
       postgres.enable = true;
       postgres.instances = 2;
       volsync.pvcs.harbor-registry.title = "harbor-registry";
+      # Job history and logs (replication, GC, scan runs).
+      volsync.pvcs.harbor-jobservice.title = "harbor-jobservice";
 
       helm.releases.harbor = {
         # Filter out Helm-generated Secrets that contain sensitive data (managed by ExternalSecrets)

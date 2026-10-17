@@ -17,6 +17,8 @@
       # Forgejo webhook secret; set the same value on the Forgejo webhook.
       generatedSecrets.forgejo-webhook-secret.key = "secret";
       namespace = "cicd";
+      # The JetStream volume of the default EventBus (events in flight, 72h of stream).
+      volsync.pvcs.eventbus.title = "eventbus-default-js-vol-eventbus-default-js-0";
       helm.releases.argo-events = {
         chart = pinned.charts.argo-events;
         values = {

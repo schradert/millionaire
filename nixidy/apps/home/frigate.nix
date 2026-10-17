@@ -27,8 +27,13 @@
     };
     applications.frigate = {
       namespace = "home";
-      # frigate-media (1Ti of rolling recordings) is deliberately not backed up: churn makes restic expensive and clips lose value after retention.
+      # frigate-media (1Ti of rolling recordings, 7 days continuous and 14 days around events) is deliberately not backed
+      # up: it turns over every week, so restic would upload ~all of it each time (B2 keeps the replaced objects, see
+      # docs/backups-cost.md). What stays is separate volumes under it: snapshots and clips (`clips`, 14 days by config)
+      # and exports (what a person saved from the UI, never expired), both backed up.
       volsync.pvcs.frigate-config.title = "frigate-config";
+      volsync.pvcs.frigate-clips.title = "frigate-clips";
+      volsync.pvcs.frigate-exports.title = "frigate-exports";
       helm.releases.frigate = {
         chart = charts.bjw-s-labs.app-template-patched;
         values = {
@@ -175,6 +180,18 @@
               size = "1Ti";
               accessMode = "ReadWriteOnce";
               advancedMounts.frigate.frigate = [{path = "/media/frigate";}];
+            };
+            clips = {
+              type = "persistentVolumeClaim";
+              size = "20Gi";
+              accessMode = "ReadWriteOnce";
+              advancedMounts.frigate.frigate = [{path = "/media/frigate/clips";}];
+            };
+            exports = {
+              type = "persistentVolumeClaim";
+              size = "20Gi";
+              accessMode = "ReadWriteOnce";
+              advancedMounts.frigate.frigate = [{path = "/media/frigate/exports";}];
             };
             shm = {
               type = "emptyDir";
