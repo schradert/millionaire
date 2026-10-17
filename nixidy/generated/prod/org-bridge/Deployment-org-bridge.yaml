@@ -45,7 +45,7 @@ spec:
           envFrom:
             - secretRef:
                 name: org-bridge
-          image: harbor.trdos.me/library/org-bridge:0.1.1-1@sha256:c5293bf94b7be2ab80bce795c293ed6d8dc0cd8c1cdfcad68b29aa78a3d2cc79
+          image: harbor.trdos.me/library/org-bridge:0.1.3-1@sha256:c1891ae1a4d4cf4e269ea1eda33d13118c824c2fa36ce7fb6dbd4f0f307ac708
           livenessProbe:
             exec:
               command:
