@@ -206,12 +206,13 @@ rows! {
 /// an anonymous request there must be refused or sent to a login page. An admin tile that is
 /// neither an oauth2-proxy upstream nor listed here fails the gate flow, so a new admin app
 /// cannot go live open by omission.
-pub const NATIVE_AUTH: [(&str, &str); 5] = [
+pub const NATIVE_AUTH: [(&str, &str); 6] = [
     ("argo", "/api/v1/applications"),
     ("argo-workflows", "/api/v1/workflows/argo"),
     ("windmill", "/api/users/whoami"),
     ("keycloak", "/admin/realms/default/users"),
     ("rook-ceph", "/api/summary"),
+    ("romarr", "/api/v1/settings"),
 ];
 
 /// Upstreams whose host only sends some paths through oauth2-proxy (the app logs in by itself
