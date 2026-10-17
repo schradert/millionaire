@@ -22,8 +22,6 @@ Run every command from the devshell (`direnv exec . <cmd>` in the repo, or after
 
 What they get: single sign-on to every app (Keycloak realm `default`), their own Baïkal DAV user with a calendar `org` and an address book `contacts`, and their own Syncthing instance with an org-bridge that exports their `org` folder to their calendar. Nothing is shared with your hub or your calendar.
 
-The address book `contacts` comes with the CardDAV change (branch `carddav`); it was not merged on main when this page was written (check: `grep -n addressbook nixidy/apps/home/baikal.nix`). Until it is, skip the contacts lines.
-
 1. **Keycloak user.** Add `keycloakUsers.<name>` (group `family`, or `admin`) to `nixidy/apps/identity/keycloak-operator.nix` (example in `docs/invite.md`), render, merge.
    - Automatic: within ten minutes of the sync the `keycloak-invite` CronJob emails them (set a password, verify the email; link valid 7 days); a Baïkal DAV user `<name>` with calendar `org` and a generated password (Bitwarden `baikal/<name>/password`); their own Maloja, scrobbler routes and Navidrome account (`docs/invite.md`).
    - Success: `kubectl -n identity logs job/<keycloak-invite-...>` shows `sent ... to <address>`.
@@ -88,6 +86,7 @@ Declared in `modules/android.nix` (`android.devices.pixel`: sets, `channel.enabl
 10. **Check.** `android pixel` (exit 0), then the round trip in section 6.
 
 What to expect after a reboot:
+
 - Tailscale reconnects by itself (always-on VPN).
 - **Unlock the phone once.** Termux:Boot cannot run before the first unlock (credential-encrypted storage), so until then the channel is down (`android pixel reconcile` exits 3 and does nothing).
 - Shizuku restarts by itself only on trusted home Wi-Fi. Away from home, apps that need work stay `pending until Shizuku is up` (exit 5); back home, bonobo starts Shizuku over adb (needs step 4) and the next hourly run installs them.
@@ -106,6 +105,7 @@ android.devices.alice-phone = {
   sets = ["family" "notes"];
   productivity.syncthingUser = "alice";
 };
+
 ```
 
 The device name is the key in their Syncthing table (section 1, step 2; `docs/productivity.md` "Adding a person" has the full form). Render and merge, then at a desk:
@@ -147,11 +147,15 @@ Hosts: `falcon`, `axolotl`, `systeamadeck` (the Deck). A new desktop gets its Sy
 ## 6. Verify
 
 **Round trip** (the full test plan: `docs/productivity.md`, "Test plan"):
+
 1. On the Mac create `~/Projects/sabedoria/inbox.org` (use a date in the next days):
+
    ```org
    * PLANNED Dentist
    SCHEDULED: <2026-10-20 Tue 15:00-15:30>
+
    ```
+
    The hub shows the file within a minute.
 2. `cal` prints `15:00-15:30 Dentist` (org-bridge exports within a minute of the hub getting the file).
 3. Phone: Syncthing-Fork has `inbox.org` in `/storage/emulated/0/org`; Orgzly, Sync, shows `Dentist`; Fossify Calendar shows it on its day (DAVx5 pulls about hourly; pull down in DAVx5 to force).
