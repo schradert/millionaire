@@ -1,5 +1,5 @@
 # Terminal DoomEmacs (nix-doom-emacs-unstraightened) beside helix (helix stays
-# EDITOR). Org-node knowledge base + helix-mode keys instead of evil.
+# EDITOR). Org-node knowledge base; evil everywhere + SPC leader + a small helix layer.
 #
 # `programs.doom-emacs.tangle.{init,config,packages,raw}` is a literate-config
 # DSL tangled to init.el/config.el/packages.el: any module can contribute Doom
@@ -12,7 +12,6 @@
     config,
     flake,
     lib,
-    pinned,
     pkgs,
     ...
   }: let
@@ -131,7 +130,7 @@
                 vertico = ["+icons"];
                 corfu = ["+orderless" "+dabbrev"];
               };
-              config.default = true;
+              config.default = ["+bindings" "+smartparens"];
               editor = {
                 fold = true;
                 snippets = true;
@@ -169,11 +168,13 @@
             extraBinPackages = [(pkgs.aspellWithDicts (d: [d.en]))];
           }
           {
-            # helix keys instead of evil. Repo is helix-mode, package/feature is
-            # `helix`; not on MELPA, so explicit recipe + pin (unstraightened
-            # rejects unpinned github packages). Commit lives in pkgs/helix-mode.
-            tangle.packages = ''(package! helix :recipe (:host github :repo "mgmarlow/helix-mode") :pin "${pinned.helix-mode.pin.version}")'';
-            tangle.config = "(use-package! helix :config (helix-mode))";
+            # evil everywhere with Doom's SPC leader; helix-layer.el adds the helix
+            # selection-first keys (research notes in that file). The helix-mode package is gone.
+            tangle.init.editor = {
+              evil = ["+everywhere"];
+              multiple-cursors = true;
+            };
+            tangle.config = builtins.readFile ./helix-layer.el;
           }
         ];
       })
