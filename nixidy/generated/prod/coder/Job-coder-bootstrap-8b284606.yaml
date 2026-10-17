@@ -3,7 +3,7 @@ kind: Job
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "5"
-  name: coder-bootstrap-3ed838fb
+  name: coder-bootstrap-8b284606
   namespace: development
 spec:
   activeDeadlineSeconds: 1200
@@ -42,12 +42,17 @@ spec:
               : > /tmp/variables-devenv.yaml
               echo 'backup_bucket: "trdos-me--volsync"' >> /tmp/variables-devenv.yaml
               echo 'image: "harbor.trdos.me/library/workspace:0.1.2@sha256:8c347ee1e00e2b6a761adf124d428c46e6b3b90c2c8df69fdc164bc0156c3dd3"' >> /tmp/variables-devenv.yaml
-              if coder templates versions list devenv -o json 2>/dev/null | grep -qF '"97d07e29d916"'; then
-                echo "devenv: 97d07e29d916 already pushed"
-              else
-                coder templates push devenv --directory /tmp/templates/devenv --name 97d07e29d916 \
-                  --variables-file /tmp/variables-devenv.yaml --message 'nixidy 97d07e29d916' --yes
-              fi
+              # A version whose import failed keeps its name, so it must not count as pushed: the next try gets -r2, -r3, ...
+              for n in "" -r2 -r3 -r4 -r5; do
+                status=$(coder templates versions list devenv -c name,status 2>/dev/null | sed -n "s/^97d07e29d916$n[[:space:]][[:space:]]*\([A-Za-z]*\).*/\1/p")
+                if [ "$status" = Succeeded ]; then echo "devenv: 97d07e29d916$n already pushed"; break; fi
+                if [ -z "$status" ]; then
+                  coder templates push devenv --directory /tmp/templates/devenv --name 97d07e29d916$n \
+                    --variables-file /tmp/variables-devenv.yaml --message 'nixidy 97d07e29d916' --yes
+                  break
+                fi
+                echo "devenv: 97d07e29d916$n is $status, trying the next name"
+              done
               coder templates edit devenv --display-name 'devenv project' --description 'One repository with its devenv, a persistent home and Nix store, Claude Code and opencode.' \
                 --icon /emojis/2744.png --default-ttl 8h --activity-bump 1h --yes
 

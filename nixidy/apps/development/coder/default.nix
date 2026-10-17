@@ -60,12 +60,17 @@ in {
       ${lib.concatMapStringsSep "\n" (f: "cp -L ${esc "/templates/${name}/${f}"} ${esc "/tmp/templates/${name}/${f}"}") (files name)}
       : > ${vars}
       ${lib.concatStringsSep "\n" (lib.mapAttrsToList (k: val: "echo ${esc "${k}: ${builtins.toJSON val}"} >> ${vars}") (variables.${name} or {}))}
-      if coder templates versions list ${name} -o json 2>/dev/null | grep -qF '"${v}"'; then
-        echo "${name}: ${v} already pushed"
-      else
-        coder templates push ${name} --directory /tmp/templates/${name} --name ${v} \
-          --variables-file ${vars} --message ${esc "nixidy ${v}"} --yes
-      fi
+      # A version whose import failed keeps its name, so it must not count as pushed: the next try gets -r2, -r3, ...
+      for n in "" -r2 -r3 -r4 -r5; do
+        status=$(coder templates versions list ${name} -c name,status 2>/dev/null | sed -n "s/^${v}$n[[:space:]][[:space:]]*\([A-Za-z]*\).*/\1/p")
+        if [ "$status" = Succeeded ]; then echo "${name}: ${v}$n already pushed"; break; fi
+        if [ -z "$status" ]; then
+          coder templates push ${name} --directory /tmp/templates/${name} --name ${v}$n \
+            --variables-file ${vars} --message ${esc "nixidy ${v}"} --yes
+          break
+        fi
+        echo "${name}: ${v}$n is $status, trying the next name"
+      done
       coder templates edit ${name} --display-name ${esc m.display} --description ${esc m.description} \
         --icon ${esc m.icon} --default-ttl 8h --activity-bump 1h --yes
     '';
@@ -337,12 +342,11 @@ in {
             namespace = "development";
           };
         };
-        # kubernetes_manifest reads the CRD to learn a kind's schema.
+        # kubernetes_manifest lists the CRDs to learn a kind's schema (a list cannot be limited to names).
         clusterRoles.coder-workspace-crds.rules = lib.toList {
           apiGroups = ["apiextensions.k8s.io"];
           resources = ["customresourcedefinitions"];
-          resourceNames = ["externalsecrets.external-secrets.io" "replicationsources.volsync.backube"];
-          verbs = ["get"];
+          verbs = ["get" "list"];
         };
         clusterRoleBindings.coder-workspace-crds = {
           roleRef = {
