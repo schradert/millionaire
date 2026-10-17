@@ -137,7 +137,6 @@ Candidates to remove because another installed app does the same job (your call)
 
 These come from Google Play (or Aurora Store, which fetches Play builds) and have no upstream APK that Obtainium can use. "FOSS twin" names an app that already does the job. Apps with a twin are the ones README todo 54 asks you to decide on: keep the proprietary app, or move to the twin.
 
-
 173 apps, 34 with a twin:
 
 | App | Package | Category | Installer | FOSS twin or note | App+data MB |
