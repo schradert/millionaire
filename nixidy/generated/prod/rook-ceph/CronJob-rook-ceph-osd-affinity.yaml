@@ -1,0 +1,66 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rook-ceph-osd-affinity
+  namespace: storage
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 300
+      backoffLimit: 0
+      template:
+        spec:
+          containers:
+            - command:
+                - /bin/sh
+                - -c
+                - |
+                  set -u
+                  mkdir -p /etc/ceph
+                  cat > /etc/ceph/ceph.conf <<EOF
+                  [global]
+                  fsid = $ROOK_FSID
+                  mon_host = $(echo "$ROOK_MON_ENDPOINTS" | tr ',' '\n' | cut -d= -f2 | paste -sd, -)
+                  EOF
+                  install -m 600 /etc/ceph-admin/keyring /etc/ceph/keyring
+                  rc=0
+                  for serial in 6XS4209D 6XS41YTD; do
+                    id=$(for i in $(ceph osd ls); do ceph osd metadata "$i" 2>/dev/null | grep -q "_$serial[\",]" && echo "$i"; done | head -1)
+                    if [ -z "$id" ]; then echo "$serial: no OSD on it, skipping"; continue; fi
+                    if ceph osd dump | grep -E "^osd\.$id " | grep -q "primary_affinity 0"; then
+                      echo "osd.$id ($serial): primary affinity already 0"
+                    else
+                      ceph osd primary-affinity "osd.$id" 0 || rc=$?
+                    fi
+                  done
+                  exit $rc
+              env:
+                - name: ROOK_MON_ENDPOINTS
+                  valueFrom:
+                    configMapKeyRef:
+                      key: data
+                      name: rook-ceph-mon-endpoints
+                - name: ROOK_FSID
+                  valueFrom:
+                    secretKeyRef:
+                      key: fsid
+                      name: rook-ceph-mon
+              image: quay.io/ceph/ceph:v19.2.3@sha256:af0c5903e901e329adabe219dfc8d0c3efc1f05102a753902f33ee16c26b6cee
+              name: osd-affinity
+              volumeMounts:
+                - mountPath: /etc/ceph
+                  name: ceph-conf
+                - mountPath: /etc/ceph-admin
+                  name: admin-keyring
+                  readOnly: true
+          restartPolicy: Never
+          volumes:
+            - emptyDir: {}
+              name: ceph-conf
+            - name: admin-keyring
+              secret:
+                secretName: rook-ceph-admin-keyring
+  schedule: '*/10 * * * *'
+  successfulJobsHistoryLimit: 1

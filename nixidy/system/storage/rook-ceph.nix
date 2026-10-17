@@ -279,18 +279,25 @@ in {
             storage.nodes = [
               {
                 name = "sirver";
-                # Bay 7 (serial 6XS41YTD, scsi-35000c50067fb404b) is SMART-failing:
-                # it was osd.7, now in retiredOsds below (purge + zap). Add the
-                # replacement drive's by-id here after the swap (manual-steps 5).
-                # Bay 2 (6XS42DQ9, scsi-35000c50067fcd9af) was osd.0: it is retired
-                # below so the disk can become the new root (docs/node-standard.md,
-                # "sirver reinstall plan").
+                # Bays 6 (6XS4209D, the old root) and 7 (6XS41YTD, the old osd.7) are
+                # SMART-failing and are in only as replica-only redundancy: low CRUSH
+                # weight here, primary affinity 0 from the rook-ceph-osd-affinity
+                # CronJob below. Not counted as capacity (docs/node-standard.md, "The
+                # two bad disks"). Bay 2 (6XS42DQ9) is the root since 2026-10-17.
                 devices = [
                   {name = "/dev/disk/by-id/scsi-35000c50067fc5df3";}
                   {name = "/dev/disk/by-id/scsi-35000c50067fc640b";}
                   {name = "/dev/disk/by-id/scsi-35000c50067fcc0d3";}
                   {name = "/dev/disk/by-id/scsi-35000c50067fcc2fb";}
                   {name = "/dev/disk/by-id/scsi-35000c50067fe560f";}
+                  {
+                    name = "/dev/disk/by-id/scsi-35000c50067fb404b";
+                    config.initialWeight = "0.2";
+                  }
+                  {
+                    name = "/dev/disk/by-id/scsi-35000c50067faa64b";
+                    config.initialWeight = "0.2";
+                  }
                 ];
               }
               {
@@ -368,18 +375,9 @@ in {
       };
       resources = let
         # Retired OSDs: id, the node that holds the disk, and the disk by-id.
-        retiredOsds = [
-          {
-            id = 7;
-            node = "sirver";
-            device = "/dev/disk/by-id/scsi-35000c50067fb404b";
-          }
-          {
-            id = 0;
-            node = "sirver";
-            device = "/dev/disk/by-id/scsi-35000c50067fcd9af";
-          }
-        ];
+        # Empty since the two bad disks came back as OSDs (they take the freed
+        # ids 0 and 7; a listed id is purged on every sync).
+        retiredOsds = [];
       in {
         # Hooks are not live resources, so a change to retiredOsds alone is no
         # diff and would never sync (see nixidy/system/cicd/bootstrap.nix). This
@@ -387,7 +385,7 @@ in {
         configMaps.rook-ceph-retired-osds.data = {
           retired = builtins.toJSON retiredOsds;
           # Bump to rerun the hooks after a change to their scripts or images.
-          revision = "3";
+          revision = "4";
         };
         # OSDs retired in git: every sync runs this hook, which takes each id
         # through out → safe-to-destroy → down (noup so the daemon stays down)
@@ -641,6 +639,89 @@ in {
                 };
               };
             }) (lib.unique (map (o: o.node) retiredOsds)));
+        # Primary affinity 0 on the OSDs that sit on disks known to be failing (matched by serial, so the OSD id does not
+        # matter), so they hold a replica but never serve as primary. It is an osdmap setting, not a Ceph config option or a
+        # CephCluster field, and a purged and recreated OSD starts again at 1, so this runs every 10 minutes rather than as a
+        # sync hook (the OSD is created by the operator after the sync). A serial with no OSD yet is skipped.
+        # docs/node-standard.md, "sirver reinstall plan".
+        cronJobs.rook-ceph-osd-affinity.spec = let
+          lowTrustSerials = ["6XS4209D" "6XS41YTD"];
+          script = ''
+            set -u
+            mkdir -p /etc/ceph
+            cat > /etc/ceph/ceph.conf <<EOF
+            [global]
+            fsid = $ROOK_FSID
+            mon_host = $(echo "$ROOK_MON_ENDPOINTS" | tr ',' '\n' | cut -d= -f2 | paste -sd, -)
+            EOF
+            install -m 600 /etc/ceph-admin/keyring /etc/ceph/keyring
+            rc=0
+            for serial in ${lib.concatStringsSep " " lowTrustSerials}; do
+              id=$(for i in $(ceph osd ls); do ceph osd metadata "$i" 2>/dev/null | grep -q "_$serial[\",]" && echo "$i"; done | head -1)
+              if [ -z "$id" ]; then echo "$serial: no OSD on it, skipping"; continue; fi
+              if ceph osd dump | grep -E "^osd\.$id " | grep -q "primary_affinity 0"; then
+                echo "osd.$id ($serial): primary affinity already 0"
+              else
+                ceph osd primary-affinity "osd.$id" 0 || rc=$?
+              fi
+            done
+            exit $rc
+          '';
+        in {
+          schedule = "*/10 * * * *";
+          concurrencyPolicy = "Forbid";
+          successfulJobsHistoryLimit = 1;
+          failedJobsHistoryLimit = 3;
+          jobTemplate.spec = {
+            backoffLimit = 0;
+            activeDeadlineSeconds = 300;
+            template.spec = {
+              restartPolicy = "Never";
+              containers = lib.toList {
+                name = "osd-affinity";
+                image = with pinned.images.ceph; "${repository}:${tag}@${digest}";
+                command = ["/bin/sh" "-c" script];
+                env = [
+                  {
+                    name = "ROOK_MON_ENDPOINTS";
+                    valueFrom.configMapKeyRef = {
+                      name = "rook-ceph-mon-endpoints";
+                      key = "data";
+                    };
+                  }
+                  {
+                    name = "ROOK_FSID";
+                    valueFrom.secretKeyRef = {
+                      name = "rook-ceph-mon";
+                      key = "fsid";
+                    };
+                  }
+                ];
+                volumeMounts = [
+                  {
+                    name = "ceph-conf";
+                    mountPath = "/etc/ceph";
+                  }
+                  {
+                    name = "admin-keyring";
+                    mountPath = "/etc/ceph-admin";
+                    readOnly = true;
+                  }
+                ];
+              };
+              volumes = [
+                {
+                  name = "ceph-conf";
+                  emptyDir = {};
+                }
+                {
+                  name = "admin-keyring";
+                  secret.secretName = "rook-ceph-admin-keyring";
+                }
+              ];
+            };
+          };
+        };
         # The chart's Ceph alert rules (health, device failure, slow ops), selected by Prometheus.
         prometheusRules.prometheus-ceph-rules.metadata.labels.release = "prometheus";
         # The chart has no rule for blocklisting: an evicted CephFS client keeps its mount but every access fails
