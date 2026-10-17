@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# android-productivity <audit|apply> <device> [stage...] [--dry-run] < device.json
+# android-productivity <audit|apply> <device> [stage...] [--dry-run] [--wait <duration>] < device.json
 #
 # Prints the shell variables `android <device> [productivity]` prepends to static/android-adb.sh (printf %q):
 # the productivity spec, the Syncthing GUI API key derived from the device's declared identity and, for
@@ -12,16 +12,23 @@
 set -euo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-mode=${1:?Usage: android-productivity <audit|apply> <device> [stage...] [--dry-run]}
+mode=${1:?Usage: android-productivity <audit|apply> <device> [stage...] [--dry-run] [--wait <duration>]}
 dev=${2:?device}
 shift 2
-dry="" stages=()
-for arg in "$@"; do
-  case $arg in
+dry="" stages=() wait_s=""
+while [ $# -gt 0 ]; do
+  case $1 in
     --dry-run) dry=1 ;;
-    syncthing | orgzly | davx5 | fossify) stages+=("$arg") ;;
-    *) echo "unknown stage or flag: $arg (stages: syncthing orgzly davx5 fossify, flag: --dry-run)" >&2; exit 64 ;;
+    --wait)
+      # how long each tap is awaited: 90, 90s, 20m or 1h (a bare number is seconds); default 10 minutes
+      [[ "${2:-}" =~ ^([0-9]+)([smh]?)$ ]] || { echo "--wait takes a duration such as 20m, 90s or 1h" >&2; exit 64; }
+      case ${BASH_REMATCH[2]} in m) wait_s=$((BASH_REMATCH[1] * 60)) ;; h) wait_s=$((BASH_REMATCH[1] * 3600)) ;; *) wait_s=${BASH_REMATCH[1]} ;; esac
+      shift
+      ;;
+    syncthing | orgzly | davx5 | fossify) stages+=("$1") ;;
+    *) echo "unknown stage or flag: $1 (stages: syncthing orgzly davx5 fossify, flags: --dry-run, --wait <duration>)" >&2; exit 64 ;;
   esac
+  shift
 done
 
 want=$(cat)
@@ -62,6 +69,7 @@ fi
 
 emit act productivity
 emit stages "${stages[*]:-}"
+[ -z "$wait_s" ] || emit wait_s "$wait_s"
 [ -z "$dry" ] || emit dry 1
 if [ "$id" = null ] && [ -z "$dry" ]; then
   echo "syncthing.devices.$name.id is not recorded (modules/syncthing.nix)" >&2
