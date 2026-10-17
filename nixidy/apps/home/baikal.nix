@@ -11,8 +11,8 @@ in {
   }: let
     # One DAV user per declared Keycloak user in the `admin` or `family` group (docs/invite.md), as the
     # per-user Maloja does (nixidy/apps/media/scrobbling.nix). Keycloak decides who exists; each user gets a
-    # generated password (Secret baikal-user-<user>, pushed to Bitwarden as baikal/<user>/password) and the
-    # calendar `org`. `admin` stays the break-glass DAV user and is never one of these.
+    # generated password (Secret baikal-user-<user>, pushed to Bitwarden as baikal/<user>/password), the
+    # calendar `org` and the address book `contacts`. `admin` stays the break-glass DAV user and is never one of these.
     declared = lib.concatMap (u: let
       d = u.spec.definition;
     in
@@ -56,7 +56,7 @@ in {
             # The image ignores BAIKAL_ADMIN_PASSWORD and leaves Baïkal to its web
             # installer. This does that install (idempotent, every start), keeps the
             # admin + DAV user `admin` password in sync with the Secret and creates a
-            # DAV user with an `org` calendar for each Keycloak user.
+            # DAV user with an `org` calendar and a `contacts` address book for each Keycloak user.
             initContainers.install = {
               image = pinned.images.baikal;
               command = ["sh" "-ec" "php /bootstrap/install.php && chown -R 101:101 /var/www/baikal/config /var/www/baikal/Specific"];

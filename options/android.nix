@@ -249,6 +249,7 @@ in {
                 user = can.str "Baikal DAV user: the person's own, one per Keycloak admin/family user (nixidy/apps/home/baikal.nix)" {default = config.syncthingUser;};
                 secret = can.str "Bitwarden Secrets Manager key of its password (nixidy/apps/home/baikal.nix generatedSecrets)" {default = "baikal/${config.caldav.user}/password";};
                 calendar = can.str "calendar collection org-bridge exports to; the one to tick in DAVx5" {default = "org";};
+                addressbook = can.str "CardDAV address book (nixidy/apps/home/baikal.nix); the one to tick in DAVx5 for Fossify Contacts" {default = "contacts";};
               };
             };
           }));

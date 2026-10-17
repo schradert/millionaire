@@ -6,7 +6,8 @@ data:
     // 0.10.1 web installer does: config/baikal.yaml (SQLite, Digest auth), the database
     // schema, Specific/INSTALL_DISABLED; then keeps the admin password in sync with
     // $BAIKAL_ADMIN_PASSWORD and ensures the DAV users (`admin` and one per Keycloak
-    // user) each with the `org` calendar org-bridge writes to. Never prints a password.
+    // user) each with the `org` calendar org-bridge writes to, and the Keycloak users also with a `contacts`
+    // address book. Never prints a password.
     require '/var/www/baikal/vendor/autoload.php';
 
     use Symfony\Component\Yaml\Yaml;
@@ -82,9 +83,10 @@ data:
 
     // 3. DAV users, each with a principal and the calendar `org` (the one org-bridge writes to): `admin` (break-glass;
     // the password above) and one per Keycloak user in the groups admin and family (nixidy/apps/home/baikal.nix sets
-    // BAIKAL_USER_<n>, BAIKAL_EMAIL_<n> and BAIKAL_PASSWORD_<n>, n from 0). Users are only ever added or have their
-    // password synced: nobody is removed, and a calendar that exists is left alone.
-    function ensureUser(PDO $pdo, string $name, string $password, string $email): void
+    // BAIKAL_USER_<n>, BAIKAL_EMAIL_<n> and BAIKAL_PASSWORD_<n>, n from 0). The Keycloak users also get the CardDAV
+    // address book `contacts` (DAVx5's CardDAV tab, Fossify Contacts); `admin` gets none. Users are only ever added
+    // or have their password synced: nobody is removed, and a calendar or address book that exists is left alone.
+    function ensureUser(PDO $pdo, string $name, string $password, string $email, bool $addressBook): void
     {
         $digest = md5($name . ':' . REALM . ':' . $password);
         $cur = $pdo->prepare('SELECT digesta1 FROM users WHERE username = ?');
@@ -107,10 +109,18 @@ data:
             $pdo->prepare("INSERT INTO calendarinstances (calendarid, principaluri, access, displayname, uri, description, calendarorder, calendarcolor, timezone, transparent) VALUES (?, ?, 1, 'org', 'org', '', 0, '', '', 0)")->execute([$id, $principal]);
             echo "created calendar $name/org\n";
         }
+        if ($addressBook) {
+            $has = $pdo->prepare("SELECT count(*) FROM addressbooks WHERE principaluri = ? AND uri = 'contacts'");
+            $has->execute([$principal]);
+            if (!$has->fetchColumn()) {
+                $pdo->prepare("INSERT INTO addressbooks (principaluri, displayname, uri, description, synctoken) VALUES (?, 'contacts', 'contacts', '', 1)")->execute([$principal]);
+                echo "created address book $name/contacts\n";
+            }
+        }
     }
 
     $pdo->beginTransaction();
-    ensureUser($pdo, 'admin', $password, '');
+    ensureUser($pdo, 'admin', $password, '', false);
     for ($i = 0; ($user = getenv("BAIKAL_USER_$i")) !== false; $i++) {
         $userPassword = getenv("BAIKAL_PASSWORD_$i");
         if (!preg_match('/^[a-z0-9][a-z0-9._-]*$/', $user) || $user === 'admin') {
@@ -121,7 +131,7 @@ data:
             fwrite(STDERR, "BAIKAL_PASSWORD_$i (user $user) is not set\n");
             exit(1);
         }
-        ensureUser($pdo, $user, $userPassword, getenv("BAIKAL_EMAIL_$i") ?: '');
+        ensureUser($pdo, $user, $userPassword, getenv("BAIKAL_EMAIL_$i") ?: '', true);
     }
     $pdo->commit();
 
