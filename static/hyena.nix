@@ -454,7 +454,7 @@ in {
         # apiserver instead (401 = serving; anonymous auth is off).
         ++ lib.mapAttrsToList (node: ip: probe "apiserver-${node}" "https://${ip}:6443/readyz" ["[STATUS] == 401"]) {
           bonobo = "100.64.0.4";
-          octopus = "100.64.0.3";
+          chinchilla = "100.64.0.5";
           dingo = "100.64.0.6";
         }
         # SSO is the critical path of every app login, so probe it on its own.

@@ -253,7 +253,6 @@
             imports = [./static/facter ./static/k8s-node.nix ./static/server.nix];
             boot.initrd.availableKernelModules = ["sr_mod"];
             disko.devices.disk.root.device = "/dev/disk/by-id/scsi-36b82a720cf60ce002fd94d2e2991b17e";
-            services.rke2.role = "server";
           };
         };
         dingo = {
