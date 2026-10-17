@@ -41,7 +41,7 @@ Modules are gated on `profiles.workstation.enable` (CLIs, Mac casks) or `profile
 | sure | OIDC | web | web | n-a | web | — |
 | mealie | OIDC | web | web | n-a | web (`mealie` tile) | — |
 | miniflux (rss) | password | done: newsboat + elfeed, `modules/feeds.nix` | done: `modules/feeds.nix` | n-a | done: Flux News (`homelab` set) | bws `miniflux/tristan-password` (miniflux.nix) |
-| baikal (cal) | Digest on `/dav.php` | done: khal + vdirsyncer, `modules/calendar.nix` | done: same | n-a | done: DAVx5 + Fossify | bws `baikal/admin-password` (baikal.nix generatedSecrets) |
+| baikal (cal) | Digest on `/dav.php` | done: khal + vdirsyncer, `modules/calendar.nix` | done: same | n-a | done: DAVx5 + Fossify | bws `baikal/<user>/password` per Keycloak admin/family user, `baikal/admin-password` break-glass (baikal.nix generatedSecrets) |
 | syncthing (sync) | oauth2-proxy (GUI) | done: `services.syncthing` from the folder table, hub as the only device, `modules/syncthing.nix` (the host's device ID goes in the table first: docs/manual-steps.md step 11) | done: same | n-a | done: Syncthing-Fork (only `org`; add its ID to the table) | hub identity: cert-manager `syncthing-identity`, Bitwarden `syncthing/hub/{cert,key}` |
 | home-assistant (hass) | OIDC | done: companion cask, `modules/desktop-clients.nix` | web | n-a | done: Home Assistant | — |
 | homepage, homarr, dashy | OIDC (dashy's catalog exports go through oauth2-proxy) | web | web | n-a | web | — |

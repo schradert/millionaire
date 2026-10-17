@@ -5,8 +5,8 @@ data:
     // Baïkal first-run install, idempotent (initContainer, every start). Does what the
     // 0.10.1 web installer does: config/baikal.yaml (SQLite, Digest auth), the database
     // schema, Specific/INSTALL_DISABLED; then keeps the admin password in sync with
-    // $BAIKAL_ADMIN_PASSWORD and ensures the DAV user `admin` with the `org` calendar
-    // org-bridge writes to. Never prints the password.
+    // $BAIKAL_ADMIN_PASSWORD and ensures the DAV users (`admin` and one per Keycloak
+    // user) each with the `org` calendar org-bridge writes to. Never prints a password.
     require '/var/www/baikal/vendor/autoload.php';
 
     use Symfony\Component\Yaml\Yaml;
@@ -24,7 +24,6 @@ data:
         exit(1);
     }
     $adminHash = hash('sha256', 'admin:' . REALM . ':' . $password);
-    $digest = md5('admin:' . REALM . ':' . $password);
 
     // 1. Config: written once; afterwards only the admin hash is kept in sync.
     if (file_exists(CONFIG)) {
@@ -81,25 +80,48 @@ data:
         echo "created database schema\n";
     }
 
-    // 3. DAV user admin (Digest a1), its principal, and the org calendar.
-    $pdo->beginTransaction();
-    $cur = $pdo->prepare("SELECT digesta1 FROM users WHERE username = 'admin'");
-    $cur->execute();
-    $row = $cur->fetchColumn();
-    if ($row === false) {
-        $pdo->prepare("INSERT INTO users (username, digesta1) VALUES ('admin', ?)")->execute([$digest]);
-        echo "created DAV user admin\n";
-    } elseif ($row !== $digest) {
-        $pdo->prepare("UPDATE users SET digesta1 = ? WHERE username = 'admin'")->execute([$digest]);
-        echo "updated DAV user admin password\n";
+    // 3. DAV users, each with a principal and the calendar `org` (the one org-bridge writes to): `admin` (break-glass;
+    // the password above) and one per Keycloak user in the groups admin and family (nixidy/apps/home/baikal.nix sets
+    // BAIKAL_USER_<n>, BAIKAL_EMAIL_<n> and BAIKAL_PASSWORD_<n>, n from 0). Users are only ever added or have their
+    // password synced: nobody is removed, and a calendar that exists is left alone.
+    function ensureUser(PDO $pdo, string $name, string $password, string $email): void
+    {
+        $digest = md5($name . ':' . REALM . ':' . $password);
+        $cur = $pdo->prepare('SELECT digesta1 FROM users WHERE username = ?');
+        $cur->execute([$name]);
+        $row = $cur->fetchColumn();
+        if ($row === false) {
+            $pdo->prepare('INSERT INTO users (username, digesta1) VALUES (?, ?)')->execute([$name, $digest]);
+            echo "created DAV user $name\n";
+        } elseif ($row !== $digest) {
+            $pdo->prepare('UPDATE users SET digesta1 = ? WHERE username = ?')->execute([$digest, $name]);
+            echo "updated DAV user $name password\n";
+        }
+        $principal = 'principals/' . $name;
+        $pdo->prepare('INSERT OR IGNORE INTO principals (uri, email, displayname) VALUES (?, ?, ?)')->execute([$principal, $email, $name]);
+        $exists = $pdo->prepare("SELECT count(*) FROM calendarinstances WHERE principaluri = ? AND uri = 'org'");
+        $exists->execute([$principal]);
+        if (!$exists->fetchColumn()) {
+            $pdo->exec("INSERT INTO calendars (synctoken, components) VALUES (1, 'VEVENT,VTODO')");
+            $id = $pdo->lastInsertId();
+            $pdo->prepare("INSERT INTO calendarinstances (calendarid, principaluri, access, displayname, uri, description, calendarorder, calendarcolor, timezone, transparent) VALUES (?, ?, 1, 'org', 'org', '', 0, '', '', 0)")->execute([$id, $principal]);
+            echo "created calendar $name/org\n";
+        }
     }
-    $pdo->exec("INSERT OR IGNORE INTO principals (uri, email, displayname) VALUES ('principals/admin', '', 'admin')");
-    $exists = $pdo->query("SELECT count(*) FROM calendarinstances WHERE principaluri = 'principals/admin' AND uri = 'org'")->fetchColumn();
-    if (!$exists) {
-        $pdo->exec("INSERT INTO calendars (synctoken, components) VALUES (1, 'VEVENT,VTODO')");
-        $id = $pdo->lastInsertId();
-        $pdo->prepare("INSERT INTO calendarinstances (calendarid, principaluri, access, displayname, uri, description, calendarorder, calendarcolor, timezone, transparent) VALUES (?, 'principals/admin', 1, 'org', 'org', '', 0, '', '', 0)")->execute([$id]);
-        echo "created calendar admin/org\n";
+
+    $pdo->beginTransaction();
+    ensureUser($pdo, 'admin', $password, '');
+    for ($i = 0; ($user = getenv("BAIKAL_USER_$i")) !== false; $i++) {
+        $userPassword = getenv("BAIKAL_PASSWORD_$i");
+        if (!preg_match('/^[a-z0-9][a-z0-9._-]*$/', $user) || $user === 'admin') {
+            fwrite(STDERR, "BAIKAL_USER_$i is not a usable DAV user name\n");
+            exit(1);
+        }
+        if ($userPassword === false || $userPassword === '') {
+            fwrite(STDERR, "BAIKAL_PASSWORD_$i (user $user) is not set\n");
+            exit(1);
+        }
+        ensureUser($pdo, $user, $userPassword, getenv("BAIKAL_EMAIL_$i") ?: '');
     }
     $pdo->commit();
 
