@@ -643,6 +643,14 @@ in {
             . as $t | [$t.nodes[] | select(.type == "host" and .name == $n) | .children[]] as $ids
             | [$t.nodes[] | select(.type == "osd" and (.id as $i | $ids | index($i))) | select(.status != "up") | .name] | join(" ")'
         }
+        # `up` runs after the OSD pods left the node (drain) or before they are back, so "OSD host" cannot come from the pods:
+        # take it from what `down` recorded, else from the CRUSH tree (a host bucket with OSDs), so `noout` is always lifted.
+        if [ "$action" = up ] && [ "$is_osd" = 0 ]; then
+          if [ "$(ann osd-host)" = true ] || [ -n "$(cephc osd tree -f json 2>/dev/null | jq -r --arg n "$host" '.nodes[] | select(.type == "host" and .name == $n) | .children[]?')" ]; then
+            is_osd=1
+            roles="$roles, OSD host (not from pods: they are away)"
+          fi
+        fi
         witness=$(grep -vx "$host" <<<"$servers" | head -1)
         etcdctl_on() {
           local p=$1 t=/var/lib/rancher/rke2/server/tls/etcd; shift
@@ -831,6 +839,7 @@ in {
           "node-maintenance.trdos.me/lan-ip=$ip" \
           "node-maintenance.trdos.me/was-cordoned=$(is_cordoned && echo true || echo false)" \
           "node-maintenance.trdos.me/noout-before=$(if [ "$is_osd" = 1 ] && ceph_noout; then echo true; else echo false; fi)" \
+          "node-maintenance.trdos.me/osd-host=$([ "$is_osd" = 1 ] && echo true || echo false)" \
           "node-maintenance.trdos.me/excluded-by-us=$([ -z "$(nodelabel remediation.medik8s.io/exclude-from-remediation)" ] && echo true || echo false)"
 
         if [ -z "$(nodelabel remediation.medik8s.io/exclude-from-remediation)" ]; then
@@ -982,7 +991,7 @@ in {
         step "Clear the maintenance record"
         if [ "$(ann excluded-by-us)" = true ]; then act $k label node "$host" remediation.medik8s.io/exclude-from-remediation-; fi
         if [ -n "$since" ]; then
-          act $k annotate node "$host" node-maintenance.trdos.me/down-since- node-maintenance.trdos.me/lan-ip- node-maintenance.trdos.me/was-cordoned- node-maintenance.trdos.me/noout-before- node-maintenance.trdos.me/excluded-by-us-
+          act $k annotate node "$host" node-maintenance.trdos.me/down-since- node-maintenance.trdos.me/lan-ip- node-maintenance.trdos.me/was-cordoned- node-maintenance.trdos.me/noout-before- node-maintenance.trdos.me/osd-host- node-maintenance.trdos.me/excluded-by-us-
         fi
         if [ "$dry" = 1 ]; then printf '\nDRY RUN: nothing was changed.\n'; else printf '\n%s is back.\n' "$host"; fi
         [ "$fails" -gt 0 ] && exit 1
