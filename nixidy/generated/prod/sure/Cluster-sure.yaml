@@ -21,6 +21,8 @@ spec:
     topologyKey: kubernetes.io/hostname
   backup:
     barmanObjectStore:
+      data:
+        compression: gzip
       destinationPath: s3://trdos-me--volsync/cnpg/sure/
       endpointURL: https://s3.us-west-004.backblazeb2.com
       s3Credentials:
@@ -30,6 +32,8 @@ spec:
         secretAccessKey:
           key: ACCESS_SECRET_KEY
           name: sure-b2-postgres
+      wal:
+        compression: gzip
     retentionPolicy: 30d
   bootstrap:
     initdb:
