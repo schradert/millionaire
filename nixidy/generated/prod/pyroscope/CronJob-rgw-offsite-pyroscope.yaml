@@ -17,18 +17,20 @@ spec:
         spec:
           automountServiceAccountToken: false
           containers:
-            - args:
-                - sync
-                - rgw:pyroscope
-                - b2:trdos-me--volsync/rgw--observability--pyroscope
-                - --transfers=8
-                - --checkers=16
-                - --fast-list
-                - --max-delete=2000
-                - --cache-dir=/tmp
-                - --stats-one-line
-                - --stats=60s
-                - -v
+            - command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  bytes() { rclone size --json "$1" | sed -n 's/.*"bytes": *\([0-9]*\).*/\1/p'; }
+                  s=$(bytes rgw:pyroscope); d=$(bytes b2:trdos-me--volsync/rgw--observability--pyroscope)
+                  s=${s:-0}; d=${d:-0}
+                  echo "source $s bytes, mirror $d bytes"
+                  if [ "$s" -lt 1 ] || [ $((s * 2)) -lt "$d" ]; then
+                    echo "refusing to sync: the source is empty or under half the mirror; restore the bucket from the mirror first" >&2
+                    exit 1
+                  fi
+                  exec rclone sync rgw:pyroscope b2:trdos-me--volsync/rgw--observability--pyroscope --transfers=8 --checkers=16 --fast-list --max-delete=2000 --cache-dir=/tmp --stats-one-line --stats=60s -v
               env:
                 - name: HOME
                   value: /tmp
