@@ -282,12 +282,14 @@ in {
                 # Bay 7 (serial 6XS41YTD, scsi-35000c50067fb404b) is SMART-failing:
                 # it was osd.7, now in retiredOsds below (purge + zap). Add the
                 # replacement drive's by-id here after the swap (manual-steps 5).
+                # Bay 2 (6XS42DQ9, scsi-35000c50067fcd9af) was osd.0: it is retired
+                # below so the disk can become the new root (docs/node-standard.md,
+                # "sirver reinstall plan").
                 devices = [
                   {name = "/dev/disk/by-id/scsi-35000c50067fc5df3";}
                   {name = "/dev/disk/by-id/scsi-35000c50067fc640b";}
                   {name = "/dev/disk/by-id/scsi-35000c50067fcc0d3";}
                   {name = "/dev/disk/by-id/scsi-35000c50067fcc2fb";}
-                  {name = "/dev/disk/by-id/scsi-35000c50067fcd9af";}
                   {name = "/dev/disk/by-id/scsi-35000c50067fe560f";}
                 ];
               }
@@ -372,6 +374,11 @@ in {
             node = "sirver";
             device = "/dev/disk/by-id/scsi-35000c50067fb404b";
           }
+          {
+            id = 0;
+            node = "sirver";
+            device = "/dev/disk/by-id/scsi-35000c50067fcd9af";
+          }
         ];
       in {
         # Hooks are not live resources, so a change to retiredOsds alone is no
@@ -380,7 +387,7 @@ in {
         configMaps.rook-ceph-retired-osds.data = {
           retired = builtins.toJSON retiredOsds;
           # Bump to rerun the hooks after a change to their scripts or images.
-          revision = "2";
+          revision = "3";
         };
         # OSDs retired in git: every sync runs this hook, which takes each id
         # through out → safe-to-destroy → down (noup so the daemon stays down)
