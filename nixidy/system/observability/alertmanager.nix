@@ -31,6 +31,8 @@
     };
     applications.alertmanager = {
       namespace = "observability";
+      # Silences and the notification log.
+      volsync.pvcs.alertmanager.title = "storage-alertmanager-0";
       ntfySecret = "publisher";
       resources.podMonitors.alertmanager.spec = {
         selector.matchLabels."app.kubernetes.io/name" = "alertmanager";

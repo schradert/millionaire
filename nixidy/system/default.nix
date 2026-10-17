@@ -56,6 +56,7 @@
     ./security/external-secrets
     ./security/generated-secrets.nix
     ./security/kubelet-csr-approver.nix
+    ./storage/backup-coverage.nix
     ./storage/backup-verify.nix
     ./storage/barman-cloud.nix
     ./storage/clickhouse.nix

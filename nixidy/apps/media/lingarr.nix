@@ -49,6 +49,7 @@
     };
     applications.lingarr = {
       namespace = "media";
+      volsync.pvcs.lingarr.title = "lingarr";
       # Idempotent post-sync bootstrap (apps/app-bootstrap lingarr): completes the first-run
       # onboarding (no app login: oauth2-proxy is the gate) and turns the scheduled library
       # translation on, a few files a run. Everything else is the environment below.

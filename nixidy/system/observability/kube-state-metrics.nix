@@ -27,7 +27,14 @@
               resources = ["etcdsnapshotfiles"];
               verbs = ["list" "watch"];
             }
+            {
+              apiGroups = ["volsync.backube"];
+              resources = ["replicationsources"];
+              verbs = ["list" "watch"];
+            }
           ];
+          # A claim's cnpg.io/cluster label tells PVCWithoutBackup that barman covers it (storage/backup-coverage.nix).
+          metricLabelsAllowlist = ["persistentvolumeclaims=[cnpg.io/cluster]"];
           annotations."reloader.stakater.com/auto" = "true";
           customResourceState = {
             enabled = true;
@@ -51,6 +58,26 @@
                     each = {
                       type = "Gauge";
                       gauge.path = ["status" "creationTime"];
+                    };
+                  };
+                }
+                {
+                  groupVersionKind = {
+                    group = "volsync.backube";
+                    version = "v1alpha1";
+                    kind = "ReplicationSource";
+                  };
+                  metricNamePrefix = "volsync_replicationsource";
+                  labelsFromPath = {
+                    name = ["metadata" "name"];
+                    namespace = ["metadata" "namespace"];
+                  };
+                  metrics = lib.toList {
+                    name = "info";
+                    help = "The PVC a ReplicationSource backs up (spec.sourcePVC)";
+                    each = {
+                      type = "Info";
+                      info.labelsFromPath.persistentvolumeclaim = ["spec" "sourcePVC"];
                     };
                   };
                 }
