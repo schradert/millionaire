@@ -234,7 +234,24 @@ in {
               logcollector = "20m";
               crashcollector = "20m";
             };
-            placement.mon.nodeAffinity = alwaysOn;
+            # Mon stores are hostPath /var/lib/rook on the node's root disk, and sirver's is SMART-failing, so mons
+            # also stay off it (Rook put mon-f there after #1074, 2026-10-16). mgr/mds/rgw keep no state on the disk.
+            # All expressions in a term must match. Remove with README todo 33 once sirver's disk is replaced.
+            placement.mon.nodeAffinity = lib.recursiveUpdate alwaysOn {
+              requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms = lib.toList {
+                matchExpressions = [
+                  {
+                    key = "node.trdos.me/class";
+                    operator = "DoesNotExist";
+                  }
+                  {
+                    key = "kubernetes.io/hostname";
+                    operator = "NotIn";
+                    values = ["sirver"];
+                  }
+                ];
+              };
+            };
             placement.mgr.nodeAffinity = alwaysOn;
             cleanupPolicy.wipeDevicesFromOtherClusters = true;
             csi.readAffinity.enabled = true;
