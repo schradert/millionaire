@@ -641,6 +641,89 @@ in {
                 };
               };
             }) (lib.unique (map (o: o.node) retiredOsds)));
+        # Primary affinity 0 on the OSDs that sit on disks known to be failing (matched by serial, so the OSD id does not
+        # matter), so they hold a replica but never serve as primary. It is an osdmap setting, not a Ceph config option or a
+        # CephCluster field, and a purged and recreated OSD starts again at 1, so this runs every 10 minutes rather than as a
+        # sync hook (the OSD is created by the operator after the sync). A serial with no OSD yet is skipped.
+        # docs/node-standard.md, "sirver reinstall plan".
+        cronJobs.rook-ceph-osd-affinity.spec = let
+          lowTrustSerials = ["6XS4209D" "6XS41YTD"];
+          script = ''
+            set -u
+            mkdir -p /etc/ceph
+            cat > /etc/ceph/ceph.conf <<EOF
+            [global]
+            fsid = $ROOK_FSID
+            mon_host = $(echo "$ROOK_MON_ENDPOINTS" | tr ',' '\n' | cut -d= -f2 | paste -sd, -)
+            EOF
+            install -m 600 /etc/ceph-admin/keyring /etc/ceph/keyring
+            rc=0
+            for serial in ${lib.concatStringsSep " " lowTrustSerials}; do
+              id=$(for i in $(ceph osd ls); do ceph osd metadata "$i" 2>/dev/null | grep -q "_$serial[\",]" && echo "$i"; done | head -1)
+              if [ -z "$id" ]; then echo "$serial: no OSD on it, skipping"; continue; fi
+              if ceph osd dump | grep -E "^osd\.$id " | grep -q "primary_affinity 0"; then
+                echo "osd.$id ($serial): primary affinity already 0"
+              else
+                ceph osd primary-affinity "osd.$id" 0 || rc=$?
+              fi
+            done
+            exit $rc
+          '';
+        in {
+          schedule = "*/10 * * * *";
+          concurrencyPolicy = "Forbid";
+          successfulJobsHistoryLimit = 1;
+          failedJobsHistoryLimit = 3;
+          jobTemplate.spec = {
+            backoffLimit = 0;
+            activeDeadlineSeconds = 300;
+            template.spec = {
+              restartPolicy = "Never";
+              containers = lib.toList {
+                name = "osd-affinity";
+                image = with pinned.images.ceph; "${repository}:${tag}@${digest}";
+                command = ["/bin/sh" "-c" script];
+                env = [
+                  {
+                    name = "ROOK_MON_ENDPOINTS";
+                    valueFrom.configMapKeyRef = {
+                      name = "rook-ceph-mon-endpoints";
+                      key = "data";
+                    };
+                  }
+                  {
+                    name = "ROOK_FSID";
+                    valueFrom.secretKeyRef = {
+                      name = "rook-ceph-mon";
+                      key = "fsid";
+                    };
+                  }
+                ];
+                volumeMounts = [
+                  {
+                    name = "ceph-conf";
+                    mountPath = "/etc/ceph";
+                  }
+                  {
+                    name = "admin-keyring";
+                    mountPath = "/etc/ceph-admin";
+                    readOnly = true;
+                  }
+                ];
+              };
+              volumes = [
+                {
+                  name = "ceph-conf";
+                  emptyDir = {};
+                }
+                {
+                  name = "admin-keyring";
+                  secret.secretName = "rook-ceph-admin-keyring";
+                }
+              ];
+            };
+          };
+        };
         # The chart's Ceph alert rules (health, device failure, slow ops), selected by Prometheus.
         prometheusRules.prometheus-ceph-rules.metadata.labels.release = "prometheus";
         # The chart has no rule for blocklisting: an evicted CephFS client keeps its mount but every access fails
