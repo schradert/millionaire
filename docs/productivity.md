@@ -72,6 +72,44 @@ Run in order; each step says what you should see.
 14. Phone to Mac: `Phone capture` is in `~/Projects/sabedoria` and in Emacs within a minute of the phone's sync (Syncthing on the phone has to be running).
 15. Mac to phone calendar: `Dentist` is in Fossify Calendar; the phone-scheduled note shows in `khal` after org-bridge exports it and the next `cal`. DAVx5 pulls about hourly; pull down in DAVx5 to force.
 
+## Adding a person
+
+Someone else gets their own notes sync and calendar the way `tristan` has them: a Syncthing hub of their own, a Baïkal user and an org-bridge, all declared. Nothing is shared with your hub or your calendar.
+
+1. **Keycloak user** in the group `family` (or `admin`): one `keycloakUsers.<name>` entry in `nixidy/apps/identity/keycloak-operator.nix`, then the invitation email (`docs/invite.md`). Keycloak decides who exists: this alone gives them a Baïkal DAV user `<name>` with a calendar `org` and a generated password (Bitwarden `baikal/<name>/password`, created by `nixidy/apps/home/baikal.nix`), and makes them eligible for the SSO-gated apps.
+2. **A table for them** in `modules/syncthing.nix`, beside `syncthing.users.tristan`:
+
+   ```nix
+   syncthing.users.alice = {
+     devices.alice-phone = {
+       id = "XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX";
+       os = "android";
+       folders = ["org"];
+     };
+     folders.org = {
+       label = "Org";
+       hub.volume = "org";
+       versioning = staggered 30;
+     };
+   };
+   ```
+
+   Their device ID is public: either from their Syncthing (Actions, Show ID; the app on their phone, laptop or Mac) or, for a phone you manage, from `syncthing-identity <device>` (devshell; add a `secrets/sops/syncthing-<device>.yaml` rule for `tristan` to `.sops.yaml` first, as for `syncthing-pixel`). More folders are more entries (`hub.volume` is `docs`, `saves` or `org`; a person gets a PVC only for the volumes their folders use). The key under `syncthing.users` must equal their Keycloak username: it is the DAV user org-bridge logs in as, and the render fails otherwise.
+3. **Merge.** Per person the cluster then gets, with no other edit:
+   - the app `syncthing-<name>` (identity from cert-manager, copy in Bitwarden `syncthing/<name>/{cert,key}`, folders and devices from their table through the bootstrap Job), PVCs `syncthing-<name>-<volume>` backed up by VolSync, and the GUI at `https://sync-<name>.trdos.me` (SSO: that person and admins; no Gatus tile). They reach the hub through relays and global discovery. The LAN address `192.168.50.242` stays yours. For a direct LAN path give their hub a free Cilium pool address as `devices.hub.lan` (`docs/manual-steps.md` 5b);
+   - `org-bridge-<name>`: their `org` folder exported to their calendar `calendars/<name>/org/`.
+
+   `tools/render-check` (also the pre-push hook) renders it all before you push.
+4. **Record the hub's device ID**, which is only known once the hub has started (Show ID in `https://sync-<name>.trdos.me`, or `kubectl -n home exec deploy/syncthing-<name> -c syncthing -- syncthing --device-id --home /var/syncthing/config`): `devices.hub.id = "...";` in their table. Until then the bootstrap skips its check that the hub is the pinned identity, and `android <device> productivity` refuses to build the phone's import (it needs the hub ID).
+5. **Hand over what they cannot look up**: the hub's device ID, the CalDAV URL `https://cal.trdos.me/dav.php`, their DAV user `<name>` and its password (`bws-get baikal/<name>/password`; Keycloak SSO does not cover DAV clients, and they have no Bitwarden access). All of it is tailnet-only (`docs/tailscale-integration.md`).
+
+What they do on their phone:
+
+- **A phone they own**: install Syncthing-Fork, add the hub by its device ID (their `org` folder is offered once the hub accepts their ID), install Orgzly Revived (repository: their org folder), DAVx5 (base URL, user and password above, tick the `org` calendar) and a calendar app.
+- **A phone you manage** (declare `android.devices.<device> = {owner = "family"; sets = ["family" "notes"]; productivity.syncthingUser = "<name>";};` in `modules/android.nix`, the device name being its key in their table, `alice-phone` above): `android <device> productivity` does the grants, builds the Syncthing import from their declared identity and prefills DAVx5 with their DAV user and password. The taps left are the ones the script prints (`docs/android-fleet.md`): Orgzly repository, DAVx5 login and the `org` calendar tick, Fossify's CalDAV sync.
+
+Removing someone: delete their `syncthing.users` entry and their Keycloak user. The apps, bootstrap and routes go; the PVCs (`Prune=false`), their Baïkal user and the Bitwarden copies stay until removed by hand.
+
 ## Quirks
 
 - org-bridge is one way; edits made in a calendar app are overwritten at the next export. Only `.org` files outside hidden folders; `SCHEDULED`/`DEADLINE` and TODO headings, not timestamps inside body text.
