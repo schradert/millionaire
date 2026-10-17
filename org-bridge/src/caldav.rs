@@ -262,7 +262,7 @@ pub fn generate_vevent(entry: &OrgEntry, timestamp: &Timestamp, uid: &str) -> St
         format!("CATEGORIES:{}\r\n", entry.tags.join(","))
     };
     let status = match entry.todo_state.as_deref() {
-        Some("DONE") => "COMPLETED",
+        Some(s) if crate::orgparse::is_done_state(s) => "COMPLETED",
         Some(_) => "NEEDS-ACTION",
         None => "CONFIRMED",
     };
@@ -313,7 +313,7 @@ pub fn generate_vtodo(entry: &OrgEntry, uid: &str) -> String {
         _ => "0",
     };
     let status = match entry.todo_state.as_deref() {
-        Some("DONE") => "COMPLETED",
+        Some(s) if crate::orgparse::is_done_state(s) => "COMPLETED",
         _ => "NEEDS-ACTION",
     };
     let categories = if entry.tags.is_empty() {

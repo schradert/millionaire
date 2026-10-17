@@ -20,10 +20,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     let config = Config::parse();
+    if let Some(keywords) = &config.todo_keywords {
+        orgparse::set_todo_keywords(keywords);
+    }
     tracing::info!("org-bridge starting");
     tracing::info!("  org_dir: {}", config.org_dir);
     tracing::info!("  syncthing: {}", config.syncthing_url);
     tracing::info!("  caldav: {}", config.caldav_url);
+    if let Some(keywords) = &config.todo_keywords {
+        tracing::info!("  todo keywords: {}", keywords);
+    }
 
     let org_dir = Path::new(&config.org_dir);
     if !org_dir.exists() {

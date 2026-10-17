@@ -1,7 +1,48 @@
 use orgize::Org;
+use orgize::ParseConfig;
 use orgize::ast::Headline;
 use orgize::rowan::ast::AstNode;
 use std::path::Path;
+use std::sync::OnceLock;
+
+static KEYWORDS: OnceLock<(Vec<String>, Vec<String>)> = OnceLock::new();
+
+/// Set the TODO keywords from `ORG_TODO_KEYWORDS`, in `org-todo-keywords` order: the active
+/// states, `|`, the done states (`DRAFTING PLANNED | COMPLETED`). Fast-access suffixes such as
+/// `PLANNED(p!)` are ignored; without a `|` the last keyword is the done state. Org's own
+/// default (`TODO | DONE`) applies until this is called.
+pub fn set_todo_keywords(spec: &str) {
+    let _ = KEYWORDS.set(parse_keywords(spec));
+}
+
+fn parse_keywords(spec: &str) -> (Vec<String>, Vec<String>) {
+    let words = |part: &str| -> Vec<String> {
+        part.split(|c: char| c.is_whitespace() || c == ',')
+            .map(|w| w.split('(').next().unwrap_or("").to_string())
+            .filter(|w| !w.is_empty())
+            .collect()
+    };
+    match spec.split_once('|') {
+        Some((open, done)) => (words(open), words(done)),
+        None => {
+            let mut all = words(spec);
+            let done = all.pop().into_iter().collect();
+            (all, done)
+        }
+    }
+}
+
+fn keywords() -> (Vec<String>, Vec<String>) {
+    KEYWORDS
+        .get()
+        .cloned()
+        .unwrap_or_else(|| (vec!["TODO".into()], vec!["DONE".into()]))
+}
+
+/// Whether `state` is one of the done keywords.
+pub fn is_done_state(state: &str) -> bool {
+    keywords().1.iter().any(|k| k == state)
+}
 
 /// A parsed org heading with scheduling information.
 #[derive(Debug, Clone, PartialEq)]
@@ -121,7 +162,11 @@ pub fn parse_directory(org_dir: &Path) -> Vec<OrgEntry> {
 
 /// Parse a single .org file's content and extract entries with timestamps.
 pub fn parse_org_content(content: &str, file: &str) -> Vec<OrgEntry> {
-    let org = Org::parse(content);
+    let org = ParseConfig {
+        todo_keywords: keywords(),
+        ..Default::default()
+    }
+    .parse(content);
     let mut entries = Vec::new();
 
     // Pre-order over every headline at any depth (document order).
@@ -195,8 +240,8 @@ fn parse_orgize_timestamp(ts: &orgize::ast::Timestamp) -> Option<Timestamp> {
         day: num(ts.day_start())?,
         hour: num(ts.hour_start()),
         minute: num(ts.minute_start()),
-        end_hour: None,
-        end_minute: None,
+        end_hour: num(ts.hour_end()),
+        end_minute: num(ts.minute_end()),
     })
 }
 
@@ -225,6 +270,45 @@ fn build_heading_path(headline: &Headline) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_time_range_end() {
+        let entries = parse_org_content(
+            "* TODO Call\nSCHEDULED: <2026-10-20 Tue 10:00-10:30>\n",
+            "t.org",
+        );
+        let ts = &entries[0].scheduled[0];
+        assert_eq!(
+            (ts.hour, ts.minute, ts.end_hour, ts.end_minute),
+            (Some(10), Some(0), Some(10), Some(30))
+        );
+    }
+
+    #[test]
+    fn test_keyword_spec() {
+        let (open, done) =
+            parse_keywords("DRAFTING PLANNED(p!) IN-PROGRESS(i!/@) | COMPLETED(c@) REJECTED");
+        assert_eq!(open, ["DRAFTING", "PLANNED", "IN-PROGRESS"]);
+        assert_eq!(done, ["COMPLETED", "REJECTED"]);
+        let (open, done) = parse_keywords("TODO NEXT DONE");
+        assert_eq!(open, ["TODO", "NEXT"]);
+        assert_eq!(done, ["DONE"]);
+    }
+
+    #[test]
+    fn test_custom_keywords_parse() {
+        let cfg = ParseConfig {
+            todo_keywords: parse_keywords("DRAFTING PLANNED | COMPLETED"),
+            ..Default::default()
+        };
+        let org = cfg.parse("* PLANNED Write it\nSCHEDULED: <2026-10-20 Tue 10:00>\n");
+        let hl = org.first_node::<Headline>().unwrap();
+        assert_eq!(
+            hl.todo_keyword().map(|k| k.to_string()),
+            Some("PLANNED".to_string())
+        );
+        assert_eq!(hl.title_raw().trim(), "Write it");
+    }
 
     #[test]
     fn test_parse_scheduled_heading() {

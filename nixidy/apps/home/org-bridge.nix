@@ -35,6 +35,8 @@
                 STATE_DB_PATH = "/var/lib/org-bridge/state.db";
                 SYNCTHING_URL = "http://syncthing.home.svc.cluster.local:8384";
                 CALDAV_URL = "http://baikal.home.svc.cluster.local:80/dav.php/calendars/admin/org/";
+                # The same keywords as Emacs (lib/org.nix).
+                ORG_TODO_KEYWORDS = (import ../../../lib/org.nix).todoKeywords;
                 RUST_LOG = "info";
               };
               envFrom = [{secretRef.name = "org-bridge";}];
