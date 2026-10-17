@@ -123,6 +123,9 @@
               };
               # Personal access token minted by the firefly-bootstrap job.
               env.FIREFLY_III_ACCESS_TOKEN_FILE = "/secrets/app_token.txt";
+              # Container env, not the /.env below (Laravel never reads that path): the web importer logs
+              # the tail of its access token at debug, the upstream default.
+              env.LOG_LEVEL = "info";
               probes.liveness.enabled = true;
               probes.readiness.enabled = true;
               probes.startup.enabled = true;
@@ -131,8 +134,6 @@
           service.firefly-importer.ports.http.port = 8080;
           configMaps.firefly-importer.data.".env" = lib.concatStringsSep "\n" [
             "IGNORE_DUPLICATE_ERRORS=false"
-            # The web importer logs the tail of its access token at debug (the upstream default).
-            "LOG_LEVEL=info"
             "FIREFLY_III_URL=http://firefly.finance.svc.cluster.local:8080"
             "VANITY_URL=https://${hostname}"
           ];
