@@ -190,6 +190,9 @@ spec:
           - name: /dev/disk/by-id/scsi-36b82a720cf60ce002fd94d8a2f011f94
           - name: /dev/disk/by-id/scsi-36b82a720cf60ce002fd94d962fc2bcad
         name: octopus
+      - devices:
+          - name: /dev/disk/by-id/wwn-0x5000039b38dbee27
+        name: falcon
     useAllDevices: false
     useAllNodes: false
   upgradeOSDRequiresHealthyPGs: false

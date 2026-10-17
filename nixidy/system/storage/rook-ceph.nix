@@ -305,6 +305,12 @@ in {
                   {name = "/dev/disk/by-id/scsi-36b82a720cf60ce002fd94d962fc2bcad";}
                 ];
               }
+              {
+                # The Toshiba 4 TB data disk (X1Q0A2MPFYXG). Rook skips a disk that still has partitions, so it is
+                # used only after `data` is retired and the disk wiped (docs/node-standard.md, "sirver reinstall plan").
+                name = "falcon";
+                devices = [{name = "/dev/disk/by-id/wwn-0x5000039b38dbee27";}];
+              }
             ];
           };
           # Replaces the chart default list, so the full store is restated.
