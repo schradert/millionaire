@@ -734,14 +734,11 @@ in {
       name = "SecondScreen";
       category = "system";
     };
-    # Pinned to 13.5.4: the GitHub APK of 13.6.0 ships its native libraries compressed, and 13.6.0's server loads
-    # librish.so from inside base.apk, so it dies at start (UnsatisfiedLinkError, shizuku_starter still exits 0;
-    # seen on the Pixel, Android 17, 2026-10-17; upstream reports RikkaApps/Shizuku#1403: "13.5.4 is ok"). 13.5.4 stores
-    # them uncompressed. Move the pin when a release does (docs/android-fleet.md).
+    # No release works on Android 17 yet (docs/android-fleet.md, "Shizuku on Android 17"): 13.6.0's GitHub APK cannot start
+    # its server (compressed libs), 13.5.4's server dies on Android 17's IProcessObserver. The catalog follows upstream.
     shizuku = gh "RikkaApps/Shizuku" "moe.shizuku.privileged.api" {
       name = "Shizuku";
       category = "system";
-      settings = apk "v13\\.5\\.4";
     };
     shizutools = gh "legendsayantan/ShizuTools" "com.legendsayantan.adbtools" {
       name = "ShizuTools";
