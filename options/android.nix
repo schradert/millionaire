@@ -92,10 +92,12 @@
     p = dev.productivity;
     st = config.syncthing.users.${p.syncthingUser} or (throw "android.devices.${dev.name}.productivity: no syncthing.users.${p.syncthingUser}");
     me = st.devices.${p.syncthingDevice} or (throw "android.devices.${dev.name}.productivity: no syncthing.users.${p.syncthingUser}.devices.${p.syncthingDevice}");
+    hub = st.devices.hub or {id = null;};
     names = map (a: a.id) (resolve dev);
     ids = lib.mapAttrs (_: n: cfg.apps.${n}.id) productivityApps;
   in
     assert lib.assertMsg (lib.all (id: lib.elem id names) (lib.attrValues ids)) "android.devices.${dev.name}.productivity needs the apps ${lib.concatStringsSep ", " (lib.attrValues productivityApps)} in its sets";
+    assert lib.assertMsg (hub.id != null) "android.devices.${dev.name}.productivity: record the hub's device ID as syncthing.users.${p.syncthingUser}.devices.hub.id (docs/productivity.md, \"Adding a person\")";
     assert lib.assertMsg (lib.elem p.folder (lib.optionals (me.folders != null) me.folders)) "android.devices.${dev.name}.productivity: syncthing.users.${p.syncthingUser}.devices.${p.syncthingDevice}.folders must include ${p.folder}"; {
       inherit (p) orgDir caldav;
       apps = ids;
@@ -104,8 +106,8 @@
         deviceName = p.syncthingDevice;
         inherit (me) id;
         hub = {
-          inherit (st.devices.hub) id;
-          addresses = sync.addresses st.devices.hub;
+          inherit (hub) id;
+          addresses = sync.addresses hub;
         };
         folder = {
           id = p.folder;
