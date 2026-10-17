@@ -180,12 +180,8 @@ spec:
           - name: /dev/disk/by-id/scsi-35000c50067fcc0d3
           - name: /dev/disk/by-id/scsi-35000c50067fcc2fb
           - name: /dev/disk/by-id/scsi-35000c50067fe560f
-          - config:
-              initialWeight: "0.2"
-            name: /dev/disk/by-id/scsi-35000c50067fb404b
-          - config:
-              initialWeight: "0.2"
-            name: /dev/disk/by-id/scsi-35000c50067faa64b
+          - name: /dev/disk/by-id/scsi-35000c50067fb404b
+          - name: /dev/disk/by-id/scsi-35000c50067faa64b
         name: sirver
       - devices:
           - name: /dev/disk/by-id/scsi-36b82a720cf60ce002fd94d462aff700b

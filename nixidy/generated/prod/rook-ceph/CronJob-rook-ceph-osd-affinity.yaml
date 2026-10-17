@@ -29,6 +29,12 @@ spec:
                   for serial in 6XS4209D 6XS41YTD; do
                     id=$(for i in $(ceph osd ls); do ceph osd metadata "$i" 2>/dev/null | grep -q "_$serial[\",]" && echo "$i"; done | head -1)
                     if [ -z "$id" ]; then echo "$serial: no OSD on it, skipping"; continue; fi
+                    cw=$(ceph osd tree -f json | python3 -c 'import json,sys;i="osd."+sys.argv[1];print(next((n["crush_weight"] for n in json.load(sys.stdin)["nodes"] if n["name"]==i),-1))' "$id")
+                    if python3 -c 'import sys;sys.exit(abs(float(sys.argv[1])-float(sys.argv[2]))>0.001)' "$cw" 0.2; then
+                      echo "osd.$id ($serial): crush weight already 0.2"
+                    else
+                      ceph osd crush reweight "osd.$id" 0.2 || rc=$?
+                    fi
                     if ceph osd dump | grep -E "^osd\.$id " | grep -q "primary_affinity 0"; then
                       echo "osd.$id ($serial): primary affinity already 0"
                     else
