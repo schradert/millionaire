@@ -1074,43 +1074,62 @@ in {
         sqlite3 -separator ' ' "$dir/state/db.sqlite" "SELECT hostname, ipv4 FROM nodes WHERE deleted_at IS NULL ORDER BY ipv4"
       '';
 
-      # `android <device> [apply | pair <ip:port> <code> | productivity [app...] [--dry-run]]`: compares a phone with
-      # android.devices.<device> over adb on the tailnet (docs/android-fleet.md). adb runs on bonobo, which
-      # holds the paired key; `pair` pairs that key once (Android 11+ wireless debugging drops an unpaired key
-      # with no prompt) from the phone's "Pair device with pairing code" dialog, then runs the audit. The
-      # audit also checks the notes and calendar stack (Syncthing-Fork, Orgzly Revived, DAVx5, Fossify
-      # Calendar) when the device declares `productivity`. `apply` opens Obtainium's
-      # import of the missing apps. `productivity` configures those four apps as far as Android allows
-      # (tools/android-productivity, static/android-adb.sh) and says exactly what to tap; `--dry-run` runs
-      # the same script against a stand-in phone and prints what it would do. Nothing is ever uninstalled.
+      # `android <device> [apply | reconcile | channel | pair <ip:port> <code> | productivity [app...] [--dry-run]]`:
+      # compares a phone with android.devices.<device> and converges it (docs/android-fleet.md). The phone is reached over
+      # the management channel first (sshd in Termux on the tailnet, privileged through Shizuku: works on any network)
+      # and over adb (wireless debugging, Wi-Fi only) otherwise; both run on bonobo, which holds the keys. The audit
+      # reports drift and also checks the notes and calendar stack when the device declares `productivity`.
+      # `reconcile` (and `apply` on a device with a channel) installs and updates the catalog's apps silently, with no
+      # prompt; `--plan` only shows what it would do. `channel` is the one-time setup over adb (Termux, Termux:Boot,
+      # Shizuku, the sshd). `pair` pairs bonobo's adb key once (Android 11+ wireless debugging drops an unpaired key with
+      # no prompt) from the phone's "Pair device with pairing code" dialog. `apply` without a channel opens Obtainium's
+      # import of the missing apps. `productivity` configures the notes and calendar apps as far as Android allows
+      # (tools/android-productivity, static/android-adb.sh) and says exactly what to tap. `--dry-run` runs the same
+      # script against a stand-in phone and prints what it would do. Nothing is ever uninstalled.
       scripts.android.exec = let
         inherit ((import ./static/builders.nix).nodes) bonobo;
       in ''
         set -euo pipefail
-        dev=''${1:?Usage: android <device> [apply | pair <ip:port> <code> | productivity [syncthing orgzly davx5 fossify] [--dry-run] [--wait 20m]]}
+        dev=''${1:?Usage: android <device> [apply | reconcile [--plan] [id...] | channel [--wait 20m] | pair <ip:port> <code> | productivity [syncthing orgzly davx5 fossify] [--dry-run] [--wait 20m]] [--via ssh|adb] [--dry-run]}
         mode=''${2:-status}
         shift; [ $# -eq 0 ] || shift
-        extra=("$@")
+        orig=("$@")
+        dry="" plan="" via="" wait="" extra=()
+        while [ $# -gt 0 ]; do
+          case "$1" in
+            --dry-run) dry=1 ;;
+            --plan) plan=1 ;;
+            --via) via=''${2:?--via takes ssh or adb}; shift ;;
+            --wait) wait=''${2:?--wait takes a duration such as 20m}; shift ;;
+            *) extra+=("$1") ;;
+          esac
+          shift
+        done
         root="${config.devenv.root}"
         want=$(nix eval --no-pure-eval --json "$root#legacyPackages.${system}.android.devices.$dev")
         rev=$(jq -r .nodes.nixpkgs.locked.rev "$root/flake.lock")
         host=$(jq -r .hostname <<<"$want")
         key=(); [ -r "$HOME/.ssh/personal" ] && key=(-o IdentitiesOnly=yes -i "$HOME/.ssh/personal")
+        # a device with a channel is converged silently: `apply` is `reconcile`
+        [ "$mode" != apply ] || [ "$(jq .channel.enable <<<"$want")" != true ] || mode=reconcile
+        secs() { case "$1" in *h) echo $((''${1%h} * 3600)) ;; *m) echo $((''${1%m} * 60)) ;; *s) echo "''${1%s}" ;; *) echo "$1" ;; esac; }
         # variables the remote script reads (productivity spec, secrets): through ssh's stdin, never an argument
-        hdr=""
-        dry=""
-        for x in ''${extra[@]+"''${extra[@]}"}; do [ "$x" != --dry-run ] || dry=1; done
+        hdr=$(printf 'dev=%q\nchan_port=%q\nchan_wakelock=%q\nfrom_ip=%q\n' "$dev" "$(jq -r .channel.port <<<"$want")" "$(jq -r .channel.wakeLock <<<"$want")" ${bonobo.tailnet})
+        [ -z "$via" ] || hdr="$hdr"$'\n'"$(printf 'tp=%q' "$via")"
+        [ -z "$wait" ] || hdr="$hdr"$'\n'"$(printf 'wait_s=%q' "$(secs "$wait")")"
         if [ "$mode" = pair ]; then
           # the code is good for one pairing; it travels in the script header on ssh's stdin, never in an argument list
-          pargs=(); for x in ''${extra[@]+"''${extra[@]}"}; do [ "$x" = --dry-run ] || pargs+=("$x"); done
-          [ "''${#pargs[@]}" -eq 2 ] && [[ "''${pargs[0]}" =~ ^[0-9.]+:[0-9]+$ ]] && [[ "''${pargs[1]}" =~ ^[0-9]+$ ]] \
+          [ "''${#extra[@]}" -eq 2 ] && [[ "''${extra[0]}" =~ ^[0-9.]+:[0-9]+$ ]] && [[ "''${extra[1]}" =~ ^[0-9]+$ ]] \
             || { echo "Usage: android $dev pair <ip:pairing-port> <code> (Developer options > Wireless debugging > Pair device with pairing code)" >&2; exit 64; }
-          hdr=$(printf 'pair_addr=%q\npair_code=%q\n' "''${pargs[0]}" "''${pargs[1]}")
+          hdr="$hdr"$'\n'"$(printf 'pair_addr=%q\npair_code=%q' "''${extra[0]}" "''${extra[1]}")"
         fi
-        hdr=$(printf 'dev=%q\n%s' "$dev" "$hdr")
-        script() { cat "$root/static/android-adb.sh"; }
-        if [ "$mode" = productivity ]; then
-          ph=$("$root/tools/android-productivity" apply "$dev" ''${extra[@]+"''${extra[@]}"} <<<"$want")
+        script() { cat "$root/static/android-reconcile.sh" "$root/static/android-adb.sh"; }
+        if [ "$mode" = reconcile ] || [ "$mode" = channel ]; then
+          # the catalog entries of the device: what to resolve and install
+          hdr="$hdr"$'\n'"$(printf 'act=%s\nwant=%q\nonly=%q' "$mode" "$(jq -c . <<<"$want")" "''${extra[*]:-}")"
+          [ -z "$plan" ] || hdr="$hdr"$'\nplan=1'
+        elif [ "$mode" = productivity ]; then
+          ph=$("$root/tools/android-productivity" apply "$dev" ''${orig[@]+"''${orig[@]}"} <<<"$want")
           hdr="$hdr"$'\n'"$ph"
         elif [ "$(jq '.productivity != null' <<<"$want")" = true ]; then
           ph=$("$root/tools/android-productivity" audit "$dev" <<<"$want") \
@@ -1122,16 +1141,16 @@ in {
           exit
         fi
         # LAN first, else the edge box (sirver) as a jump to bonobo's tailnet IP
-        via=(''${ANDROID_ADB_VIA:-tristan@${bonobo.lan}})
-        ssh "''${key[@]}" -o ConnectTimeout=5 "''${via[@]}" true 2>/dev/null \
-          || via=(-J tristan@192.184.168.248 tristan@${bonobo.tailnet})
+        bvia=(''${ANDROID_ADB_VIA:-tristan@${bonobo.lan}})
+        ssh "''${key[@]}" -o ConnectTimeout=5 "''${bvia[@]}" true 2>/dev/null \
+          || bvia=(-J tristan@192.184.168.248 tristan@${bonobo.tailnet})
         remote() {
           { printf '%s\n' "$hdr"; [ -z "''${1:-}" ] || printf 'link=%q\n' "$1"; script; } \
-            | ssh "''${key[@]}" "''${via[@]}" \
-              nix shell "github:NixOS/nixpkgs/$rev#android-tools" "github:NixOS/nixpkgs/$rev#nmap" "github:NixOS/nixpkgs/$rev#curl" "github:NixOS/nixpkgs/$rev#jq" \
+            | ssh "''${key[@]}" "''${bvia[@]}" \
+              nix shell "github:NixOS/nixpkgs/$rev#android-tools" "github:NixOS/nixpkgs/$rev#nmap" "github:NixOS/nixpkgs/$rev#curl" "github:NixOS/nixpkgs/$rev#jq" "github:NixOS/nixpkgs/$rev#unzip" \
               -c bash -s -- "$host"
         }
-        if [ "$mode" = productivity ]; then
+        if [ "$mode" = productivity ] || [ "$mode" = reconcile ] || [ "$mode" = channel ]; then
           remote
           exit
         fi
@@ -1152,7 +1171,7 @@ in {
               extra: [$pkgs | to_entries[] | select(.value == "dev.imranr.obtainium" and (.key | IN($ids[]) | not)) | .key]
             }')
         jq -r --arg dev "$dev" '
-          "\($dev): \(.device.serial), Android \(.device.release)",
+          "\($dev): \(.device.serial), Android \(.device.release), over \(.device.transport // "adb")",
           "vpn: always-on=\(.device.vpn_app) lockdown=\(.device.vpn_lockdown) (want alwaysOn=\(.vpn.alwaysOn) lockdown=\(.vpn.lockdown))\(if .vpnDrift then "  DRIFT: Settings > Network > VPN > Tailscale" else "" end)",
           "missing (\(.missing | length)): \(.missing | map(.name) | join(", "))",
           "installed outside Obtainium (\(.foreign | length)): \(.foreign | join(", "))",

@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
 # Runs on a tailnet host, piped over ssh by `android` (devenv.nix) inside a
-# `nix shell` with adb, nmap, curl and jq (or locally, with `dry=1`, against stubs that print what would
-# run). Finds the phone's wireless-debugging port, connects with this host's paired adb key and prints
-# the device state as `key value` lines. The caller prepends variables (printf %q):
-#   link    opens that Obtainium import on the phone, which asks for confirmation
+# `nix shell` with adb, nmap, curl, jq and unzip (or locally, with `dry=1`, against stubs that print what would
+# run), behind static/android-reconcile.sh. Reaches the phone over one of two transports and prints the device state
+# as `key value` lines. The caller prepends variables (printf %q):
+#   tp      ssh | adb | auto (default): the management channel first (sshd in Termux on the tailnet, privileged
+#           calls through Shizuku's rish), adb (wireless debugging, Wi-Fi only) otherwise. The audit and
+#           `reconcile` use either; `channel`, `productivity` and `pair` need adb.
+#   chan_key, chan_known, chan_port   the channel's ssh key (default ~/.android/ssh_key), known_hosts and port
+#   from_ip bonobo's tailnet address: the only source the phone's authorized key accepts (`channel`)
+#   link    opens that Obtainium import on the phone (adb), which asks for confirmation
 #   spec    android.devices.<d>.productivity as JSON: adds `prod ok|DRIFT <check>` audit lines
 #   st_key  Syncthing's GUI API key for that device (derived from its identity), for the audit's REST calls
 #   dev     the device name (for the instructions in error messages)
 #   pair_addr, pair_code   `android <device> pair <ip:port> <code>`: pair this host's key with the phone first
 #                      (Wireless debugging > Pair device with pairing code; the code arrives here, never in an argument list)
+#   act=channel        one-time setup of the management channel (adb): installs Termux, Termux:Boot and Shizuku from the
+#                      catalog, grants what they need, pushes the sshd setup into Termux, starts Shizuku, verifies ssh
+#   act=reconcile      install and update the catalog's apps silently (see android-reconcile.sh for its variables)
 #   act=productivity   configure the notes and calendar apps instead (`stages`: syncthing orgzly davx5 fossify;
 #                      zip_b64: the Syncthing import archive; dav_pass: the Baikal password; dry=1: print only;
 #                      wait_s: how long each tap is awaited, default 600). Each app is its own stage: one failing or
@@ -16,30 +24,115 @@
 #                      unless every stage is ok.
 # Secrets arrive on stdin or in these variables, never in an argument list.
 
+# a stand-in phone for dry=1: every read is answered from canned data, every write is printed (stdin masked).
+# stub=<name> picks a failure: noport (nothing open), unpaired (a port is open, adb connect fails), nolaunch (no launcher
+# intent resolves; monkey still works), nolaunch-all (monkey fails too), badcode (wrong pairing code), nochannel (the
+# sshd is not up, adb is), noshizuku (sshd is up, Shizuku is down, adb is not reachable), noshizuku-adb (Shizuku is
+# down, adb can start it), alldown (nothing answers), failinstall (pm install fails), ratelimit (GitHub answers 403)
 dry_stubs() {
-  # a stand-in phone: every read finds nothing installed, every write is printed (stdin masked)
   exec 9>&2 # the callers redirect stdout and stderr; the printed commands must still show
+  HOME=$(mktemp -d)
+  export HOME
+  chan_key=$HOME/ssh_key
+  : >"$chan_key"
   tailscale() { echo 100.64.0.99; }
-  # stub=noport (nothing open), stub=unpaired (a port is open, adb connect fails), stub=nolaunch (no launcher intent
-  # resolves; monkey still works) and stub=nolaunch-all (monkey fails too) test the error paths
-  nmap() { [ "${stub:-}" = noport ] || echo "Host: 100.64.0.99 ()	Ports: 37000/open/tcp//unknown///"; }
-  curl() { return 7; }
+  nmap() { case "${stub:-}" in noport | alldown | noshizuku | nochannel-noadb) ;; *) echo "Host: 100.64.0.99 ()	Ports: 37000/open/tcp//unknown///" ;; esac; }
+  [ "${stub:-}" = never-setup ] || { mkdir -p "$HOME/.android"; printf 'user=u0_a345\n' >"$HOME/.android/channel-${1:-device}.conf"; }
   sleep() { :; }
+  fake_pkgs() { printf '%s\n' "com.termux 1002 0.118.3" "org.jellyfin.mobile 1 2.6.0" "com.example.old 5 1.0.0"; }
+  # one phone shell command (the text the real shell would get)
+  fake_shell() {
+    local c=$1
+    case "$c" in
+      "getprop ro.build.version.release") echo 17 ;;
+      "getprop ro.product.cpu.abilist") echo arm64-v8a,armeabi-v7a,armeabi ;;
+      "id -u")
+        case "${stub:-}" in
+          noshizuku | alldown) return 1 ;;
+          noshizuku-adb) [ -e "$HOME/.shizuku-started" ] && echo 2000 || return 1 ;;
+          *) echo 2000 ;;
+        esac
+        ;;
+      "settings get"*) echo null ;;
+      "pm list packages -3 -i"*) printf '%s\n' "package:com.termux  installer=dev.imranr.obtainium" "package:org.jellyfin.mobile  installer=dev.imranr.obtainium" ;;
+      "for p in"*) fake_pkgs ;;
+      "pm install"*)
+        printf '+ shell %s\n' "$c" >&9
+        if [ "${stub:-}" = failinstall ]; then echo "Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: signatures do not match]"; else echo Success; fi ;;
+      "dumpsys window"*) echo "  mCurrentFocus=Window{abc u0 com.termux/com.termux.app.TermuxActivity}" ;;
+      "ps -A"*) echo "u0_a345 123 1 bash" ;;
+      "test -f /sdcard/Android/data/moe.shizuku"*) return 0 ;;
+      "test -f"*"/done") return 0 ;;
+      "cat /sdcard/Download/termux-channel/user") echo u0_a345 ;;
+      "cat /sdcard/Download/termux-channel/hostkey") echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDRYSTUBHOSTKEY root@localhost" ;;
+      "pm list packages"* | "dumpsys"* | "appops get"* | "content query"*) return 0 ;;
+      "pm path"* | "test"*) return 1 ;;
+      "monkey"*) [ "${stub:-}" != nolaunch-all ] || return 1 ;;
+      "am start"*) if [[ "${stub:-}" == nolaunch* ]]; then echo "Error: Activity not started, unable to resolve Intent { $c }"; return 255; fi ;;
+      "cmd package resolve-activity"*) [[ "${stub:-}" == nolaunch* ]] || echo "com.example/.Main" ;;
+      *) printf '+ shell %s\n' "$c" >&9 ;;
+    esac
+  }
+  ssh() {
+    local args=("$@") last="${*: -1}" b c
+    case "${stub:-}" in nochannel | alldown | nochannel-noadb) return 255 ;; esac
+    case "$last" in
+      true) return 0 ;;
+      *"base64 -d"*)
+        b=$(sed -n 's/.*printf %s \([A-Za-z0-9+\/=]*\) | base64 -d.*/\1/p' <<<"$last")
+        c=$(printf '%s' "$b" | base64 -d)
+        fake_shell "$c"
+        ;;
+      cat\ \>*|mkdir*) printf '+ ssh push %s <<< %s bytes\n' "$last" "$(wc -c | tr -d ' ')" >&9 ;;
+      *) printf '+ ssh %s\n' "$last" >&9 ;;
+    esac
+  }
+  ssh-keygen() { case "$1" in -y) echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAISTUBPUBKEY android-channel" ;; *) return 0 ;; esac; }
+  unzip() { printf 'stub-%s' "${*: -1}"; }
+  curl() {
+    local args=("$@") i out="" hdr="" url="${*: -1}" wcode="" body=""
+    for ((i = 0; i < ${#args[@]}; i++)); do
+      case "${args[$i]}" in
+        -o) out=${args[$((i + 1))]} ;;
+        -D) hdr=${args[$((i + 1))]} ;;
+        -w) wcode=${args[$((i + 1))]} ;;
+      esac
+    done
+    case "$url" in
+      https://api.github.com/*) [ "${stub:-}" != ratelimit ] || { [ -z "$hdr" ] || : >"$hdr"; [ -z "$wcode" ] || printf 403; return 0; }; body=$(dry_github "$url") ;;
+      https://f-droid.org/api/v1/packages/*) body=$(dry_fdroid "${url##*/}") ;;
+      https://apt.izzysoft.de/*/api/v1/packages/*) body='{"error": "package not found"}' ;;
+      https://ntfy.*) printf '+ ntfy %s\n' "$url" >&9; return 0 ;;
+      https://*)
+        if [ -n "$out" ]; then printf 'APK' >"$out"; fi
+        return 0
+        ;;
+      *) return 7 ;;
+    esac
+    [ -z "$hdr" ] || printf 'HTTP/2 200\r\netag: "stub"\r\n' >"$hdr"
+    if [ -n "$out" ]; then printf '%s' "$body" >"$out"; else printf '%s' "$body"; fi
+    [ -z "$wcode" ] || printf 200
+  }
   adb() {
     local args=("$@") n
     [ "${args[0]:-}" = -s ] && args=("${args[@]:2}")
     case "${args[*]}" in
-      devices) [ -n "${stub:-}" ] || printf 'List of devices attached\n100.64.0.99:37000\tdevice\n'; return ;;
+      devices) printf 'List of devices attached\n'; [ -n "${stub:-}" ] || printf '100.64.0.99:37000\tdevice\n'; return ;;
       pair*) cat >/dev/null; [ "${stub:-}" = badcode ] && echo "Failed: Wrong password or connection was dropped" || echo "Successfully paired to ${args[1]} [guid=adb-stub]"; return ;;
       connect*) if [ "${stub:-}" = unpaired ]; then echo "failed to connect to '${args[1]}'"; else echo "connected to ${args[1]}"; fi; return ;;
-      "shell getprop ro.build.version.release") echo 17; return ;;
-      "shell settings get"*) echo null; return ;;
-      "shell pm list packages"*|"shell dumpsys"*|"shell appops get"*|"shell content query"*) return 0 ;;
-      "shell pm path"*|"shell test"*) return 1 ;;
       "forward tcp:0 tcp:8384") echo 38384; return ;;
-      "shell monkey"*) [ "${stub:-}" != nolaunch-all ] || return 1 ;;
-      "shell am start"*) if [[ "${stub:-}" == nolaunch* ]]; then echo "Error: Activity not started, unable to resolve Intent { ${args[*]} }"; return 255; fi ;;
-      "shell cmd package resolve-activity"*) [[ "${stub:-}" == nolaunch* ]] || echo "com.example/.Main"; return ;;
+      "push "* | "install "*) printf '+ adb %s\n' "${args[*]}" >&9; return ;;
+      "shell sh "*) printf '+ adb %s\n' "${args[*]}" >&9; : >"$HOME/.shizuku-started"; return ;;
+      "shell input"*) printf '+ adb %s\n' "${args[*]}" >&9; return ;;
+      shell\ *)
+        # a secret travels on stdin: count it, never print it
+        if [ -p /dev/stdin ]; then
+          printf '+ adb %s <<< stdin: %s bytes, masked\n' "${args[*]}" "$(wc -c | tr -d ' ')" >&9
+          return
+        fi
+        fake_shell "${args[*]:1}"
+        return
+        ;;
     esac
     n=""
     [ ! -p /dev/stdin ] || n=" <<< stdin: $(wc -c | tr -d ' ') bytes, masked"
@@ -47,30 +140,83 @@ dry_stubs() {
   }
 }
 
+# canned GitHub release lists and F-Droid answers for the dry run and its tests (tools/android-channel-test)
+dry_github() {
+  case "$1" in
+    */RikkaApps/Shizuku/*) echo '[{"tag_name":"v13.6.0","draft":false,"prerelease":false,"assets":[{"name":"shizuku-v13.6.0.r1086-release.apk","browser_download_url":"https://github.com/RikkaApps/Shizuku/releases/download/v13.6.0/shizuku.apk"}]}]' ;;
+    */jellyfin/jellyfin-android/*) echo '[{"tag_name":"v2.7.0","draft":false,"prerelease":false,"assets":[{"name":"jellyfin-android-v2.7.0-libre-release.apk","browser_download_url":"https://example.invalid/libre.apk"},{"name":"jellyfin-android-v2.7.0-gplay-release.apk","browser_download_url":"https://example.invalid/gplay.apk"}]},{"tag_name":"v2.6.0","draft":false,"prerelease":false,"assets":[]}]' ;;
+    */nightly/app/*) echo '[{"tag_name":"nightly","draft":false,"prerelease":true,"assets":[{"name":"app-arm64-v8a.apk","browser_download_url":"https://example.invalid/n-arm64.apk"},{"name":"app-x86_64.apk","browser_download_url":"https://example.invalid/n-x86.apk"}]},{"tag_name":"v1.0","draft":false,"prerelease":false,"assets":[{"name":"app-universal.apk","browser_download_url":"https://example.invalid/stable.apk"}]}]' ;;
+    *) echo '[]' ;;
+  esac
+}
+dry_fdroid() {
+  case "$1" in
+    com.termux) echo '{"packageName":"com.termux","suggestedVersionCode":1002,"packages":[{"versionName":"0.119.0-beta.3","versionCode":1022},{"versionName":"0.118.3","versionCode":1002}]}' ;;
+    com.termux.boot) echo '{"packageName":"com.termux.boot","suggestedVersionCode":1000,"packages":[{"versionName":"0.8.1","versionCode":1000}]}' ;;
+    com.example.fd) echo '{"packageName":"com.example.fd","suggestedVersionCode":20,"packages":[{"versionName":"2.0","versionCode":20}]}' ;;
+    *) echo '{"error":"NOT_FOUND"}' ;;
+  esac
+}
+
 serial=""
+transport=""
+ssh_dest=""
+ssh_opts=()
+rish=/data/data/com.termux/files/usr/bin/rish
 zip_pushed=""
 # the Syncthing archive holds a private key: remove it however the run ends
-cleanup() { [ -z "$zip_pushed" ] || adb -s "$serial" shell rm -f "$zip_pushed" </dev/null >/dev/null 2>&1 || true; }
+cleanup() {
+  [ -z "$zip_pushed" ] || a shell rm -f "$zip_pushed" >/dev/null 2>&1 || true
+  [ -z "${work:-}" ] || rm -rf "$work"
+}
 
-main() {
-  set -euo pipefail
-  local host=$1 ip port s out
-  local ports=""
-
-  trap cleanup EXIT
-  [ -z "${dry:-}" ] || dry_stubs
-  ip=$(tailscale ip -4 "$host")
-  if [ -n "${pair_addr:-}" ]; then
-    # Android 11+ authenticates the TLS connection with a paired key: an unpaired key just gets "failed to connect".
-    # The pairing port differs from the connect port, and the code is good for one pairing.
-    out=$(printf '%s\n' "${pair_code:-}" | adb pair "$pair_addr" 2>&1) || true
-    if ! grep -q '^Successfully paired' <<<"$out"; then
-      echo "error $host: pairing with $pair_addr failed: ${out:-no output}" >&2
-      echo "  Pairing needs the dialog Developer options > Wireless debugging > Pair device with pairing code to stay open; the code and port change each time it opens." >&2
-      return 4
-    fi
-    echo "paired $pair_addr"
+# a shell <command...>: one command in the phone's shell, over whichever transport is up. adb: `adb shell` (text joined
+# with spaces, interpreted once by the phone). ssh: Shizuku's rish, so the command runs as `shell`; the text travels
+# base64-encoded, so no quoting layer of Termux's bash can touch it. Other adb verbs (forward, push) are adb only.
+a() {
+  if [ "$transport" = ssh ]; then
+    [ "${1:-}" = shell ] || { echo "a $*: adb only" >&2; return 1; }
+    shift
+    local b
+    b=$(printf '%s' "$*" | base64 | tr -d '\n')
+    # a pending Shizuku permission dialog blocks rish until it is answered: do not wait for ever
+    if [ -z "${dry:-}" ] && command -v timeout >/dev/null; then set -- timeout "${rish_timeout:-300}"; else set --; fi
+    "$@" ssh "${ssh_opts[@]}" "$ssh_dest" "$rish -c \"\$(printf %s $b | base64 -d)\"" </dev/null
+  else
+    adb -s "$serial" "$@" </dev/null
   fi
+}
+# push_file <local> <remote>: onto shared storage, where the phone's shell can read it
+push_file() {
+  if [ "$transport" = ssh ]; then
+    # shellcheck disable=SC2029 # the directory is for the phone's shell
+    ssh "${ssh_opts[@]}" "$ssh_dest" "mkdir -p '$(dirname "$2")' && cat > '$2'" <"$1"
+  else
+    adb -s "$serial" push "$1" "$2" </dev/null >/dev/null
+  fi
+}
+# priv_ok: the shell runs as shell (2000) or root: Shizuku (or adb) is up
+priv_ok() {
+  local u
+  u=$(a shell id -u 2>/dev/null | tr -d '\r') || return 1
+  [ "$u" = 2000 ] || [ "$u" = 0 ]
+}
+
+# ssh_connect <ip>: the management channel answers with the pinned host key and this host's key
+ssh_connect() {
+  local ip=$1 user port=${chan_port:-8022}
+  chan_key=${chan_key:-$HOME/.android/ssh_key}
+  user=$(sed -n 's/^user=//p' "$HOME/.android/channel-${host:-x}.conf" 2>/dev/null | head -1 || true)
+  [ -n "$user" ] && [ -r "$chan_key" ] || return 1
+  ssh_dest=$user@$ip
+  ssh_opts=(-i "$chan_key" -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=8 -o ServerAliveInterval=15
+    -o "UserKnownHostsFile=${chan_known:-$HOME/.android/known_hosts}" -o StrictHostKeyChecking=yes -o LogLevel=ERROR)
+  ssh "${ssh_opts[@]}" "$ssh_dest" true </dev/null 2>/dev/null
+}
+
+# adb_connect <ip>: sets `serial`. 0 connected, 3 no port / unpaired, 4 pairing failed.
+adb_connect() {
+  local ip=$1 ports="" port
   serial=$(adb devices </dev/null | awk -v p="$ip:" 'index($1, p) == 1 && $2 == "device" {print $1; exit}')
   if [ -z "$serial" ]; then
     # the TLS port is random per boot (Android 11+)
@@ -93,18 +239,99 @@ main() {
     echo "error $host ($ip): no open adb port; turn on Developer options > Wireless debugging (it turns itself off when Wi-Fi changes)" >&2
     return 3
   fi
-  a() { adb -s "$serial" "$@" </dev/null; }
+}
+
+# shizuku_start_adb: Shizuku died with a reboot; its own start script runs under adb (any adb, wireless included)
+shizuku_start_adb() {
+  local sh=/sdcard/Android/data/moe.shizuku.privileged.api/start.sh i
+  a shell "test -f $sh" || {
+    # the manager writes the script the first time it opens
+    launch moe.shizuku.privileged.api || return 1
+    for ((i = 0; i < 15; i++)); do a shell "test -f $sh" && break; sleep 2; done
+    a shell "test -f $sh" || return 1
+  }
+  a shell "sh $sh" >/dev/null 2>&1 || true
+}
+
+main() {
+  set -euo pipefail
+  local host=$1 ip s out via=${tp:-auto} rc=0
+  priv=up
+
+  trap cleanup EXIT
+  [ -z "${dry:-}" ] || dry_stubs "$host"
+  ip=$(tailscale ip -4 "$host")
+  if [ -n "${pair_addr:-}" ]; then
+    # Android 11+ authenticates the TLS connection with a paired key: an unpaired key just gets "failed to connect".
+    # The pairing port differs from the connect port, and the code is good for one pairing.
+    out=$(printf '%s\n' "${pair_code:-}" | adb pair "$pair_addr" 2>&1) || true
+    if ! grep -q '^Successfully paired' <<<"$out"; then
+      echo "error $host: pairing with $pair_addr failed: ${out:-no output}" >&2
+      echo "  Pairing needs the dialog Developer options > Wireless debugging > Pair device with pairing code to stay open; the code and port change each time it opens." >&2
+      return 4
+    fi
+    echo "paired $pair_addr"
+  fi
+  case "${act:-status}" in channel | productivity) via=adb ;; esac
+  # the channel first
+  if [ "$via" != adb ] && ssh_connect "$ip"; then
+    transport=ssh
+    serial="ssh:$ssh_dest:${chan_port:-8022}"
+    if ! priv_ok; then
+      # sshd answers but Shizuku is down (the phone rebooted): adb can start it when the phone is on home Wi-Fi
+      local ssh_serial=$serial started=""
+      priv=down
+      transport=adb
+      if adb_connect "$ip" 2>/dev/null && shizuku_start_adb; then started=1; fi
+      transport=ssh
+      serial=$ssh_serial
+      if [ -n "$started" ]; then
+        for _ in 1 2 3 4 5 6; do
+          if priv_ok; then priv=up; break; fi
+          sleep 3
+        done
+      fi
+      if [ "$priv" = up ]; then echo "shizuku started over adb"; else echo "shizuku down"; fi
+    fi
+  elif [ "$via" = ssh ]; then
+    echo "error $host ($ip): the management channel does not answer (sshd in Termux down, or never set up: android ${dev:-<device>} channel)" >&2
+    return 3
+  else
+    transport=adb
+    adb_connect "$ip" || return $?
+  fi
+  echo "transport $transport"
   echo "serial $serial"
   s=$serial
-  echo "release $(a shell getprop ro.build.version.release)"
-  if [ "${act:-status}" = productivity ]; then
-    productivity "$serial"
-    return
+  if [ "$priv" = down ]; then
+    # nothing privileged can run: reconcile reports its apps as pending, the audit says why it is empty
+    if [ "${act:-status}" = reconcile ]; then
+      reconcile || rc=$?
+      return "$rc"
+    fi
+    echo "error $host: the channel is up but Shizuku is not running and adb is not reachable (the phone rebooted away from home Wi-Fi?): nothing privileged can run until it is on home Wi-Fi again, or until Shizuku is started on the phone" >&2
+    return 6
   fi
+  [ "$transport" != ssh ] || echo "shizuku up"
+  echo "release $(a shell getprop ro.build.version.release)"
+  case "${act:-status}" in
+    productivity)
+      productivity "$serial"
+      return
+      ;;
+    channel)
+      channel "$ip"
+      return
+      ;;
+    reconcile)
+      reconcile || rc=$?
+      return "$rc"
+      ;;
+  esac
   echo "vpn_app $(a shell settings get secure always_on_vpn_app)"
   echo "vpn_lockdown $(a shell settings get secure always_on_vpn_lockdown)"
-  a shell pm list packages -3 -i | sed -n 's/^package:\([^ ]*\) *installer=\(.*\)$/pkg \1 \2/p'
-  if [ -n "${link:-}" ]; then
+  a shell pm list packages -3 -i | sed -n 's/^package:\([^ ]*\) *installer=\([^ ]*\).*$/pkg \1 \2/p'
+  if [ -n "${link:-}" ] && [ "$transport" = adb ]; then
     # via stdin: the link can exceed adb's command-line limit
     # shellcheck disable=SC2016 # $(cat) is for the phone's shell
     printf '%s' "$link" | adb -s "$serial" shell 'am start -a android.intent.action.VIEW -d "$(cat)"' >/dev/null
@@ -123,8 +350,23 @@ sp() { jq -r "$1" <<<"$spec"; }
 have_pkg() { [ -n "$(a shell pm path "$1" 2>/dev/null || true)" ]; }
 
 # the SAF-free file API of Syncthing-Fork, behind `adb forward`: needs the derived API key
-st_open() { st_port=$(adb -s "$1" forward tcp:0 tcp:8384 </dev/null 2>/dev/null) || st_port=""; }
-st_close() { [ -z "${st_port:-}" ] || adb -s "$1" forward --remove "tcp:$st_port" </dev/null >/dev/null 2>&1 || true; }
+st_open() {
+  if [ "$transport" = ssh ]; then
+    st_ctl=$HOME/.android/ctl-$$
+    st_port=$((20000 + RANDOM % 20000))
+    ssh -f -N -M -S "$st_ctl" "${ssh_opts[@]}" -o ExitOnForwardFailure=yes -L "127.0.0.1:$st_port:127.0.0.1:8384" "$ssh_dest" </dev/null 2>/dev/null || st_port=""
+  else
+    st_port=$(adb -s "$1" forward tcp:0 tcp:8384 </dev/null 2>/dev/null) || st_port=""
+  fi
+}
+st_close() {
+  [ -n "${st_port:-}" ] || return 0
+  if [ "$transport" = ssh ]; then
+    ssh -S "${st_ctl:-/nonexistent}" -O exit "$ssh_dest" </dev/null >/dev/null 2>&1 || true
+  else
+    adb -s "$1" forward --remove "tcp:$st_port" </dev/null >/dev/null 2>&1 || true
+  fi
+}
 slashes=//
 # st_get <path>: GET on the phone's Syncthing REST API; the key goes through a config file descriptor, not argv
 st_get() {
@@ -447,6 +689,211 @@ stage_fossify() {
   say "   (needs DAVx5's account and ticked calendar first; the preference is private to the app)"
   if [ "$rc" -eq 0 ]; then note "permissions granted; the CalDAV tap is on the phone"; else note "could not open $pkg; the CalDAV tap is still to do"; fi
   return "$rc"
+}
+
+# ---- the management channel (one-time setup) --------------------------------------------------------
+
+# shizuku_apk: the pinned Shizuku APK from the catalog's source, downloaded once (rish ships inside it)
+# shellcheck disable=SC2154 # want comes from the caller
+shizuku_apk() {
+  local app res tag file url dir abi=arm64-v8a
+  app=$(jq -c '.apps[] | select(.id == "moe.shizuku.privileged.api")' <<<"$want")
+  [ -n "$app" ] || return 1
+  res=$(resolve "$app" "$abi") || return 1
+  tag=$(jq -r .tag <<<"$res")
+  file=$(jq -r .file <<<"$res")
+  url=$(jq -r .url <<<"$res")
+  dir=$(rc_cache)/apk/moe.shizuku.privileged.api/$tag
+  mkdir -p "$dir"
+  [ -s "$dir/$file" ] || curl -fsSL --retry 3 -o "$dir/$file" "$url" || return 1
+  printf '%s' "$dir/$file"
+}
+
+termux_shell_ready() {
+  a shell "dumpsys window | grep -m1 mCurrentFocus" 2>/dev/null | grep -q 'com.termux/' \
+    && a shell "ps -A | grep -E ' (bash|login)\$'" >/dev/null 2>&1
+}
+chan_setup_done() { a shell "test -f $1/done" >/dev/null 2>&1; }
+
+# chan_setup_script <ip> <authorized_keys line>: what runs inside Termux, once and again on every `channel`
+chan_setup_script() {
+  local tpl wake='# (wakeLock = false: Doze may put the channel to sleep with the screen off)'
+  [ "${chan_wakelock:-true}" != true ] || wake='termux-wake-lock'
+  tpl=$(cat <<'TPL'
+#!/data/data/com.termux/files/usr/bin/sh
+# written by `android <device> channel` (docs/android-fleet.md); safe to run again
+set -eu
+D=/sdcard/Download/termux-channel
+P=/data/data/com.termux/files/usr
+rm -f "$D/done"
+echo "== management channel: packages"
+export DEBIAN_FRONTEND=noninteractive
+pkg update -y >/dev/null 2>&1 || true
+pkg install -y openssh
+mkdir -p "$HOME/.ssh" "$HOME/.termux/boot" "$HOME/.rish"
+chmod 700 "$HOME/.ssh"
+printf '%s\n' '@AUTHKEY@' >"$HOME/.ssh/authorized_keys"
+chmod 600 "$HOME/.ssh/authorized_keys"
+[ -f "$P/etc/ssh/ssh_host_ed25519_key" ] || ssh-keygen -q -t ed25519 -N '' -f "$P/etc/ssh/ssh_host_ed25519_key"
+cat >"$P/etc/ssh/sshd_config" <<'CFG'
+# the management channel: the phone's tailnet address only, keys only (written by `android <device> channel`)
+Port @PORT@
+ListenAddress @IP@
+HostKey /data/data/com.termux/files/usr/etc/ssh/ssh_host_ed25519_key
+PidFile /data/data/com.termux/files/usr/var/run/sshd.pid
+AuthorizedKeysFile .ssh/authorized_keys
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+AuthenticationMethods publickey
+PermitEmptyPasswords no
+MaxAuthTries 3
+LoginGraceTime 20
+AllowTcpForwarding local
+AllowAgentForwarding no
+X11Forwarding no
+PermitTunnel no
+PrintMotd no
+LogLevel ERROR
+ClientAliveInterval 60
+ClientAliveCountMax 3
+Subsystem sftp /data/data/com.termux/files/usr/libexec/sftp-server
+CFG
+echo "== management channel: rish (Shizuku's shell)"
+rm -f "$HOME/.rish/rish" "$HOME/.rish/rish_shizuku.dex"
+cp "$D/rish" "$HOME/.rish/rish"
+cp "$D/rish_shizuku.dex" "$HOME/.rish/rish_shizuku.dex"
+chmod 700 "$HOME/.rish/rish"
+chmod 400 "$HOME/.rish/rish_shizuku.dex"
+cat >"$P/bin/rish" <<'EOS'
+#!/data/data/com.termux/files/usr/bin/sh
+# Shizuku's shell for Termux: runs as `shell` while Shizuku is up
+unset LD_PRELOAD LD_LIBRARY_PATH
+export RISH_APPLICATION_ID=com.termux
+exec /system/bin/sh "$HOME/.rish/rish" "$@"
+EOS
+chmod 755 "$P/bin/rish"
+echo "== management channel: boot script"
+cat >"$HOME/.termux/boot/sshd" <<'EOB'
+#!/data/data/com.termux/files/usr/bin/sh
+# started by Termux:Boot after the first unlock following a boot; retries until the tailnet address exists
+@WAKE@
+echo $$ >"$HOME/.termux/sshd-loop.pid"
+: >"$HOME/.termux/sshd.log"
+while :; do
+  /data/data/com.termux/files/usr/bin/sshd -D -e >>"$HOME/.termux/sshd.log" 2>&1 || true
+  sleep 5
+done
+EOB
+chmod 700 "$HOME/.termux/boot/sshd"
+echo "== management channel: start"
+if [ -f "$HOME/.termux/sshd-loop.pid" ]; then kill "$(cat "$HOME/.termux/sshd-loop.pid")" 2>/dev/null || true; fi
+if [ -f "$P/var/run/sshd.pid" ]; then kill "$(cat "$P/var/run/sshd.pid")" 2>/dev/null || true; fi
+sleep 1
+nohup "$HOME/.termux/boot/sshd" >/dev/null 2>&1 &
+sleep 3
+id -un >"$D/user"
+cut -d' ' -f1,2 "$P/etc/ssh/ssh_host_ed25519_key.pub" >"$D/hostkey"
+echo ok >"$D/done"
+echo "== done: sshd listens on @IP@:@PORT@"
+TPL
+)
+  tpl=${tpl//@AUTHKEY@/$2}
+  tpl=${tpl//@PORT@/${chan_port:-8022}}
+  tpl=${tpl//@IP@/$1}
+  tpl=${tpl//@WAKE@/$wake}
+  printf '%s\n' "$tpl"
+}
+
+# channel <phone tailnet ip>: sshd in Termux on the tailnet, started at boot by Termux:Boot, privileged through Shizuku.
+# Runs over adb once; afterwards `android` reaches the phone over ssh first and falls back to adb.
+channel() {
+  local ip=$1 d=/sdcard/Download/termux-channel port=${chan_port:-8022} pub line user hk known rc=0 pkg apk
+  chan_key=${chan_key:-$HOME/.android/ssh_key}
+  known=${chan_known:-$HOME/.android/known_hosts}
+  [ -r "$chan_key" ] || { echo "error: no channel key at $chan_key (pulumi android_ssh_key, docs/android-fleet.md)" >&2; return 1; }
+  jq -e '[.apps[].id] | index("com.termux") != null' <<<"$want" >/dev/null \
+    || { echo "error: $dev does not declare channel.enable (modules/android.nix)" >&2; return 1; }
+  pub=$(ssh-keygen -y -f "$chan_key")
+  line="restrict,port-forwarding${from_ip:+,from=\"$from_ip\"} $(cut -d' ' -f1,2 <<<"$pub") android-channel"
+  say "== management channel for $dev (adb, once): unlock the phone and keep the screen on"
+
+  say "-- Termux, Termux:Boot and Shizuku (silent over adb)"
+  only="com.termux com.termux.boot moe.shizuku.privileged.api" reconcile || rc=$?
+  [ "$rc" -eq 0 ] || { say "error: could not install the three apps (see above; a Termux from another source must be uninstalled first, the signatures differ)" >&2; return 1; }
+
+  say "-- permissions and battery"
+  for pkg in com.termux com.termux.boot moe.shizuku.privileged.api; do
+    loosen "$pkg"
+    a shell "appops set $pkg RUN_IN_BACKGROUND allow; appops set $pkg RUN_ANY_IN_BACKGROUND allow" >/dev/null 2>&1 || true
+  done
+  grant com.termux POST_NOTIFICATIONS READ_EXTERNAL_STORAGE WRITE_EXTERNAL_STORAGE
+  allfiles com.termux
+  # lets Shizuku restart itself after a reboot on trusted Wi-Fi (Android 13+; its boot receiver checks this grant)
+  a shell pm grant moe.shizuku.privileged.api android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1 || say "   (Shizuku did not get WRITE_SECURE_SETTINGS: it will not restart itself after a reboot; bonobo's adb start still covers home Wi-Fi)"
+  # Android 14+ also has this as a developer option ("Disable child process restrictions"); sshd forks per session
+  a shell settings put global settings_enable_monitor_phantom_procs false >/dev/null 2>&1 || true
+
+  say "-- bundle onto the phone ($d)"
+  work=$(mktemp -d)
+  apk=$(shizuku_apk) || { say "error: could not fetch the Shizuku APK (rish ships inside it)" >&2; return 1; }
+  unzip -p "$apk" assets/rish >"$work/rish"
+  unzip -p "$apk" assets/rish_shizuku.dex >"$work/rish_shizuku.dex"
+  [ -s "$work/rish" ] && [ -s "$work/rish_shizuku.dex" ] || { say "error: $apk has no rish assets" >&2; return 1; }
+  chan_setup_script "$ip" "$line" >"$work/setup.sh"
+  a shell "rm -rf $d; mkdir -p $d" >/dev/null
+  push_file "$work/rish" "$d/rish"
+  push_file "$work/rish_shizuku.dex" "$d/rish_shizuku.dex"
+  push_file "$work/setup.sh" "$d/setup.sh"
+
+  say "-- open Termux:Boot once (Android delivers no boot broadcast to an app that was never started)"
+  a shell "am start -n com.termux.boot/.BootActivity" >/dev/null 2>&1 || launch com.termux.boot || true
+
+  say "-- run the setup inside Termux (typed into its shell; the first start unpacks Termux and downloads openssh: a few minutes)"
+  a shell "input keyevent KEYCODE_WAKEUP" >/dev/null 2>&1 || true
+  launch com.termux || say "   could not open Termux: open it by hand"
+  if ! poll "${wait_s:-900}" termux_shell_ready; then
+    say "   Termux did not show a shell in time: open it and run: sh $d/setup.sh" >&2
+  else
+    sleep 5
+    a shell "input text 'sh%s$d/setup.sh'" >/dev/null
+    a shell "input keyevent 66" >/dev/null
+  fi
+  say "   waiting up to $(minutes "${wait_s:-900}") for the setup to finish (if the screen shows a prompt or an error, it needs you; the line to run is: sh $d/setup.sh)"
+  if ! poll "${wait_s:-900}" chan_setup_done "$d"; then
+    say "error: the setup did not finish; open Termux and run: sh $d/setup.sh, then run this again" >&2
+    return 10
+  fi
+  user=$(a shell "cat $d/user" | tr -d '\r\n')
+  hk=$(a shell "cat $d/hostkey" | tr -d '\r\n')
+  [ -n "$user" ] && [ -n "$hk" ] || { say "error: the setup left no user or host key" >&2; return 1; }
+  mkdir -p "$(dirname "$known")" "$HOME/.android"
+  ssh-keygen -R "[$ip]:$port" -f "$known" >/dev/null 2>&1 || true
+  printf '[%s]:%s %s\n' "$ip" "$port" "$hk" >>"$known"
+  printf 'user=%s\n' "$user" >"$HOME/.android/channel-$host.conf"
+  a shell "rm -rf $d" >/dev/null 2>&1 || true
+  say "   pinned the host key; the channel user is $user"
+
+  say "-- start Shizuku"
+  shizuku_start_adb || say "   could not start Shizuku over adb: open Shizuku, Start via wireless debugging (pairs in-app once)"
+
+  say "-- verify"
+  local t=$transport
+  if [ -n "${dry:-}" ] || ssh_connect "$ip"; then
+    transport=ssh
+    say "   sshd answers on $ip:$port. On the phone: allow Termux in the Shizuku dialog (shown once, the first time rish runs)."
+    if poll "${wait_s:-900}" priv_ok; then
+      say "   ok: the channel is up and privileged (Shizuku). android $dev now goes over ssh first."
+    else
+      transport=$t
+      say "   sshd works, but rish did not get Shizuku permission in time: open Shizuku, Authorized applications, allow Termux, then run: android $dev" >&2
+      return 10
+    fi
+    transport=$t
+  else
+    say "error: the setup finished but sshd does not answer on $ip:$port (the phone is not on the tailnet, or the ACL blocks it)" >&2
+    return 10
+  fi
 }
 
 main "$@"

@@ -795,10 +795,17 @@ in {
       category = "notes-calendar";
       settings = apk "fdroid";
     };
+    # GitHub builds, matching the Termux already on the Pixel (installed by Obtainium from GitHub). Termux and Termux:Boot
+    # share a sharedUserId and must have one signer, and GitHub's APKs are signed with a public test key (termux-app README);
+    # a fresh device can take F-Droid's pair instead (both from F-Droid), see docs/android-fleet.md, (f).
     termux = gh "termux/termux-app" "com.termux" {
       name = "Termux";
       category = "dev-tools";
       settings = apk "universal";
+    };
+    termux-boot = gh "termux/termux-boot" "com.termux.boot" {
+      name = "Termux:Boot";
+      category = "dev-tools";
     };
     thumb-key = gh "dessalines/thumb-key" "com.dessalines.thumbkey" {
       name = "Thumb-Key";
@@ -1037,6 +1044,7 @@ in {
       hostname = "fallicle";
       sets = ["base" "homelab" "pixel"];
       productivity = {};
+      channel.enable = true;
     };
     s21 = {
       owner = "tristan";

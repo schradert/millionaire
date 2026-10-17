@@ -38,7 +38,9 @@
   resolve = dev: let
     names = lib.unique (lib.concatMap (s: cfg.sets.${s} or (throw "android.devices.${dev.name}: unknown set ${s}")) dev.sets
       ++ dev.extraApps
-      ++ lib.optional dev.deviceOwner "dhizuku");
+      ++ lib.optional dev.deviceOwner "dhizuku"
+      # the management channel (docs/android-fleet.md, "Decision"): sshd in Termux, started by Termux:Boot, privileged through Shizuku
+      ++ lib.optionals dev.channel.enable ["termux" "termux-boot" "shizuku"]);
   in
     map (n: cfg.apps.${n} or (throw "android.devices.${dev.name}: unknown app ${n}")) names;
 
@@ -85,7 +87,8 @@
             if dev.deviceOwner
             then "shizuku"
             else "system";
-          enableBackgroundUpdates = true;
+          # a device with a channel is converged by bonobo's reconciler alone (one updater, no prompts)
+          enableBackgroundUpdates = !dev.channel.enable;
           updateInterval = 360;
           bgUpdatesOnWiFiOnly = true;
           checkOnStart = true;
@@ -220,6 +223,16 @@ in {
         stable = can.bool "never track pre-releases" {default = config.owner == "family";};
         topic = can.str "ntfy topic nudged when the app list changes" {default = "android-${name}";};
         hostname = can.str "headscale node name (what `tailscale ip` resolves)" {default = name;};
+        channel = {
+          enable = can.bool "always-on management channel (docs/android-fleet.md): sshd in Termux on the tailnet, Shizuku for privileged calls; `android <device> channel` sets it up once, `android <device> reconcile` and bonobo's timer install and update the apps through it" {default = false;};
+          port = lib.mkOption {
+            type = lib.types.port;
+            default = 8022;
+            description = "Termux's sshd port; bound to the phone's tailnet address only";
+          };
+          wakeLock = can.bool "hold a partial wake lock (termux-wake-lock) so the phone answers on the tailnet with the screen off; costs battery, off lets Doze sleep the channel" {default = true;};
+          interval = can.str "systemd calendar expression for bonobo's reconcile timer" {default = "hourly";};
+        };
         vpn = {
           alwaysOn = can.bool "Tailscale is the Always-on VPN" {default = true;};
           lockdown = can.bool "Block connections without VPN (captive portals need it off for a moment)" {default = config.owner == "tristan";};
@@ -259,6 +272,14 @@ in {
         })
         cfg.devices;
     };
+    reconcile = can.attrs.anything "per-device input of bonobo's reconcile timer (static/android-reconcile.nix): only the devices with a channel" {
+      readOnly = true;
+      default = lib.mapAttrs (_: dev: {
+        inherit (dev) hostname channel topic;
+        inherit (cfg) ntfyHost;
+        apps = map (obtainium dev) (appsOf dev);
+      }) (lib.filterAttrs (_: dev: dev.channel.enable) cfg.devices);
+    };
     hashes = can.attrs.str "per-device hash of everything that device imports" {
       readOnly = true;
       default = lib.mapAttrs (_: dev: builtins.hashString "sha256" (builtins.toJSON (bootstrapJSON dev))) cfg.devices;
@@ -269,7 +290,8 @@ in {
     # read by `android` (devenv.nix): what one device should look like
     legacyPackages.android.devices =
       lib.mapAttrs (_: dev: {
-        inherit (dev) hostname vpn;
+        inherit (dev) hostname vpn channel topic;
+        inherit (cfg) ntfyHost;
         apps = map (obtainium dev) (appsOf dev);
         productivity = lib.mapNullable (_: productivityOf dev) dev.productivity;
       })

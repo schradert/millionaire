@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# android-channel-test: runs static/android-adb.sh and static/android-reconcile.sh against the stand-in phone of
+# `dry=1` (canned GitHub, F-Droid and phone answers, no network, nothing installed) and checks what they would do:
+# the transport choice (ssh first, adb fallback), release resolution (asset filters, pre-releases, F-Droid version
+# codes), silent installs, "pending until Shizuku is up", the signature-mismatch report and the one-time channel setup.
+# Needs bash, jq, base64 and sha256sum (the devshell has them); touches only a temporary HOME.
+set -euo pipefail
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+fail=0
+want=$(jq -nc '
+  def app($id; $url; $st): {id: $id, name: $id, url: $url, additionalSettings: ($st | tojson)};
+  {hostname: "fallicle", channel: {enable: true, port: 8022, wakeLock: true},
+   apps: [
+     app("com.termux"; "https://f-droid.org/packages/com.termux"; {}),
+     app("com.termux.boot"; "https://f-droid.org/packages/com.termux.boot"; {}),
+     app("moe.shizuku.privileged.api"; "https://github.com/RikkaApps/Shizuku"; {}),
+     app("org.jellyfin.mobile"; "https://github.com/jellyfin/jellyfin-android"; {apkFilterRegEx: "libre-release\\.apk$"}),
+     app("com.example.nightly"; "https://github.com/nightly/app"; {includePrereleases: true}),
+     app("com.example.stable"; "https://github.com/nightly/app"; {includePrereleases: false}),
+     app("com.example.gone"; "https://github.com/x/none"; {}),
+     app("com.example.fd"; "https://f-droid.org/packages/com.example.fd"; {}),
+     app("com.example.direct"; "https://example.invalid/Direct.apk"; {})]}')
+
+# run <stub> <header lines...>: the output, then "exit=<status>"
+run() {
+  local stub=$1
+  shift
+  {
+    printf 'dev=pixel\nchan_port=8022\nchan_wakelock=true\nfrom_ip=100.64.0.4\nstub=%q\nwant=%q\n' "$stub" "$want"
+    printf '%s\n' "$@"
+    echo dry=1
+    cat "$root/static/android-reconcile.sh" "$root/static/android-adb.sh"
+  } | bash -s -- fallicle 2>&1 && echo "exit=0" || echo "exit=$?"
+}
+# expect <name> <output> <fixed string> [absent]
+expect() {
+  if grep -qF -- "$3" <<<"$2"; then [ "${4:-}" != absent ] || { echo "FAIL $1: unexpected '$3'"; fail=1; return; }
+  else [ "${4:-}" = absent ] || { echo "FAIL $1: missing '$3'"; fail=1; return; }
+  fi
+  echo "ok   $1: ${4:+no }$3"
+}
+
+out=$(run "" act=status)
+expect "status over ssh" "$out" "transport ssh"
+expect "status shizuku" "$out" "shizuku up"
+expect "status release" "$out" "release 17"
+
+out=$(run nochannel act=status)
+expect "ssh down falls back to adb" "$out" "transport adb"
+
+out=$(run noshizuku act=status)
+expect "shizuku down, no adb: say so" "$out" "Shizuku is not running and adb is not reachable"
+expect "shizuku down: exit 6" "$out" "exit=6"
+
+out=$(run "" act=reconcile)
+expect "reconcile: termux is current (F-Droid version code)" "$out" "installed  com.termux:" absent
+expect "reconcile: termux:boot installed" "$out" "installed  com.termux.boot: 0.8.1"
+expect "reconcile: shizuku from the release asset" "$out" "installed  moe.shizuku.privileged.api: v13.6.0"
+expect "reconcile: update with the apk filter" "$out" "installed  org.jellyfin.mobile: v2.7.0 (was 2.6.0)"
+expect "reconcile: pre-release wanted" "$out" "installed  com.example.nightly: nightly"
+expect "reconcile: stable only" "$out" "installed  com.example.stable: v1.0"
+expect "reconcile: no matching release" "$out" "unresolved com.example.gone"
+expect "reconcile: F-Droid app" "$out" "installed  com.example.fd: 2.0"
+expect "reconcile: direct APK" "$out" "installed  com.example.direct: direct"
+expect "reconcile: failures end non-zero" "$out" "exit=2"
+expect "reconcile: installs silently as the shell, Obtainium as installer of record" "$out" "+ shell pm install -r -i dev.imranr.obtainium --user 0 '/sdcard/Download/.android-reconcile/com.example.fd.apk'"
+expect "reconcile: never opens an Obtainium import" "$out" "obtainium://" absent
+
+out=$(run "" act=reconcile plan=1)
+expect "plan lists" "$out" "would-install com.example.fd"
+expect "plan installs nothing" "$out" "installed  " absent
+
+out=$(run noshizuku act=reconcile)
+expect "pending until Shizuku is up" "$out" "pending    com.termux.boot: 0.8.1 waits for Shizuku"
+expect "pending: nothing installed" "$out" "installed  " absent
+expect "pending: exit 5" "$out" "exit=5"
+
+out=$(run noshizuku-adb act=reconcile)
+expect "adb starts Shizuku" "$out" "+ adb shell sh /sdcard/Android/data/moe.shizuku.privileged.api/start.sh"
+expect "then the apps install" "$out" "shizuku started over adb"
+expect "then the apps install" "$out" "installed  com.termux.boot: 0.8.1"
+expect "no pending once Shizuku is up" "$out" "pending    " absent
+
+out=$(run failinstall act=reconcile)
+expect "signature mismatch is reported, never forced" "$out" "signed differently from the installed copy"
+
+out=$(run ratelimit act=reconcile)
+expect "rate limit defers" "$out" "deferred   org.jellyfin.mobile: GitHub rate limit"
+
+out=$(run "" act=channel)
+expect "channel: apps first" "$out" "-- Termux, Termux:Boot and Shizuku"
+expect "channel: Shizuku may restart itself" "$out" "+ shell pm grant moe.shizuku.privileged.api android.permission.WRITE_SECURE_SETTINGS"
+expect "channel: setup is pushed to shared storage" "$out" "+ adb push"
+expect "channel: setup typed into Termux" "$out" "+ adb shell input text 'sh%s/sdcard/Download/termux-channel/setup.sh'"
+expect "channel: host key pinned" "$out" "pinned the host key; the channel user is u0_a345"
+expect "channel: verified" "$out" "ok: the channel is up and privileged (Shizuku)"
+expect "channel: exit 0" "$out" "exit=0"
+
+out=$(run never-setup act=status)
+expect "never set up: adb" "$out" "transport adb"
+
+if [ "$fail" -eq 0 ]; then echo "all checks passed"; else echo "FAILED"; exit 1; fi

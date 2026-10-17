@@ -1,8 +1,8 @@
 # Android fleet
 
-Phones pull their app list. Nothing listens on a phone and nothing pushes to one.
+A phone without a management channel pulls its app list (below): nothing listens on it and nothing pushes to it. A phone with `channel.enable` (the Pixel) runs sshd in Termux on the tailnet, privileged through Shizuku, and bonobo installs and updates its apps silently, on any network, with no import tap: `android <device> reconcile` and an hourly timer. The catalog, the sets and the Obtainium page below stay the source of truth for both.
 
-Why this design over an MDM or adb push, and `android <device>` (drift over adb): `docs/android-fleet.md`.
+Why this design over an MDM or adb push, the channel, its limits, and `android <device>` (drift, `channel`, `reconcile`): `docs/android-fleet.md`.
 
 `android <device> productivity` configures the notes and calendar apps (Syncthing-Fork, Orgzly Revived, DAVx5, Fossify Calendar) of a device that declares `productivity`, and `android <device>` audits them: `docs/android-fleet.md`, "Notes and calendar".
 
@@ -12,7 +12,7 @@ Why this design over an MDM or adb push, and `android <device>` (drift over adb)
   - `<device>.html`
 - `nixidy/apps/home/android.nix` serves those files at `https://android.trdos.me` (internal gateway, tailnet only). An ArgoCD sync of `main` is what updates the page.
 - `pulumi up` posts to hyena's ntfy topic `android-<device>` when that device's catalog hash (`legacyPackages.<system>.android.notify`) changes. The notification opens the device page. Tap **Import app list into Obtainium**, then confirm.
-- Obtainium checks for updates every 6h, on Wi-Fi only. On a `deviceOwner = true` device it installs silently through Dhizuku. Everywhere else it notifies, and you tap to install. Updates to apps that Obtainium installed itself can still install silently on Android 12+.
+- On a channel device the reconciler is the only updater (its bootstrap turns Obtainium's background updates off). Elsewhere: Obtainium checks for updates every 6h, on Wi-Fi only. On a `deviceOwner = true` device it installs silently through Dhizuku. Everywhere else it notifies, and you tap to install. Updates to apps that Obtainium installed itself can still install silently on Android 12+.
 - Import only adds or updates apps. To remove an app, delete it from the catalog and uninstall it by hand.
 
 Devices: pixel (base + homelab + the `pixel` set of FOSS apps already on it, `docs/android-inventory.md`), s21 (base + homelab), boox (base + eink), odin (base + handheld), all `tristan`. a10e and vivo are `family`: the family set (plus HeliBoard), stable releases only, headscale user `family`.
