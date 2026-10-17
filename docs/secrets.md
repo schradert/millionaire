@@ -7,7 +7,7 @@ Hosts fetch their own secrets at boot and on every switch. This page is the desi
 
 - `secrets/sops/default.yaml` (recipients: tristan, the `&server` key, falcon, axolotl, muffin, piper): `passwords/{age,k8s-token}`, `bitwarden` (the admin machine token), `b2/{id,key}`,
   `attic/{server-key,auth-token}`, `adguard/admin/password-hash`, `headscale/preauth-key/cluster-node`, `cloudflare/account/token`, plus `ntfy/*`, `backblaze/bucket/*`, `android/adb-key` once pulumi has written them.
-- `personal.yaml` (tristan, falcon, axolotl, deck, echidna, gargoyle): `headscale/preauth-key/{personal,family}`, `api/{anthropic,context7,openai}`, `ssh/personal`, `age/{tristan,bws-backup}`, `ntfy/reader/token`.
+- `personal.yaml` (tristan, falcon, axolotl, deck, echidna, gargoyle): `headscale/preauth-key/{personal,family}`, `api/{anthropic,context7,openai}`, `ssh/personal`, `age/{tristan,bws-backup}`, `ntfy/reader/token`, `baikal/admin-password` (copied once from Bitwarden; vdirsyncer reads `/run/secrets/baikal-admin-password`, modules/calendar.nix).
 - `hostkeys.yaml` (tristan only): private ssh host keys of piper, echidna, gargoyle. `syncthing-<host>.yaml`: one device identity per host.
 - Consumers: `flake.nix` (atticd key, adb key), `static/{hyena,ntfy,headscale-backup,attic-server,k8s-node,tailnet,tailnet-personal,cloud-worker,echidna,gargoyle,muffin,muffin-vm,axolotl,falcon-system}.nix`,
   `static/host-key.sh`, `modules/{api-keys,opencode,ntfy,workstation-keys,syncthing,tailnet,git,ssh}.nix`, `devenv.nix` (BWS token, B2 keys, `syncthing-identity`, restore tests),
