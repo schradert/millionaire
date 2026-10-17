@@ -453,7 +453,7 @@ in {
         # etcd metrics only listen on the nodes' LAN IPs, so probe each server's
         # apiserver instead (401 = serving; anonymous auth is off).
         ++ lib.mapAttrsToList (node: ip: probe "apiserver-${node}" "https://${ip}:6443/readyz" ["[STATUS] == 401"]) {
-          sirver = "100.64.0.2";
+          bonobo = "100.64.0.4";
           octopus = "100.64.0.3";
           dingo = "100.64.0.6";
         }
