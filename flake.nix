@@ -247,6 +247,8 @@
             # Mini switch on spare LAN to connect another system (dingo)
             networking.bridges.br0.interfaces = ["eno3" "eno4"];
             networking.interfaces.br0.useDHCP = true;
+            # The router handed br0 .73 on the 2026-10-17 boot; every list keyed to the node's address says .204 (#1063 did the same for eno1).
+            systemd.network.networks."40-br0".dhcpV4Config.RequestAddress = "192.168.50.204";
           };
         };
         octopus = {
