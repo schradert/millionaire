@@ -86,7 +86,9 @@ First run against the Pixel (2026-10-14, Android 17, wireless debugging was on):
 - Always-on VPN is **not set** (`always_on_vpn_app` = null).
 - 25 declared apps are missing, mostly the homelab clients (Immich, Home Assistant, Mihon, Audiobookshelf, ...) plus Dhizuku.
 - 105 declared apps were installed by the F-Droid client, Play, or by hand. Obtainium does not own them, so they update only after an import. Where the catalog's source signs differently from the installed APK (F-Droid-signed vs. developer-signed), the update fails until the app is reinstalled from the catalog source.
-- 3 Obtainium installs are not declared: DuckStation, Lime3DS, Recorder.
+- 4 Obtainium installs were not declared: DuckStation, Lime3DS, Recorder and Logseq.
+
+Reconciled on 2026-10-17 (`docs/android-inventory.md`): the phone has 352 user-installed packages. 144 were declared; 19 more are now (FOSS upstreams that came from Play, F-Droid or by hand, Recorder among them), so the catalog covers 163. Logseq (dropped by design), DuckStation (no Android build upstream) and Lime3DS (archived; Azahar replaces it) are to be uninstalled. 173 apps are Play-only and stay out of the catalog, 8 are own builds, 5 are tracked elsewhere. Every catalog entry has a category (`docs/android.md`).
 
 ## On the phone (Pixel)
 
@@ -94,7 +96,7 @@ First run against the Pixel (2026-10-14, Android 17, wireless debugging was on):
 2. Wireless debugging: on your home network choose **Always allow on this network**, so it comes back after a reboot. In Shizuku, enable start on boot (Android 13+ on trusted Wi-Fi).
 3. Once bonobo has the pulumi-generated adb key (`docs/manual-steps.md` §16), pair it once: Developer options > Wireless debugging > **Pair device with pairing code**, then `android pixel pair <ip>:<pairing-port> <code>` (the dialog shows the IP, pairing port and code; the pairing port differs from the connect port). Wireless debugging authenticates with a paired key and gives an unpaired one `failed to connect` with no prompt on the phone, so `android pixel` reports "port open, but adb connect failed" until then. The old hand-paired key stays trusted until you revoke it (Developer options > Revoke USB debugging authorizations, which clears every computer, so only do it after the new key works).
 4. Run `android pixel apply` (or tap the ntfy notification) and confirm the import in Obtainium, then **Install/Update all**.
-5. Decide on the 105 apps installed outside Obtainium and the 3 undeclared ones (README todo 54).
+5. Decide on the Play-only apps that have a FOSS twin, and on the Play-installed apps the catalog now declares (README todo 54, `docs/android-inventory.md`). Import `pixel.json` as a file once to get the category colours.
 6. Run `android pixel productivity` (try `--dry-run` first) and do the taps it prints, listed under "Notes and calendar (Pixel)" below. Then `android pixel` should show no drift in the notes and calendar block.
 
 ## Notes and calendar (Pixel): `android pixel productivity`

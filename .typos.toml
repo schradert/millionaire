@@ -47,6 +47,10 @@ regist = "regist"
 # Android package ids and app names (modules/android.nix): org.mian.gitnex, Transportr
 mian = "mian"
 transportr = "transportr"
+# docs/android-inventory.md: com.ninebot.segway (Segway-Ninebot), com.amazon.avod.thirdpartyclient (Prime Video)
+segway = "segway"
+Segway = "Segway"
+avod = "avod"
 # serie: the git graph viewer (modules/git.nix)
 serie = "serie"
 Transportr = "Transportr"
