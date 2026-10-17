@@ -426,6 +426,27 @@
           }
         ];
       }
+      # the e2e loki-roundtrip test Pod (label e2e-test, not the runner's e2e) pushes one line to Loki
+      {
+        fromEndpoints = [
+          {
+            matchLabels = {
+              "k8s:io.kubernetes.pod.namespace" = "e2e";
+              "app.kubernetes.io/name" = "e2e-test";
+            };
+          }
+        ];
+        toPorts = [
+          {
+            ports = [
+              {
+                port = "3100";
+                protocol = "TCP";
+              }
+            ];
+          }
+        ];
+      }
       # the Ceph dashboard queries Prometheus (rook-ceph.nix dashboard.prometheusEndpoint)
       {
         fromEndpoints = [

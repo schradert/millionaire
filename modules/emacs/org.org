@@ -115,7 +115,7 @@ to \"todo recursive\", give it a TODO keyword and a leading progress indicator."
   (org-node-backlink-mode)
   (org-node-roam-accelerator-mode)   ; fast org-roam backlinks buffer, no org-roam DB
   (org-node-seq-mode)                ; dailies / sequences
-  ;; Plain prefixes alongside Doom's SPC leader (SPC n has the org-roam entries).
+  ;; No Doom SPC-leader without evil, so bind to plain prefixes.
   (keymap-global-set "C-c n" org-node-global-prefix-map)
   (keymap-set org-mode-map "C-c N" org-node-org-prefix-map))
 
