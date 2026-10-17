@@ -817,6 +817,16 @@ class Millionaire:
             default_server_side_encryption=b2.BucketDefaultServerSideEncryptionArgs(
                 algorithm="AES256", mode="SSE-B2"
             ),
+            # Everything restic, barman and rclone delete (prune, WAL and base-backup retention, mirror deletes) is
+            # only hidden by B2 and billed until a lifecycle rule removes it: with none, 2.0 TB of the 5.3 TB on
+            # 2026-10-17 were deleted versions. Seven days after hiding leaves time to notice a bad delete.
+            lifecycle_rules=[
+                b2.BucketLifecycleRuleArgs(
+                    file_name_prefix="",
+                    days_from_hiding_to_deleting=7,
+                    days_from_starting_to_canceling_unfinished_large_files=7,
+                )
+            ],
             # Imported (id 6059c9f13683ebd29ece0613) from the bucket the command created.
             opts=PROTECTED,
         )
