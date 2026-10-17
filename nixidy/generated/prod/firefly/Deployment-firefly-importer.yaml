@@ -23,7 +23,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configMaps: 58ca5196a1df117aaeb540ebf4d69cfbbfef8d965f9e3d33bfcf5ad96ea37e3e
+        checksum/configMaps: c433cd5cfe57a365b7d26bdd70406015f30934289adc82125148d0762863c867
       labels:
         app.kubernetes.io/controller: firefly-importer
         app.kubernetes.io/instance: firefly-importer

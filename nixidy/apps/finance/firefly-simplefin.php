@@ -184,6 +184,12 @@ out(sprintf('config: %d accounts (%d to create)', count($map), count($new)));
 
 // --- 3. import ---
 chdir('/var/www/html');
-passthru('php artisan importer:auto-import ' . escapeshellarg($dir), $code);
+// The importer's console commands print the last 25 chars of the access token (a personal access
+// token) on every run, whatever LOG_LEVEL is; drop that fragment from the job's log.
+$run = popen('php artisan importer:auto-import ' . escapeshellarg($dir) . ' 2>&1', 'r');
+while (false !== ($line = fgets($run))) {
+    echo preg_replace('/(last 25 chars of the access token are:).*/', '$1 [redacted]', $line);
+}
+$code = pclose($run);
 // 73 = NOTHING_WAS_IMPORTED: every transaction was a duplicate, which is the normal outcome of a quiet day.
 exit(73 === $code ? 0 : $code);
