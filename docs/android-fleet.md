@@ -202,7 +202,6 @@ Not yet exercised on the phone (it was offline on the tailnet and the new adb ke
 
 ## Next
 
-- Finish README todo 50: pair the adb key, run `android pixel channel` (see "On the phone").
-- Test on the phone, none of which was possible at writing: the `channel` sequence, `rish` from an sshd session, `pm install -i dev.imranr.obtainium`, Termux:Boot after a reboot and after the first unlock, Doze with the screen off (`wakeLock`), and Shizuku's start over adb. Record what differs here.
+- Finish README todo 50: Shizuku on Android 17 (see "Shizuku on Android 17" above and `docs/manual-steps.md` §16). Seen on the Pixel on 2026-10-17: the `channel` sequence up to sshd, Termux:Boot opened, supervised sshd and a `kill -9` restart, the phantom killer and battery read-backs, Shizuku's start script and its two crashes, adb fallback when Shizuku is down. Not yet seen: `rish` from an sshd session, `pm install -i dev.imranr.obtainium` from `rish`, Termux:Boot after a reboot, Doze with the screen off.
 - Put drift into Alertmanager too (the timer reports to ntfy only).
 - Headwind MDM nixidy module (CNPG + hmdm image) and a Rust catalog-to-Headwind reconciler, tried on a family phone at its reset.
