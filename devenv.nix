@@ -1087,7 +1087,7 @@ in {
         inherit ((import ./static/builders.nix).nodes) bonobo;
       in ''
         set -euo pipefail
-        dev=''${1:?Usage: android <device> [apply | pair <ip:port> <code> | productivity [syncthing orgzly davx5 fossify] [--dry-run]]}
+        dev=''${1:?Usage: android <device> [apply | pair <ip:port> <code> | productivity [syncthing orgzly davx5 fossify] [--dry-run] [--wait 20m]]}
         mode=''${2:-status}
         shift; [ $# -eq 0 ] || shift
         extra=("$@")

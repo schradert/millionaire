@@ -10,14 +10,18 @@
 #   pair_addr, pair_code   `android <device> pair <ip:port> <code>`: pair this host's key with the phone first
 #                      (Wireless debugging > Pair device with pairing code; the code arrives here, never in an argument list)
 #   act=productivity   configure the notes and calendar apps instead (`stages`: syncthing orgzly davx5 fossify;
-#                      zip_b64: the Syncthing import archive; dav_pass: the Baikal password; dry=1: print only)
+#                      zip_b64: the Syncthing import archive; dav_pass: the Baikal password; dry=1: print only;
+#                      wait_s: how long each tap is awaited, default 600). Each app is its own stage: one failing or
+#                      timing out never stops the others, a summary table closes the run and the exit status is non-zero
+#                      unless every stage is ok.
 # Secrets arrive on stdin or in these variables, never in an argument list.
 
 dry_stubs() {
   # a stand-in phone: every read finds nothing installed, every write is printed (stdin masked)
   exec 9>&2 # the callers redirect stdout and stderr; the printed commands must still show
   tailscale() { echo 100.64.0.99; }
-  # stub=noport (nothing open) or stub=unpaired (a port is open, adb connect fails) test the error paths
+  # stub=noport (nothing open), stub=unpaired (a port is open, adb connect fails), stub=nolaunch (no launcher intent
+  # resolves; monkey still works) and stub=nolaunch-all (monkey fails too) test the error paths
   nmap() { [ "${stub:-}" = noport ] || echo "Host: 100.64.0.99 ()	Ports: 37000/open/tcp//unknown///"; }
   curl() { return 7; }
   sleep() { :; }
@@ -33,6 +37,9 @@ dry_stubs() {
       "shell pm list packages"*|"shell dumpsys"*|"shell appops get"*|"shell content query"*) return 0 ;;
       "shell pm path"*|"shell test"*) return 1 ;;
       "forward tcp:0 tcp:8384") echo 38384; return ;;
+      "shell monkey"*) [ "${stub:-}" != nolaunch-all ] || return 1 ;;
+      "shell am start"*) if [[ "${stub:-}" == nolaunch* ]]; then echo "Error: Activity not started, unable to resolve Intent { ${args[*]} }"; return 255; fi ;;
+      "shell cmd package resolve-activity"*) [[ "${stub:-}" == nolaunch* ]] || echo "com.example/.Main"; return ;;
     esac
     n=""
     [ ! -p /dev/stdin ] || n=" <<< stdin: $(wc -c | tr -d ' ') bytes, masked"
@@ -222,14 +229,29 @@ loosen() {
   a shell cmd deviceidle whitelist "+$1" >/dev/null 2>&1 || true
 }
 allfiles() { a shell appops set "$1" MANAGE_EXTERNAL_STORAGE allow >/dev/null 2>&1 || true; }
-launch() { a shell am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p "$1" >/dev/null; }
-# poll <seconds> <command...>: until it succeeds
+# launch <package>: open the app. `am start` can exit 0 with "Error: Activity not started" on its output, so the
+# output is checked; when the MAIN/LAUNCHER intent does not resolve (a replaced build, another launcher activity) ask
+# the package manager for the launcher activity, then fall back to monkey. Fails only when all three do.
+launch() {
+  local pkg=$1 out act
+  out=$(a shell am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p "$pkg" 2>&1) && ! grep -q '^Error' <<<"$out" && return 0
+  act=$(a shell cmd package resolve-activity --brief -c android.intent.category.LAUNCHER "$pkg" 2>/dev/null | tail -1 | tr -d '\r' || true)
+  if [[ "$act" == */* ]]; then
+    out=$(a shell am start -n "$act" 2>&1) && ! grep -q '^Error' <<<"$out" && return 0
+  fi
+  a shell monkey -p "$pkg" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 && return 0
+  return 1
+}
+# minutes <seconds>: "10 minutes"
+minutes() { local m=$(($1 / 60)); if [ "$m" -ge 1 ]; then echo "$m minute$([ "$m" -eq 1 ] || echo s)"; else echo "$1 seconds"; fi; }
+# poll <seconds> <command...>: until it succeeds; prints how long is left every minute, so a buffered terminal shows progress
 poll() {
   local n=$1 i
   shift
   [ -z "${dry:-}" ] || return 0
   for ((i = 0; i < n; i += 5)); do
     "$@" && return 0
+    [ "$i" -eq 0 ] || [ $((i % 60)) -ne 0 ] || say "   ... still waiting, $(minutes $((n - i))) left"
     sleep 5
   done
   return 1
@@ -237,26 +259,61 @@ poll() {
 want_stage() { [ -z "${stages:-}" ] || [[ " $stages " == *" $1 "* ]]; }
 say() { printf '%s\n' "$*"; }
 
+# run_stage <name> <function> [args]: one app per stage, in a subshell with errexit, so a failing command ends only that
+# stage (errexit is ignored inside a condition, hence the background job and wait). A stage returns 0 (ok), 10 (the tap
+# was not seen in time) or 11 (the app is not installed); `note` leaves a line for the summary.
+results=()
+run_stage() {
+  local name=$1 rc=0 status
+  shift
+  : >"$notes"
+  ( set -e; trap cleanup EXIT; "$@" ) </dev/null &
+  wait $! || rc=$?
+  case $rc in
+    0) status=ok ;;
+    10) status=TIMEOUT ;;
+    11) status=MISSING ;;
+    *) status="FAILED($rc)" ;;
+  esac
+  results+=("$(printf '%-10s %-10s %s' "$name" "$status" "$(tail -1 "$notes")")")
+  [ "$rc" -eq 0 ] || failed=1
+  return 0
+}
+note() { printf '%s\n' "$*" >>"$notes"; }
+# need_pkg <package>: a stage's first step. A missing package is reported and ends only that stage.
+need_pkg() {
+  have_pkg "$1" || [ -n "${dry:-}" ] || { say "   $1 is not installed: run 'android $(sp .syncthing.device) apply' first"; note "$1 is not installed"; return 11; }
+}
+
 productivity() {
   local s=$1
-  local dev org dir
+  local dev org dir failed=0 notes
+  notes=$(mktemp)
   dev=$(sp .syncthing.device)
   org=$(sp .syncthing.folder.id)
   dir=$(sp .orgDir)
-  say "$dev: unlock the phone and keep the screen on; each app opens in turn."
-  want_stage syncthing && stage_syncthing "$s" "$dir"
-  want_stage orgzly && stage_orgzly "$dir"
-  want_stage davx5 && stage_davx5 "$s"
-  want_stage fossify && stage_fossify
-  say "done. Check the result with: android $dev"
+  say "$dev: unlock the phone and keep the screen on; each app opens in turn. Each tap is awaited for $(minutes "${wait_s:-600}") (--wait)."
+  want_stage syncthing && run_stage syncthing stage_syncthing "$s" "$dir"
+  want_stage orgzly && run_stage orgzly stage_orgzly "$dir"
+  want_stage davx5 && run_stage davx5 stage_davx5 "$s"
+  want_stage fossify && run_stage fossify stage_fossify
+  rm -f "$notes"
+  say "== summary"
+  printf '%s\n' "${results[@]}"
+  if [ "$failed" -eq 0 ]; then
+    say "done. Check the result with: android $dev"
+  else
+    say "not every stage succeeded: fix the ones above and rerun (stages are idempotent; name one to run only it: android $dev productivity <stage>)" >&2
+  fi
+  return "$failed"
 }
 
 stage_syncthing() {
-  local s=$1 dir=$2 pkg id st zip=/sdcard/backups/syncthing/config.zip
+  local s=$1 dir=$2 pkg id st zip=/sdcard/backups/syncthing/config.zip rc=0 launched=1
   pkg=$(sp .apps.syncthing)
   id=$(sp .syncthing.id)
   say "== Syncthing-Fork ($pkg)"
-  if ! have_pkg "$pkg" && [ -z "${dry:-}" ]; then say "   not installed: run 'android $(sp .syncthing.device) apply' and install it first"; return; fi
+  need_pkg "$pkg" || return
   loosen "$pkg"
   allfiles "$pkg"
   grant "$pkg" POST_NOTIFICATIONS ACCESS_LOCAL_NETWORK
@@ -266,6 +323,7 @@ stage_syncthing() {
   st=$(st_get /rest/system/status | jq -r .myID 2>/dev/null || true)
   if [ "$st" = "$id" ]; then
     say "   already running as the declared device ($id): nothing to import"
+    note "already running as the declared device"
     st_close "$s"
     return
   fi
@@ -278,39 +336,51 @@ stage_syncthing() {
   fi
   zip_pushed=$zip
   printf '%s' "${zip_b64:-}" | base64 -d | adb -s "$s" shell "cat > $zip"
-  launch "$pkg"
+  launch "$pkg" || { say "   could not open $pkg: open Syncthing-Fork by hand"; launched=0; }
   say "   TAP (once, on the phone): in Syncthing-Fork open the menu, Settings, Import and Export, Import Configuration, OK."
   say "   On a fresh install, first click through the welcome page and tap Finish after key generation."
   if [ -n "${dry:-}" ]; then
     say "   (dry run: would now wait for the phone to run as ${id%%-*}..., then remove $zip)"
+    note "dry run"
     return
   fi
-  say "   waiting up to 10 minutes for the phone to run as ${id%%-*}..."
+  say "   waiting up to $(minutes "${wait_s:-600}") for the phone to run as ${id%%-*}..."
   st_open "$s"
-  if poll 600 st_is_declared; then
+  if poll "${wait_s:-600}" st_is_declared; then
     say "   imported: running as the declared device"
+    note "imported, running as the declared device"
   else
-    say "   not seen within 10 minutes; the archive is removed, rerun to try again" >&2
+    say "   not seen within $(minutes "${wait_s:-600}"); the archive is removed, rerun to try again (--wait for longer)" >&2
+    note "the import tap was not seen within $(minutes "${wait_s:-600}")"
+    rc=10
   fi
   st_close "$s"
   cleanup
   zip_pushed=""
+  [ "${launched:-1}" -eq 1 ] || [ "$rc" -ne 0 ] || { note "could not open the app, imported anyway"; }
+  return "$rc"
 }
 st_is_declared() { [ "$(st_get /rest/system/status | jq -r .myID 2>/dev/null || true)" = "$(sp .syncthing.id)" ]; }
 
 stage_orgzly() {
-  local dir=$1 pkg
+  local dir=$1 pkg rc=0
   pkg=$(sp .apps.orgzly)
   say "== Orgzly Revived ($pkg)"
-  if ! have_pkg "$pkg" && [ -z "${dry:-}" ]; then say "   not installed: run 'android $(sp .syncthing.device) apply' first"; return; fi
+  need_pkg "$pkg" || return
   loosen "$pkg"
   allfiles "$pkg"
   grant "$pkg" POST_NOTIFICATIONS WRITE_EXTERNAL_STORAGE
   a shell appops set "$pkg" SCHEDULE_EXACT_ALARM allow >/dev/null 2>&1 || true
-  launch "$pkg"
+  if ! launch "$pkg"; then
+    say "   could not open $pkg (no launcher activity resolved; monkey failed too): open Orgzly by hand and do the tap below"
+    note "could not open $pkg; permissions granted, the repository tap is still to do"
+    rc=1
+  fi
   say "   TAP (once, on the phone): menu, Settings, Repositories, New Repository, Directory, type"
   say "       file:$dir"
   say "   in 'Directory URI', tick to save, then Sync. (Orgzly keeps repositories in a private database: no intent or file sets one.)"
+  [ "$rc" -ne 0 ] || note "permissions granted; the repository tap is on the phone"
+  return "$rc"
 }
 
 stage_davx5() {
@@ -319,17 +389,18 @@ stage_davx5() {
   url=$(sp .caldav.url)
   user=$(sp .caldav.user)
   say "== DAVx5 ($pkg)"
-  if ! have_pkg "$pkg" && [ -z "${dry:-}" ]; then say "   not installed: run 'android $(sp .syncthing.device) apply' first"; return; fi
+  need_pkg "$pkg" || return
   loosen "$pkg"
   grant "$pkg" POST_NOTIFICATIONS READ_CALENDAR WRITE_CALENDAR
   accounts=$(dav_accounts)
   if [ -n "$accounts" ]; then
     say "   account exists ($(tr '\n' ' ' <<<"$accounts")); tick the $(sp .caldav.calendar) calendar in the account if the audit says it is not synced"
+    note "account exists"
     return
   fi
   # davx5://host/path is https://host/path (LoginActivity.loginInfoFromIntent): it skips the login-type page
   u=${url#https://}
-  [ "$u" != "$url" ] || { say "   caldav.url must be https: $url" >&2; return 1; }
+  [ "$u" != "$url" ] || { say "   caldav.url must be https: $url" >&2; note "caldav.url must be https"; return 1; }
   host=davx5://$u
   # the password goes in on stdin and reaches `am` as a shell variable on the phone, never in an argument list here
   printf '%s\n' "${dav_pass:-}" | adb -s "$s" shell "IFS= read -r pw; am start -n $pkg/.ui.setup.LoginActivity -a android.intent.action.VIEW -d '$host' --es username '$user' --es password \"\$pw\"" >/dev/null
@@ -337,25 +408,45 @@ stage_davx5() {
   say "   then in the account tick the '$(sp .caldav.calendar)' calendar (DAVx5 preselects none)."
   if [ -n "${dry:-}" ]; then
     say "   (dry run: would now wait for the account, then for the '$(sp .caldav.calendar)' calendar)"
+    note "dry run"
     return
   fi
-  say "   waiting up to 10 minutes for the account and the calendar..."
-  if poll 600 dav_has_account; then say "   account created"; else say "   no account within 10 minutes" >&2; return 0; fi
-  if poll 300 dav_has_calendar; then say "   calendar $(sp .caldav.calendar) is synced"; else say "   calendar $(sp .caldav.calendar) not ticked (or the Calendar Provider is not readable over adb)" >&2; fi
+  say "   waiting up to $(minutes "${wait_s:-600}") for the account, then as long for the calendar..."
+  if poll "${wait_s:-600}" dav_has_account; then
+    say "   account created"
+  else
+    say "   no account within $(minutes "${wait_s:-600}")" >&2
+    note "no account within $(minutes "${wait_s:-600}")"
+    return 10
+  fi
+  if poll "${wait_s:-600}" dav_has_calendar; then
+    say "   calendar $(sp .caldav.calendar) is synced"
+    note "account created, calendar synced"
+  else
+    say "   calendar $(sp .caldav.calendar) not ticked (or the Calendar Provider is not readable over adb)" >&2
+    note "account created, calendar $(sp .caldav.calendar) not seen within $(minutes "${wait_s:-600}")"
+    return 10
+  fi
 }
 dav_has_account() { [ -n "$(dav_accounts)" ]; }
 dav_has_calendar() { dav_calendars | grep -qx "$(sp .caldav.calendar)"; }
 
 stage_fossify() {
-  local pkg cal
+  local pkg cal out rc=0
   pkg=$(sp .apps.calendar)
   cal=$(sp .caldav.calendar)
   say "== Fossify Calendar ($pkg)"
-  if ! have_pkg "$pkg" && [ -z "${dry:-}" ]; then say "   not installed: run 'android $(sp .syncthing.device) apply' first"; return; fi
+  need_pkg "$pkg" || return
   grant "$pkg" POST_NOTIFICATIONS READ_CALENDAR WRITE_CALENDAR
-  a shell am start -n "$pkg/.activities.SettingsActivity" >/dev/null
+  # its settings screen first, else the launcher activity
+  out=$(a shell am start -n "$pkg/.activities.SettingsActivity" 2>&1) && ! grep -q '^Error' <<<"$out" || launch "$pkg" || {
+    say "   could not open $pkg: open Fossify Calendar by hand"
+    rc=1
+  }
   say "   TAP (once, on the phone, in Settings): turn on 'CalDAV sync', then 'Manage synced calendars' and tick '$cal'."
   say "   (needs DAVx5's account and ticked calendar first; the preference is private to the app)"
+  if [ "$rc" -eq 0 ]; then note "permissions granted; the CalDAV tap is on the phone"; else note "could not open $pkg; the CalDAV tap is still to do"; fi
+  return "$rc"
 }
 
 main "$@"
